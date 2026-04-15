@@ -482,5 +482,7 @@ if abspath(PROGRAM_FILE) == @__FILE__
     #%% Run it
     main(args)
 
-    #%%
+    #%% Garbage collection
+    GC.gc()
+    @info "Finished garbage collection"
 end
