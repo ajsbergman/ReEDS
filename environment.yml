@@ -34,6 +34,7 @@ dependencies:
   - mscorefonts=0.0 # extra fonts for plotting (only relevant on linux/HPC)
   - networkx=3.1 # for uncommonly-used network analysis postprocessing
   - notebook=6.5 # for jupyter notebooks
+  - ruff=0.9 # for formatting
   ## ^^^
   - pip:
     - cmocean==3.0.3
