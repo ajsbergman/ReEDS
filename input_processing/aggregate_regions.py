@@ -870,9 +870,8 @@ reeds_path = args.reeds_path
 inputs_case = os.path.join(args.inputs_case)
 
 # #%%## Settings for testing
-# reeds_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-# inputs_case = os.path.join(
-#     reeds_path,'runs','v20250301_hydroM0_Pacific','inputs_case')
+#reeds_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+#inputs_case = os.path.join(reeds_path,'runs','test_startyr_Pacific','inputs_case')
 
 #%% Settings for debugging
 ### Set debug == True to copy the original files to a new folder (inputs_case_original).
@@ -1010,17 +1009,19 @@ if 'aggreg' in agglevel:
 
     # Read generator database and create rsc_wsc (for use in writesupplycurves function call below)
     gendb = pd.read_csv(os.path.join(inputs_case,'unitdata.csv'))
+    
     import writecapdat
-    from writecapdat import create_rsc_wsc
     # Set the 'r' column for the generator database
     # Create the 'r_col' column
     gendb = gendb.assign(r=gendb.reeds_ba.map(r_ba))
+    # Multiply all PV capacities by ILR
+    gendb.loc[gendb['tech'].isin(["upv", "pvb_pv", "dupv", "csp-ns"]), 'summer_power_capacity_MW'] *= scalars['ilr_utility']
     startyear = int(sw.startyear)
-    rsc_wsc = create_rsc_wsc(gendb, TECH=writecapdat.TECH, scalars=scalars,startyear=startyear)
-
+    rsc_wsc = writecapdat.create_rsc_wsc(gendb, TECH=writecapdat.TECH,startyear=startyear)
+    exog_rsc = writecapdat.create_exog_rsc(inputs_case,gendb,TECH=writecapdat.TECH,COLNAMES=writecapdat.COLNAMES_define(sw.retscen, 'StartYear'),sw=sw,startyear=startyear)
     import writesupplycurves
     rscweight = writesupplycurves.main(
-        reeds_path, inputs_case, AggregateRegions=0, rsc_wsc_dat=rsc_wsc, write=False)
+        reeds_path, inputs_case, AggregateRegions=0, rsc_wsc_dat=rsc_wsc, exog_rsc_dat=exog_rsc, write=False)
     rscweight = (
         rscweight.loc[(rscweight.sc_cat=='cap')]
         .rename(columns={'*i':'i'})

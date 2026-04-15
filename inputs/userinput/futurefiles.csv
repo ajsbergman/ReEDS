@@ -138,12 +138,14 @@ evmc_shape_profile_increase.csv,.csv,1,None,9999,None,9999,0,constant,None,None,
 evmc_storage_energy.csv,.csv,1,None,9999,None,9999,0,constant,None,None,,constant
 evmc_storage_profile_decrease.csv,.csv,1,None,9999,None,9999,0,constant,None,None,,constant
 evmc_storage_profile_increase.csv,.csv,1,None,9999,None,9999,0,constant,None,None,,constant
-exog_cap_geohydro.csv,.csv,1,None,9999,None,9999,0,constant,None,None,new,
-exog_cap_upv.csv,.csv,1,None,9999,None,9999,0,constant,None,None,new,
-exog_cap_wind-ons.csv,.csv,1,None,9999,None,9999,0,constant,None,None,done,constant
+geohydro_exog_cap.csv,.csv,1,None,9999,None,9999,0,constant,None,None,new,
+upv_exog_cap.csv,.csv,1,None,9999,None,9999,0,constant,None,None,new,
+wind-ons_exog_cap.csv,.csv,1,None,9999,None,9999,0,constant,None,None,done,constant
+wind-ofs_exog_cap.csv,.csv,1,None,9999,None,9999,0,constant,None,None,done,constant
 exog_geohydro_allkm_rsc.csv,.csv,1,None,9999,None,9999,0,constant,None,None,new,
 exog_upv_rsc.csv,.csv,1,None,9999,None,9999,0,constant,None,None,new,
 exog_wind_ons_rsc.csv,.csv,1,None,9999,None,9999,0,constant,None,None,new,
+exog_wind_ofs_rsc.csv,.csv,1,None,9999,None,9999,0,constant,None,None,new,
 f.csv,.csv,1,None,9999,None,9999,0,constant,None,None,new,
 financials_hydrogen.csv,.csv,1,None,9999,None,9999,0,constant,None,None,new; input data extends to 2100,
 financials_sys.csv,.csv,1,None,9999,None,9999,0,constant,None,None,new; handled in calc_financial_inputs.py,
@@ -257,6 +259,7 @@ min_retire_age.csv,.csv,1,None,9999,None,9999,0,constant,None,None,done,constant
 minCF.csv,.csv,1,None,9999,None,9999,0,constant,None,None,done,constant
 mingen_fixed.csv,.csv,1,None,9999,None,9999,0,constant,None,None,new,
 minloadfrac0.csv,.csv,1,None,9999,None,9999,0,constant,None,None,done,constant
+missing_class_resource.csv,.csv,1,None,None,"*i,ii,r",0,None,constant,None,None,done,
 modeled_regions.csv,.csv,1,None,9999,None,9999,0,constant,None,None,new,
 modeledyears.csv,.csv,1,None,9999,None,9999,0,constant,None,None,done,constant
 month.csv,.csv,1,None,9999,None,9999,0,constant,None,None,new,
@@ -341,8 +344,6 @@ plantcharout.txt,.txt,0,None,1,"0,2",0,None,constant,None,None,"done. consider f
 plexos_inputs.gdx,.gdx,1,None,9999,None,9999,0,constant,None,None,done (wouldn't exist yet in normal run),constant
 poi_cap_init.csv,.csv,1,None,9999,None,9999,0,constant,None,None,new,
 prepost.csv,.csv,1,None,9999,None,9999,0,constant,None,None,new,
-prescribed_builds_wind-ofs.csv,.csv,1,None,9999,None,9999,0,constant,None,None,done,constant
-prescribed_builds_wind-ons.csv,.csv,1,None,9999,None,9999,0,constant,None,None,done,constant
 prescribed_nonRSC_energy.csv,.csv,1,None,9999,None,9999,0,constant,None,None,new,
 prescribed_nonRSC.csv,.csv,1,None,9999,None,9999,0,constant,None,None,done,constant
 prescribed_rsc.csv,.csv,1,None,9999,None,9999,0,constant,None,None,done,constant
@@ -510,6 +511,10 @@ wat_access_cap_cost.csv,.csv,1,None,9999,None,9999,0,constant,None,None,done,con
 water_req_psh_10h_1_51.csv,.csv,1,None,9999,None,9999,0,constant,None,None,new,
 water_with_cons_rate.csv,.csv,1,None,9999,None,9999,0,constant,None,None,done,constant
 wind_retirements.csv,.csv,1,None,9999,None,9999,0,constant,None,None,done,constant
+wind-ofs_classification.csv,.csv,1,None,9999,None,9999,0,constant,None,None,done,
+wind-ons_classification.csv,.csv,1,None,9999,None,9999,0,constant,None,None,done,
+upv_classification.csv,.csv,1,None,9999,None,9999,0,constant,None,None,done,
+geohydro_classification.csv,.csv,1,None,9999,None,9999,0,constant,None,None,done,
 windcfmult.csv,.csv,0,None,t,None,1,0,constant,None,None,constant or saturate?,constant
 windows_2100.csv,.csv,1,None,9999,None,9999,0,constant,None,None,done,constant
 windows_default.csv,.csv,1,None,9999,None,9999,0,constant,None,None,done,constant

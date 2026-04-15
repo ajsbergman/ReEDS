@@ -1,0 +1,16 @@
+class,min_reV_cf_ac,max_reV_cf_ac,access_case
+1,0.1729,0.2333,open
+2,0.2334,0.2576,open
+3,0.2576,0.2838,open
+4,0.2838,0.3151,open
+5,0.3152,0.3621,open
+1,0.1713,0.2407,reference
+2,0.2407,0.266,reference
+3,0.266,0.2907,reference
+4,0.2907,0.3191,reference
+5,0.3191,0.3621,reference
+1,0.1716,0.242,limited
+2,0.242,0.266,limited
+3,0.266,0.29,limited
+4,0.29,0.318,limited
+5,0.318,0.3606,limited

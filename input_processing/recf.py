@@ -228,9 +228,8 @@ def main(reeds_path, inputs_case):
     print('Starting recf.py')
     
     # #%% Settings for testing
-    # reeds_path = os.path.realpath(os.path.join(os.path.dirname(__file__),'..'))
-    # inputs_case = os.path.join(
-    #     reeds_path,'runs','v20250129_cspfixM0_ISONE','inputs_case')
+    #reeds_path = os.path.realpath(os.path.join(os.path.dirname(__file__),'..'))
+    #inputs_case = os.path.join(reeds_path,'runs','test_flex_Pacific','inputs_case')
 
     #%% Inputs from switches
     sw = reeds.io.get_switches(inputs_case)
@@ -448,6 +447,54 @@ def main(reeds_path, inputs_case):
     recf = pd.concat([recf, csp_system_cf], axis=1)
     resources = pd.concat([resources, csp_resources], axis=0)
 
+    ### Assign existing and prescribed generator technology classes if it is not exist in resouces. 
+    #%%
+    ### Collect all existing and prescribed generator technology classes - region combinations
+    upv_exog_cap = pd.read_csv(os.path.join(inputs_case,'upv_exog_cap.csv'))
+    wind_ons_exog_cap = pd.read_csv(os.path.join(inputs_case,'wind-ons_exog_cap.csv'))
+    wind_ofs_exog_cap = pd.read_csv(os.path.join(inputs_case,'wind-ofs_exog_cap.csv'))
+    existing_exog_techs = pd.concat(
+        [upv_exog_cap, wind_ons_exog_cap, wind_ofs_exog_cap],
+        axis=0, ignore_index=True
+    )[['*tech','region']].drop_duplicates()
+    existing_exog_techs.columns = ['i','r']
+    prescribed_rsc = (pd.read_csv(os.path.join(inputs_case, 'prescribed_rsc.csv')).rename(columns={'*i':'i'})
+                      [['i', 'r']].drop_duplicates())
+    existing_techs = pd.concat(
+        [existing_exog_techs, prescribed_rsc],
+        axis=0, ignore_index=True
+    )[['i','r']].drop_duplicates()
+    # Identify missing technology-class - region combinations in resources
+    existing_techs = existing_techs.merge(
+        resources[['i','r']],
+        on=['i','r'],
+        how='left',
+        indicator=True
+    )
+
+    missing_class_resource = existing_techs[existing_techs['_merge'] == 'left_only'][['i','r']].copy()
+    missing_class_resource = missing_class_resource[missing_class_resource["i"].str.contains("upv|wind")].reset_index(drop=True)
+    # Assign closest matching technology class based on available resources 
+    # Assign lower class if available, otherwise assign the next higher class
+    if len(missing_class_resource) > 0:
+        for idx, row in missing_class_resource.iterrows():
+            tech = row['i']
+            region = row['r']
+            available_resources = resources[resources["i"].astype(str).str.contains(tech.split("_")[0], na=False)&(resources['r'] == region)].copy()
+            available_resources.loc[:, "num"] = available_resources["i"].str.split("_").str[1].astype(int)        
+            lower = available_resources[available_resources["num"] <= int(tech.split("_")[1])]
+            if not lower.empty:
+                match = lower.loc[lower["num"].idxmax()]
+            else:
+                upper = available_resources[available_resources["num"] > int(tech.split("_")[1])]
+                if upper.empty:
+                    raise ValueError(f"No matching tech class found for '{tech}'. Exiting program.")
+                match = upper.loc[upper["num"].idxmin()]
+            missing_class_resource.loc[idx, "ii"] = match['i']
+    else:
+        missing_class_resource['ii'] = missing_class_resource['i']
+    missing_class_resource=missing_class_resource[['i','ii','r']].rename(columns={'i': '*i'})
+    
     #%% Check for errors
     nulls = recf.isnull().sum()
     missing = nulls.loc[nulls > 0]
@@ -455,7 +502,6 @@ def main(reeds_path, inputs_case):
         print(missing)
         err = f"Missing RECF values for {len(missing)} columns"
         raise ValueError(err)
-
 
     #%%###########################
     #    -- Data Write-Out --    #
@@ -471,6 +517,7 @@ def main(reeds_path, inputs_case):
         os.path.join(inputs_case, 'hierarchy.csv'), index=True, header=True)
     pd.Series(hierarchy.ccreg.unique()).to_csv(
         os.path.join(inputs_case,'ccreg.csv'), index=False, header=False)
+    missing_class_resource.to_csv(os.path.join(inputs_case,'missing_class_resource.csv'), index=False)
 
 
 #%% ===========================================================================
@@ -494,6 +541,9 @@ if __name__ == '__main__':
     inputs_case = args.inputs_case
 
     #%% Set up logger
+    #reeds_path = os.path.realpath(os.path.join(os.path.dirname(__file__),'..'))
+    #inputs_case = os.path.join(reeds_path,'runs','test_flex_Pacific','inputs_case')
+    
     log = reeds.log.makelog(
         scriptname=__file__,
         logpath=os.path.join(inputs_case,'..','gamslog.txt'),

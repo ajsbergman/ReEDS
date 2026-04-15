@@ -44,21 +44,162 @@ Sw_onlineyearcol = 'StartYear'
 #%% ===========================================================================
 ### --- FUNCTIONS ---
 ### ===========================================================================
-def create_rsc_wsc(gendb,TECH,scalars,startyear):
+def create_rsc_wsc(gendb,TECH,startyear):
 
     rsc_wsc = gendb.loc[(gendb['tech'].isin(TECH['rsc_wsc'])) &
                         (gendb[Sw_onlineyearcol] < startyear) &
                         (gendb['RetireYear']     > startyear)
                         ]
     
-    rsc_wsc = rsc_wsc[['r','tech','summer_power_capacity_MW']].rename(columns={'tech':'i','summer_power_capacity_MW':'value'})
-    # Multiply all PV capacities by ILR
-    for j,row in rsc_wsc.iterrows():
-        if row['i'] == 'upv':
-            rsc_wsc.loc[j,'value'] *= scalars['ilr_utility']
+    rsc_wsc = rsc_wsc[['reeds_ba','tech','summer_power_capacity_MW']].rename(columns={'reeds_ba':'r','tech':'i','summer_power_capacity_MW':'value'})
 
     return rsc_wsc
 
+def create_exog_rsc(inputs_case,gendb,TECH,COLNAMES,sw,startyear):
+    # Mappings to resource class are based on the resource quality of the technology as it comes from reV
+    # Reading resource classification inputs for technologies (UPV, wind-ons, wind-ofs, and geohydro)
+    rsc_class = {}
+    rsc_class["upv"] = pd.read_csv(os.path.join(inputs_case,'upv_classification.csv')).query(f"access_case == '{sw.GSw_SitingUPV}'")
+    rsc_class["wind-ons"]  = pd.read_csv(os.path.join(inputs_case,'wind-ons_classification.csv')).query(f"access_case == '{sw.GSw_SitingWindOns}'")
+    rsc_class["wind-ofs"]  = pd.read_csv(os.path.join(inputs_case,'wind-ofs_classification.csv')).query(f"access_case == '{sw.GSw_SitingWindOfs}'")
+    rsc_class["geohydro_allkm"]  = pd.read_csv(os.path.join(inputs_case,'geohydro_classification.csv')).query(f"access_case == '{sw.GSw_SitingGeo}'")
+    
+    cap_exog = {}
+    for tech in TECH['rsc_wsc']:
+        print(tech)
+        # Filter active plants
+        cap_exog[tech]= gendb.loc[(gendb['tech']==tech) &
+                                  (gendb[Sw_onlineyearcol] < startyear)  &
+                                  (gendb['RetireYear']     > startyear)].copy()
+        if len(cap_exog[tech]) != 0:
+            # Assigning each geothermal unit in unit database to a class based on groups' temperatures
+            if tech in ['geohydro_allkm','egs_allkm']:
+                cap_exog[tech]["class"] = cap_exog[tech]["reV_mean_resource_temp"].apply(
+                        lambda x: assign_class(x, tech, rsc_class[tech]))
+                cap_exog[tech]["tech"] = (cap_exog[tech]["tech"].astype(str) + "_" + 
+                                    cap_exog[tech]["class"].astype(str))   
+            # Assigning each solar, wind unit in unit database to a class based on groups' minimum and maximum capacity factors
+            elif tech in TECH['rsc_all']:
+                cap_exog[tech]["class"] = cap_exog[tech]["reV_capacity_factor_ac"].apply(
+                        lambda x: assign_class(x, tech, rsc_class['upv']))
+                cap_exog[tech]["tech"] = ('upv' + "_" + 
+                                    cap_exog[tech]["class"].astype(str))  
+            else:
+                cap_exog[tech]["class"] = cap_exog[tech]["reV_capacity_factor_ac"].apply(
+                        lambda x: assign_class(x, tech, rsc_class[tech]))
+                cap_exog[tech]["tech"] = (cap_exog[tech]["tech"].astype(str) + "_" + 
+                                    cap_exog[tech]["class"].astype(str))           
+
+        cap_exog[tech] = cap_exog[tech][COLNAMES['capexog_rsc'][0]]
+        cap_exog[tech].columns = COLNAMES['capexog_rsc'][1]
+        if len(cap_exog[tech]) != 0:
+            cap_exog[tech] = pd.concat([expand_exog_cap(row, startyear) for _, row in cap_exog[tech].iterrows()],
+                ignore_index=True)
+    if len(cap_exog["upv"]) != 0:
+        cap_exog["upv"] = pd.concat([cap_exog[tech] for tech in TECH["rsc_all"] 
+                                    if tech in cap_exog and not cap_exog[tech].empty],ignore_index=True)
+
+    return cap_exog
+
+# Assign each wind, solar and geothermal unit in unit database to a class
+def assign_class(cf, tech, df_class):
+    # Each geothermal unit is assigned to the class associated with the min and max temperatures its mean temperature falls between
+    if tech not in ['geohydro_allkm', 'egs_allkm']:
+        row = df_class[(df_class['min_reV_cf_ac'] <= cf) & (cf < df_class['max_reV_cf_ac'])]
+    # Each wind or solar unit is assigned to the class associated with the min and max capacity factors its capacity factor falls between
+    else:
+        row = df_class[(df_class['min_reV_mean_temp'] <= cf) & (cf < df_class['max_reV_mean_temp'])]
+    if not row.empty:
+        return row.iloc[0]['class']
+    else:
+        # If a unit's capacity factor/mean temp does not fall between any two max and min values specified in the classificalion file, it is unclassified and gives an error
+        raise ValueError('Unclassified ' + tech + ' technology, check capacity factor/mean temperature values in unitdata.csv and classification files.')
+
+# Expand each row into multiple rows (startyear → retirement_year)
+def expand_exog_cap(row, start_year):
+    # List the years between start_year and retirement_year (not including the retirement_year itself since unit is retired at the start of the year)
+    years = np.arange(start_year, row["year"])
+    df = pd.DataFrame({
+        "*tech": [row["*tech"]] * len(years),
+        "region": [row["region"]] * len(years),
+        "year": years,
+        "sc_point_gid": [row["sc_point_gid"]] * len(years),
+        "MW": [row["MW"]] * len(years)})
+    return df
+
+def assign_modeledyear(x,years_list):
+    for m in years_list:
+        if x <= m:         
+            return m
+    return None            
+
+def COLNAMES_define(retscen,Sw_onlineyearcol):
+    return {
+        'capexog_rsc': (
+            ['tech','r','RetireYear','sc_point_gid','summer_power_capacity_MW'],
+            ['*tech','region','year','sc_point_gid','MW']
+        ),
+        'capnonrsc': (
+            ['tech','coolingwatertech','r','ctt','wst','summer_power_capacity_MW'],
+            ['i','coolingwatertech','r','ctt','wst','value']
+        ),
+        'capnonrsc_energy': (
+            ['tech','r','energy_capacity_MWh'],
+            ['i','r','value']
+        ),
+        'prescribed_nonRSC': (
+            [Sw_onlineyearcol,'tech','vin','r','coolingwatertech','ctt','wst','summer_power_capacity_MW'],
+            ['t','i','v','r','coolingwatertech','ctt','wst','value']
+        ),
+        'prescribed_nonRSC_energy': (
+            [Sw_onlineyearcol,'tech','vin','r','coolingwatertech','ctt','wst','energy_capacity_MWh'],
+            ['t','i','v','r','coolingwatertech','ctt','wst','value']
+        ),
+        'prescribed_RSC': (
+            [Sw_onlineyearcol,'tech','vin','r','summer_power_capacity_MW'],
+            ['t','i','v','r','value']
+        ),
+        'rsc': (
+            ['tech','r','v','ctt','wst','summer_power_capacity_MW'],
+            ['i','r','v','ctt','wst','value']
+        ),
+        'rsc_wsc': (
+            ['r','tech','summer_power_capacity_MW'],
+            ['r','i','value']
+        ),
+        'prsc_upv': (
+            [Sw_onlineyearcol,'r','tech','summer_power_capacity_MW'],
+            ['t','r','i','value']
+        ),
+        'prsc_w': (
+            [Sw_onlineyearcol,'r','tech','summer_power_capacity_MW'],
+            ['t','r','i','value']
+        ),
+        'prsc_csp': (
+            [Sw_onlineyearcol,'r','tech','ctt','wst','summer_power_capacity_MW'],
+            ['t','r','i','ctt','wst','value']
+        ),
+        'prsc_geo': (
+            [Sw_onlineyearcol,'r','tech','summer_power_capacity_MW'],
+            ['t','r','i','value']
+        ),        
+        'retirements': (
+            ['tech','v','r',retscen,Sw_onlineyearcol,'coolingwatertech','ctt','wst','type','summer_power_capacity_MW'],
+            ['i','v','r','t','tt','coolingwatertech','ctt','wst','type','value']
+        ),
+        'retirements_energy': (
+            ['tech','v','r',retscen,Sw_onlineyearcol,'type','energy_capacity_MWh'],
+            ['r','i','v','t','tt','type','value']
+        ),        
+        'windret': (
+            ['r','tech','RetireYear','summer_power_capacity_MW'],
+            ['r','i','t','value']
+        ),
+        'georet': (
+            ['r','tech','RetireYear','summer_power_capacity_MW'],
+            ['r','i','t','value']
+        ),
+    }
 #%% ===========================================================================
 ### --- SUPPLEMENTAL DATA ---
 ### ===========================================================================
@@ -72,30 +213,31 @@ create_rsc_wsc() function in aggregate_regions
 
 TECH = {
     'capnonrsc': [
-        'coaloldscr', 'coalolduns', 'biopower', 'coal-igcc',
-        'coal-new', 'gas-cc', 'gas-ct', 'lfill-gas',
-        'nuclear', 'o-g-s', 'battery_li', 'pumped-hydro'
+        'battery_li', 'biopower', 'coal-igcc', 'coal-new',
+        'coaloldscr','coalolduns','gas-cc', 'gas-ct', 
+        'lfill-gas','nuclear', 'o-g-s', 'pumped-hydro'
     ],
     'capnonrsc_energy': [
         'battery_li'
     ],
     'prescribed_nonRSC': [
-        'coal-new', 'lfill-gas', 'gas-ct', 'o-g-s', 'gas-cc', 
-        'hydED', 'hydEND', 'hydND', 'hydNPND', 'hydUD', 'hydUND',
-        'geothermal', 'biopower', 'coal-igcc', 'nuclear',
-        'battery_li','pumped-hydro','coaloldscr',
+        'battery_li', 'biopower', 'coal-igcc', 'coal-new',
+        'coaloldscr', 'coalolduns','gas-cc', 'gas-ct',
+        'hydED', 'hydEND', 'hydND', 'hydNPND', 
+        'lfill-gas', 'nuclear', 'o-g-s', 'pumped-hydro'
     ],
     'prescribed_nonRSC_energy': [
         'battery_li',
     ],
     'storage'  : ['battery_li', 'pumped-hydro'
     ],
-    'rsc_all': ['upv','pvb','csp-ns'],
+    'rsc_all': ['upv','pvb_pv','csp-ns'],
+    'rsc_w': ['wind-ons','wind-ofs'],
     'rsc_csp': ['csp-ns'],
-    'rsc_wsc': ['upv','pvb','csp-ns','csp-ws','wind-ons','wind-ofs',
+    'rsc_wsc': ['upv','pvb_pv','csp-ns','csp-ws','wind-ons','wind-ofs',
                 'geohydro_allkm','egs_allkm'],
-    'prsc_all': ['upv','pvb','csp-ns','csp-ws'],
-    'prsc_upv': ['upv','pvb'],
+    'prsc_all': ['upv','pvb_pv','csp-ns','csp-ws'],
+    'prsc_upv': ['upv','pvb_pv'],
     'prsc_w': ['wind-ons','wind-ofs'],
     'prsc_csp': ['csp-ns','csp-ws'],
     'prsc_geo': ['geohydro_allkm','egs_allkm'],
@@ -112,12 +254,13 @@ TECH = {
     # This is not all technologies that do not having cooling, but technologies
     # that are (or could be) in the plant database.
     'no_cooling': [
-        'upv', 'pvb', 'gas-ct', 'geohydro_allkm','egs_allkm',
+        'upv', 'pvb_pv', 'gas-ct', 'geohydro_allkm','egs_allkm',
         'battery_li', 'pumped-hydro', 'pumped-hydro-flex', 
         'hydUD', 'hydUND', 'hydD', 'hydND', 'hydSD', 'hydSND', 'hydNPD',
         'hydNPND', 'hydED', 'hydEND', 'wind-ons', 'wind-ofs',
     ],
 }
+
 
 
 #%% ===========================================================================
@@ -127,9 +270,8 @@ TECH = {
 def main(reeds_path, inputs_case, agglevel, regions):
     
     # #%% Settings for testing
-    #reeds_path = "/Users/apham/Documents/GitHub/ReEDS/ReEDS-2.0/"
-    #inputs_case = os.path.join(reeds_path,'runs','test_newNEMS_OR_water','inputs_case')
-
+    #reeds_path = os.path.expanduser('~/Documents/GitHub/ReEDS/ReEDS-2.0')
+    #inputs_case = os.path.join(reeds_path,'runs','test_startyr_Pacific','inputs_case')
 
     #########################
     ### SUPPLEMENTAL DATA ###
@@ -157,71 +299,14 @@ def main(reeds_path, inputs_case, agglevel, regions):
     ####################
     ### DICTIONARIES ###
 
-    COLNAMES = {
-        'capnonrsc': (
-            ['tech','coolingwatertech','r','ctt','wst','summer_power_capacity_MW'],
-            ['i','coolingwatertech','r','ctt','wst','value']
-        ),
-        'capnonrsc_energy': (
-            ['tech','r','energy_capacity_MWh'],
-            ['i','r','value']
-        ),
-        'prescribed_nonRSC': (
-            [Sw_onlineyearcol,'r','tech','coolingwatertech','ctt','wst','summer_power_capacity_MW'],
-            ['t','r','i','coolingwatertech','ctt','wst','value']
-        ),
-        'prescribed_nonRSC_energy': (
-            [Sw_onlineyearcol,'r','tech','coolingwatertech','ctt','wst','energy_capacity_MWh'],
-            ['t','r','i','coolingwatertech','ctt','wst','value']
-        ),
-        'rsc': (
-            ['tech','r','ctt','wst','summer_power_capacity_MW'],
-            ['i','r','ctt','wst','value']
-        ),
-        'rsc_wsc': (
-            ['r','tech','summer_power_capacity_MW'],
-            ['r','i','value']
-        ),
-        'prsc_upv': (
-            [Sw_onlineyearcol,'r','tech','summer_power_capacity_MW'],
-            ['t','r','i','value']
-        ),
-        'prsc_w': (
-            [Sw_onlineyearcol,'r','tech','summer_power_capacity_MW'],
-            ['t','r','i','value']
-        ),
-        'prsc_csp': (
-            [Sw_onlineyearcol,'r','tech','ctt','wst','summer_power_capacity_MW'],
-            ['t','r','i','ctt','wst','value']
-        ),
-        'prsc_geo': (
-            [Sw_onlineyearcol,'r','tech','summer_power_capacity_MW'],
-            ['t','r','i','value']
-        ),        
-        'retirements': (
-            [retscen,'r','tech','coolingwatertech','ctt','wst','summer_power_capacity_MW'],
-            ['t','r','i','coolingwatertech','ctt','wst','value']
-        ),
-        'retirements_energy': (
-            [retscen,'r','tech','energy_capacity_MWh'],
-            ['t','r','i','value']
-        ),        
-        'windret': (
-            ['r','tech','RetireYear','summer_power_capacity_MW'],
-            ['r','i','t','value']
-        ),
-        'georet': (
-            ['r','tech','RetireYear','summer_power_capacity_MW'],
-            ['r','i','t','value']
-        ),
-    }
+    COLNAMES = COLNAMES_define(retscen, Sw_onlineyearcol)
 
 
     #%%
     print('Importing generator database:')
     gdb_use = pd.read_csv(os.path.join(inputs_case,'unitdata.csv'), low_memory=False)
 
-    
+
     rcol_dict = {'county':'FIPS', 'ba':'reeds_ba'}
     # Create the 'r_col' column
     if agglevel in ['county','ba']:
@@ -254,17 +339,17 @@ def main(reeds_path, inputs_case, agglevel, regions):
     # Future work could incorporate this change into unit database creation and possibly
     #    use data from ORNL HydroSource to assign a more accurate hydro category.
     gdb_use.loc[
-        (gdb_use['tech']=='hydEND') & (gdb_use[Sw_onlineyearcol] >= startyear), 'tech'
+        (gdb_use['tech']=='hydEND') & (gdb_use[Sw_onlineyearcol] >= startyear) & (gdb_use[Sw_onlineyearcol] < endyear), 'tech'
     ] = 'hydUND'
     gdb_use.loc[
-        (gdb_use['tech']=='hydED') & (gdb_use[Sw_onlineyearcol] >= startyear), 'tech'
+        (gdb_use['tech']=='hydED') & (gdb_use[Sw_onlineyearcol] >= startyear) & (gdb_use[Sw_onlineyearcol] < endyear), 'tech'
     ] = 'hydUD'
 
     # We model csp-ns (CSP No Storage) as upv throughout ReEDS, but switch it back for reporting.
     # So save the csp-ns capacity separately, then rename it.
     csp_units = (
         gdb_use.loc[(gdb_use['tech']=='csp-ns') & (gdb_use['RetireYear'] > startyear)]
-        .groupby(['r','StartYear','RetireYear']).summer_power_capacity_MW.sum()
+        .groupby(['r',Sw_onlineyearcol,'RetireYear']).summer_power_capacity_MW.sum()
         .reset_index()
     )
     if len(csp_units):
@@ -284,9 +369,6 @@ def main(reeds_path, inputs_case, agglevel, regions):
             cap_cspns.loc[cap_cspns.index.get_level_values('t') >= startyear].copy())
     else:
         cap_cspns = pd.DataFrame(columns=['*r','t','MWac']).set_index(['*r','t'])
-    # csp-ns capacity is MWac measured at the power block, while PV capacity is MWdc,
-    # so multiply csp-ns capacity by the ILR [MWdc/MWac] of PV
-    gdb_use.loc[gdb_use['tech']=='csp-ns','summer_power_capacity_MW'] *= scalars['ilr_utility']
     # Rename csp-ns to upv
     gdb_use.loc[gdb_use['tech']=='csp-ns','coolingwatertech'] = (
         gdb_use.loc[gdb_use['tech']=='csp-ns','coolingwatertech']
@@ -301,6 +383,11 @@ def main(reeds_path, inputs_case, agglevel, regions):
                     'coolingwatertech'] = gdb_use.loc[gdb_use['tech'].isin(TECH['no_cooling']),
                                                     'tech']
 
+    # Multiply all PV capacities by ILR
+    # Capacity of tech rsc_all is MWac measured at the power block, while PV capacity is MWdc,
+    # so multiply csp-ns capacity by the ILR [MWdc/MWac] of PV
+    gdb_use.loc[gdb_use['tech'].isin(TECH['rsc_all']) ,'summer_power_capacity_MW'] *= scalars['ilr_utility']
+    
     #%%##################################
     #    -- All Existing Capacity --    #
     #####################################
@@ -323,7 +410,7 @@ def main(reeds_path, inputs_case, agglevel, regions):
                             ]
     capnonrsc = capnonrsc[COLNAMES['capnonrsc'][0]]
     capnonrsc.columns = COLNAMES['capnonrsc'][1]
-    capnonrsc = capnonrsc.groupby(COLNAMES['capnonrsc'][1][:-1]).sum().reset_index()
+    capnonrsc = capnonrsc.groupby(COLNAMES['capnonrsc'][1][:-1]).sum().reset_index().rename(columns={'i':'*i'})
 
     capnonrsc_energy = gdb_use.loc[(gdb_use['tech'].isin(TECH['capnonrsc_energy'])) &
                                     (gdb_use[Sw_onlineyearcol] < startyear) &
@@ -331,7 +418,7 @@ def main(reeds_path, inputs_case, agglevel, regions):
                                     ]
     capnonrsc_energy = capnonrsc_energy[COLNAMES['capnonrsc_energy'][0]]
     capnonrsc_energy.columns = COLNAMES['capnonrsc_energy'][1]
-    capnonrsc_energy = capnonrsc_energy.groupby(COLNAMES['capnonrsc_energy'][1][:-1]).sum().reset_index()
+    capnonrsc_energy = capnonrsc_energy.groupby(COLNAMES['capnonrsc_energy'][1][:-1]).sum().reset_index().rename(columns={'i':'*i'})
 
 
     #%%########################################
@@ -339,10 +426,37 @@ def main(reeds_path, inputs_case, agglevel, regions):
     ###########################################
 
     print('Gathering non-RSC Prescribed Capacity...')
+    ivt_df= pd.read_csv(os.path.join(inputs_case,'ivt.csv'))
+
+    ### modify set of technology name as lower case and convert all columns except the first to string
+    ivt_df.iloc[:, 0] = ivt_df.iloc[:, 0].str.lower()
+    ivt_df=ivt_df.astype(str)
+    ivt_df = ivt_df[[ivt_df.columns[0]] + [str(y) for y in years]] 
+     
+
+    full_range = list(range(years[0], years[-1] + 1))
+
+    for y in full_range:
+        y_str = str(y)
+        if y_str not in ivt_df.columns:
+            # Find closest *future* year that exists
+            future_years = [fy for fy in years if fy >= y]
+            closest_future = min(future_years)
+            ivt_df[y_str] = ivt_df[str(closest_future)]
+
+    ivt_df = ivt_df[[ivt_df.columns[0]] + [str(x) for x in full_range]]
+
+
     ### prescribed power capacity
     prescribed_nonRSC = gdb_use.loc[(gdb_use['tech'].isin(TECH['prescribed_nonRSC'])) &
-                                    (gdb_use[Sw_onlineyearcol] >= startyear)
+                                    (gdb_use[Sw_onlineyearcol] >= startyear) &
+                                    (gdb_use[Sw_onlineyearcol] < endyear)
                                     ]
+    prescribed_nonRSC['tech'] = prescribed_nonRSC['tech'].str.lower()
+    ### assign vintage based on start year of the unit
+    prescribed_nonRSC= pd.merge(prescribed_nonRSC, ivt_df, how='left', left_on='tech', right_on='Unnamed: 0')
+    prescribed_nonRSC['vin'] = prescribed_nonRSC.apply(lambda row: f"new{row[str(row[Sw_onlineyearcol])]}", axis=1)
+
     prescribed_nonRSC = prescribed_nonRSC[COLNAMES['prescribed_nonRSC'][0]]
     prescribed_nonRSC.columns = COLNAMES['prescribed_nonRSC'][1]
     # Remove ctt and wst data from storage, set coolingwatertech to tech type ('i')
@@ -360,12 +474,18 @@ def main(reeds_path, inputs_case, agglevel, regions):
         prescribed_nonRSC = pd.concat([prescribed_nonRSC,demo],sort=False)
 
     prescribed_nonRSC = (
-        prescribed_nonRSC.groupby(COLNAMES['prescribed_nonRSC'][1][:-1]).sum().reset_index())
+        prescribed_nonRSC.groupby(COLNAMES['prescribed_nonRSC'][1][:-1]).sum().reset_index()).rename(columns={'i':'*i'})
     
     ### prescribed energy capacity
     prescribed_nonRSC_energy = gdb_use.loc[(gdb_use['tech'].isin(TECH['prescribed_nonRSC_energy'])) &
-                                    (gdb_use[Sw_onlineyearcol] >= startyear)
+                                    (gdb_use[Sw_onlineyearcol] >= startyear) &
+                                    (gdb_use[Sw_onlineyearcol] < endyear)
                                     ]
+
+    ### assign vintage based on start year of the unit
+    prescribed_nonRSC_energy= pd.merge(prescribed_nonRSC_energy, ivt_df, how='left', left_on='tech', right_on='Unnamed: 0')
+    prescribed_nonRSC_energy['vin'] = prescribed_nonRSC_energy.apply(lambda row: f"new{row[str(row[Sw_onlineyearcol])]}", axis=1)
+                                
     prescribed_nonRSC_energy = prescribed_nonRSC_energy[COLNAMES['prescribed_nonRSC_energy'][0]]
     prescribed_nonRSC_energy.columns = COLNAMES['prescribed_nonRSC_energy'][1]
     # Remove ctt and wst data from storage, set coolingwatertech to tech type ('i')
@@ -374,7 +494,9 @@ def main(reeds_path, inputs_case, agglevel, regions):
             prescribed_nonRSC_energy.loc[j,['ctt','wst','coolingwatertech']] = ['n','n',row['i']]
 
     prescribed_nonRSC_energy = (
-        prescribed_nonRSC_energy.groupby(COLNAMES['prescribed_nonRSC_energy'][1][:-1]).sum().reset_index())
+        prescribed_nonRSC_energy.groupby(COLNAMES['prescribed_nonRSC_energy'][1][:-1]).sum().reset_index()).rename(columns={'i':'*i'})
+
+
 
     #%%##################################
     #    -- RSC Existing Capacity --    #
@@ -383,16 +505,17 @@ def main(reeds_path, inputs_case, agglevel, regions):
     The following are RSC tech that are treated differently in the model
     '''
     print('Gathering RSC Existing Capacity...')
+
     # DUPV and UPV values are collected at the same time here:
     caprsc = gdb_use.loc[(gdb_use['tech'].isin(TECH['rsc_all'][:2])) &
                         (gdb_use[Sw_onlineyearcol] < startyear)  &
                         (gdb_use['RetireYear']     > startyear)
                         ]
+    caprsc['v']='init-1'
     caprsc = caprsc[COLNAMES['rsc'][0]]
     caprsc.columns = COLNAMES['rsc'][1]
-    caprsc = caprsc.groupby(COLNAMES['rsc'][1][:-2]).value.sum().reset_index()
-    # Multiply all PV capacities by ILR
-    caprsc['value'] = caprsc['value'] * scalars['ilr_utility']
+    caprsc = caprsc.groupby(COLNAMES['rsc'][1][:-3]).value.sum().reset_index().rename(columns={'i':'*i'})
+
 
     # Add existing CSP builds:
     #   Note: Since CSP data is affected by GSw_WaterMain, it must be dealt with
@@ -401,6 +524,7 @@ def main(reeds_path, inputs_case, agglevel, regions):
                     (gdb_use[Sw_onlineyearcol] < startyear) &
                     (gdb_use['RetireYear']     > startyear)
                     ]
+    csp['v']='init-1'
     csp = csp[COLNAMES['rsc'][0]]
     csp.columns = COLNAMES['rsc'][1]
     csp = csp.groupby(COLNAMES['rsc'][1][:-1]).sum().reset_index()
@@ -417,12 +541,12 @@ def main(reeds_path, inputs_case, agglevel, regions):
             .rename({"tech":"i","summer_power_capacity_MW":"value"}, axis=1)
 
     hyd['ctt'] = 'n'
-
+    hyd['v'] = 'init-1'
     # Concat all RSC Existing Data to one dataframe:
-    caprsc = pd.concat([caprsc, csp, hyd])
-
+    # caprsc = pd.concat([caprsc, csp, hyd])
+    caprsc = hyd
     # Export Existing RSC data specifically used in writesupplycurves.py
-    rsc_wsc = create_rsc_wsc(gdb_use, TECH=TECH, scalars=scalars,startyear=startyear)
+    rsc_wsc = create_rsc_wsc(gdb_use, TECH=TECH, startyear=startyear)
 
     # Create geoexist.csv and copy to inputs_case
     geoexist = gdb_use.loc[(gdb_use['tech'].isin(['geohydro_allkm','egs_allkm'])) &
@@ -435,56 +559,82 @@ def main(reeds_path, inputs_case, agglevel, regions):
     geoexist = geoexist.groupby(['*i','r']).sum().reset_index()
     # Rename generic geothermal tech category to geohydro_allkm_1
     geoexist['*i'] = 'geohydro_allkm_1'
+#%%----------------------------------------------------------------------------
+    ######################################
+    #    -- RSC Exogenous Capacity --    #
+    ######################################
 
-
+    cap_exog = create_exog_rsc(inputs_case, gdb_use, TECH, COLNAMES, sw, startyear)
+    
+    
     #%%####################################
     #    -- RSC Prescribed Capacity --    #
     #######################################
 
     print('Gathering RSC Prescribed Capacity...')
-    # DUPV and UPV values are collected at the same time here:
-    pupv = gdb_use.loc[(gdb_use['tech'].isin(TECH['prsc_upv'])) &
-                    (gdb_use[Sw_onlineyearcol] >= startyear)
-                    ]
-    pupv = pupv[COLNAMES['prsc_upv'][0]]
-    pupv.columns = COLNAMES['prsc_upv'][1]
-    pupv = pupv.groupby(['t','r','i']).sum().reset_index()
-    # Multiply all PV capacities by ILR
-    pupv['value'] = pupv['value'] * scalars['ilr_utility']
+    rsc_class = {}
+    rsc_class["upv"] = pd.read_csv(os.path.join(inputs_case,'upv_classification.csv')).query(f"access_case == '{sw.GSw_SitingUPV}'")
+    rsc_class["wind-ons"]  = pd.read_csv(os.path.join(inputs_case, 'wind-ons_classification.csv')).query(f"access_case == '{sw.GSw_SitingWindOns}'")
+    rsc_class["wind-ofs"]  = pd.read_csv(os.path.join(inputs_case,'wind-ofs_classification.csv')).query(f"access_case == '{sw.GSw_SitingWindOfs}'")
+    rsc_class["geohydro_allkm"]  = pd.read_csv(os.path.join(inputs_case,'geohydro_classification.csv')).query(f"access_case == '{sw.GSw_SitingGeo}'")
 
-    # Load in wind builds:
-    pwind = gdb_use.loc[(gdb_use['tech'].isin(TECH['prsc_w'])) &
-                        (gdb_use[Sw_onlineyearcol] >= startyear)
-                        ]
-    pwind = pwind[COLNAMES['prsc_w'][0]]
-    pwind.columns = COLNAMES['prsc_w'][1]
-
-    pwind = pwind.groupby(['t','r','i']).sum().reset_index()
-    pwind.sort_values(['t','r'], inplace=True)
-
-    # Add prescribed csp builds:
-    #   Note: Since csp is affected by GSw_WaterMain, it must be dealt with separate
-    #         from the other RSC tech (dupv, upv, wind, etc)
-    pcsp = gdb_use.loc[(gdb_use['tech'].isin(TECH['prsc_csp'])) &
-                    (gdb_use[Sw_onlineyearcol] >= startyear)
-                    ]
-    pcsp = pcsp[COLNAMES['prsc_csp'][0]]
-    pcsp.columns = COLNAMES['prsc_csp'][1]
-    if GSw_WaterMain == 1:
-        pcsp['i'] = np.where(pcsp['i']=='csp-ws',pcsp['i']+'_'+pcsp['ctt']+'_'+pcsp['wst'],'csp-ws')
-
-    # Load in geo builds:
-    pgeo = gdb_use.loc[(gdb_use['tech'].isin(TECH['prsc_geo'])) &
-                        (gdb_use[Sw_onlineyearcol] >= startyear)
-                        ]
-    pgeo = pgeo[COLNAMES['prsc_geo'][0]]
-    pgeo.columns = COLNAMES['prsc_geo'][1]
-
-    pgeo = pgeo.groupby(['t','r','i']).sum().reset_index()
-    pgeo.sort_values(['t','r'], inplace=True)
-
+    cap_pres = {}
+    for tech in TECH['rsc_wsc']:
+        cap_pres[tech]= gdb_use.loc[(gdb_use['tech']==tech) &
+                    (gdb_use[Sw_onlineyearcol] >= startyear) &
+                    (gdb_use[Sw_onlineyearcol] < endyear)
+                    ].copy()
+        mask = ivt_df['Unnamed: 0'].str.contains(tech, case=False, na=False)
+        if len(cap_pres[tech]) != 0:
+            # DUPV and UPV values are collected at the same time here:
+            if tech in TECH['prsc_upv']:
+                print(tech)
+                cap_pres[tech]["class"] = cap_pres[tech]["reV_capacity_factor_ac"].apply(
+                        lambda x: assign_class(x, tech, rsc_class['upv']))
+                cap_pres[tech]["tech"] = (cap_pres[tech]["tech"].astype(str) + "_" + 
+                                    cap_pres[tech]["class"].astype(str))
+            # Load in wind builds:  
+            elif tech in TECH['prsc_w']:
+                print(tech)
+                cap_pres[tech]["class"] = cap_pres[tech]["reV_capacity_factor_ac"].apply(
+                        lambda x: assign_class(x, tech, rsc_class[tech]))
+                cap_pres[tech]["tech"] = (cap_pres[tech]["tech"].astype(str) + "_" + 
+                                    cap_pres[tech]["class"].astype(str)) 
+            # Add prescribed csp builds:
+            #   Note: Since csp is affected by GSw_WaterMain, it must be dealt with separate
+            #         from the other RSC tech (dupv, upv, wind, etc)
+            elif tech in TECH['prsc_csp']:
+                print(tech)
+                cap_pres[tech]["class"] = cap_pres[tech]["reV_capacity_factor_ac"].apply(
+                        lambda x: assign_class(x, tech, rsc_class['upv']))
+                cap_pres[tech]["tech"] = (cap_pres[tech]["tech"].astype(str) + "_" + 
+                                    cap_pres[tech]["class"].astype(str)) 
+                if GSw_WaterMain == 1:
+                     cap_pres[tech]["tech"] = np.where( cap_pres[tech]["tech"]=='csp-ws',
+                                          cap_pres[tech]["tech"]+'_'+cap_pres[tech]['ctt']+'_'+cap_pres[tech]['wst'],
+                                         'csp-ws')
+            # Load in geo builds:
+            elif tech in TECH['prsc_geo']:         
+                cap_pres[tech]["class"] = cap_pres[tech]["reV_mean_resource_temp"].apply(
+                        lambda x: assign_class(x, tech, rsc_class[tech]))
+                cap_pres[tech]["tech"] = (cap_pres[tech]["tech"].astype(str) + "_" + 
+                                    cap_pres[tech]["class"].astype(str)) 
+            # assign vintages based on start year of the unit
+            ivt_df_mask = (ivt_df[mask]                                   # filter rows
+                            .iloc[:, 1:]                                  # drop first technology column
+                            .melt(var_name='year', value_name='vin_num')  # convert to long format
+                            .assign(
+                                vin=lambda df: 'new' + df['vin_num'].astype(str),
+                                year=lambda df: df['year'].astype(int)    # year to intager
+                            ))
+            cap_pres[tech] =  pd.merge(cap_pres[tech], ivt_df_mask, how='left', left_on=Sw_onlineyearcol, right_on='year')
+            cap_pres[tech] = cap_pres[tech][COLNAMES['prescribed_RSC'][0]]
+            cap_pres[tech].columns = COLNAMES['prescribed_RSC'][1]
+            cap_pres[tech] = cap_pres[tech].groupby(['i','v','r','t']).sum().reset_index()
     # Concat all RSC Existing Data to one dataframe:
-    prescribed_rsc = pd.concat([pupv,pwind,pcsp,pgeo],sort=False)
+    prescribed_rsc = pd.concat([cap_pres[tech] for tech in TECH["rsc_wsc"] 
+                                if tech in cap_pres and not cap_pres[tech].empty],ignore_index=True)
+    
 
     #%%----------------------------------------------------------------------------
     ################################
@@ -587,20 +737,49 @@ def main(reeds_path, inputs_case, agglevel, regions):
     ################################
     print('Gathering Retirement Data...')
     rets = gdb_use.loc[(gdb_use['tech'].isin(TECH['retirements'])) &
-                    (gdb_use[retscen]>startyear)
-                    ]
+                    (gdb_use[retscen]>startyear) & (gdb_use[retscen]<=endyear) &
+                    (gdb_use[Sw_onlineyearcol] < endyear) 
+                    ].copy()
+    
+    # Assign the retirements type based on whether the unit was online before or after startyear
+    rets['type'] = None
+    if len(rets) > 0:
+        rets.loc[rets[Sw_onlineyearcol] >= startyear,'type']='prescribed'
+        rets.loc[rets[Sw_onlineyearcol] < startyear, 'type']='existing'
+        
+    rets['tech'] = rets['tech'].str.lower()
+    rets= pd.merge(rets, ivt_df, how='left', left_on='tech', right_on='Unnamed: 0')
+    rets['v'] = rets.apply(lambda row: f"new{row[str(row[Sw_onlineyearcol])]}" 
+                        if row[Sw_onlineyearcol] >= startyear 
+                        else "init-1",axis=1)
+    rets[Sw_onlineyearcol]=rets[Sw_onlineyearcol].apply(lambda x: assign_modeledyear(x, years))
+    rets[retscen]=rets[retscen].apply(lambda x: assign_modeledyear(x, years))
     rets = rets[COLNAMES['retirements'][0]]
     rets.columns = COLNAMES['retirements'][1]
     rets.sort_values(by=COLNAMES['retirements'][1],inplace=True)
-    rets = rets.groupby(COLNAMES['retirements'][1][:-1]).sum().reset_index()
+    rets = rets.groupby(COLNAMES['retirements'][1][:-1]).sum().reset_index().rename(columns={'i':'*i'})
 
     rets_energy = gdb_use.loc[(gdb_use['tech'].isin(TECH['retirements_energy'])) &
-                    (gdb_use[retscen]>startyear)
-                    ]
+                    (gdb_use[retscen]>startyear) & (gdb_use[retscen]<=endyear) &
+                    (gdb_use[Sw_onlineyearcol] < endyear)
+                    ].copy()
+    # Assign the retirements type based on whether the unit was online before or after startyear
+    rets_energy['type'] = None
+    if len(rets_energy) > 0:
+        rets_energy.loc[rets_energy[Sw_onlineyearcol] >= startyear,'type']='prescribed'
+        rets_energy.loc[rets_energy[Sw_onlineyearcol] < startyear, 'type']='existing'
+        
+    rets_energy['tech'] = rets_energy['tech'].str.lower()
+    rets_energy= pd.merge(rets_energy, ivt_df, how='left', left_on='tech', right_on='Unnamed: 0')
+    rets_energy['v'] = rets_energy.apply(lambda row: f"new{row[str(row[Sw_onlineyearcol])]}" 
+                        if row[Sw_onlineyearcol] >= startyear 
+                        else "init-1",axis=1)
+    rets_energy[Sw_onlineyearcol]=rets_energy[Sw_onlineyearcol].apply(lambda x: assign_modeledyear(x, years))
+    rets_energy[retscen]=rets_energy[retscen].apply(lambda x: assign_modeledyear(x, years))
     rets_energy = rets_energy[COLNAMES['retirements_energy'][0]]
     rets_energy.columns = COLNAMES['retirements_energy'][1]
     rets_energy.sort_values(by=COLNAMES['retirements_energy'][1],inplace=True)
-    rets_energy = rets_energy.groupby(COLNAMES['retirements_energy'][1][:-1]).sum().reset_index()
+    rets_energy = rets_energy.groupby(COLNAMES['retirements_energy'][1][:-1]).sum().reset_index().rename(columns={'i':'*i'})
 
     ################################
     #    -- Wind Retirements --    #
@@ -663,11 +842,15 @@ def main(reeds_path, inputs_case, agglevel, regions):
     ########################################
     #    -- Waterconstraint Indexing --    #
     ########################################
-
-    rets['i'] = rets['i'].str.lower()
-    rets_energy['i'] = rets_energy['i'].str.lower()
-    prescribed_nonRSC['i'] = prescribed_nonRSC['i'].str.lower()
-    prescribed_nonRSC_energy['i'] = prescribed_nonRSC_energy['i'].str.lower()
+    
+    if len(rets) > 0:
+        rets['*i'] = rets['*i'].str.lower()
+    if len(rets_energy) > 0:
+        rets_energy['*i'] = rets_energy['*i'].str.lower()
+    if len(prescribed_nonRSC) > 0:
+        prescribed_nonRSC['*i'] = prescribed_nonRSC['*i'].str.lower()
+    if len(prescribed_nonRSC_energy) > 0:
+        prescribed_nonRSC_energy['*i'] = prescribed_nonRSC_energy['*i'].str.lower()
 
     # When water constraints are enabled, retirements are also indexed by cooling technology
     # and cooling water source. otherwise, they only have the indices of year, region, and tech
@@ -688,38 +871,38 @@ def main(reeds_path, inputs_case, agglevel, regions):
             prescribed_nonRSC_energy
             .groupby(COLNAMES['prescribed_nonRSC_energy'][1][:-1]).sum().reset_index())
 
-        rets['i'] = rets['coolingwatertech']
-        rets = rets.groupby(['t','r','i']).value.sum().reset_index()
-        rets.columns = ['t','r','i','value']
+        rets['*i'] = rets['coolingwatertech']
+        rets = rets.groupby(['*i','v','r','t','tt','type']).value.sum().reset_index()
+        rets.columns = ['*i','v','r','t','tt','type','value']
 
-        capnonrsc['i'] = capnonrsc['coolingwatertech']
-        capnonrsc = capnonrsc.groupby(['i','r']).value.sum().reset_index()
+        capnonrsc['*i'] = capnonrsc['coolingwatertech']
+        capnonrsc = capnonrsc.groupby(['*i','r']).value.sum().reset_index()
         capnonrsc.columns = ['i','r','value']
 
-        prescribed_nonRSC['i'] = prescribed_nonRSC['coolingwatertech']
-        prescribed_nonRSC = prescribed_nonRSC.groupby(['t','r','i']).value.sum().reset_index()
-        prescribed_nonRSC.columns = ['t','r','i','value']
+        prescribed_nonRSC['*i'] = prescribed_nonRSC['coolingwatertech']
+        prescribed_nonRSC = prescribed_nonRSC.groupby(['*i','v','r','t']).value.sum().reset_index()
+        prescribed_nonRSC.columns = ['*i','v','r','t','value']
 
         prescribed_nonRSC_energy['i'] = prescribed_nonRSC_energy['coolingwatertech']
-        prescribed_nonRSC_energy = prescribed_nonRSC_energy.groupby(['t','r','i']).value.sum().reset_index()
-        prescribed_nonRSC_energy.columns = ['t','r','i','value']
+        prescribed_nonRSC_energy = prescribed_nonRSC_energy.groupby(['*i','v','r','t']).value.sum().reset_index()
+        prescribed_nonRSC_energy.columns = ['*i','v','r','t','value']
     else:
     # Group by [year, region, tech]
-        rets = rets.groupby(['t','r','i']).value.sum().reset_index()
-        rets.columns = ['t','r','i','value']
+        rets = rets.groupby(['*i','v','r','t','tt','type']).value.sum().reset_index()
+        rets.columns = ['*i','v','r','t','tt','type','value']
 
-        capnonrsc = capnonrsc.groupby(['i','r']).value.sum().reset_index()
-        capnonrsc.columns = ['i','r','value']
+        capnonrsc = capnonrsc.groupby(['*i','r']).value.sum().reset_index()
+        capnonrsc.columns = ['*i','r','value']
 
-        prescribed_nonRSC = prescribed_nonRSC.groupby(['t','r','i']).value.sum().reset_index()
-        prescribed_nonRSC.columns = ['t','r','i','value']
+        prescribed_nonRSC = prescribed_nonRSC.groupby(['*i','v','r','t']).value.sum().reset_index()
+        prescribed_nonRSC.columns = ['*i','v','r','t','value']
 
-        prescribed_nonRSC_energy = prescribed_nonRSC_energy.groupby(['t','r','i']).value.sum().reset_index()
-        prescribed_nonRSC_energy.columns = ['t','r','i','value']
+        prescribed_nonRSC_energy = prescribed_nonRSC_energy.groupby(['*i','v','r','t']).value.sum().reset_index()
+        prescribed_nonRSC_energy.columns = ['*i','v','r','t','value']
 
     # Final Groupby step for capacity groupings not affected by GSw_WaterMain:
-    caprsc = caprsc.groupby(['i','r']).value.sum().reset_index()
-    prescribed_rsc = prescribed_rsc.groupby(['t','i','r']).value.sum().reset_index()
+    caprsc = caprsc.groupby(['i','v','r']).value.sum().reset_index().rename(columns={'i':'*i'})
+    prescribed_rsc = prescribed_rsc.groupby(['i','v','r','t']).value.sum().reset_index().rename(columns={'i':'*i'})
 
 
     #%%----------------------------------------------------------------------------
@@ -761,8 +944,7 @@ def main(reeds_path, inputs_case, agglevel, regions):
         ## Reshape for GAMS
         .stack().rename_axis(['*r','t']).rename('MW').round(3)
     )
-
-
+    
     #%%----------------------------------------------------------------------------
     ##############################
     #    -- Data Write-Out --    #
@@ -778,14 +960,14 @@ def main(reeds_path, inputs_case, agglevel, regions):
 
     #%% 
     # Return 
-    files_out = {'capnonrsc' :  capnonrsc[['i','r','value']],
-                'capnonrsc_energy' : capnonrsc_energy[['i','r','value']],
-                'rets' :  rets[['t','r','i','value']],
-                'rets_energy' : rets_energy[['t','r','i','value']],
-                'prescribed_nonRSC' : prescribed_nonRSC[['t','i','r','value']],
-                'prescribed_nonRSC_energy' : prescribed_nonRSC_energy[['t','i','r','value']],
-                'caprsc' :caprsc[['i','r','value']],
-                'prescribed_rsc' : prescribed_rsc[['t','i','r','value']],
+    files_out = {'capnonrsc' :  capnonrsc[['*i','r','value']],
+                'capnonrsc_energy' : capnonrsc_energy[['*i','r','value']],
+                'rets' :  rets[['*i','v','r','t','tt','type','value']],
+                'rets_energy' : rets_energy[['*i','v','r','t','tt','type','value']],
+                'prescribed_nonRSC' : prescribed_nonRSC[['*i','v','r','t','value']],
+                'prescribed_nonRSC_energy' : prescribed_nonRSC_energy[['*i','v','r','t','value']],
+                'caprsc' :caprsc[['*i','v','r','value']],
+                'prescribed_rsc' : prescribed_rsc[['*i','v','r','t','value']],
                 'wind_rets' : wind_rets,
                 'h2_existing_smr_cap' : h2_existing_smr_cap[['*r','t','value']],
                 'geo_retirements' : geo_retirements,
@@ -795,7 +977,11 @@ def main(reeds_path, inputs_case, agglevel, regions):
                 'hydcapadj_ccszn' : hydcapadj_ccszn[['*i','ccseason','r','value']],
                 'can_imports_capacity' : can_imports_capacity,
                 'geoexist' : geoexist,
-                'h2_ba_share': h2_ba_share_out
+                'h2_ba_share': h2_ba_share_out,
+                'upv_exog_cap':cap_exog['upv'],
+                'wind-ons_exog_cap':cap_exog['wind-ons'],
+                'wind-ofs_exog_cap':cap_exog['wind-ofs'],
+                'geohydro_exog_cap':cap_exog['geohydro_allkm']
                 }
 
     return files_out 
@@ -816,6 +1002,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
     reeds_path = args.reeds_path
     inputs_case = args.inputs_case
+    #reeds_path = os.path.expanduser('~/Documents/GitHub/ReEDS/ReEDS-2.0')
+    #inputs_case = os.path.join(reeds_path,'runs','test_startyr_Pacific','inputs_case')
 
     #%% Set up logger
     log = reeds.log.makelog(

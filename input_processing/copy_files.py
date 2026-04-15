@@ -1242,6 +1242,33 @@ def write_region_indexed_file(
                     raise ValueError(
                         f"{num_units_missing_bas} units were not mapped to any BAs."
                     )
+
+                # Merge unit database with VRE supply curves to assign AC capacity factors to VRE units
+                df['temp_id'] = df.index
+
+                df_rev_list = []
+                tech_match = {"upv": ["upv","dupv","pvb_pv","csp-wp","csp-ns"],
+                              "wind-ons": ["wind-ons"], 
+                              "wind-ofs": ["wind-ofs"]}
+                for tech in ['upv','wind-ons','wind-ofs']:
+                    tech_sub = tech_match[tech]
+                    df_rev = df[df.tech.isin(tech_sub)]
+                    if len(df_rev) > 0:
+                        df_rev['sc_point_gid'] = df_rev['sc_point_gid'].fillna(0).astype(np.int64)
+                        if tech == 'upv':
+                            supply_curve = pd.read_csv(os.path.join(reeds_path,'inputs','supply_curve','supplycurve_'+tech+'-'+'open'+'.csv'))
+                        elif tech == 'wind-ons':
+                            supply_curve = pd.read_csv(os.path.join(reeds_path,'inputs','supply_curve','supplycurve_'+tech+'-'+'open'+'.csv'))
+                        elif tech == 'wind-ofs':
+                            supply_curve = pd.read_csv(os.path.join(reeds_path,'inputs','supply_curve','supplycurve_'+tech+'-'+'open'+'.csv'))
+                        df_rev = df_rev.merge(supply_curve[['sc_point_gid','cf']],
+                                              on='sc_point_gid',
+                                              how='left').rename(columns={'cf':'reV_capacity_factor_ac'})
+                        df_rev_list = df_rev_list + [df_rev]
+                    
+                df_rev = pd.concat(df_rev_list, ignore_index=False, sort=False)
+                df = df.merge(df_rev[['temp_id','reV_capacity_factor_ac']],
+                                on = 'temp_id',how = 'left').drop('temp_id', axis=1)    
             case _:
                 pass
 

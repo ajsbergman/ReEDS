@@ -51,11 +51,9 @@ def wm(df):
     return _wm
 
 
-def get_exog_cap(inputs_case, tech, dfsc):
+def get_exog_cap(dfexogtech,dfsc):
     """Get exogenous capacity by class, region, rscbin, and year"""
-    dfexog = (
-        pd.read_csv(os.path.join(inputs_case, f'exog_cap_{tech}.csv'))
-        .merge(
+    dfexog = (dfexogtech.merge(
             dfsc.explode('sc_point_gid').reset_index()[['sc_point_gid','bin']],
             on='sc_point_gid',
         )
@@ -132,7 +130,7 @@ def agg_supplycurve(
 
 
 def main(
-    reeds_path, inputs_case, AggregateRegions=1, rsc_wsc_dat=None, write=True, **kwargs
+    reeds_path, inputs_case, AggregateRegions=1, rsc_wsc_dat=None, exog_rsc_dat=None, write=True, **kwargs
 ):
     # #%% Settings for testing
     # reeds_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -196,8 +194,26 @@ def main(
     else:
         # writesupplycurves.py is being passed rsc_wsc data from an aggregate_regions.py call
         rsc_wsc = rsc_wsc_dat.copy()
-    
-    # Group CSP tech
+    #%% Load the existing RSC capacity (PV plants, wind, and CSP) if not provided in main function call
+    if exog_rsc_dat is None:
+        # writesupplycurves.py is being run as a main input processing script
+        dfwindonsexog = pd.read_csv(os.path.join(inputs_case, "wind-ons_exog_cap.csv")).rename(
+                                    columns={"capacity": "MW"})
+        dfwindofsexog = pd.read_csv(os.path.join(inputs_case, "wind-ofs_exog_cap.csv")).rename(
+                                    columns={"capacity": "MW"})
+        dfupvexog = pd.read_csv(os.path.join(inputs_case, "upv_exog_cap.csv")).rename(
+                                    columns={"capacity": "MW"})
+        dfgeohydroexog = pd.read_csv(os.path.join(inputs_case, "geohydro_exog_cap.csv")).rename(
+                                    columns={"capacity": "MW"})
+
+    else:
+        # writesupplycurves.py is being passed exog_rsc data from an aggregate_regions.py call
+        dfwindonsexog = exog_rsc_dat['wind-ons'].copy()
+        dfwindofsexog = exog_rsc_dat['wind-ofs'].copy()
+        dfupvexog = exog_rsc_dat['upv'].copy()
+        dfgeohydroexog = exog_rsc_dat['geohydro_allkm'].copy()
+
+    # Group CSP tech    
     rsc_wsc.loc[rsc_wsc['i']=='csp-ws', 'i'] = 'csp'
     rsc_wsc = rsc_wsc.groupby(["r", "i"]).sum().reset_index()
     rsc_wsc.i = rsc_wsc.i.str.lower()
@@ -320,8 +336,10 @@ def main(
 
     if write:
         ## Exogenous wind capacity
-        dfwindexog = get_exog_cap(inputs_case, tech='wind-ons', dfsc=wind['ons'])
-        dfwindexog.round(3).to_csv(os.path.join(inputs_case, "exog_wind_ons_rsc.csv"))
+        dfwindonsexog = get_exog_cap(dfwindonsexog, dfsc=wind['ons'])
+        dfwindonsexog.round(3).to_csv(os.path.join(inputs_case, "exog_wind_ons_rsc.csv"))
+        dfwindofsexog = get_exog_cap(dfwindofsexog, dfsc=wind['ofs'])
+        dfwindofsexog.round(3).to_csv(os.path.join(inputs_case, "exog_wind_ons_rsc.csv"))
 
     # %%###############
     #    -- PV --    #
@@ -361,7 +379,7 @@ def main(
 
     if write:    
         ## Exogenous UPV capacity
-        dfupvexog = get_exog_cap(inputs_case, tech='upv', dfsc=upv)
+        dfupvexog = get_exog_cap(dfupvexog, dfsc=upv)
         dfupvexog.round(3).to_csv(os.path.join(inputs_case, "exog_upv_rsc.csv"))
 
     ### Normalize formatting
@@ -579,7 +597,7 @@ def main(
 
             if use_geohydro_rev_sc:
                 ## Exogenous geohydro capacity
-                dfgeohydroexog = get_exog_cap(inputs_case, tech='geohydro', dfsc=geo['geohydro'])
+                dfgeohydroexog = get_exog_cap(dfgeohydroexog , dfsc=geo['geohydro'])
                 dfgeohydroexog.round(3).to_csv(
                     os.path.join(inputs_case, "exog_geohydro_allkm_rsc.csv")
                 )
