@@ -63,6 +63,24 @@ def timestamp2h(ts, GSw_HourlyType='day'):
     return out
 
 
+def szn2yearperiod(szn):
+    """
+    szn's are formatted as 'y{20xx}{d or w}{day of year or wek of year}'
+    where a 'wek' is a 5-day period (5*73 = 365)
+    """
+    year, period = szn.split('d') if 'd' in szn else szn.split('w')
+    return int(year.strip('y')), int(period)
+
+
+def szn2period(szn):
+    """
+    szn's are formatted as 'y{20xx}{d or w}{day of year or wek of year}'
+    where a 'wek' is a 5-day period (5*73 = 365)
+    """
+    year, period = szn.split('d') if 'd' in szn else szn.split('w')
+    return int(period)
+
+
 def timeslice_to_timestamp(case, param):
     ### Load the timestamps and other ReEDS settings
     h_dt_szn = pd.read_csv(os.path.join(case, 'inputs_case', 'rep', 'h_dt_szn.csv'))
@@ -105,3 +123,386 @@ def timeslice_to_timestamp(case, param):
         .set_index(hs.index)
     )
     return dfout_h
+
+
+def make_timestamps(sw):
+    ### Get some useful constants
+    hoursperperiod = {'day':24, 'wek':120, 'year':24}
+    periodsperyear = {'day':365, 'wek':73, 'year':365}
+    weather_years = sw.resource_adequacy_years_list
+
+    ### Get map from yperiod, hour, and h_of_period to timestamp
+    timestamps = pd.DataFrame({
+        'year': np.ravel([[y]*8760 for y in weather_years]),
+        'h_of_year': np.ravel([list(range(1,8761)) * len(weather_years)]),
+        'h_of_period': np.ravel(
+            [f'{h+1:>03}' for h in range(hoursperperiod[sw['GSw_HourlyType']])]
+            * periodsperyear[sw['GSw_HourlyType']] * len(weather_years)),
+        'yperiod': np.ravel(
+            [p+1 for p in range(periodsperyear[sw['GSw_HourlyType']])
+             for h in range(hoursperperiod[sw['GSw_HourlyType']])]
+            * len(weather_years)),
+        'h_of_day': np.ravel(
+            [f'{h+1:>03}' for h in range(hoursperperiod['day'])]
+            * periodsperyear['day'] * len(weather_years)),
+        'yday': np.ravel(
+            [p+1 for p in range(periodsperyear['day'])
+             for h in range(hoursperperiod['day'])]
+            * len(weather_years)),
+        'h_of_wek': np.ravel(
+            [f'{h+1:>03}' for h in range(hoursperperiod['wek'])]
+            * periodsperyear['wek'] * len(weather_years)),
+        'ywek': np.ravel(
+            [p+1 for p in range(periodsperyear['wek'])
+             for h in range(hoursperperiod['wek'])]
+            * len(weather_years)),
+    })
+    timestamps['timestamp'] = (
+        'y' + timestamps.year.astype(str)
+        ## d for day and w for wek 
+        + ('w' if sw.GSw_HourlyType == 'wek' else 'd')
+        + timestamps.yperiod.astype(str).map('{:>03}'.format)
+        + 'h' + timestamps.h_of_period
+    )
+    timestamps['period'] = timestamps['timestamp'].map(lambda x: x.split('h')[0])
+    timestamps['day'] = (
+        'y' + timestamps.year.astype(str)
+        + 'd' + timestamps.yday.astype(str).map('{:>03}'.format)
+    )
+    timestamps['wek'] = (
+        'y' + timestamps.year.astype(str)
+        + 'w' + timestamps.ywek.astype(str).map('{:>03}'.format)
+    )
+    timestamps.index = np.ravel([
+        pd.date_range(
+            f'{y}-01-01', f'{y+1}-01-01',
+            freq='H', inclusive='left', tz='Etc/GMT+6',
+        )[:8760]
+        for y in weather_years
+    ])
+
+    return timestamps
+
+
+### Timeseries reduction
+def get_clusters(
+    profiles_fitperiods,
+    GSw_HourlyClusterAlgorithm='hierarchical',
+    GSw_HourlyNumClusters:int=35,
+):
+    """
+    Hierarchical, k-means, or k-medoids clustering.
+    Returns an array of the same length as profiles_fitperiods,
+    with values ranging from 0 to GSw_HourlyNumClusters indicating the assignment
+    of each period to a cluster.
+    """
+    import sklearn.cluster
+    if GSw_HourlyClusterAlgorithm.startswith('hierarchical'):
+        args = GSw_HourlyClusterAlgorithm.split('_')
+        if len(args) > 1:
+            metric = args[1]
+            linkage = args[2]
+        else:
+            metric = 'euclidean'
+            linkage = 'ward'
+        clusters = sklearn.cluster.AgglomerativeClustering(
+            n_clusters=GSw_HourlyNumClusters,
+            metric=metric, linkage=linkage,
+        )
+    elif GSw_HourlyClusterAlgorithm.lower().startswith('kmeans'):
+        clusters = sklearn.cluster.KMeans(
+            n_clusters=GSw_HourlyNumClusters,
+            random_state=0, n_init='auto', max_iter=1000,
+        )
+    elif GSw_HourlyClusterAlgorithm.lower().startswith('kmedoids'):
+        import sklearn_extra.cluster
+        args = GSw_HourlyClusterAlgorithm.split('_')
+        if len(args) > 1:
+            metric = args[1]
+            init = args[2]
+        else:
+            metric = 'euclidean'
+            init = 'heuristic'
+        clusters = sklearn_extra.cluster.KMedoids(
+            n_clusters=GSw_HourlyNumClusters,
+            metric=metric, init=init, method='pam',
+            max_iter=1000, random_state=0,
+        )
+    ### Fit it
+    cluster_assignment = clusters.fit_predict(profiles_fitperiods)
+    return cluster_assignment
+
+
+def minimize_abs_error_in_means(basis_periods, target_feature_mean):
+    """
+    """
+    import pulp
+    ### Input processing
+    assert (target_feature_mean.index == basis_periods.columns).all()
+    days = basis_periods.index.values
+    ### Optimization: minimize sum of absolute errors
+    m = pulp.LpProblem('LinearDaySelection', pulp.LpMinimize)
+    ###### Variables
+    ### day weights
+    WEIGHT = pulp.LpVariable.dicts('WEIGHT', (d for d in days), lowBound=0, cat='Continuous')
+    ### errors
+    ERROR_POS = pulp.LpVariable.dicts(
+        'ERROR_POS', (c for c in basis_periods.columns), lowBound=0, cat='Continuous')
+    ERROR_NEG = pulp.LpVariable.dicts(
+        'ERROR_NEG', (c for c in basis_periods.columns), lowBound=0, cat='Continuous')
+    ###### Constraints
+    ### weights must sum to 1
+    m += pulp.lpSum([WEIGHT[d] for d in days]) == 1
+    ### definition of errors
+    for c in basis_periods.columns:
+        m += (
+            ### Full error for column (given by positive component minus negative component)...
+            ERROR_POS[c] - ERROR_NEG[c]
+            ### ...plus sum of values for weighted representative days...
+            + pulp.lpSum([WEIGHT[d] * basis_periods[c][d] for d in days])
+            ### ...equals the mean for that column
+            == target_feature_mean[c])
+    ###### Objective: minimize the sum of absolute values of errors across all columns
+    m += pulp.lpSum([
+        ERROR_POS[c] + ERROR_NEG[c]
+        for c in basis_periods.columns
+    ])
+
+    ### Solve it
+    m.solve(solver=pulp.PULP_CBC_CMD(msg=True))
+
+    ### Collect weights, scaled by total number of days
+    weights = pd.Series({d:WEIGHT[d].varValue for d in days})
+    return weights
+
+
+def optimize_period_weights(
+    profiles_fitperiods,
+    target_feature_mean=None,
+    numclusters=35,
+):
+    """
+    The optimization approach (minimizing sum of absolute errors) is described at
+    https://optimization.mccormick.northwestern.edu/index.php/Optimization_with_absolute_values
+    The general idea of optimizing period weights to reproduce regional variability is similar
+    to the method used in the EPRI US-REGEN model, described at
+    https://www.epri.com/research/products/000000003002016601
+    """
+    ### Imports
+    import pulp
+
+    ### Input processing
+    profiles_day = (
+        profiles_fitperiods.groupby(['property','region'], axis=1)
+        .mean()
+    )
+    if target_feature_mean is None:
+        target_feature_mean = profiles_day.mean()
+    else:
+        assert (target_feature_mean.index == profiles_day.mean().index).all()
+        assert target_feature_mean.isnull().sum() == 0
+
+    numdays = len(profiles_day)
+    days = profiles_day.index.values
+
+    ### Optimization: minimize sum of absolute errors
+    m = pulp.LpProblem('LinearDaySelection', pulp.LpMinimize)
+    ###### Variables
+    ### day weights
+    WEIGHT = pulp.LpVariable.dicts('WEIGHT', (d for d in days), lowBound=0, cat='Continuous')
+    ### errors
+    ERROR_POS = pulp.LpVariable.dicts(
+        'ERROR_POS', (c for c in profiles_day.columns), lowBound=0, cat='Continuous')
+    ERROR_NEG = pulp.LpVariable.dicts(
+        'ERROR_NEG', (c for c in profiles_day.columns), lowBound=0, cat='Continuous')
+    ###### Constraints
+    ### weights must sum to 1
+    m += pulp.lpSum([WEIGHT[d] for d in days]) == 1
+    ### definition of errors
+    for c in profiles_day.columns:
+        m += (
+            ### Full error for column (given by positive component minus negative component)...
+            ERROR_POS[c] - ERROR_NEG[c]
+            ### ...plus sum of values for weighted representative days...
+            + pulp.lpSum([WEIGHT[d] * profiles_day[c][d] for d in days])
+            ### ...equals the mean for that column
+            == target_feature_mean[c])
+    ###### Objective: minimize the sum of absolute values of errors across all columns
+    m += pulp.lpSum([
+        ERROR_POS[c] + ERROR_NEG[c]
+        for c in profiles_day.columns
+    ])
+
+    ### Solve it
+    m.solve(solver=pulp.PULP_CBC_CMD(msg=True))
+
+    ### Collect weights, scaled by total number of days
+    weights = pd.Series({d:WEIGHT[d].varValue for d in days}) * numdays
+
+    ### Truncate based on numclusters, scale appropriately, and convert to integers
+    ### Keep the the 'numclusters' highest-weighted days
+    rweights = (weights.sort_values(ascending=False)[:numclusters])
+    ### Scale so that the weights sum to numdays (have to do if numclusters is small)
+    rweights *= numdays / rweights.sum()
+    ### Convert to integers
+    iweights = rweights.round(0).astype(int)
+    ### Scale all weights little by little until they sum to number of actual days
+    sumweights = iweights.sum()
+    diffweights = sumweights - numdays
+    increment = 0.00001 * (1 if diffweights < 0 else -1)
+    for i in range(1000000):
+        iweights = (rweights * (1 + increment*i)).round(0).astype(int)
+        if iweights.sum() == numdays:
+            break
+
+    iweights = iweights.replace(0,np.nan).dropna().astype(int)
+    ### Make sure it worked
+    if iweights.sum() != numdays:
+        raise ValueError(f'Sum of rounded weights = {iweights.sum()} != {numdays}')
+
+    return profiles_day, iweights, weights
+
+
+def optimize_defined_period_weights(
+    basis_periods,
+    target_feature_mean,
+    numdays=365,
+):
+    """
+    Similar to optimize_period_weights(), but here we provide the basis set instead of
+    letting the solver do it.
+    """
+    ### Get weights
+    weights = minimize_abs_error_in_means(basis_periods, target_feature_mean)
+
+    ### Truncate based on numclusters, scale appropriately, and convert to integers
+    ### Keep the the 'numclusters' highest-weighted days
+    rweights = (weights.sort_values(ascending=False)[:len(basis_periods)])
+    ### Scale so that the weights sum to numdays (have to do if numclusters is small)
+    rweights *= numdays / rweights.sum()
+    ### Convert to integers
+    iweights = rweights.round(0).astype(int)
+    ### Scale all weights little by little until they sum to number of actual days
+    sumweights = iweights.sum()
+    diffweights = sumweights - numdays
+    increment = 0.00001 * (1 if diffweights < 0 else -1)
+    for i in range(1000000):
+        iweights = (rweights * (1 + increment*i)).round(0).astype(int)
+        if iweights.sum() == numdays:
+            break
+
+    iweights = iweights.replace(0,np.nan).dropna().astype(int)
+    ### Make sure it worked
+    if iweights.sum() != numdays:
+        raise ValueError(f'Sum of rounded weights = {iweights.sum()} != {numdays}')
+
+    return iweights, weights
+
+
+def match_act2rep_milp(profiles_day, rweights):
+    """
+    Assign representative periods to actual periods to minimize sum of errors in
+    feature values by period (MILP optimization)
+    """
+    ### Imports
+    import pulp
+
+    ### Input processing
+    actualdays = profiles_day.index.values
+    repdays = list(rweights.index)
+
+    ### Optimization: minimize sum of absolute errors
+    m = pulp.LpProblem('RepDayAssignment', pulp.LpMinimize)
+    ###### Variables
+    ### Weighting of rep days (r) for each actual day (a).
+    ### Can only use whole days, so it's a binary variable.
+    WEIGHT = pulp.LpVariable.dicts(
+        'WEIGHT', ((a,r) for a in actualdays for r in repdays),
+        lowBound=0, upBound=1, cat=pulp.LpInteger)
+    ### Errors. These are defined for features (c) and for actual days (a).
+    ERROR_POS = pulp.LpVariable.dicts(
+        'ERROR_POS', ((a,c) for a in actualdays for c in profiles_day.columns),
+        lowBound=0, cat='Continuous')
+    ERROR_NEG = pulp.LpVariable.dicts(
+        'ERROR_NEG', ((a,c) for a in actualdays for c in profiles_day.columns),
+        lowBound=0, cat='Continuous')
+    ###### Constraints
+    ### Each actual day can only be assigned to one representative day
+    for a in actualdays:
+        m += pulp.lpSum([WEIGHT[a,r] for r in repdays]) == 1
+    ### Each representative day must be used a number of times equal to its weight
+    for r in repdays:
+        m += pulp.lpSum([WEIGHT[a,r] for a in actualdays]) == rweights[r]
+    ### Define the error variables
+    for a in actualdays:
+        for c in profiles_day.columns:
+            m += (
+                ### Full error for column on actual day (given by positive
+                ### component minus negative component)...
+                ERROR_POS[a,c] - ERROR_NEG[a,c]
+                ### ...plus value for its representative day (since WEIGHT is binary)...
+                + pulp.lpSum([WEIGHT[a,r] * profiles_day[c][r] for r in repdays])
+                ### ...equals the actual value for that column and day
+                == profiles_day[c][a])
+    ###### Objective: minimize the sum of absolute values of errors
+    m += pulp.lpSum([
+        ERROR_POS[a,c] + ERROR_NEG[a,c]
+        for a in actualdays for c in profiles_day.columns
+    ])
+
+    ### Solve it
+    m.solve(solver=pulp.PULP_CBC_CMD(msg=True))
+
+    ### Collect assignments
+    assignments = pd.Series(
+        {(a,r):WEIGHT[a,r].varValue for a in actualdays for r in repdays}).astype(int)
+    assignments.index = assignments.index.rename(['act','rep'])
+    a2r = assignments.replace(0,np.nan).dropna().reset_index(level='rep').rep
+
+    return a2r
+
+
+def match_act2rep_bestfirst(profiles_day, rweights, metric='euclidean'):
+    """
+    TODO
+    - Add a seasonal distance
+        - "Summeriness": 0 in winter, 1 in summer, 0.5 in spring/fall
+        - So take the diff between each day (not year, just month/day)
+        - Would have to weight it relative to feature match
+    """
+    import scipy.spatial
+    ### Get the distance
+    keep_basis = profiles_day.loc[rweights.index]
+    distance = pd.DataFrame(
+        data=scipy.spatial.distance.cdist(
+            keep_basis,
+            profiles_day,
+            metric=metric,
+        ),
+        index=keep_basis.index,
+        columns=profiles_day.index,
+    )
+
+    a2r = {}
+    numdays = len(profiles_day)
+    remaining_weights = rweights.copy()
+    remaining_distance = distance.copy()
+    for i in range(numdays):
+        ## Loop over the remaining weights
+        for repday in remaining_weights.index:
+            ## Keep the best match
+            actday = remaining_distance.columns[np.argmin(remaining_distance.loc[repday])]
+            a2r[actday] = repday
+            ## Decrement the remaining weight
+            remaining_distance.drop(columns=actday, inplace=True)
+            remaining_weights.loc[repday] -= 1
+        ## If any remaining rep days have zero weight, drop them
+        if (remaining_weights == 0).any():
+            remaining_weights = remaining_weights.loc[remaining_weights > 0]
+        if not len(remaining_weights):
+            break
+
+    out = pd.Series(a2r, name='rep')
+    out.index = out.index.tolist()
+    out.index = out.index.rename('act')
+    return out

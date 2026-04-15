@@ -5152,7 +5152,7 @@ def plot_seed_stressperiods(
     return f, ax
 
 
-def plot_repdays(case, cmap=cmocean.cm.phase, alpha=0.7, startfrom=200):
+def plot_repdays(case, year=None, cmap=cmocean.cm.phase, alpha=0.7, startfrom=200):
     """Plot representative days in (12month)x(monthdays) format"""
     ### Setup
     months = [
@@ -5172,6 +5172,15 @@ def plot_repdays(case, cmap=cmocean.cm.phase, alpha=0.7, startfrom=200):
     sw = pd.read_csv(
         os.path.join(case, 'inputs_case', 'switches.csv'), header=None, index_col=0
     ).squeeze(1)
+    if year is None:
+        year = int(sw.GSw_HourlyWeatherYears.split('_')[0])
+    stylestring = '%-m/%-d' if os.name == 'posix' else '%#m/%#d'
+    va = 'center'
+    ytext = 0.5
+    if len(sw.GSw_HourlyWeatherYears.split('_')) > 1:
+        stylestring += '/\n%Y'
+        va = 'top'
+        ytext = 0.9
 
     hmap_myr = pd.read_csv(
         os.path.join(case, 'inputs_case', 'rep', 'hmap_myr.csv'),
@@ -5181,7 +5190,11 @@ def plot_repdays(case, cmap=cmocean.cm.phase, alpha=0.7, startfrom=200):
     hmap_myr['timestamp_rep'] = hmap_myr.h.map(reeds.timeseries.h2timestamp)
     hmap_myr['repday'] = hmap_myr.season.map(reeds.timeseries.h2timestamp)
 
-    actualday2repday = hmap_myr.drop_duplicates('yearperiod', keep='first').timestamp_rep
+    actualday2repday = (
+        hmap_myr.loc[str(year)]
+        .drop_duplicates(['year','yearperiod'], keep='first')
+        .timestamp_rep
+    )
     repdaycounts = actualday2repday.value_counts()
 
     ### Plot it
@@ -5206,12 +5219,12 @@ def plot_repdays(case, cmap=cmocean.cm.phase, alpha=0.7, startfrom=200):
         ax[row].axvspan(xstart, xend, color=cmap(monthday2val[monthday]), alpha=alpha, lw=0)
         ## Date
         ax[row].annotate(
-            repday.strftime('%-m/%-d' if os.name == 'posix' else '%#m/%#d'),
-            (xstart+0.5, 0.5), ha='center', va='center', fontsize=8,
-            path_effects=[pe.withStroke(linewidth=2.1, foreground='w', alpha=1)],
+            repday.strftime(stylestring),
+            (xstart+0.5, ytext), ha='center', va=va, fontsize=8,
+            path_effects=[pe.withStroke(linewidth=1.5, foreground='w', alpha=0.8)],
         )
         ## Box
-        if (actualday.month == repday.month) and (actualday.day == repday.day):
+        if (actualday.year, actualday.month, actualday.day) == (repday.year, repday.month, repday.day):
             ax[row].axvspan(xstart, xend, facecolor='none', edgecolor='k', zorder=1e6, clip_on=False)
             ax[row].annotate(
                 f'×{repdaycounts[repday]}', (xend-0.03, 0.05), ha='right', fontsize=7,
