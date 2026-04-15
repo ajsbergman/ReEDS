@@ -131,8 +131,8 @@ dfwrite.to_csv(os.path.join(reeds_path,'inputs','emission_constraints','co2_cap.
 
 #%% Trajectory settings
 refyear = 2005
-fityears = np.array(list(range(2007,2022)))
-firstyear = 2024
+fityears = np.array(list(range(2007,2025)))
+firstyear = 2030
 
 #%% Get historical emissions from EIA
 ### Parent site: https://www.eia.gov/totalenergy/data/monthly/#environment
@@ -161,7 +161,7 @@ kinks = {
     firstyear-1: current_trajectory.loc[firstyear-1] / emissions.loc[refyear],
     # 2030: 0.20,
     # 2035: 0.,
-    2035: 0.1,
+    # 2035: 0.1,
     2045: 0.,
 }
 
@@ -180,10 +180,10 @@ print(title)
 ### Make the cap trajectory
 capyears = range(min(list(kinks.keys())), max(list(kinks.keys()))+1)
 mults = pd.Series(kinks).reindex(capyears).interpolate('linear')
-## Reset the fix years
-mults.loc[:firstyear-1] = 2
 ## Multiply by reference year emissions to get the cap
 caps = (mults * emissions.loc[refyear]).rename(title)
+## Set the years before the cap to an arbitrarily high number
+caps.loc[:firstyear-1] = 9999.999999
 
 #%% Take a look
 plt.close()
@@ -204,7 +204,7 @@ ax.plot(
 )
 ax.set_ylim(0,3000)
 ax.set_xlim(2000,)
-ax.xaxis.set_minor_locator(mpl.ticker.MultipleLocator(1))
+ax.xaxis.set_minor_locator(mpl.ticker.MultipleLocator(2))
 ax.grid(axis='x', which='major', c='0.2', lw=0.5, ls='--')
 ax.grid(axis='x', which='minor', c='0.7', lw=0.25, ls='--')
 ax.grid(axis='y', which='major', c='0.2', lw=0.5, ls='--')
