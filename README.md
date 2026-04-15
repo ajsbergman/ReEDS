@@ -1,11 +1,11 @@
-## ReEDS 2.0
+## ReEDS
 **Regional Energy Deployment System (ReEDS) Model**
 
  
-[![CI](https://github.nrel.gov/ReEDS/ReEDS-2.0/actions/workflows/python-app.yaml/badge.svg)](https://github.nrel.gov/ReEDS/ReEDS-2.0/actions/workflows/python-app.yaml)
-[![Documentation](https://img.shields.io/badge/Documentation-view%20online-0a7f5e?logo=readthedocs&logoColor=white&labelColor=555)](https://natlabrockies.github.io/ReEDS-2.0)
+[![CI](https://github.com/ReEDS-Model/ReEDS/actions/workflows/python-app.yaml/badge.svg)](https://github.com/ReEDS-Model/ReEDS/actions/workflows/python-app.yaml)
+[![Documentation](https://img.shields.io/badge/Documentation-view%20online-0a7f5e?logo=readthedocs&logoColor=white&labelColor=555)](https://reeds-model.github.io/ReEDS)
 ![Static Badge](https://img.shields.io/badge/python-3.11-blue)
-![GitHub License](https://img.shields.io/github/license/NatLabRockies/ReEDS-2.0)
+![GitHub License](https://img.shields.io/github/license/ReEDS-Model/ReEDS)
 [![DOI](https://zenodo.org/badge/189060033.svg)](https://doi.org/10.5281/zenodo.16943302)
 
 </br>
@@ -15,7 +15,7 @@ This GitHub repository contains the source code for NLR's ReEDS model.
 The ReEDS model source code is available at no cost from the National Laboratory of the Rockies.
 The ReEDS model can be downloaded or cloned from [https://github.com/ReEDS-Model/ReEDS](https://github.com/ReEDS-Model/ReEDS).
 
-**For more information about the model, see the [open source ReEDS-2.0 Documentation](https://reeds-model.github.io/ReEDS).**
+**For more information about the model, see the [Documentation](https://reeds-model.github.io/ReEDS).**
 
 ReEDS training videos are available on the [NLR Learning YouTube channel](https://youtube.com/playlist?list=PLmIn8Hncs7bG558qNlmz2QbKhsv7QCKiC&si=NgGBaL_MxNcYiIEX).
 
@@ -27,7 +27,7 @@ ReEDS training videos are available on the [NLR Learning YouTube channel](https:
 
 [ReEDS](https://www.nrel.gov/analysis/reeds/) is a capacity planning and dispatch model for the U.S. electricity system.
 
-As NLR's flagship long-term power sector model, ReEDS has served as the primary analytic tool for [many studies](https://natlabrockies.github.io/ReEDS-2.0/publications.html) of electricity sector research questions.
+As NLR's flagship long-term power sector model, ReEDS has served as the primary analytic tool for [many studies](https://reeds-model.github.io/ReEDS/publications.html) of electricity sector research questions.
 Example model results are available in the [Scenario Viewer](https://scenarioviewer.nrel.gov/).
 
 
@@ -40,7 +40,7 @@ Example model results are available in the [Scenario Viewer](https://scenariovie
 The ReEDS model is written in [Python](https://www.python.org/), [GAMS](https://www.gams.com/), and [Julia](https://julialang.org/).
 Python and Julia are free, open-source languages;
 GAMS requires a software license from the vendor.
-A step-by-step guide for getting started with ReEDS is available [here](https://pages.github.nrel.gov/ReEDS/ReEDS-2.0/setup.html), and a quick-start guide for advanced users is outlined below.
+A step-by-step guide for getting started with ReEDS is available [here](https://reeds-model.github.io/ReEDS/setup.html), and a quick-start guide for advanced users is outlined below.
 
 1. Install Python using the Anaconda Distribution: <https://www.anaconda.com/download/success>
 2. Set up GAMS:
