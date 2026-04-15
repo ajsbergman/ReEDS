@@ -157,9 +157,17 @@ def main(t, tnext, casedir, iteration=0):
         result = run_pras(
             casedir, t,
             iteration=iteration,
-            write_flow=(True if t == max(solveyears) else False),
+            write_flow=(
+                ((t == max(solveyears)) and int(sw.pras_output_level))
+                or (int(sw.pras_output_level) >= 2)
+            ),
+            write_surplus=(int(sw.pras_output_level) >= 2),
             write_energy=True,
-            write_shortfall_samples=(True if int(sw.GSw_PRM_UpdateMethod) > 1 else False),
+            write_shortfall_samples=(
+                (int(sw.GSw_PRM_UpdateMethod) > 1)
+                or (int(sw.pras_output_level) >= 3)
+            ),
+            write_availability_samples=(int(sw.pras_output_level) >= 3),
         )
         if result.returncode:
             raise Exception(

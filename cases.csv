@@ -368,6 +368,7 @@ pras_existing_unit_size,Use the average size of existing units by tech/region wh
 pras_hydro_energylim,Whether to model hydro as energy-limited in PRAS (1) or like a thermal generator (0),0; 1,1,
 pras_include_h2dac,Indicate whether to include (1) demand associated with H2 production & DAC in PRAS,0; 1,0,
 pras_max_unitsize_prm,Cap the upper bound of disaggregated unit size by zone at the zonal PRM in MW,0; 1,1,
+pras_output_level,How much output data to keep from PRAS (0 = only required by ReEDS; 1 = also average flows; 2 = all average values; 3 = all (including individual-sample values)),[0-3],1,
 pras_samples,Indicate how many Monte Carlo samples to use in PRAS (if 0 then the .pras file is generated but PRAS is not run),int,100,
 pras_scheduled_outage,Include scheduled outages in PRAS (if 0 then a default outage rate of 0 is applied),0; 1,0,
 pras_seed,Seed to use for PRAS samples; can be any positive integer. If 0 the seed is set randomly,int,1,
