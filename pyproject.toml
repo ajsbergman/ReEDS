@@ -1,14 +1,41 @@
-[tool.black]
-include = '''
-(
-    hourlize/tests/.*\.py?$
-    | hourlize/reeds_to_rev\.py?$
-)
-'''
+[build-system]
+requires = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
 
 [project]
-name = "ReEDS"
-version = "2024.0.0"
+name = "reeds"
+description = "NREL's REgional Energy Deployment System (ReEDS) capacity-expansion model"
+version = "2023.48.0"
+authors = [
+    { name = "ReEDS developers; see https://github.com/ReEDS-Model/ReEDS/blob/main/CITATION.cff", email = "ReEDS.Inquiries@nlr.gov"},
+]
+license = {text = "GPL-3.0"}
+dependencies = [
+    "bokeh=3.2",
+    "click=8.0",
+    "git-lfs=2.13",
+    "h5py=3.9",
+    "numpy=1.26",
+    "pandas=2.0",
+    "pip=23.2",
+    "pytables=3.8",
+    "scikit-learn=1.2",
+    "scipy=1.11",
+    "gitpython=3.1",
+    "matplotlib=3.7",
+    "networkx=3.1",
+    "openpyxl=3.0",
+    "pytest=7.4",
+    "requests=2.31",
+    "tqdm=4.65",
+    "gdxpds=1.4.0",
+    "pulp=2.7.0",
+    "geopandas=0.14.0",
+    "proj=0.2.0",
+    "pyproj=3.6.1",
+    "python-pptx=0.6.22",
+    "shapely=2.0.1",
+]
 
 [project.optional-dependencies]
 docs = [
@@ -16,5 +43,14 @@ docs = [
     "myst-parser",
 ]
 
+[project.urls]
+Homepage = "https://www.nlr.gov/analysis/reeds/"
+Repository = "https://github.com/ReEDS-Model/ReEDS"
 
-
+[tool.black]
+include = '''
+(
+    hourlize/tests/.*\.py?$
+    | hourlize/reeds_to_rev\.py?$
+)
+'''
