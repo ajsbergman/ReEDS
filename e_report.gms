@@ -119,6 +119,7 @@ h2_demand_type / "electricity", "cross-sector"/
 $include e_report_params.gms
 
 * Restrict operational outputs to representative timeslices and seasons
+* TODO: Include stress periods directly in all h-dependent outputs
 h(h)$[not h_rep(h)] = no ;
 szn(szn)$[not szn_rep(szn)] = no ;
 
@@ -155,7 +156,7 @@ CO2_FLOW_net_out_ann(r,rr,t)$[(ord(r) < ord(rr))$tmodel_new(t)] = sum{h, hours(h
 * LCOE
 *=========================
 
-avg_avail(i,v,r) = sum{h, hours(h) * avail(i,r,h) * derate_geo_vintage(i,v) } / 8760 ;
+avg_avail(i,v,r) = sum{h, hours(h) * avail(i,r,h) * derate_geo_vintage(i,v) } / sum{h, hours(h) } ;
 avg_cf(i,v,r,t)$[CAP.l(i,v,r,t)$(not rsc_i(i))] =
     sum{h, GEN.l(i,v,r,h,t) * hours(h) }
     / sum{h,
@@ -1114,7 +1115,7 @@ valnew('val_rps','benchmark','sys',t)$tmodel_new(t) =
 emit_r(etype,e,r,t)$tmodel_new(t) = 
 
 * Emissions from generation
-    sum{(i,v,h)$[valgen(i,v,r,t)$h_rep(h)],
+    sum{(i,v,h)$[valgen(i,v,r,t)],
         hours(h) * emit_rate(etype,e,i,v,r,t)
         * (GEN.l(i,v,r,h,t)
            + CCSFLEX_POW.l(i,v,r,h,t)$[ccsflex(i)$(Sw_CCSFLEX_BYP OR Sw_CCSFLEX_STO OR Sw_CCSFLEX_DAC)])
@@ -1122,7 +1123,7 @@ emit_r(etype,e,r,t)$tmodel_new(t) =
 
 * Plus emissions produced via production activities (SMR, SMR-CCS, DAC)
 * The "production" of negative CO2 emissions via DAC is also included here
-    + sum{(p,i,v,h)$[valcap(i,v,r,t)$i_p(i,p)$h_rep(h)],
+    + sum{(p,i,v,h)$[valcap(i,v,r,t)$i_p(i,p)],
           hours(h) * prod_emit_rate(etype,e,i,t)
           * PRODUCE.l(p,i,v,r,h,t)
          }
@@ -1131,11 +1132,11 @@ emit_r(etype,e,r,t)$tmodel_new(t) =
 *capture = capture per energy used by the ccs system * CCS energy
 
 * Flexible CCS - bypass
-    - (sum{(i,v,h)$[valgen(i,v,r,t)$ccsflex_byp(i)$h_rep(h)],
+    - (sum{(i,v,h)$[valgen(i,v,r,t)$ccsflex_byp(i)],
         ccsflex_co2eff(i,t) * hours(h) * CCSFLEX_POW.l(i,v,r,h,t) })$[sameas(e,"co2")]$Sw_CCSFLEX_BYP
 
 * Flexible CCS - storage
-    - (sum{(i,v,h)$[valgen(i,v,r,t)$ccsflex_sto(i)$h_rep(h)],
+    - (sum{(i,v,h)$[valgen(i,v,r,t)$ccsflex_sto(i)],
         ccsflex_co2eff(i,t) * hours(h) * CCSFLEX_POWREQ.l(i,v,r,h,t) })$[sameas(e,"co2")]$Sw_CCSFLEX_STO
 ; 
 
@@ -1349,7 +1350,7 @@ systemcost_techba("op_fuelcosts_objfn",i,r,t)$tmodel_new(t)  =
 *cost of coal and nuclear fuel (except coal used for cofiring)
               + sum{(v,h)$[valgen(i,v,r,t)$heat_rate(i,v,r,t)
                          $(not gas(i))$(not bio(i))$(not cofire(i))
-                         $((not h2_combustion(i)) or h2_combustion(i)$[(Sw_H2=0) or h_stress(h)])],
+                         $((not h2_combustion(i)) or h2_combustion(i)$(Sw_H2=0))],
                    hours(h) * heat_rate(i,v,r,t) * fuel_price(i,r,t) * GEN.l(i,v,r,h,t) }
 
 *cofire coal consumption - cofire bio consumption already accounted for in accounting of BIOUSED
@@ -1422,7 +1423,7 @@ systemcost_techba('op_ptc_payments_negative',i,r,t)$tmodel_new(t) =
 * PTC value for hydrogen production
 * Note: all electrolyzers which produce H2 are assuming to be receiving hydrogen production credits during eligible years  
 systemcost_techba('op_h2_ptc_payments_negative','electrolyzer',r,t)$[tmodel_new(t)] =
-      - (sum{(p,v,h)$[valcap("electrolyzer",v,r,t)$(sameas(p,"H2"))$h2_ptc("electrolyzer",v,r,t)$h_rep(h)],
+      - (sum{(p,v,h)$[valcap("electrolyzer",v,r,t)$(sameas(p,"H2"))$h2_ptc("electrolyzer",v,r,t)],
           hours(h) * PRODUCE.l(p,"electrolyzer",v,r,h,t) *
             (crf(t) / crf_h2_incentive(t)) * h2_ptc("electrolyzer",v,r,t) * 1e3} )
             $[Sw_H2_PTC$Sw_H2$h2_ptc_years(t)$(yeart(t) >= h2_demand_start)]
@@ -1687,7 +1688,7 @@ error_check('z') = (
 * Penalty cost for dropped/excess load before Sw_StartMarkets
         + pvf_onm(t) * sum{(r,h), (DROPPED.l(r,h,t) + EXCESS.l(r,h,t)) * hours(h) * cost_dropped_load }
 * Retail adder for electricity consuming technologies
-        + pvf_onm(t) * sum{(p,i,v,r,h)$[valcap(i,v,r,t)$i_p(i,p)$h_rep(h)$Sw_RetailAdder$Sw_Prod],
+        + pvf_onm(t) * sum{(p,i,v,r,h)$[valcap(i,v,r,t)$i_p(i,p)$Sw_RetailAdder$Sw_Prod],
               hours(h) * Sw_RetailAdder * PRODUCE.l(p,i,v,r,h,t) / prod_conversion_rate(i,v,r,t) }
 * Account for difference in fixed O&M between model (CAP.l(i,v,r,t))
 * and outputs (cap_ivrt(i,v,r,t) * ilr(i)) for techs with more than one newv

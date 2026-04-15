@@ -4508,7 +4508,7 @@ def map_h2_capacity(
 
 def plot_h2_timeseries(
         case, year=2050, agglevel='transreg', grid=0,
-        figsize=(12,8),
+        figsize=(12,8), drawstress=0.2, shadestorage=0.05,
     ):
     """
     """
@@ -4521,6 +4521,22 @@ def plot_h2_timeseries(
     h2_usage = reeds.io.read_output(case, 'h2_usage')
     ### Timeseries data
     hmap_myr = pd.read_csv(os.path.join(case, 'inputs_case', 'rep', 'hmap_myr.csv'))
+    if drawstress:
+        _, _iteration = reeds.io.get_last_iteration(case=case, year=year)
+        sw = pd.read_csv(
+            os.path.join(case, 'inputs_case', 'switches.csv'),
+            header=None, index_col=0).squeeze(1)
+        set_szn_stress = pd.read_csv(
+            os.path.join(case, 'inputs_case', f'stress{year}i{_iteration}', 'set_szn.csv')
+        ).squeeze(1).tolist()
+        stresslength = pd.Timedelta('5D' if sw.GSw_HourlyType == 'wek' else '1D')
+        stress_periods = pd.DataFrame(
+            [
+                [reeds.timeseries.h2timestamp(p), reeds.timeseries.h2timestamp(p)+stresslength]
+                for p in set_szn_stress
+            ],
+            columns=['start','end'],
+        )
 
     ###### Total across modeled area
     hierarchy = reeds.io.get_hierarchy(case)
@@ -4579,6 +4595,9 @@ def plot_h2_timeseries(
     ### Don't chunk it
     dfchunk = dffull.fillna(0).round(3).copy()
     timeindex = (hmap_myr.actual_h.map(reeds.timeseries.h2timestamp)).values
+    ## Stop here if there's no data
+    if dfchunk.empty:
+        return None, None, dfchunk
 
     ###### Plot it
     rows = {
@@ -4602,10 +4621,9 @@ def plot_h2_timeseries(
 
     ###### Plot it
     plt.close()
-    f,ax = plt.subplots(len(rows), 1, sharex=True, sharey=False, figsize=figsize)
-    ## Stop here if there's no data
-    if dfchunk.empty:
-        return f, ax, dfchunk
+    f,ax = plt.subplots(
+        len(rows), 1, sharex=True, sharey=False, figsize=figsize, dpi=300,
+    )
     ### Data
     for datum, row in rows.items():
         df = dfchunk.xs(datum, axis=1, level='datum') * scale[datum]
@@ -4617,12 +4635,27 @@ def plot_h2_timeseries(
             lw=0, alpha=1,
         )
         ax[row].set_ylabel(ylabels[datum])
+        if drawstress:
+            for i, (start, end) in stress_periods.iterrows():
+                ax[row].axvspan(
+                    start, end, lw=0.1, color='k', alpha=float(drawstress), zorder=1e6)
     ###### Formatting
     ax[0].legend(
         loc='upper left', bbox_to_anchor=(1,1), frameon=False,
         columnspacing=0.5, handletextpad=0.3, handlelength=0.7,
         fontsize=12,
     )
+    ax[0].xaxis.set_minor_locator(mpl.dates.MonthLocator(bymonth=[1,4,7,10]))
+    if shadestorage:
+        for y in sw.resource_adequacy_years.split('_'):
+            # ## Dotted line at each year boundary
+            # ax[-1].axvline(pd.Timestamp(y), c='w', ls=':', lw=0.75)
+            ## Shade the odd years
+            if int(y) % 2:
+                ax[-1].axvspan(
+                    pd.Timestamp(y), pd.Timestamp(f'{int(y)+1}'),
+                    color='k', alpha=shadestorage, lw=0,
+                )
     ### Scales
     ymax = (dfchunk.groupby(axis=1, level='datum').sum()
             [['production','stor_discharge']].sum(axis=1).max()) * 24

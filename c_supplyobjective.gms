@@ -223,7 +223,7 @@ eq_Objfn_op(t)$tmodel(t)..
 * via the capex + opex costs of H2 production and its associated electricity demand.
               + sum{(i,v,r,h)$[valgen(i,v,r,t)$heat_rate(i,v,r,t)
                              $(not gas(i))$(not bio(i))$(not cofire(i))
-                             $((not h2_combustion(i)) or h2_combustion(i)$[(Sw_H2=0) or h_stress(h)])],
+                             $((not h2_combustion(i)) or h2_combustion(i)$(Sw_H2=0))],
                    hours(h) * heat_rate(i,v,r,t) * fuel_price(i,r,t) * GEN(i,v,r,h,t) }
 
 * --- startup/ramping costs
@@ -308,7 +308,7 @@ eq_Objfn_op(t)$tmodel(t)..
                     (DROPPED(r,h,t) + EXCESS(r,h,t) ) * hours(h) * cost_dropped_load }
 
 * --- costs from producing products (for now DAC and/or H2)---
-              + sum{(p,i,v,r,h)$[(h2(i) or dac(i))$valcap(i,v,r,t)$i_p(i,p)$h_rep(h)],
+              + sum{(p,i,v,r,h)$[(h2(i) or dac(i))$valcap(i,v,r,t)$i_p(i,p)],
                     hours(h) * cost_prod(i,v,r,t) * PRODUCE(p,i,v,r,h,t) }$Sw_Prod
 
 * --- H2 transport network fixed OM costs (compute cumulative sum of investments to get total capacity)
@@ -318,7 +318,7 @@ eq_Objfn_op(t)$tmodel(t)..
 
 * -- H2 intra-regional transport investment costs, levelized per kg of H2 produced --
 * Unit conversion: [hours] * [tonnes/hour] * [$/kg] * [kg/tonne] = [$]
-               + sum{(i,v,r,h)$[valcap(i,v,r,t)$newv(v)$i_p(i,"H2")$h_rep(h)], 
+               + sum{(i,v,r,h)$[valcap(i,v,r,t)$newv(v)$i_p(i,"H2")], 
                     hours(h) * PRODUCE("H2",i,v,r,h,t) * (Sw_H2_IntraReg_Transport * 1e3)}$[Sw_H2]
 
 * --- H2 storage fixed OM costs (compute cumulative sum of investments to get total capacity)
@@ -326,7 +326,7 @@ eq_Objfn_op(t)$tmodel(t)..
                      cost_h2_storage_fom(h2_stor,t) * H2_STOR_CAP(h2_stor,r,t) }$(Sw_H2=2)
 
 * --- Retail adder for electricity consuming technologies ---
-               + sum{(p,i,v,r,h)$[valcap(i,v,r,t)$i_p(i,p)$h_rep(h)$Sw_RetailAdder$Sw_Prod],
+               + sum{(p,i,v,r,h)$[valcap(i,v,r,t)$i_p(i,p)$Sw_RetailAdder$Sw_Prod],
                     hours(h) * Sw_RetailAdder * PRODUCE(p,i,v,r,h,t) / prod_conversion_rate(i,v,r,t) }
 
 * --- CO2 pipeline fixed OM costs
@@ -348,7 +348,7 @@ eq_Objfn_op(t)$tmodel(t)..
                               (crf(t) / crf_co2_incentive(t)) * co2_captured_incentive(i,v,r,t) * hours(h) * capture_rate("CO2",i,v,r,t) * GEN(i,v,r,h,t)}
 
 * --- Tax credit for CO2 stored for DAC ---
-              - sum{(p,i,v,r,h)$[dac(i)$valcap(i,v,r,t)$i_p(i,p)$h_rep(h)],
+              - sum{(p,i,v,r,h)$[dac(i)$valcap(i,v,r,t)$i_p(i,p)],
                               (crf(t) / crf_co2_incentive(t)) * co2_captured_incentive(i,v,r,t) * hours(h) * PRODUCE(p,i,v,r,h,t)}
 
 * --- PTC value for electric power generation ---
@@ -359,7 +359,7 @@ eq_Objfn_op(t)$tmodel(t)..
 
 * --- PTC value for hydrogen production ---
 * Note: all electrolyzers which produce H2 are assuming to be receiving the hydrogen production tax credit during eligible years  
-              - sum{(p,v,r,h)$[valcap("electrolyzer",v,r,t)$(sameas(p,"H2"))$h2_ptc("electrolyzer",v,r,t)$h_rep(h)],
+              - sum{(p,v,r,h)$[valcap("electrolyzer",v,r,t)$(sameas(p,"H2"))$h2_ptc("electrolyzer",v,r,t)],
                   hours(h) * PRODUCE(p,"electrolyzer",v,r,h,t) *
                    (crf(t) / crf_h2_incentive(t)) * h2_ptc("electrolyzer",v,r,t) * 1e3} 
                    $[Sw_H2_PTC$Sw_H2$h2_ptc_years(t)$(yeart(t) >= h2_demand_start)]

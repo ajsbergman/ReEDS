@@ -21,6 +21,8 @@ parser.add_argument('--more_copyfiles', '-m', type=str, default='',
                     help=',-delimited list of additional files to copy from reeds_path')
 parser.add_argument('--include_finished', '-i', action='store_true',
                     help='Also restart finished runs (e.g. to redo postprocessing)')
+parser.add_argument('--restart_tag', '-r', type=str, default='',
+                    help='Line-beginning string in bash script to stop skipping at')
 
 args = parser.parse_args()
 batch_name = args.batch_name
@@ -29,6 +31,7 @@ copy_srun_template = args.copy_srun_template
 force = args.force
 more_copyfiles = [i for i in args.more_copyfiles.split(',') if len(i)]
 include_finished = args.include_finished
+restart_tag = args.restart_tag
 
 # #%% Inputs for debugging
 # batch_name = 'v20231113_yamM0'
@@ -37,6 +40,7 @@ include_finished = args.include_finished
 # force = True
 # more_copyfiles = ['e_report.gms']
 # include_finished = False
+# restart_tag = ''
 
 ###### Procedure
 #%% Shared parameters
@@ -102,21 +106,22 @@ for case in runs_failed:
     shutil.copy(sbatchfile, os.path.join(case,f'ORIGINAL_{casename}.sh'))
 
     #%% Get last .lst file and restart from there
-    lstfiles = sorted(glob(os.path.join(case,'lstfiles','*.lst')))
-    if any([os.path.basename(i).startswith('report') for i in lstfiles]):
-        restart_tag = '# Output processing'
-    elif len(lstfiles) < 2: 
-        # If there is only 1 lst file, then it is an environment.csv so the run failed during inputs processing 
-        restart_tag = '# Input processing'
-    elif len(lstfiles) == 2: 
-        # If there are only 2 lst files, then one of them will be environment.csv and the other will be 1_inputs.lst so the run failed during the model compilation 
-        restart_tag = '# Compile model'
+    if restart_tag:
+        _restart_tag = restart_tag
     else:
-        # Drop environment and inputs .lst files
-        lstfiles = [l for l in lstfiles if ("environment.csv" not in l) and ('1_Inputs.lst' not in l)]
-        lastfile = lstfiles[-1]
-        restart_year = int(os.path.splitext(lastfile)[0].split('_')[-1].split('i')[0])
-        restart_tag = f'# Year: {restart_year}'
+        lstfiles = sorted(glob(os.path.join(case,'lstfiles','*.lst')))
+        if any([os.path.basename(i).startswith('report') for i in lstfiles]):
+            _restart_tag = '# Output processing'
+        elif len(lstfiles) == 2: 
+            # If there are only 2 lst files, then one of them will be environment.csv
+            # and the other will be 1_inputs.lst so the run failed during the model compilation 
+            _restart_tag = '# Compile model'
+        else:
+            # Drop environment file
+            lstfiles = [line for line in lstfiles if "environment.csv" not in line]
+            lastfile = lstfiles[-1]
+            restart_year = int(os.path.splitext(lastfile)[0].split('_')[-1].split('i')[0])
+            _restart_tag = f'# Year: {restart_year}'
 
     #%% Comment out the unnecessary lines
     writelines = []
@@ -126,8 +131,8 @@ for case in runs_failed:
             ## Start commenting at input processing
             if '# Input processing' in line:
                 comment = 1
-            ## Stop commenting at restart_tag
-            if line.startswith(restart_tag):
+            ## Stop commenting at _restart_tag
+            if line.startswith(_restart_tag):
                 comment = 0
             ## Record it
             writelines.append(('# ' if comment else '') + line.strip())

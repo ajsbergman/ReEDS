@@ -102,7 +102,7 @@ h_actualszn(allh,allszn) "mapping from rep timeslices to actual periods"
 /
 $offlisting
 $ondelim
-$include inputs_case%ds%%temporal_inputs%%ds%h_actualszn.csv
+$include inputs_case%ds%stress%stress_year%%ds%h_actualszn.csv
 $offdelim
 $onlisting
 /
@@ -120,7 +120,7 @@ nexth_actualszn(allszn,allh,allszn,allh) "Mapping between one timeslice and the 
 /
 $offlisting
 $ondelim
-$include inputs_case%ds%%temporal_inputs%%ds%nexth_actualszn.csv
+$include inputs_case%ds%stress%stress_year%%ds%nexth_actualszn.csv
 $offdelim
 $onlisting
 /
@@ -134,6 +134,25 @@ $include inputs_case%ds%stress%stress_year%%ds%nexth.csv
 $offdelim
 $onlisting
 /
+
+nextszn(actualszn,actualszn) "Mapping between one actual period (actualszn) and the next"
+/
+$offlisting
+$ondelim
+$include inputs_case%ds%nextszn.csv
+$offdelim
+$onlisting
+/
+
+actualszn2allszn(actualszn,allszn) "Mapping from actual periods to rep/stress periods"
+/
+$offlisting
+$ondelim
+$include inputs_case%ds%stress%stress_year%%ds%actualszn2allszn.csv
+$offdelim
+$onlisting
+/
+
 $ONEMPTY
 nextpartition(allszn,allszn) "Mapping between one partition (allszn) and the next"
 /
@@ -181,13 +200,6 @@ starting_hour_nowrap(h)$[sum{szn, h_szn_start(szn,h) }$(not Sw_HourlyWrap)] = ye
 final_hour_nowrap(allh) = no ;
 final_hour_nowrap(h)$[sum{szn, h_szn_end(szn,h) }$(not Sw_HourlyWrap)] = yes ;
 
-* Get the order of actual periods
-nextszn(actualszn,actualsznn)$[(ord(actualsznn) = ord(actualszn) + 1)] = yes ;
-nextszn(actualszn,actualsznn)
-    $[(ord(actualszn) = smax(actualsznnn, ord(actualsznnn)))
-    $(ord(actualsznn) = smin(actualsznnn, ord(actualsznnn)))]
-    = yes ;
-
 $onOrder
 
 
@@ -200,6 +212,9 @@ $include inputs_case%ds%stress%stress_year%%ds%numhours.csv
 $offdelim
 $onlisting
 / ;
+
+* Scale the total number of hours to 8760 (it should actually be 365.2422 * 24)
+hours(h) = hours(h) * 8760 / sum{allh, hours(allh)} ;
 
 parameter numdays(allszn) "--number of days-- number of days for each season" ;
 numdays(allszn) = 0 ;
@@ -218,7 +233,7 @@ parameter numhours_nexth(allh,allhh) "--hours-- number of times hh follows h thr
 /
 $offlisting
 $ondelim
-$include inputs_case%ds%%temporal_inputs%%ds%numhours_nexth.csv
+$include inputs_case%ds%stress%stress_year%%ds%numhours_nexth.csv
 $offdelim
 $onlisting
 / ;

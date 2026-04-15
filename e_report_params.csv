@@ -256,6 +256,7 @@ emit_rate,,,,,1
 fuel_price,,,,,1
 fuel2tech,,,,,1
 h_szn,,,,,1
+h_stress_t,,,,,1
 heat_rate,,,,,1
 hierarchy,,,,,1
 hours,,,,,1

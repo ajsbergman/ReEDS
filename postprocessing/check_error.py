@@ -12,7 +12,7 @@ def check_error(case, cutoff=0.01, errors='print', printcase=False):
         f"Your system cost error is {e}, which is too big!"
         + (f" ← {os.path.basename(case)}" if printcase else '')
     )
-    if e >= cutoff:
+    if abs(e) >= cutoff:
         if errors == 'print':
             print('ERROR: ' + errortext)
         elif errors == 'warn':

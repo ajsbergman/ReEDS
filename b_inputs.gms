@@ -6645,7 +6645,8 @@ Set
     starting_hour_nowrap(allh)             "Flag for whether allh is the first chronological hour by day type"
     final_hour(allh)                       "Flag for whether allh is the last chronological hour in a day type" 
     final_hour_nowrap(allh)                "Flag for whether allh is the last chronological hour in a day type"
-    nextszn(allszn,allszn)                 "Mapping between one actual period (allszn) and the next"
+    nextszn(actualszn,actualszn)           "Mapping between one actual period (actualszn) and the next"
+    actualszn2allszn(actualszn,allszn)     "Mapping from actual periods to rep/stress periods"
     nextpartition(allszn,allszn)           "Mapping between one partition (allszn) and the next"
 * Peak demand
     maxload_szn(r,allh,t,allszn)           "hour with highest load within each szn"

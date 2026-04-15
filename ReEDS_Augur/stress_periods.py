@@ -221,7 +221,10 @@ def get_eue_sorted_periods(sw, t, iteration):
         index_col=['level', 'metric', 'region'],
     ).squeeze(1)
 
-    ### Load this year's stress periods so we don't duplicate
+    #%% Load this year's rep and stress periods so we don't duplicate
+    repperiods = pd.read_csv(
+        os.path.join(sw['casedir'], 'inputs_case', 'rep', 'set_szn.csv')
+    ).squeeze(1).tolist()
     stressperiods_this_iteration = pd.read_csv(
         os.path.join(
             sw['casedir'], 'inputs_case', f'stress{t}i{iteration}', 'period_szn.csv')
@@ -265,6 +268,12 @@ def get_eue_sorted_periods(sw, t, iteration):
                     ## Don't repeat existing stress periods
                     & ~(_eue_sorted_periods[criterion].index.isin(
                         stressperiods_this_iteration.actual_period))
+                    ## Don't repeat representative periods. There is a risk here
+                    ## that a period would be stressful with the 1+PRM load multiplier
+                    ## (as modeled with stress periods) but not without it (as modeled
+                    ## with representative periods), but only keeping one version of each
+                    ## day helps with inter-season storage and ramping.
+                    & ~(_eue_sorted_periods[criterion].index.isin(repperiods))
                 ]
                 ## Don't add dates more than once
                 .drop_duplicates(subset=['y','m','d'])
