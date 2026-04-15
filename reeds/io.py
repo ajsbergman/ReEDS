@@ -1676,6 +1676,40 @@ def write_to_h5(
                 )
 
 
+def write_input_to_h5(
+    df,
+    key,
+    case,
+    comment='',
+    gamstype='parameter',
+    rename={'t':'allt', 'h':'allh'},
+    **kwargs,
+):
+    """
+    """
+    ### Parse inputs
+    assert gamstype.lower() in ['set', 'parameter']
+
+    if os.path.basepath(case) == 'inputs_case':
+        h5path = os.path.join(case, 'inputs.h5')
+    elif case.endswith('.h5'):
+        h5path = case
+    else:
+        h5path = os.path.join(case, 'inputs_case', 'inputs.h5')
+
+    ### Write record to h5 file
+    write_to_h5(
+        df,
+        key,
+        h5path,
+        attrs={
+            'comment': comment,
+            'gamstype': gamstype.lower(),
+        },
+        **kwargs,
+    )
+
+
 def write_output_to_h5(
     df,
     key,
