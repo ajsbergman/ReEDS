@@ -73,7 +73,7 @@ if(Sw_Upgrades = 1,
 emit_r_tc(r,t)$tmodel_new(t) = 
 
 * Emissions from generation
-    sum{(i,v,h)$[valgen(i,v,r,t)$h_rep(h)],
+    sum{(i,v,h)$[valgen(i,v,r,t)],
         hours(h) * emit_rate("process","CO2",i,v,r,t)
         * (GEN.l(i,v,r,h,t)
            + CCSFLEX_POW.l(i,v,r,h,t)$[ccsflex(i)$(Sw_CCSFLEX_BYP OR Sw_CCSFLEX_STO OR Sw_CCSFLEX_DAC)])
@@ -81,7 +81,7 @@ emit_r_tc(r,t)$tmodel_new(t) =
 
 * Plus emissions produced via production activities (SMR, SMR-CCS, DAC)
 * The "production" of negative CO2 emissions via DAC is also included here
-    + sum{(p,i,v,h)$[valcap(i,v,r,t)$i_p(i,p)$h_rep(h)],
+    + sum{(p,i,v,h)$[valcap(i,v,r,t)$i_p(i,p)],
           hours(h) * prod_emit_rate("process","CO2",i,t)
           * PRODUCE.l(p,i,v,r,h,t)
          }
@@ -90,11 +90,11 @@ emit_r_tc(r,t)$tmodel_new(t) =
 *capture = capture per energy used by the ccs system * CCS energy
 
 * Flexible CCS - bypass
-    - (sum{(i,v,h)$[valgen(i,v,r,t)$ccsflex_byp(i)$h_rep(h)],
+    - (sum{(i,v,h)$[valgen(i,v,r,t)$ccsflex_byp(i)],
         ccsflex_co2eff(i,t) * hours(h) * CCSFLEX_POW.l(i,v,r,h,t) })$Sw_CCSFLEX_BYP
 
 * Flexible CCS - storage
-    - (sum{(i,v,h)$[valgen(i,v,r,t)$ccsflex_sto(i)$h_rep(h)],
+    - (sum{(i,v,h)$[valgen(i,v,r,t)$ccsflex_sto(i)],
         ccsflex_co2eff(i,t) * hours(h) * CCSFLEX_POWREQ.l(i,v,r,h,t) })$Sw_CCSFLEX_STO
 ;
 

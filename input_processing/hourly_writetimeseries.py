@@ -89,6 +89,10 @@ def make_8760_map(period_szn, sw):
     return hmap_allyrs, hmap_myr
 
 
+def getyear(timestamp):
+    return timestamp.strip('sy')[:4]
+
+
 def get_ccseason_peaks_hourly(load, sw, inputs_case, hierarchy, h2ccseason, val_r_all):
     ### Aggregate demand by GSw_PRM_hierarchy_level
     if sw["GSw_PRM_hierarchy_level"] == "r":
@@ -397,7 +401,7 @@ def main(sw, reeds_path, inputs_case, periodtype='rep', make_plots=1, logging=Tr
     """ """
     # #%% Settings for testing
     # reeds_path = os.path.realpath(os.path.join(os.path.dirname(__file__),'..'))
-    # inputs_case = os.path.join(reeds_path, 'runs', 'v20250313_chunkM0_Pacific_r4mean_s4max', 'inputs_case')
+    # inputs_case = os.path.join(reeds_path, 'runs', 'v20250609_7yrM2_Pacific_wFull', 'inputs_case')
     # sw = reeds.io.get_switches(inputs_case)
     # periodtype = 'stress2010i0'
     # periodtype = 'rep'
@@ -469,6 +473,8 @@ def main(sw, reeds_path, inputs_case, periodtype='rep', make_plots=1, logging=Tr
             'nexth': ['*h','h'],
             'frac_h_ccseason_weights': ['*h','ccseason','weight'],
             'frac_h_quarter_weights': ['*h','quarter','weight'],
+            'h_actualszn': ['*h','actual_period'],
+            'actualszn2allszn': ['*actualszn','allszn'],
             'h_szn_start': ['*season','h'],
             'h_szn_end': ['*season','h'],
             'hour_szn_group': ['*h','hh'],
@@ -566,17 +572,13 @@ def main(sw, reeds_path, inputs_case, periodtype='rep', make_plots=1, logging=Tr
 
     # %%### Create the temporal sets used by ReEDS
     ### Calculate number of hours represented by each timeslice
-    hours = (
-        hmap_myr.groupby('h').season.count().rename('numhours')
-        / (len(sw['GSw_HourlyWeatherYears']) if not periodtype.startswith('stress') else 1))
-    ## Stress period hours are scaled to sum to 6 hours, making 8766 hours (365.25 days) per year
-    if periodtype.startswith('stress'):
-        hours = hours / hours.sum() * 6
+    ### (total (rep + stress) is scaled to 8760 in d1_temporal_params.gms)
+    hours = hmap_myr.groupby('h').season.count().rename('numhours')
     ### Make sure it lines up
     if not periodtype.startswith('stress'):
         assert int(np.around(hours.sum(), 0)) % 8760 == 0
     else:
-        assert np.around(hours.sum(), 0) == 6
+        assert int(np.around(hours.sum(), 0)) % 24 == 0
 
     # create the timeslice-to-season and timeslice-to-ccseason mappings
     h_szn = hmap_myr[['h','season']].drop_duplicates().reset_index(drop=True)
@@ -643,7 +645,6 @@ def main(sw, reeds_path, inputs_case, periodtype='rep', make_plots=1, logging=Tr
                 frac_h_weights[season].groupby(["h", season])["season"].count()
                 ## Normalize by the total number of hours per timeslice
                 / hours
-                / len(sw["GSw_HourlyWeatherYears"])
             ).rename("weight")
             frac_h_weights[season] = frac_h_weights[season].reset_index()
     else:
@@ -679,7 +680,6 @@ def main(sw, reeds_path, inputs_case, periodtype='rep', make_plots=1, logging=Tr
             frac_h_month_weights.groupby(["h", "month"]).season.count()
             ## Normalize by the total number of hours per timeslice
             / hours
-            / len(sw["GSw_HourlyWeatherYears"])
         ).rename("weight")
         frac_h_month_weights = frac_h_month_weights.reset_index()
     else:
@@ -713,7 +713,7 @@ def main(sw, reeds_path, inputs_case, periodtype='rep', make_plots=1, logging=Tr
     df = (
         df.assign(frac_exports=df.quarter.map(can_exports_szn_frac))
         .assign(season=df.h.map(h_szn.set_index("h").season))
-        .assign(hours=df.h.map(hours))
+        .assign(hours=df.h.map(hours) / len(sw.GSw_HourlyWeatherYears))
     )
     df["quarter_hours"] = df.hours * df.weight
     df["hours_per_quarter"] = df.quarter.map(quarters.value_counts())
@@ -789,7 +789,20 @@ def main(sw, reeds_path, inputs_case, periodtype='rep', make_plots=1, logging=Tr
         np.ravel([[c]*GSw_HourlyChunkLength for c in outchunks_allyrs])
     ))
 
-    # %%### h_dt_szn for Augur
+    set_h = hset.map(chunkmap).drop_duplicates()
+
+    outchunks_allyrs = hmap_allyrs.actual_h[GSw_HourlyChunkLength-1::GSw_HourlyChunkLength]
+    chunkmap_allyrs = dict(zip(
+        hmap_allyrs.actual_h.values,
+        np.ravel([[c]*GSw_HourlyChunkLength for c in outchunks_allyrs])
+    ))
+    ## include both rep and stress
+    chunkmap_allyrs = {
+        **chunkmap_allyrs,
+        **{k.strip('s'):v.strip('s') for k,v in chunkmap_allyrs.items()}
+    }
+
+    #%%### h_dt_szn for Augur
     if not len(hmap_myr) % 8760:
         ## Important: When modeling a single weather year, rep periods in the
         ## h_dt_szn table are just the single-year periods concatenated n times.
@@ -823,37 +836,6 @@ def main(sw, reeds_path, inputs_case, periodtype='rep', make_plots=1, logging=Tr
     ### End hour is the highest-numbered h in each season
     szn2endh = hmap_myr.drop_duplicates("season", keep="last").set_index("season").h
 
-    ### next timeslice
-    nexth_actualszn = (
-        hmap_myr.assign(h=hmap_myr.h.map(chunkmap))
-        [[
-            (
-                'season'
-                if ((sw.GSw_HourlyType == 'year') and (not periodtype.startswith('stress')))
-                else 'actual_period'
-            ),
-            'h',
-        ]]
-        .drop_duplicates()
-        .rename(columns={"actual_period": "allszn", "season": "allszn"})
-    ).copy()
-    ## Roll to make a lookup table for GAMS
-    nexth_actualszn["allsznn"] = np.roll(nexth_actualszn["allszn"], -1)
-    nexth_actualszn["hh"] = np.roll(nexth_actualszn["h"], -1)
-
-    ### h-to-actual-period mapping for inter-period storage
-    h_actualszn = (
-        hmap_myr.assign(h=hmap_myr.h.map(chunkmap))
-        [[
-            'h',
-            (
-                'season'
-                if ((sw.GSw_HourlyType == 'year') and (not periodtype.startswith('stress')))
-                else 'actual_period'
-            )
-        ]]
-        .drop_duplicates())
-    
     ### The following four sets are used for the inter-day linkage constraints for energy storage
     ### Inter-day linkage only applicable to rep day and wek scenarios, so we only need to calculate these sets for
     ### rep day and wek scenarios, otherwise they are empty
@@ -920,20 +902,6 @@ def main(sw, reeds_path, inputs_case, periodtype='rep', make_plots=1, logging=Tr
         nextpartition = pd.DataFrame(columns=['actual_period', 'next_actual_period'])
         h_preh = pd.DataFrame(columns=['h', 'preh'])
 
-    ### Number of times one h follows another h (for startup/ramping costs)
-    numhours_nexth = (
-        hmap_myr.assign(h=hmap_myr.h.map(chunkmap))[
-            ["actual_period", "h"]
-        ].drop_duplicates()
-    ).copy()
-    ## Roll to make a lookup table for GAMS
-    numhours_nexth = (
-        numhours_nexth.assign(nexth=np.roll(numhours_nexth["h"], -1))
-        .groupby(["h", "nexth"])
-        .count()
-        .reset_index()
-        .rename(columns={"nexth": "hh", "actual_period": "hours"})
-    )
 
     #%%### Adjacent hour linkages (including links across adjacent stress periods)
     if not periodtype.startswith('stress'):
@@ -993,7 +961,156 @@ def main(sw, reeds_path, inputs_case, periodtype='rep', make_plots=1, logging=Tr
         chunkmap_allyrs[k]: chunkmap_allyrs[v] for k,v in nexth_unchunked.items()
     }).rename_axis('*h').rename('h')
 
-    # %%##########################################
+
+    #%%### Chronology for interseasonal storage
+    ### Note: We drop stress periods if they overlap rep periods
+    if not periodtype.startswith('stress'):
+        ###### Actual-to-rep/stress period map
+        actualszn2allszn = (
+            period_szn.set_index('actual_period').rep_period
+            .rename('allszn').rename_axis('actualszn')
+        )
+
+        ### next timeslice
+        nexth_actualszn = (
+            hmap_myr.assign(h=hmap_myr.h.map(chunkmap))
+            [[
+                ('season' if (
+                    (sw.GSw_HourlyType == 'year')
+                    and (not periodtype.startswith('stress'))
+                ) else 'actual_period'),
+                'h'
+            ]]
+            .drop_duplicates()
+            .rename(columns={'actual_period':'allszn', 'season':'allszn'})
+        ).copy()
+        ## Roll to make a lookup table for GAMS
+        nexth_actualszn['allsznn'] = np.roll(nexth_actualszn['allszn'], -1)
+        nexth_actualszn['hh'] = np.roll(nexth_actualszn['h'], -1)
+
+        ### h-to-actual-period mapping
+        h_actualszn = (
+            hmap_myr.assign(h=hmap_myr.h.map(chunkmap))
+            [[
+                'h',
+                ('season' if (
+                    (sw.GSw_HourlyType == 'year')
+                    and (not periodtype.startswith('stress')))
+                else 'actual_period'
+            )]]
+            .drop_duplicates()
+        )
+
+        ### Number of times one h follows another h (for startup/ramping costs)
+        numhours_nexth = (
+            hmap_myr.assign(h=hmap_myr.h.map(chunkmap))
+            [['actual_period','h']].drop_duplicates()).copy()
+        ## Roll to make a lookup table for GAMS
+        numhours_nexth = (
+            numhours_nexth.assign(nexth=np.roll(numhours_nexth['h'], -1))
+            .groupby(['h','nexth']).count()
+            .reset_index().rename(columns={'nexth':'hh','actual_period':'hours'})
+        )
+
+    else:
+        ### TODO: Clean this up (only make actualszn2h and slot in stress periods once)
+        ###### Actual-to-rep/stress period map
+        ### Get the rep-to-actual period map, which we already have
+        period_szn_rep = pd.read_csv(
+            os.path.join(inputs_case, 'rep', 'period_szn.csv')
+        )
+        actualszn2allszn = (
+            period_szn_rep.set_index('actual_period').rep_period
+            .rename('allszn').rename_axis('actualszn')
+        )
+        ### Slot in the stress periods
+        actualszn2allszn.loc[
+            set_szn.squeeze(1).map(lambda x: x.strip('s'))
+        ] = set_szn.squeeze(1).values
+        ### Make sure it worked
+        assert len(actualszn2allszn.unique()) == len(set_szn) + len(period_szn_rep.rep_period.unique())
+        assert len(actualszn2allszn.loc[actualszn2allszn.str.startswith('s')]) == len(set_szn)
+
+        ###### h-to-actual-period map
+        hmap_allyrs_rep = pd.read_csv(
+            os.path.join(inputs_case, 'rep', 'hmap_allyrs.csv'),
+        )
+        h_actualszn = (
+            hmap_allyrs_rep.assign(h=hmap_allyrs_rep.h.map(chunkmap_allyrs))
+            [['h', 'actual_period']]
+            .drop_duplicates()
+            .set_index('actual_period').h
+        )
+        ### Slot in the stress periods
+        h_actualszn.loc[
+            set_szn.squeeze(1).map(lambda x: x.strip('s'))
+        ] = set_h.sort_values().values
+        ### Reshape for ReEDS
+        h_actualszn = h_actualszn.reset_index()[['h','actual_period']].copy()
+        ### Make sure it worked
+        assert len(h_actualszn.h.unique()) == len(set_h) + len(hmap_allyrs_rep.h.unique())
+        assert len(h_actualszn.loc[h_actualszn.h.str.startswith('s')]) == len(set_h)
+
+        ###### Next timeslice
+        nexth_actualszn = (
+            hmap_allyrs_rep.assign(h=hmap_allyrs_rep.h.map(chunkmap_allyrs))
+            [['actual_period', 'h']]
+            .drop_duplicates()
+            .rename(columns={'actual_period':'actualszn'})
+            .set_index('actualszn').h
+        )
+        ## Slot in the stress periods
+        nexth_actualszn.loc[
+            set_szn.squeeze(1).map(lambda x: x.strip('s'))
+        ] = set_h.sort_values().values
+        ## Roll to make a lookup table for GAMS
+        nexth_actualszn = nexth_actualszn.reset_index()
+        nexth_actualszn['actualsznn'] = np.roll(nexth_actualszn['actualszn'], -1)
+        nexth_actualszn['hh'] = np.roll(nexth_actualszn['h'], -1)
+        ### Make sure it worked
+        assert nexth_actualszn.loc[nexth_actualszn.actualszn.str.startswith('s')].shape[0] == 0
+        for col in ['h','hh']:
+            assert (
+                nexth_actualszn.loc[nexth_actualszn[col].str.startswith('s')].shape[0]
+                == set_h.shape[0]
+            )
+        ### Loop to single year if necessary
+        if sw['GSw_H2_WrapDuration'] == 'year':
+            nexth_actualszn['year1'] = nexth_actualszn.actualszn.map(getyear)
+            nexth_actualszn['year2'] = nexth_actualszn.actualsznn.map(getyear)
+            nexth_actualszn.loc[
+                nexth_actualszn.year1 != nexth_actualszn.year2,
+                ['actualsznn','hh']
+            ] = nexth_actualszn.drop_duplicates('year1', keep='first')[['actualszn','h']].values
+            ### Make sure it worked
+            nexth_actualszn['year1'] = nexth_actualszn.actualszn.map(getyear)
+            nexth_actualszn['year2'] = nexth_actualszn.actualsznn.map(getyear)
+            assert not len(nexth_actualszn.loc[nexth_actualszn.year1 != nexth_actualszn.year2])
+            nexth_actualszn.drop(columns=['year1','year2'], inplace=True)
+
+        ###### Number of times one h follows another h (for startup/ramping costs)
+        numhours_nexth = (
+            nexth_actualszn
+            .apply(lambda row: f'{row.h}|{row.hh}', axis=1).value_counts()
+            .rename('hours')
+            .to_frame()
+        )
+        numhours_nexth['h'] = numhours_nexth.index.map(lambda x: x.split('|')[0])
+        numhours_nexth['hh'] = numhours_nexth.index.map(lambda x: x.split('|')[1])
+        numhours_nexth = (
+            numhours_nexth[['h','hh','hours']]
+            .reset_index(drop=True)
+            .sort_values(['h','hh'])
+        )
+        ### Make sure it worked
+        for col in ['h','hh']:
+            assert (
+                numhours_nexth.loc[numhours_nexth[col].str.startswith('s')].shape[0]
+                == set_h.shape[0]
+            )
+
+
+    #%%##########################################
     #    -- Hour groups for eq_minloading --    #
     #############################################
 
@@ -1392,7 +1509,9 @@ def main(sw, reeds_path, inputs_case, periodtype='rep', make_plots=1, logging=Tr
         ## next partition
         'nextpartition': [nextpartition, False, False],
         ## mapping from one timeslice to the next for actual periods
-        "nexth_actualszn": [nexth_actualszn, False, False],
+        'nexth_actualszn': [nexth_actualszn, False, False],
+        ## mapping from actual periods to rep/stress period
+        'actualszn2allszn': [actualszn2allszn.reset_index(), False, False],
         ## first timeslice in season (szn,h)
         "h_szn_start": [szn2starth.map(chunkmap).reset_index(), False, False],
         ## last timeslice in season (szn,h)

@@ -95,8 +95,8 @@ planned_outage(i),fraction,average scheduled outage rate (h-weighted) by technol
 "h2_ptc_generation(i,v,r,allh,t)",MWh,generation of clean electricity for electrolyzers receiving the hydrogen production tax credit (derived from CREDIT_H2PTC variable),,,
 "h2_ptc_marginal_region(h2ptcreg,t)",$2004/MWh,marginal cost of producing an Energy Attribute Credit with regional and annual matching,,,
 "h2_ptc_marginal_region_hour(h2ptcreg,allh,t)",$2004/MWh,"marginal cost of producing an Energy Attribute Credit with regional, hourly and annual matching",,,
-"h2_storage_level(h2_stor,r,actualszn,allh,t)",metric tons,H2 storage level by timeslice,,,
-"h2_storage_level_szn(h2_stor,r,actualszn,t)",metric tons,H2 storage level by season,,,
+"h2_storage_level(h2_stor,h2r,actualszn,allh,t)",metric tons,H2 storage level by timeslice,,,
+"h2_storage_level_szn(h2_stor,h2r,actualszn,t)",metric tons,H2 storage level by season,,,
 "h2_storage_cap(h2_stor,r,t)",metric tons,total H2 storage capacity by BA and type,,,
 "h2_trans_cap(r,rr,t)",metric tons/hour,H2 pipeline capacity between BAs,,,
 "h2_trans_flow(r,rr,allh,t)",metric tons/hour,net flow of H2 between BAs,,,
@@ -256,6 +256,7 @@ emit_rate,,,,,1
 fuel_price,,,,,1
 fuel2tech,,,,,1
 h_szn,,,,,1
+h_stress_t,,,,,1
 heat_rate,,,,,1
 hierarchy,,,,,1
 hours,,,,,1

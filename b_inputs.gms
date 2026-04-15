@@ -1333,6 +1333,15 @@ alias(%GSw_LoadSiteReg%, loadsitereg) ;
 set r_loadsitereg(r,loadsitereg) "Mapping from model zones to loadsite regions" ;
 r_loadsitereg(r,%GSw_LoadSiteReg%) = r_%GSw_LoadSiteReg%(r,%GSw_LoadSiteReg%) ;
 
+* H2 balance regions
+alias(%GSw_H2_BalanceLevel%, h2r) ;
+set r_h2r(r,h2r) "Mapping from model zones to H2 balance regions" ;
+$ifthen.h2r %GSw_H2_BalanceLevel% == 'r'
+    r_h2r(r,h2r)$sameas(r,h2r) = yes ;
+$else.h2r
+  r_h2r(r,h2r)$r_%GSw_H2_BalanceLevel%(r,h2r) = yes ;
+$endif.h2r
+
 
 *================================
 *sets that define model boundaries
@@ -4094,6 +4103,8 @@ $include inputs_case%ds%h2_storage_rb.csv
 $offdelim
 $onlisting
 / ;
+set h2_stor_h2r(h2_stor,h2r) "viable H2 balance regions for H2 storage techs" ;
+h2_stor_h2r(h2_stor,h2r)$sum{r$r_h2r(r,h2r), h2_stor_r(h2_stor,r) } = yes ;
 
 
 parameter cost_h2_transport_cap(r,rr,allt)          "--$/(metric ton/hour)-- capital cost of H2 inter-BA transport pipeline per metric ton-hour"
@@ -6645,7 +6656,8 @@ Set
     starting_hour_nowrap(allh)             "Flag for whether allh is the first chronological hour by day type"
     final_hour(allh)                       "Flag for whether allh is the last chronological hour in a day type" 
     final_hour_nowrap(allh)                "Flag for whether allh is the last chronological hour in a day type"
-    nextszn(allszn,allszn)                 "Mapping between one actual period (allszn) and the next"
+    nextszn(actualszn,actualszn)           "Mapping between one actual period (actualszn) and the next"
+    actualszn2allszn(actualszn,allszn)     "Mapping from actual periods to rep/stress periods"
     nextpartition(allszn,allszn)           "Mapping between one partition (allszn) and the next"
 * Peak demand
     maxload_szn(r,allh,t,allszn)           "hour with highest load within each szn"

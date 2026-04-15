@@ -61,7 +61,11 @@ def run_reeds(casepath, t, onlygams=False, iteration=0):
         ### Run GAMS LP
         result = subprocess.run(cmd_gams, shell=True)
         if result.returncode:
-            raise Exception(f'd_solveoneyear.gms failed with return code {result.returncode}')
+            err = (
+                f'd_solveoneyear.gms failed with return code {result.returncode} '
+                f'in {t} iteration {iteration}'
+            )
+            raise Exception(err)
 
         #%% Add solve time to run metadata
         try:

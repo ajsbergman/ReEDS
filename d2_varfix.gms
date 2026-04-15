@@ -76,7 +76,7 @@ PRMTRADE.fx(r,rr,trtype,ccseason,tfix)$[routes(r,rr,trtype,tfix)$routes_prm(r,rr
 OPRES.fx(ortype,i,v,r,h,tfix)$[Sw_OpRes$valgen(i,v,r,tfix)$reserve_frac(i,ortype)$opres_h(h)] = OPRES.l(ortype,i,v,r,h,tfix) ;
 
 * variable fuel amounts
-GASUSED.fx(cendiv,gb,h,tfix)$[(Sw_GasCurve=0)$h_rep(h)] = GASUSED.l(cendiv,gb,h,tfix) ;
+GASUSED.fx(cendiv,gb,h,tfix)$[(Sw_GasCurve=0)] = GASUSED.l(cendiv,gb,h,tfix) ;
 VGASBINQ_NATIONAL.fx(fuelbin,tfix)$[Sw_GasCurve=1] = VGASBINQ_NATIONAL.l(fuelbin,tfix) ;
 VGASBINQ_REGIONAL.fx(fuelbin,cendiv,tfix)$[Sw_GasCurve=1] = VGASBINQ_REGIONAL.l(fuelbin,cendiv,tfix) ;
 BIOUSED.fx(bioclass,r,tfix)$[sum{(i,v)$(bio(i) or cofire(i)), valgen(i,v,r,tfix) }] = BIOUSED.l(bioclass,r,tfix) ;
@@ -107,15 +107,15 @@ WAT.fx(i,v,w,r,h,tfix)$[i_water(i)$valgen(i,v,r,tfix)$Sw_WaterMain] = WAT.l(i,v,
 WATER_CAPACITY_LIMIT_SLACK.fx(wst,r,tfix)$[Sw_WaterMain$Sw_WaterCapacity] = WATER_CAPACITY_LIMIT_SLACK.l(wst,r,tfix) ;
 
 *H2 and DAC production variables
-PRODUCE.fx(p,i,v,r,h,tfix)$[consume(i)$i_p(i,p)$valcap(i,v,r,tfix)$h_rep(h)$Sw_Prod] = PRODUCE.l(p,i,v,r,h,tfix) ;
+PRODUCE.fx(p,i,v,r,h,tfix)$[consume(i)$i_p(i,p)$valcap(i,v,r,tfix)$Sw_Prod] = PRODUCE.l(p,i,v,r,h,tfix) ;
 H2_FLOW.fx(r,rr,h,tfix)$[h2_routes(r,rr)$(Sw_H2 = 2)] = H2_FLOW.l(r,rr,h,tfix) ;
 H2_TRANSPORT_INV.fx(r,rr,tfix)$[h2_routes(r,rr)$(Sw_H2 = 2)] = H2_TRANSPORT_INV.l(r,rr,tfix) ;
 H2_STOR_INV.fx(h2_stor,r,tfix)$[(h2_stor_r(h2_stor,r))$(Sw_H2=2)] = H2_STOR_INV.l(h2_stor,r,tfix) ;
 H2_STOR_CAP.fx(h2_stor,r,tfix)$[(h2_stor_r(h2_stor,r))$(Sw_H2=2)] = H2_STOR_CAP.l(h2_stor,r,tfix) ;
 H2_STOR_IN.fx(h2_stor,r,h,tfix)$[(h2_stor_r(h2_stor,r))$(Sw_H2=2)] = H2_STOR_IN.l(h2_stor,r,h,tfix) ;
 H2_STOR_OUT.fx(h2_stor,r,h,tfix)$[(h2_stor_r(h2_stor,r))$(Sw_H2=2)] = H2_STOR_OUT.l(h2_stor,r,h,tfix) ;
-H2_STOR_LEVEL.fx(h2_stor,r,actualszn,h,tfix)$[(h2_stor_r(h2_stor,r))$(Sw_H2=2)$(Sw_H2_StorTimestep=2)] = H2_STOR_LEVEL.l(h2_stor,r,actualszn,h,tfix) ;
-H2_STOR_LEVEL_SZN.fx(h2_stor,r,actualszn,tfix)$[(h2_stor_r(h2_stor,r))$(Sw_H2=2)$(Sw_H2_StorTimestep=1)] = H2_STOR_LEVEL_SZN.l(h2_stor,r,actualszn,tfix) ;
+H2_STOR_LEVEL.fx(h2_stor,h2r,actualszn,h,tfix)$[(h2_stor_h2r(h2_stor,h2r))$(Sw_H2=2)$(Sw_H2_StorTimestep=2)] = H2_STOR_LEVEL.l(h2_stor,h2r,actualszn,h,tfix) ;
+H2_STOR_LEVEL_SZN.fx(h2_stor,h2r,actualszn,tfix)$[(h2_stor_h2r(h2_stor,h2r))$(Sw_H2=2)$(Sw_H2_StorTimestep=1)] = H2_STOR_LEVEL_SZN.l(h2_stor,h2r,actualszn,tfix) ;
 
 *CO2-related variables
 CO2_CAPTURED.fx(r,h,tfix)$Sw_CO2_Detail = CO2_CAPTURED.l(r,h,tfix) ;

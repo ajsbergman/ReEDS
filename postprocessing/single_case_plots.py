@@ -405,7 +405,7 @@ for label, plottechs in subtechs.items():
 try:
     plt.close()
     f,ax = reedsplots.plot_dispatch_weightwidth(case=case)
-    savename = f'plot_dispatch-weightwidth-{sw.endyear}.png'
+    savename = f'plot_dispatch-weightwidth-{year}.png'
     if write:
         plt.savefig(os.path.join(savepath, savename))
     if interactive:
@@ -489,7 +489,7 @@ try:
         plt.close()
         f,ax = reedsplots.map_h2_capacity(
             case=case, year=year, cmap=cmap, wscale_h2=wscale_h2)
-        savename = f'map_h2_capacity-{sw.endyear}.png'
+        savename = f'map_h2_capacity-{year}.png'
         if write:
             plt.savefig(os.path.join(savepath, savename))
         if interactive:

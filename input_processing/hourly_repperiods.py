@@ -718,6 +718,7 @@ def main(
 
 
     #%%### Identify a (potentially different) collection of periods to use as initial stress periods
+    ### TODO: Drop seed stress periods that overlap rep periods
     if ((not int(sw.GSw_PRM_CapCredit))
         and (sw['GSw_PRM_StressSeedMinRElevel'].lower() not in ['false','none'])
     ):
@@ -816,6 +817,26 @@ def main(
         period_szn_write['season'].drop_duplicates() if sw['GSw_HourlyType'] == 'year'
         else period_szn_write['actual_period'])
 
+    nextszn = pd.Series(
+        index=set_actualszn, data=np.roll(set_actualszn.values, -1), name='actualszn',
+    ).rename_axis('*actualszn')
+    if sw['GSw_H2_WrapDuration'] == 'year':
+        toreplace = [('year1','*actualszn'), ('year2','actualszn')]
+        def getyear(x):
+            return x.strip('sy')[:4]
+        nextszn = nextszn.reset_index()
+        for newcol, basecol in toreplace:
+            nextszn[newcol] = nextszn[basecol].map(getyear)
+        nextszn.loc[
+            nextszn.year1 != nextszn.year2,
+            ['actualszn']
+        ] = nextszn.drop_duplicates('year1', keep='first')['*actualszn'].values
+        ## Make sure it worked
+        for newcol, basecol in toreplace:
+            nextszn[newcol] = nextszn[basecol].map(getyear)
+        assert not len(nextszn.loc[nextszn.year1 != nextszn.year2])
+        nextszn = nextszn.set_index('*actualszn').actualszn
+
     stress_period_szn = (
         stressperiods_write.assign(rep_period=stressperiods_write.szn)
         [['rep_period','year','yperiod','szn']].rename(columns={'szn':'actual_period'})
@@ -875,6 +896,8 @@ def main(
 
     set_allh.to_csv(
         os.path.join(inputs_case, 'set_allh.csv'), header=False, index=False)
+
+    nextszn.to_csv(os.path.join(inputs_case, 'nextszn.csv'))
 
     #%% Write the seed stress periods to use for the PRM constraint
     if 'user' in sw.GSw_PRM_StressModel:
