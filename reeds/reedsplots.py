@@ -3242,14 +3242,15 @@ def map_zone_capacity(
         axbounds = {
             ## left, bottom, width, height
             'Trans [TW-mi]': [0.92, 0.62, 0.1, 0.17],
-            'CO2 [MMT]': [0.92, 0.41, 0.1, 0.17],
+            'CO2 [MMT/y]': [0.92, 0.41, 0.1, 0.17],
             'Cap [GW]': [0.83, 0.2, 0.1, 0.17],
-            'Gen [TWh]': [1.0, 0.2, 0.1, 0.17],
+            'Gen [TWh/y]': [1.0, 0.2, 0.1, 0.17],
         }
+        nicelabels = {'CO2 [MMT/y]': 'CO'+r'$\bf{_2}$'+' [MMT/y]'}
         eax = {}
         for a in axbounds:
             eax[a] = f.add_axes(axbounds[a])
-            eax[a].set_ylabel(a)
+            eax[a].set_ylabel(nicelabels.get(a,a))
             plots.despine(eax[a])
             eax[a].xaxis.set_major_locator(mpl.ticker.MultipleLocator(10))
             eax[a].xaxis.set_minor_locator(mpl.ticker.AutoMinorLocator(2))
@@ -3278,9 +3279,9 @@ def map_zone_capacity(
         )
         alltechs.update(dfgen.columns)
         plots.stackbar(
-            df=dfgen, ax=eax['Gen [TWh]'],
+            df=dfgen, ax=eax['Gen [TWh/y]'],
             colors=bokehcolors, width=yearstep, net=False)
-        eax['Gen [TWh]'].axhline(0, c='k', ls=':', lw=0.75)
+        eax['Gen [TWh/y]'].axhline(0, c='k', ls=':', lw=0.75)
 
         ### Side plot of transmission capacity over time
         dftrans = dfin_trans.pivot(
@@ -3309,10 +3310,10 @@ def map_zone_capacity(
             .loc[2020:]
         )
         plots.stackbar(
-            df=dfco2, ax=eax['CO2 [MMT]'],
+            df=dfco2, ax=eax['CO2 [MMT/y]'],
             colors=bokehcolors, width=yearstep, net=True,
             markerfacecolor=(1,1,1,0.8), markersize=4.5)
-        eax['CO2 [MMT]'].axhline(0, c='k', ls=':', lw=0.75)
+        eax['CO2 [MMT/y]'].axhline(0, c='k', ls=':', lw=0.75)
 
         plt.draw()
         for a in eax:

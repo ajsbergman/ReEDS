@@ -33,41 +33,66 @@
 #    see the 'transmission_1' example in this file.
 
 
-### ---------------------------------------------------###
-### --- Distributions for tech trajectories
-### ---------------------------------------------------###
+###### Generation capex cost ######
+### Uncorrelated costs between technologies
+- name: gas_ccs_flat
+  assignments_list:
+    - plantchar_gas_ccs: [gas-ccs_ATB_2024_conservative, gas-ccs_ATB_2024_advanced]
+  dist: dirichlet
+  dist_params: [1, 1]
+  weight_r: country
 
-# --- Individual technology cost trajectories ---
-# These distributions apply independently to each technology
-- name: gas
+- name: gas_ccs_tri
   assignments_list:
     - plantchar_gas_ccs: [gas-ccs_ATB_2024_conservative, gas-ccs_ATB_2024_moderate, gas-ccs_ATB_2024_advanced]
   dist: dirichlet
   dist_params: [1, 1, 1]
   weight_r: country
 
-- name: coal
+- name: coal_ccs_flat
+  assignments_list:
+    - plantchar_coal_ccs: [coal-ccs_ATB_2024_conservative, coal-ccs_ATB_2024_advanced]
+  dist: dirichlet
+  dist_params: [1, 1]
+  weight_r: country
+
+- name: coal_ccs_tri
   assignments_list:
     - plantchar_coal_ccs: [coal-ccs_ATB_2024_conservative, coal-ccs_ATB_2024_moderate, coal-ccs_ATB_2024_advanced]
   dist: dirichlet
   dist_params: [1, 1, 1]
   weight_r: country
 
-- name: geo
+- name: geo_flat
+  assignments_list:
+    - plantchar_geo: [geo_ATB_2024_conservative, geo_ATB_2024_advanced]
+  dist: dirichlet
+  dist_params: [1, 1]
+  weight_r: country
+
+- name: geo_tri
   assignments_list:
     - plantchar_geo: [geo_ATB_2024_conservative, geo_ATB_2024_moderate, geo_ATB_2024_advanced]
   dist: dirichlet
   dist_params: [1, 1, 1]
   weight_r: country
 
-- name: hydro
+- name: hydro_tri
   assignments_list: 
     - plantchar_hydro: [hydro_ATB_2019_constant, hydro_ATB_2019_mid, hydro_ATB_2019_low]
   dist: dirichlet
   dist_params: [1, 1, 1]
   weight_r: country
 
-- name: nuclear
+- name: nuclear_flat
+  assignments_list:
+    - plantchar_nuclear: [nuclear_ATB_2024_conservative, nuclear_ATB_2024_advanced]
+    - plantchar_nuclear_smr: [nuclear-smr_ATB_2024_conservative, nuclear-smr_ATB_2024_advanced]
+  dist: dirichlet
+  dist_params: [1, 1]
+  weight_r: country
+
+- name: nuclear_tri
   assignments_list:
     - plantchar_nuclear: [nuclear_ATB_2024_conservative, nuclear_ATB_2024_moderate, nuclear_ATB_2024_advanced]
     - plantchar_nuclear_smr: [nuclear-smr_ATB_2024_conservative, nuclear-smr_ATB_2024_moderate, nuclear-smr_ATB_2024_advanced]
@@ -75,48 +100,67 @@
   dist_params: [1, 1, 1]
   weight_r: country
 
-- name: battery
+- name: battery_flat
+  assignments_list:
+    - plantchar_battery: [battery_ATB_2024_conservative, battery_ATB_2024_advanced]
+  dist: dirichlet
+  dist_params: [1, 1]
+  weight_r: country
+
+- name: battery_tri
   assignments_list:
     - plantchar_battery: [battery_ATB_2024_conservative, battery_ATB_2024_moderate, battery_ATB_2024_advanced]
   dist: dirichlet
   dist_params: [1, 1, 1]
   weight_r: country
 
-- name: upv
+- name: upv_flat
+  assignments_list:
+    - plantchar_upv: [upv_ATB_2024_conservative, upv_ATB_2024_advanced]
+  dist: dirichlet
+  dist_params: [1, 1]
+  weight_r: country
+
+- name: upv_tri
   assignments_list:
     - plantchar_upv: [upv_ATB_2024_conservative, upv_ATB_2024_moderate, upv_ATB_2024_advanced]
   dist: dirichlet
   dist_params: [1, 1, 1]
   weight_r: country
 
-- name: csp
+- name: ofswind_flat
   assignments_list:
-    - plantchar_csp: [csp_ATB_2024_conservative, csp_ATB_2024_moderate, csp_ATB_2024_advanced]
+    - plantchar_ofswind: [ofs-wind_ATB_2024_conservative, ofs-wind_ATB_2024_advanced]
   dist: dirichlet
-  dist_params: [1, 1, 1]
+  dist_params: [1, 1]
   weight_r: country
 
-- name: ofswind
+- name: ofswind_tri
   assignments_list:
     - plantchar_ofswind: [ofs-wind_ATB_2024_conservative, ofs-wind_ATB_2024_moderate, ofs-wind_ATB_2024_advanced]
   dist: dirichlet
   dist_params: [1, 1, 1]
   weight_r: country
 
-- name: onswind
+- name: onswind_flat
+  assignments_list:
+    - plantchar_onswind: [ons-wind_ATB_2024_conservative, ons-wind_ATB_2024_advanced]
+  dist: dirichlet
+  dist_params: [1, 1]
+  weight_r: country
+
+- name: onswind_tri
   assignments_list:
     - plantchar_onswind: [ons-wind_ATB_2024_conservative, ons-wind_ATB_2024_moderate, ons-wind_ATB_2024_advanced]
   dist: dirichlet
   dist_params: [1, 1, 1]
   weight_r: country
 
-# --- Combined technology sampling ---
-# These distributions sample multiple technologies together with shared correlation
-- name: tech
+### Correlated costs between technologies
+- name: tech_tri
   assignments_list:
     - plantchar_battery: [battery_ATB_2024_conservative, battery_ATB_2024_moderate, battery_ATB_2024_advanced]
     - plantchar_upv: [upv_ATB_2024_conservative, upv_ATB_2024_moderate, upv_ATB_2024_advanced]
-    - plantchar_csp: [csp_ATB_2024_conservative, csp_ATB_2024_moderate, csp_ATB_2024_advanced]
     - plantchar_ofswind: [ofs-wind_ATB_2024_conservative, ofs-wind_ATB_2024_moderate, ofs-wind_ATB_2024_advanced]
     - plantchar_onswind: [ons-wind_ATB_2024_conservative, ons-wind_ATB_2024_moderate, ons-wind_ATB_2024_advanced]
     - plantchar_geo: [geo_ATB_2024_conservative, geo_ATB_2024_moderate, geo_ATB_2024_advanced]
@@ -128,7 +172,6 @@
   assignments_list:
     - plantchar_battery: [battery_ATB_2024_conservative, battery_ATB_2024_moderate, battery_ATB_2024_advanced]
     - plantchar_upv: [upv_ATB_2024_conservative, upv_ATB_2024_moderate, upv_ATB_2024_advanced]
-    - plantchar_csp: [csp_ATB_2024_conservative, csp_ATB_2024_moderate, csp_ATB_2024_advanced]
     - plantchar_ofswind: [ofs-wind_ATB_2024_conservative, ofs-wind_ATB_2024_moderate, ofs-wind_ATB_2024_advanced]
     - plantchar_onswind: [ons-wind_ATB_2024_conservative, ons-wind_ATB_2024_moderate, ons-wind_ATB_2024_advanced]
     - plantchar_geo: [geo_ATB_2024_conservative, geo_ATB_2024_moderate, geo_ATB_2024_advanced]
@@ -137,10 +180,15 @@
   weight_r: country
 
 
-### ---------------------------------------------------###
-### --- Distributions for NG-fuel prices
-### ---------------------------------------------------###
-- name: ng_fuel_price
+###### Gas price ######
+- name: gasprice_flat
+  assignments_list:
+    - ngscen: [AEO_2025_LOG, AEO_2025_HOG]
+  dist: dirichlet
+  dist_params: [1, 1]
+  weight_r: country
+
+- name: gasprice_tri
   assignments_list:
     - ngscen: [AEO_2025_LOG, AEO_2025_reference, AEO_2025_HOG]
   dist: dirichlet
@@ -148,115 +196,111 @@
   weight_r: country
 
 
-### ---------------------------------------------------###
-### --- Distributions for load
-### ---------------------------------------------------###
-- name: load_country
+###### Electricity demand ######
+- name: load_country_flat
   assignments_list: 
-    - GSw_LoadProfiles: [EER2025_100by2050, EER2025_IRAlow]
+    - GSw_EFS1_AllYearLoad: [EER_Baseline_AEO2023, EER_100by2050]
   dist: dirichlet
   dist_params: [1, 1]
   weight_r: country
 
-- name: load_st
+- name: load_state_flat
   assignments_list: 
-    - GSw_LoadProfiles: [EER2025_100by2050, EER2025_IRAlow]
+    - GSw_EFS1_AllYearLoad: [EER_Baseline_AEO2023, EER_100by2050]
   dist: dirichlet
   dist_params: [1, 1]
   weight_r: st
 
-- name: load_ba
+- name: load_country_tri
   assignments_list: 
-    - GSw_LoadProfiles: [EER2025_100by2050, EER2025_IRAlow]
+    - GSw_EFS1_AllYearLoad: [EER_Baseline_AEO2023, EER_IRAlow, EER_100by2050]
   dist: dirichlet
-  dist_params: [1, 1]
-  weight_r: ba
+  dist_params: [1, 1, 1]
+  weight_r: country
 
-- name: load_discrete_st
+- name: load_state_tri
   assignments_list: 
-    - GSw_LoadProfiles: [EER2025_100by2050, EER2025_IRAlow]
-  dist: discrete
-  dist_params: [1, 1]
+    - GSw_EFS1_AllYearLoad: [EER_Baseline_AEO2023, EER_IRAlow, EER_100by2050]
+  dist: dirichlet
+  dist_params: [1, 1, 1]
   weight_r: st
 
 
-### ---------------------------------------------------###
-### --- Distributions for siting switches
-### ---------------------------------------------------###
-
-# --- Individual technology cost trajectories ---
-# These distributions apply independently to each technology
-- name: windon_siting
+###### VRE siting ######
+### Wind alone
+### (To look at wind and solar with uncorrelated siting, add a similar block for solar
+### and then specify both names in MCS_dist_groups)
+- name: wind_siting_country_flat
   assignments_list:
-    - GSw_SitingWindOns: [limited, reference]
+    - GSw_SitingWindOfs: [limited, open]
+    - GSw_SitingWindOns: [limited, open]
   dist: dirichlet
   dist_params: [1, 1]
   weight_r: country
 
-- name: windoff_siting
+- name: wind_siting_country_tri
   assignments_list:
-    - GSw_SitingWindOfs: [limited, reference]
+    - GSw_SitingWindOfs: [limited, reference, open]
+    - GSw_SitingWindOns: [limited, reference, open]
   dist: dirichlet
-  dist_params: [1, 1]
+  dist_params: [1, 1, 1]
   weight_r: country
 
-- name: upv_siting
+- name: wind_siting_state_flat
   assignments_list:
-    - GSw_SitingUPV: [limited, reference]
-  dist: dirichlet
-  dist_params: [1, 1]
-  weight_r: country
-
-# --- Combined technology sampling ---
-# These distributions sample multiple technologies together with shared correlation
-- name: wind_siting_country
-  assignments_list:
-    - GSw_SitingWindOfs: [limited, reference]
-    - GSw_SitingWindOns: [limited, reference]
-  dist: dirichlet
-  dist_params: [1, 1]
-  weight_r: country
-
-- name: wind_solar_siting_country
-  assignments_list:
-    - GSw_SitingUPV: [limited, reference]
-    - GSw_SitingWindOfs: [limited, reference]
-    - GSw_SitingWindOns: [limited, reference]
-  dist: dirichlet
-  dist_params: [1, 1]
-  weight_r: country
-
-- name: wind_solar_siting_st
-  assignments_list:
-    - GSw_SitingUPV: [limited, reference]
-    - GSw_SitingWindOfs: [limited, reference]
-    - GSw_SitingWindOns: [limited, reference]
+    - GSw_SitingWindOfs: [limited, open]
+    - GSw_SitingWindOns: [limited, open]
   dist: dirichlet
   dist_params: [1, 1]
   weight_r: st
 
-- name: wind_solar_siting_ba
+- name: wind_siting_state_tri
   assignments_list:
-    - GSw_SitingUPV: [limited, reference]
-    - GSw_SitingWindOfs: [limited, reference]
-    - GSw_SitingWindOns: [limited, reference]
+    - GSw_SitingWindOfs: [limited, reference, open]
+    - GSw_SitingWindOns: [limited, reference, open]
+  dist: dirichlet
+  dist_params: [1, 1, 1]
+  weight_r: st
+
+### Wind and solar correlated
+- name: wind_solar_siting_country_flat
+  assignments_list:
+    - GSw_SitingUPV: [limited, open]
+    - GSw_SitingWindOfs: [limited, open]
+    - GSw_SitingWindOns: [limited, open]
   dist: dirichlet
   dist_params: [1, 1]
-  weight_r: ba
+  weight_r: country
 
-- name: wind_solar_siting_discrete_st
+- name: wind_solar_siting_country_tri
   assignments_list:
-    - GSw_SitingUPV: [limited, reference]
-    - GSw_SitingWindOfs: [limited, reference]
-    - GSw_SitingWindOns: [limited, reference]
-  dist: discrete
+    - GSw_SitingUPV: [limited, reference, open]
+    - GSw_SitingWindOfs: [limited, reference, open]
+    - GSw_SitingWindOns: [limited, reference, open]
+  dist: dirichlet
+  dist_params: [1, 1, 1]
+  weight_r: country
+
+- name: wind_solar_siting_state_flat
+  assignments_list:
+    - GSw_SitingUPV: [limited, open]
+    - GSw_SitingWindOfs: [limited, open]
+    - GSw_SitingWindOns: [limited, open]
+  dist: dirichlet
   dist_params: [1, 1]
   weight_r: st
 
+- name: wind_solar_siting_state_tri
+  assignments_list:
+    - GSw_SitingUPV: [limited, reference, open]
+    - GSw_SitingWindOfs: [limited, reference, open]
+    - GSw_SitingWindOns: [limited, reference, open]
+  dist: dirichlet
+  dist_params: [1, 1, 1]
+  weight_r: st
 
-### ---------------------------------------------------###
-### --- Miscellaneous distributions
-### ---------------------------------------------------###
+
+###### Miscellaneous ######
 - name: transmission_1
   assignments_list:
     - GSw_TransInvMaxLongTerm: [0.9]

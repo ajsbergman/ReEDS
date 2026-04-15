@@ -446,7 +446,7 @@ This guide explains how to enable, configure, and run Monte Carlo simulations so
 For example, `default` will use `inputs/userinput/mcs_distributions_default.yaml`.
 
 3. Set `MCS_dist_groups` to one or more YAML group names. Separate multiple groups with a dot.
-   For example `tech.load_st.ng_fuel_price`.
+   For example `tech_tri.load_state_flat.gasprice_flat`.
 
 4. Run ReEDS as usual. Each Monte Carlo draw will create its own run using the sampled inputs.
 

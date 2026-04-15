@@ -438,8 +438,12 @@ except Exception:
 try:
     for sideplots in [False, True]:
         plt.close()
-        f,ax,eax = reedsplots.map_zone_capacity(case=case, year=year, sideplots=sideplots)
+        f,ax,eax = reedsplots.map_zone_capacity(
+            case=case, year=year, sideplots=sideplots,
+            # valscale=5e3,
+        )
         savename = f'map_gencap_transcap-{year}{"-sideplots" if sideplots else ""}.png'
+        # savename = f'map_gencap_transcap-{year}{"-sideplots" if sideplots else ""}-update.png'
         if write:
             plt.savefig(os.path.join(savepath, savename))
         if interactive:
