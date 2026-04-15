@@ -1,0 +1,15 @@
+outage_forced: 0.05
+outage_planned: 0.1
+ramprate: 0.05
+bans:
+  st:
+    - VT
+subsets:
+  - GAS
+  - GAS_CC
+  - CONV
+  - FOSSIL
+depreciation_sch: 20
+eval_period: 30
+construction_sch: 3B
+fuel: naturalgas
