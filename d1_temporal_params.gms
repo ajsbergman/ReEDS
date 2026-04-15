@@ -299,9 +299,6 @@ can_exports_h(r,h,t)$[hours(h)] = can_exports(r,t) * can_exports_h_frac(h) / hou
 
 $endif.Canada
 
-* zero Canada exports when Canada is not modeled
-can_imports_szn(r,szn,t)$[Sw_Canada=0] = 0 ;
-can_exports_h(r,h,t)$[Sw_Canada=0] = 0 ;
 
 $onempty
 parameter canmexload(r,allh) "load for canadian and mexican regions"
@@ -888,11 +885,19 @@ szn_adj_gas(h)$frac_h_quarter_weights(h,"wint") =
 
 
 *=============================================
+* ----- ReEDS-FINITO temporal parameters -----
+*=============================================
+* remove focused sectors load from load_exog_static
+$ifthene.linked_finito_temporal_params %GSw_FINITO_Link% ==1
+$include finito/model/linked_finito_temporal_params.gms
+$endif.linked_finito_temporal_params
+
+
+*=============================================
 * -- Round parameters for GAMS --
 *=============================================
 
 avail(i,r,h)$avail(i,r,h) = round(avail(i,r,h),3) ;
-can_imports_szn(r,szn,t)$can_imports_szn(r,szn,t) = round(can_imports_szn(r,szn,t),3) ;
 can_exports_h(r,h,t)$can_exports_h(r,h,t) = round(can_exports_h(r,h,t),3) ;
 h_weight_csapr(h)$h_weight_csapr(h) = round(h_weight_csapr(h),3) ;
 load_exog(r,h,t)$load_exog(r,h,t) = round(load_exog(r,h,t),3) ;

@@ -2,6 +2,10 @@
 ### --- IMPORTS ---
 ### ===========================================================================
 
+#%% ===========================================================================
+### --- IMPORTS ---
+### ===========================================================================
+
 import os
 import git
 import queue
@@ -11,6 +15,8 @@ import shutil
 import csv
 import importlib
 import numpy as np
+import gdxpds
+from gdxpds.gdx import GdxFile,GdxSymbol,GamsDataType
 import pandas as pd
 import subprocess
 import re
@@ -18,6 +24,7 @@ from datetime import datetime
 import argparse
 from pathlib import Path
 import reeds
+import sys
 
 # Assert core programs are accessible
 CORE_PROGRAMS = ["gams"]
@@ -99,12 +106,23 @@ def create_case_lists(df_cases:pd.DataFrame, BatchName:str, single:str=''):
                 continue
         # Add switch settings to list of options passed to GAMS
         shcom = f' --case={BatchName}_{case}'
-        for i,v in df_cases[case].items():
+        # (linked) Combine the cases files for the linked model
+        if int(df_cases[case].loc['GSw_FINITO_Link']) == 1 :
+            # add the FINITO switches to the caseSwitches
+            df_cases_combine=linked_cases(df_cases,case)
+            for i,v in df_cases_combine.items():
+                #exclude certain switches that don't need to be passed to GAMS
+                if i not in ['file_replacements','keep_run_terminal']:
+                    shcom = shcom + ' --' + i + '=' + v
+            caseList.append(shcom)
+            caseSwitches.append(df_cases_combine.to_dict())
+        else:
+            for i,v in df_cases[case].items():
             #exclude certain switches that don't need to be passed to GAMS
-            if i not in ['file_replacements','keep_run_terminal']:
-                shcom += f' --{i}={v}'
-        caseList.append(shcom)
-        caseSwitches.append(df_cases[case].to_dict())
+                if i not in ['file_replacements','keep_run_terminal']:
+                    shcom += f' --{i}={v}'
+            caseList.append(shcom)
+            caseSwitches.append(df_cases[case].to_dict())
 
     return caseSwitches, casenames, caseList
 
@@ -554,6 +572,7 @@ def solvestring_sequential(
             'GSw_StateCO2ImportLevel',
             'GSw_StartMarkets',
             'GSw_ValStr',
+            'GSw_FINITO_Link',
             'solver',
             'debug',
             'startyear',
@@ -805,6 +824,71 @@ def setup_window(
             restartfile = savefile
         if caseSwitches['GSw_ValStr'] != '0':
             OPATH.writelines( "python valuestreams.py" + '\n')
+
+
+# (linked) update 'df_cases' to include FINITO switches
+def linked_cases(df_cases,case):
+    """
+    Updates the cases dataframe to include FINITO-specific switches.
+    When a switch is duplicated in FINITO and ReEDS, then we default to 
+    the ReEDS value.
+    
+    For the FINITO switches, the combined cases file defaults to the case-specific 
+    'Default Value' in cases_linked.csv first, before using the universal FINITO 
+    'Default Value' in cases.csv for any un-assigned switches.    
+    """
+    # check for valid finito_dir
+    if not os.path.isdir(df_cases[case]['finito_dir']):
+        raise ValueError(f"finito_dir = {df_cases[case]['finito_dir']} is not a valid path.")
+
+    # define path to and read the FINITO check_inputs function
+    finito_check_inputs_path = os.path.join(df_cases[case]['finito_dir'], 'input_processing', 'processing')
+    sys.path.append(finito_check_inputs_path)
+    from check_inputs import check_inputs
+        
+    ### load the default values for all FINITO switches from ~\FINITO\cases.csv
+    df_cases_finito = pd.read_csv(os.path.join(df_cases[case]['finito_dir'],'cases.csv'), dtype=object, index_col=0)
+    df_cases_finito = df_cases_finito[['Choices', 'Default Value']]
+
+    ### load the scenario-specific switches from ~\FINITO\cases_linked.csv
+    cases_linked_path = os.path.join(df_cases[case]['finito_dir'],f"cases_{df_cases[case]['finito_cases_file']}.csv")
+    df_cases_suf_finito = pd.read_csv(cases_linked_path, dtype=object, index_col=0)
+    ## check that case names are unique in cases_linked.csv
+    # grab the scenario names **exactly** as they appear in the csv file
+    with open(cases_linked_path, 'r', newline='') as csvfile:
+        reader = csv.reader(csvfile)
+        header = next(reader)
+    # find the duplicate column names and raise an error if any are found
+    duplicate_columns = set([x for x in header if header.count(x) > 1])
+    if duplicate_columns:
+        raise ValueError(f"The FINITO cases_{df_cases[case]['finito_cases_file']}.csv has the following duplicate column names: {duplicate_columns}")
+    ### identify the FINITO case 
+    if df_cases[case]['finito_case'] == 'same':
+        finito_case=case
+    else:
+        finito_case=df_cases[case]['finito_case']
+    # ensures **exact** match of names between the ReEDS cases_{}.csv and the FINITO cases_linked.csv
+    if finito_case not in (df_cases_suf_finito.columns):
+        raise ValueError(f"The 'finito_case' input '{finito_case}' in the ReEDS cases file does not exist in FINITO's cases_{df_cases[case]['finito_cases_file']}.csv.")
+
+    ### first use 'Default Value' from the FINITO cases_linked.csv to fill missing switches
+    if 'Default Value' in df_cases_suf_finito.columns:
+        df_cases_suf_finito[finito_case] = df_cases_suf_finito[finito_case].fillna(df_cases_suf_finito['Default Value'])
+    ### then, use 'Default Value' from the FINITO cases.csv to fill un-assigned switches
+    df_cases_suf_finito.drop(['Choices','Default Value'], axis='columns',inplace=True, errors='ignore')
+    df_cases_finito = df_cases_finito.join(df_cases_suf_finito, how='outer')
+    df_cases_finito[finito_case] = df_cases_finito[finito_case].fillna(df_cases_finito['Default Value'])
+  
+    #### create new dataframe for the combined ReEDS and FINITO switches
+    df_cases_combine = pd.concat([df_cases[case],df_cases_finito[finito_case]])
+    ### drop duplicated switches, defaulting to reeds
+    df_cases_combine = df_cases_combine[~df_cases_combine.index.duplicated(keep='first')]
+
+    #%% Check for incompatibility of FINITO switches
+    model_sectors = df_cases_finito['Default Value']['focus_sectors'].split('.')
+    check_inputs(case = case, df_case = df_cases_combine, model_sectors=model_sectors)
+
+    return df_cases_combine
 
 
 #%% ===========================================================================
@@ -1260,6 +1344,7 @@ def write_batch_script(
     yearset_augur = os.path.join('inputs_case','modeledyears.csv')
     toLogGamsString = ' logOption=4 logFile=gamslog.txt appendLog=1 '
 
+ 
     ## Copy code folders
     for dirname in ['reeds', 'ReEDS_Augur', 'input_processing', 'reeds2pras']:
         shutil.copytree(
@@ -1271,6 +1356,66 @@ def write_batch_script(
     #make the augur_data folder
     os.makedirs(os.path.join(casedir,'ReEDS_Augur','augur_data'), exist_ok=True)
     os.makedirs(os.path.join(casedir,'ReEDS_Augur','PRAS'), exist_ok=True)
+        
+    ## (linked) Copy FINITO code folders and inputs into [casedir]/finito
+    if int(caseSwitches['GSw_FINITO_Link'])==1:
+        ## Redirecting the FINITO case-specific directories 
+        # ... finito directory within the case directory
+        casedir_finito = os.path.join(casedir,'finito')
+        # ... define the inputs case directory for FINITO
+        inputs_case_finito = os.path.join(casedir,'finito','inputs_case')
+
+        ## copy directories
+        os.makedirs(casedir_finito, exist_ok=True)
+        shutil.copytree(os.path.join(caseSwitches['finito_dir'], 'inputs'),os.path.join(casedir,'finito', 'inputs'))
+        shutil.copytree(os.path.join(caseSwitches['finito_dir'], 'input_processing'),os.path.join(casedir,'finito', 'input_processing'))
+        shutil.copytree(os.path.join(caseSwitches['finito_dir'], 'model'),os.path.join(casedir,'finito', 'model'))
+        shutil.copytree(os.path.join(caseSwitches['finito_dir'], 'visualization'),os.path.join(casedir, 'finito', 'visualization'))
+        shutil.copytree(os.path.join(caseSwitches['finito_dir'],'inputs'), os.path.join(casedir,'inputs'), dirs_exist_ok=True)
+        ## copy over the FINITO cases files
+        shutil.copy2(os.path.join(caseSwitches['finito_dir'], 'cases.csv'), os.path.join(casedir, 'finito'))
+        shutil.copy2(os.path.join(caseSwitches['finito_dir'], f"cases_{caseSwitches['finito_cases_file']}.csv"), os.path.join(casedir, 'finito'))
+
+  
+        #%% (GSw_Trade_PriceResponse > 0) If doing a price-responsive trade run, retrieve the reference exports/imports prices
+        if int(caseSwitches['GSw_Trade_PriceResponse']) > 0:
+            initialize_price_response_path = os.path.join(casedir_finito, 'input_processing', 'processing', 'initialize_price_response.py')
+            # Collect all arguments for initialize_price_response.py
+            initialize_price_response_args = f" -c {casedir} -b {BatchName} -cr {caseSwitches['GSw_Trade_PriceResponse_RefScen']} -l {caseSwitches['GSw_FINITO_Link']}"
+            # Call initialize_price_response.py file before starting the runs
+            os.system('python ' + initialize_price_response_path + initialize_price_response_args)
+
+        #%% Filter and copy all input files for each scenario
+        # Call FINITO copy_files.py file before starting the runs
+        copy_files_run = os.system(
+            'python ' + os.path.join(caseSwitches['finito_dir'], 'input_processing', 'processing', 'copy_files.py') + 
+            f" -c {casedir_finito} -d {inputs_case_finito} --link"
+            )
+
+        # Print an error message if copy_files.py encounters any issue 
+        if copy_files_run != 0:
+            print("\n❌ ERROR: copy_files.py encountered an issue and did not complete successfully.")
+            print("Please check the console output above for details.")
+            print("The issue could be due to regionality, focus sector filtering, or file reading errors.") 
+            os._exit(1)   
+        
+        ## Populate sets for each linked run
+
+        # Pass AEO base year as an argument
+        # NOTE: make this dynamic before merging in?
+        aeo_year = caseSwitches['aeo_year']
+        # Collect all arguments for autopop_set.py 
+        focus_sectors = caseSwitches['focus_sectors'].replace('.', ' ')
+        autopop_args = f" -c {casedir_finito} -d {inputs_case_finito} -a {aeo_year} -s {focus_sectors} -f {caseSwitches['GSw_FixedCostSupply']} -rwf {caseSwitches['GSw_Trade_Partners']} -e {caseSwitches['GSw_ROE_EndUses']}"
+        # Call autopop_set.py file before starting the runs
+        autopop_path = os.path.join(caseSwitches['finito_dir'], 'input_processing','processing','autopop_set.py')
+        os.system('python ' + autopop_path + autopop_args)
+        ## Call read_mecs_heat.py to generate heat/nonheat/feedstock ratios for FINITO Rest of Industry (ROI)
+        mecs_sectors = focus_sectors 
+        read_mecs_path = os.path.join(caseSwitches['finito_dir'], 'input_processing', 'processing', 'mecs', 'read_mecs_heat.py')
+        # Collect all arguments for read_mecs_heat.py
+        read_mecs_args = f' -s {mecs_sectors} -d {inputs_case_finito}'
+        os.system('python ' + read_mecs_path + read_mecs_args)
 
     ###### Replace files according to 'file_replacements' in cases. Ignore quotes in input text.
     # << is used to separate the file that is to be replaced from the file that is used
@@ -1309,6 +1454,7 @@ def write_batch_script(
                 OPATH.writelines("module load conda \n")
                 OPATH.writelines("module load gams \n")
 
+            OPATH.writelines("conda deactivate \n")
             OPATH.writelines("conda activate reeds2 \n")
             OPATH.writelines('export R_LIBS_USER="$HOME/rlib" \n\n\n')
 
@@ -1412,7 +1558,8 @@ def write_batch_script(
             + ' gdxcompress=1'
             + toLogGamsString
             + f"--fname={batch_case}"
-            + f" --GSw_calc_powfrac={caseSwitches['GSw_calc_powfrac']} \n"
+            + f" --GSw_calc_powfrac={caseSwitches['GSw_calc_powfrac']}"
+            + f" --first_year_finito={caseSwitches['first_year_finito']} \n"
         )
         OPATH.writelines(writescripterrorcheck("e_report.gms"))
         if not LINUXORMAC:
@@ -1425,6 +1572,32 @@ def write_batch_script(
                 + f" {os.path.join(reeds_path,'postprocessing','diagnose','diagnose_process.py')}"
                 + f" --casepath {casedir} \n\n"
             )
+        OPATH.writelines(f'python e_report_dump.py {casedir} -c\n\n')
+        # (linked) calls finito reporting (from [casedir]/finito/visualization)
+        if int(caseSwitches['GSw_FINITO_Link'])==1:
+            OPATH.writelines(
+            'gams '
+            + f"{os.path.join(casedir,'finito', 'model', 'finito_report.gms')}"
+            + f" o={os.path.join('lstfiles',f'finito_report_{batch_case}.lst')}"
+            + (' license=gamslice.txt' if hpc else '')
+            + (' r=$r' if LINUXORMAC else ' r=!r!')
+            + ' gdxcompress=1'
+            + toLogGamsString
+            + f"--case={batch_case}"
+            + f" --casedir={casedir}"
+            + f" --GSw_FINITO_Link={caseSwitches['GSw_FINITO_Link']}"
+            + f" --GSw_RetailAdder={caseSwitches['GSw_RetailAdder']}"
+            + f" --finito_inputs_dir={os.path.join('finito','inputs')}"
+            + f" --inputs_case_finito_dir={os.path.join('finito','inputs_case')}"
+            + f" --linked_report_dir={caseSwitches['linked_report_dir']} \n"
+            )
+            # (linked) calls finito postprocessing (from [casedir]/finito/visualization)
+            OPATH.writelines(
+            f"python {os.path.join(casedir, 'finito', 'visualization', 'postprocessing.py')}"
+            + " -b 0"            
+            + f" -l {caseSwitches['GSw_FINITO_Link']}"
+            + f' -c {batch_case} \n\n'
+            )  
 
         ### Run the retail rate module
         OPATH.writelines(
@@ -1727,7 +1900,7 @@ def launch_single_case_run(
             shellscript = subprocess.Popen(
                 [os.path.join(casedir, 'call_' + batch_case + ext)], shell=True)
             # Wait for it to finish before killing the thread
-            shellscript.wait()
+            #shellscript.wait()
         else:
             if int(caseSwitches['keep_run_terminal']) == 1:
                 terminal_keep_flag = ' /k '
@@ -1855,7 +2028,7 @@ if __name__ == '__main__':
                         help="Check inputs but don't start runs")
 
     args = parser.parse_args()
-
+    
     main(
         BatchName=args.BatchName, cases_suffix=args.cases_suffix, single=args.single,
         simult_runs=args.simult_runs, forcelocal=args.forcelocal, skip_checks=args.skip_checks,

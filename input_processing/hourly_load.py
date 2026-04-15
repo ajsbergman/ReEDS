@@ -596,6 +596,44 @@ def reaggregate_to_model_regions(
 
     return regional_load_hourly
 
+#TODO: add docstrings
+def get_hourly_finito_load(
+    inputs_case: str, 
+) -> pd.DataFrame:
+    # load reference FINITO load
+    inputs_case_finito = Path(inputs_case).parent / 'finito' / Path(inputs_case).name
+    load_finito = pd.read_csv(inputs_case_finito / "load_finito.csv")
+    
+    # reshape to match load data. with year in index and region in columns
+    load_finito = load_finito.melt(id_vars='r', var_name='year', value_name='load_MWh')
+    load_finito.year = load_finito.year.astype(int)    
+    load_finito = load_finito.pivot(index='year', columns='r', values='load_MWh')
+    load_finito.columns.name = None
+
+    # allocate annual load to hours, assuming flat demand
+    # TODO: should this use h_weight_finito?
+    hours_per_year = 8760
+    load_hourly_finito = load_finito / hours_per_year
+    load_hourly_finito = load_hourly_finito.astype(np.float32)
+
+    return load_hourly_finito
+
+def remove_finito_load(
+    load_hourly: pd.DataFrame,
+    inputs_case: str, 
+) -> pd.DataFrame:
+
+    # get FINITO reference load
+    load_hourly_finito = get_hourly_finito_load(inputs_case)
+
+    # subtract FINITO reference load from ReEDS load data, 
+    # aligning by model year (index) and region (columns)
+    result = load_hourly - load_hourly_finito
+
+    #TODO: add this
+    # Validation check: confirm that total load - FINITO load > 0
+    
+    return load_hourly
 
 #%% ===========================================================================
 ### --- MAIN FUNCTION ---
@@ -697,6 +735,15 @@ def main(reeds_path, inputs_case):
     peakload = calculate_peak_load(regional_load_hourly, hierarchy)
 
     #%%%#########################################
+    #    -- FINITO Load Adjustment --           #
+    #############################################
+
+    # note that this step occurs after peakload calculation so that the latter
+    # includes a baseline estimate of industrial load captured by FINITO
+    if int(sw.GSw_FINITO_Link):
+        regional_load_hourly = remove_finito_load(regional_load_hourly, inputs_case)
+
+    #############################################
     #    -- DR Shed Load Modifications --    #
     #############################################
 

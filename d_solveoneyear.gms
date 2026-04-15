@@ -23,6 +23,13 @@ tload(t) = no ;
 tmodel(t) = no ;
 tmodel("%cur_year%") = yes ;
 
+* (linked) also reset t_finito
+$ifthene.linked_finito_time %GSw_FINITO_Link% == 1
+t_finito(t) = no ; 
+t_finito(t)$[tmodel(t)$(t.val>=first_year_finito)$(t.val<=endyear)] = yes ;
+$endif.linked_finito_time
+
+
 $log 'Solving sequential case for...'
 $log '  Case: %case%'
 $log '  Year: %cur_year%'
@@ -241,6 +248,7 @@ $endif.diagnose
 * ------------------------------
 * Solve the Model
 * ------------------------------
+option limrow = 1e6;
 $ifthen.valstr %GSw_ValStr% == 1
 OPTION lp = convert ;
 ReEDSmodel.optfile = 1 ;
@@ -276,10 +284,21 @@ $endif.mga
 
 *** Adjust some parameters based on the solution for this solve year
 $include d2_post_solve_adjustments.gms
+*** Do the same for finito if necessary
+$ifthene.linked_finito_shrink %GSw_FINITO_Link% == 1
+* Industrial variable fix
+$include finito/model/finito_post_solve_adjustments.gms
+$endif.linked_finito_shrink
 
 *** Fix decision variables to their optimized levels for this solve year
 tfix("%cur_year%") = yes ;
 $include d2_varfix.gms
+
+*** Fix FINITO decision variables to their optimized levels for this solve year
+$ifthene.linked_finito_varfix %GSw_FINITO_Link% == 1
+* Industrial variable fix
+$include finito/model/finito_varfix.gms
+$endif.linked_finito_varfix
 
 *** Dump data used in calculations between solve years
 $include d3_data_dump.gms
