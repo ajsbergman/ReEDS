@@ -2044,13 +2044,13 @@ h2_inout(h2_stor,r,h,t,"out")$[(Sw_H2=2)$tmodel_new(t)$h2_stor_r(h2_stor,r)]
     = H2_STOR_OUT.l(h2_stor,r,h,t) ;
 
 * H2 storage level
-h2_storage_level(h2_stor,r,actualszn,h,t)
-    $[(Sw_H2=2)$tmodel_new(t)$h_actualszn(h,actualszn)$h2_stor_r(h2_stor,r)]
-    = H2_STOR_LEVEL.l(h2_stor,r,actualszn,h,t) ;
+h2_storage_level(h2_stor,h2r,actualszn,h,t)
+    $[(Sw_H2=2)$tmodel_new(t)$h_actualszn(h,actualszn)$h2_stor_h2r(h2_stor,h2r)]
+    = H2_STOR_LEVEL.l(h2_stor,h2r,actualszn,h,t) ;
 
-h2_storage_level_szn(h2_stor,r,actualszn,t)
-    $[(Sw_H2=2)$tmodel_new(t)$h2_stor_r(h2_stor,r)]
-    = H2_STOR_LEVEL_SZN.l(h2_stor,r,actualszn,t) ;
+h2_storage_level_szn(h2_stor,h2r,actualszn,t)
+    $[(Sw_H2=2)$tmodel_new(t)$h2_stor_h2r(h2_stor,h2r)]
+    = H2_STOR_LEVEL_SZN.l(h2_stor,h2r,actualszn,t) ;
 
 * transport flow between BAs
 h2_trans_flow(r,rr,h,t)

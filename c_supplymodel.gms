@@ -109,8 +109,8 @@ positive variables
   H2_STOR_CAP(h2_stor,r,t)              "--metric tons-- hydrogen storage capacity"
   H2_STOR_IN(h2_stor,r,allh,t)          "--metric tons per hour-- injection of H2 into storage in a given timeslice"
   H2_STOR_OUT(h2_stor,r,allh,t)         "--metric tons per hour-- widthdrawal of H2 from storage in a given timeslice"
-  H2_STOR_LEVEL(h2_stor,r,actualszn,allh,t) "--metric tons-- total storage level of H2 in a timeslice by storage type"
-  H2_STOR_LEVEL_SZN(h2_stor,r,actualszn,t)  "--metric tons-- total storage level of H2 in a period by storage type"
+  H2_STOR_LEVEL(h2_stor,h2r,actualszn,allh,t) "--metric tons-- total storage level of H2 in a timeslice by storage type"
+  H2_STOR_LEVEL_SZN(h2_stor,h2r,actualszn,t)  "--metric tons-- total storage level of H2 in a period by storage type"
   CREDIT_H2PTC(i,v,r,allh,t)              "--MW-- generation by resources which qualify for the hydrogen production tax credit, in hour h"
 
 * water climate variables
@@ -255,10 +255,10 @@ eq_interconnection_queues(tg,r,t)         "--MW-- capacity deployment limit base
  eq_h2_ptc_region_balance(h2ptcreg,t)                 "--MWh-- clean generation for hydrogen production must be more than electricity required for electrolytic H2 production in that region and year"
  eq_h2_ptc_region_hour_balance(h2ptcreg,allh,t)       "--MWh-- clean generation for hydrogen production must be more than electricity required for electrolytic H2 production in that region, hour and year"
  eq_h2_ptc_creditgen(i,v,r,allh,t)                    "--MWh-- total generation must be greater than clean generation for hydrogen production"
- eq_h2_storage_caplimit(h2_stor,r,actualszn,allh,t)   "--metric tons-- total H2 storage in a storage facility cannot exceed investment capacity"
- eq_h2_storage_level(h2_stor,r,actualszn,allh,t)      "--metric tons-- tracks H2 storage level by storage type and BA within and across periods"
- eq_h2_storage_caplimit_szn(h2_stor,r,actualszn,t)    "--metric tons-- total H2 storage in a storage facility cannot exceed investment capacity"
- eq_h2_storage_level_szn(h2_stor,r,actualszn,t)       "--metric tons-- tracks H2 storage level by storage type and BA within and across periods"
+ eq_h2_storage_caplimit(h2_stor,h2r,actualszn,allh,t)   "--metric tons-- total H2 storage in a storage facility cannot exceed investment capacity"
+ eq_h2_storage_level(h2_stor,h2r,actualszn,allh,t)      "--metric tons-- tracks H2 storage level by storage type and BA within and across periods"
+ eq_h2_storage_caplimit_szn(h2_stor,h2r,actualszn,t)    "--metric tons-- total H2 storage in a storage facility cannot exceed investment capacity"
+ eq_h2_storage_level_szn(h2_stor,h2r,actualszn,t)       "--metric tons-- tracks H2 storage level by storage type and BA within and across periods"
  
 * CO2 capture and storage
  eq_co2_capture(r,allh,t)                    "--metric tons-- accounting of CO2 captured from DAC and CCS technologies"
@@ -3618,42 +3618,47 @@ eq_h2_transport_caplimit(r,rr,h,t)$[h2_routes(r,rr)$(Sw_H2=2)
 * ---------------------------------------------------------------------------
 
 * link H2 storage level between timeslices of actual periods, or hours when running a chronological year
-eq_h2_storage_level(h2_stor,r,actualszn,h,t)
+eq_h2_storage_level(h2_stor,h2r,actualszn,h,t)
     $[tmodel(t)$(yeart(t)>=h2_demand_start)$(Sw_H2_StorTimestep=2)
-    $h2_stor_r(h2_stor,r)$(Sw_H2=2)$h_actualszn(h,actualszn)]..
+    $h2_stor_h2r(h2_stor,h2r)$(Sw_H2=2)$h_actualszn(h,actualszn)]..
 
 *[plus] H2 storage level in next timeslice
     sum{(hh,actualsznn)$[nexth_actualszn(actualszn,h,actualsznn,hh)],
-        H2_STOR_LEVEL(h2_stor,r,actualsznn,hh,t) }
+        H2_STOR_LEVEL(h2_stor,h2r,actualsznn,hh,t) }
 
     =e=
 
 * H2 storage level in current timeslice
-    H2_STOR_LEVEL(h2_stor,r,actualszn,h,t)
+    H2_STOR_LEVEL(h2_stor,h2r,actualszn,h,t)
 
 *[plus] h2 storage injection minus withdrawal (currently assumed to be lossless)
-    + hours_daily(h) * (H2_STOR_IN(h2_stor,r,h,t) - H2_STOR_OUT(h2_stor,r,h,t))
+    + hours_daily(h)
+      * sum{r$[r_h2r(r,h2r)$h2_stor_r(h2_stor,r)],
+            (H2_STOR_IN(h2_stor,r,h,t) - H2_STOR_OUT(h2_stor,r,h,t)) }
 ;
 
 * ---------------------------------------------------------------------------
 
 * link H2 storage level between seasons 
-eq_h2_storage_level_szn(h2_stor,r,actualszn,t)
+eq_h2_storage_level_szn(h2_stor,h2r,actualszn,t)
     $[tmodel(t)$(yeart(t)>=h2_demand_start)$(Sw_H2_StorTimestep=1)
-    $h2_stor_r(h2_stor,r)$(Sw_H2=2)]..
+    $h2_stor_h2r(h2_stor,h2r)$(Sw_H2=2)]..
 
 *[plus] H2 storage level at start of next season
     sum{actualsznn$[nextszn(actualszn,actualsznn)],
-        H2_STOR_LEVEL_SZN(h2_stor,r,actualsznn,t) }
+        H2_STOR_LEVEL_SZN(h2_stor,h2r,actualsznn,t) }
 
     =e=
 
 * H2 storage level at start of current season
-    H2_STOR_LEVEL_SZN(h2_stor,r,actualszn,t)
+    H2_STOR_LEVEL_SZN(h2_stor,h2r,actualszn,t)
 
 *[plus] h2 storage injection minus withdrawal (currently assumed to be lossless)
     + sum{h$h_actualszn(h,actualszn),
-          hours_daily(h) * (H2_STOR_IN(h2_stor,r,h,t) - H2_STOR_OUT(h2_stor,r,h,t)) }
+          hours_daily(h)
+          * sum{r$[r_h2r(r,h2r)$h2_stor_r(h2_stor,r)],
+                (H2_STOR_IN(h2_stor,r,h,t) - H2_STOR_OUT(h2_stor,r,h,t)) }
+    }
 ;
 
 * ---------------------------------------------------------------------------
@@ -3718,34 +3723,34 @@ eq_h2_storage_flowlimit(h2_stor,r,h,t)
 
 * total level of H2 storage cannot exceed storage investment for all days 
 * [metric tons]
-eq_h2_storage_caplimit(h2_stor,r,actualszn,h,t)
+eq_h2_storage_caplimit(h2_stor,h2r,actualszn,h,t)
     $[tmodel(t)$(yeart(t)>=h2_demand_start)$(Sw_H2_StorTimestep=2)
-    $h2_stor_r(h2_stor,r)$(Sw_H2=2)$h_actualszn(h,actualszn)]..
+    $h2_stor_h2r(h2_stor,h2r)$(Sw_H2=2)$h_actualszn(h,actualszn)]..
 
 * total storage investment [metric tons]
-    H2_STOR_CAP(h2_stor,r,t)
+    sum{r$[r_h2r(r,h2r)$h2_stor_r(h2_stor,r)], H2_STOR_CAP(h2_stor,r,t) }
 
     =g=
 
 * storage level of H2 [metric tons]
-    H2_STOR_LEVEL(h2_stor,r,actualszn,h,t)
+    H2_STOR_LEVEL(h2_stor,h2r,actualszn,h,t)
 ;
 
 * ---------------------------------------------------------------------------
 
 * total level of H2 storage at the beginning of the day cannot exceed storage investment
 * [metric tons]
-eq_h2_storage_caplimit_szn(h2_stor,r,actualszn,t)
+eq_h2_storage_caplimit_szn(h2_stor,h2r,actualszn,t)
     $[tmodel(t)$(yeart(t)>=h2_demand_start)$(Sw_H2_StorTimestep=1)
-    $h2_stor_r(h2_stor,r)$(Sw_H2=2)]..
+    $h2_stor_h2r(h2_stor,h2r)$(Sw_H2=2)]..
 
 * total storage investment [metric tons]
-    H2_STOR_CAP(h2_stor,r,t)
+    sum{r$[r_h2r(r,h2r)$h2_stor_r(h2_stor,r)], H2_STOR_CAP(h2_stor,r,t) }
 
     =g=
 
 * storage level of H2 [metric tons]
-    H2_STOR_LEVEL_SZN(h2_stor,r,actualszn,t)
+    H2_STOR_LEVEL_SZN(h2_stor,h2r,actualszn,t)
 ;
 
 * ---------------------------------------------------------------------------

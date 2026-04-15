@@ -4481,7 +4481,7 @@ def map_h2_capacity(
             ax=ax[0,1], column='kTperday', cmap=cmap, lw=0, vmin=0,
             legend=True, legend_kwds={**legend_kwds, **{'label':'Production [kT/day]'}})
     ### Storage
-    if not cap_h2prod.empty:
+    if not cap_storage.empty:
         cap_storage.plot(
             ax=ax[1,0], column='h2_storage', cmap=cmap, lw=0, vmin=0,
             legend=True, legend_kwds={**legend_kwds, **{'label':'Storage [kT]'}})
@@ -4507,7 +4507,7 @@ def map_h2_capacity(
 
 
 def plot_h2_timeseries(
-        case, year=2050, agglevel='transreg', grid=0,
+        case, year=2050, agglevel='transgrp', grid=0,
         figsize=(12,8),
     ):
     """
@@ -4521,13 +4521,14 @@ def plot_h2_timeseries(
     h2_usage = reeds.io.read_output(case, 'h2_usage')
     ### Timeseries data
     hmap_myr = pd.read_csv(os.path.join(case, 'inputs_case', 'rep', 'hmap_myr.csv'))
-
+    sw = reeds.io.get_switches(case)
     ###### Total across modeled area
     hierarchy = reeds.io.get_hierarchy(case)
-    if agglevel == 'r':
+    _agglevel = agglevel if sw.GSw_H2_BalanceLevel == 'r' else sw.GSw_H2_BalanceLevel
+    if _agglevel == 'r':
         rmap = pd.Series(hierarchy.index.values, index=hierarchy.index.values)
     else:
-        rmap = hierarchy[agglevel]
+        rmap = hierarchy[_agglevel]
 
     ### Combine into one dataframe
     dfall = {
@@ -4556,16 +4557,18 @@ def plot_h2_timeseries(
     ### Include storage level
     if len(h2_storage_level):
         storstack = (
-            h2_storage_level.assign(r=h2_storage_level.r.map(rmap))
+            h2_storage_level.assign(h2r=h2_storage_level.h2r.map(lambda x: rmap.get(x,x)))
             .loc[(h2_storage_level.t==year)]
+            .rename(columns={'allh':'h', 'h2r':'r'})
             .groupby(['r','actualszn','h']).Value.sum()
             .rename('stor_level').to_frame().unstack('r')
             .reorder_levels(['r',None], axis=1)
         )
     else:
         storstack = (
-            h2_storage_level_szn.assign(r=h2_storage_level_szn.r.map(rmap))
+            h2_storage_level_szn.assign(h2r=h2_storage_level_szn.h2r.map(lambda x: rmap.get(x,x)))
             .loc[(h2_storage_level_szn.t==year)]
+            .rename(columns={'h2r':'r'})
             .groupby(['r','actualszn' ]).Value.sum()
             .rename('stor_level').to_frame().unstack('r')
             .reorder_levels(['r',None], axis=1)
