@@ -1,0 +1,498 @@
+Coal-IGCC:
+- COAL
+- CONV
+- FOSSIL
+- BOILER
+CoalOldScr:
+- COAL
+- CONV
+- FOSSIL
+- BOILER
+CoalOldUns:
+- COAL
+- CONV
+- FOSSIL
+- BOILER
+CofireNew:
+- COAL
+- CONV
+- COFIRE
+- FOSSIL
+- BOILER
+CofireOld:
+- COAL
+- CONV
+- COFIRE
+- FOSSIL
+- BOILER
+Gas-CC:
+- GAS
+- GAS_CC
+- COMBINED_CYCLE
+- CONV
+- FOSSIL
+Gas-CC-CCS-F1:
+- GAS
+- GAS_CC
+- GAS_CC_CCS
+- COMBINED_CYCLE
+- CONV
+- CCS
+- CCS_MOD
+- CCSFLEX
+- CCSFLEX_BYP
+- FOSSIL
+Gas-CC-CCS-F2:
+- GAS
+- GAS_CC
+- GAS_CC_CCS
+- COMBINED_CYCLE
+- CONV
+- CCS
+- CCS_MOD
+- CCSFLEX
+- CCSFLEX_STO
+- FOSSIL
+Gas-CC-CCS-F3:
+- GAS
+- GAS_CC
+- GAS_CC_CCS
+- COMBINED_CYCLE
+- CONV
+- CCS
+- CCS_MOD
+- CCSFLEX
+- CCSFLEX_DAC
+- FOSSIL
+Gas-CC-CCS_max:
+- GAS
+- GAS_CC
+- GAS_CC_CCS
+- COMBINED_CYCLE
+- CONV
+- CCS
+- CCS_MAX
+- FOSSIL
+Gas-CC-CCS_mod:
+- GAS
+- GAS_CC
+- GAS_CC_CCS
+- COMBINED_CYCLE
+- CONV
+- CCS
+- CCS_MOD
+- FOSSIL
+Gas-CC_H_1x1:
+- GAS
+- GAS_CC
+- COMBINED_CYCLE
+- CONV
+- FOSSIL
+Gas-CC_H_1x1-CCS_max:
+- GAS
+- GAS_CC
+- GAS_CC_CCS
+- COMBINED_CYCLE
+- CONV
+- CCS
+- CCS_MAX
+- FOSSIL
+Gas-CC_H_1x1-CCS_mod:
+- GAS
+- GAS_CC
+- GAS_CC_CCS
+- COMBINED_CYCLE
+- CONV
+- CCS
+- CCS_MOD
+- FOSSIL
+Gas-CC_H_2x1:
+- GAS
+- GAS_CC
+- COMBINED_CYCLE
+- CONV
+- FOSSIL
+Gas-CC_H_2x1-CCS_max:
+- GAS
+- GAS_CC
+- GAS_CC_CCS
+- COMBINED_CYCLE
+- CONV
+- CCS
+- CCS_MAX
+- FOSSIL
+Gas-CC_H_2x1-CCS_mod:
+- GAS
+- GAS_CC
+- GAS_CC_CCS
+- COMBINED_CYCLE
+- CONV
+- CCS
+- CCS_MOD
+- FOSSIL
+Gas-CT:
+- GAS
+- GAS_CT
+- COMBUSTION_TURBINE
+- CONV
+- FOSSIL
+Gas-CT_aero:
+- GAS
+- GAS_CT
+- COMBUSTION_TURBINE
+- CONV
+- FOSSIL
+H2-CC:
+- COMBINED_CYCLE
+- CONV
+- RE
+- H2_COMBUSTION
+- H2_CC
+H2-CT:
+- COMBUSTION_TURBINE
+- CONV
+- RE
+- H2_COMBUSTION
+- H2_CT
+Hydro:
+- CONV
+- RE
+- HYDRO
+Nuclear:
+- CONV
+- NUCLEAR
+- BOILER
+Nuclear-SMR:
+- CONV
+- NUCLEAR
+- BOILER
+battery_li:
+- STORAGE
+- STORAGE_STANDALONE
+- BATTERY
+beccs_max:
+- BIO
+- CONV
+- CCS
+- CCS_MAX
+- BECCS
+- RE
+- BOILER
+beccs_mod:
+- BIO
+- CONV
+- CCS
+- CCS_MOD
+- BECCS
+- RE
+- BOILER
+biopower:
+- BIO
+- CONV
+- RE
+- BOILER
+can-imports:
+- RE
+- CANADA
+coal-CCS-F1:
+- COAL
+- COAL_CCS
+- CONV
+- CCS
+- CCS_MOD
+- CCSFLEX
+- CCSFLEX_BYP
+- FOSSIL
+- BOILER
+coal-CCS-F2:
+- COAL
+- COAL_CCS
+- CONV
+- CCS
+- CCS_MOD
+- CCSFLEX
+- CCSFLEX_STO
+- FOSSIL
+- BOILER
+coal-CCS-F3:
+- COAL
+- COAL_CCS
+- CONV
+- CCS
+- CCS_MOD
+- CCSFLEX
+- CCSFLEX_DAC
+- FOSSIL
+- BOILER
+coal-CCS_max:
+- COAL
+- COAL_CCS
+- CONV
+- CCS
+- CCS_MAX
+- FOSSIL
+- BOILER
+coal-CCS_mod:
+- COAL
+- COAL_CCS
+- CONV
+- CCS
+- CCS_MOD
+- FOSSIL
+- BOILER
+coal-new:
+- COAL
+- CONV
+- FOSSIL
+- BOILER
+csp1_1*csp1_12:
+- RE
+- RSC
+- CSP
+- CSP_STORAGE
+- CSP1
+- STORAGE
+- STORAGE_HYBRID
+- cf_tech
+csp2_1*csp2_12:
+- RE
+- RSC
+- CSP
+- CSP_STORAGE
+- CSP2
+- STORAGE
+- STORAGE_HYBRID
+- cf_tech
+csp3_1*csp3_12:
+- RE
+- RSC
+- CSP
+- CSP_STORAGE
+- CSP3
+- STORAGE
+- STORAGE_HYBRID
+- cf_tech
+csp4_1*csp4_12:
+- RE
+- RSC
+- CSP
+- CSP_STORAGE
+- CSP4
+- STORAGE
+- STORAGE_HYBRID
+- cf_tech
+dac:
+- CONSUME
+- DAC
+dac_gas:
+- CONSUME
+- DAC
+distpv:
+- RE
+- VRE
+- RSC
+- distpv
+- PV
+- VRE_NO_CSP
+- VRE_DISTRIBUTED
+- REFURBTECH
+- cf_tech
+- NONDISPATCH
+dr_shed_1*dr_shed_2:
+- RSC
+- REFURBTECH
+- DR_SHED
+egs_allkm_1*egs_allkm_10:
+- RE
+- RSC
+- GEO
+- GEO_EGS
+- GEO_EGS_ALLKM
+- GEO_EXTRA
+egs_nearfield_1*egs_nearfield_10:
+- RE
+- RSC
+- GEO
+- GEO_EGS
+- GEO_EGS_NF
+- GEO_BASE
+electrolyzer:
+- CONSUME
+- H2
+evmc_shape_1*evmc_shape_10:
+- RSC
+- DEMAND_FLEX
+- EVMC
+- EVMC_SHAPE
+- REFURBTECH
+evmc_storage_1*evmc_storage_10:
+- RSC
+- STORAGE
+- STORAGE_STANDALONE
+- DEMAND_FLEX
+- EVMC
+- EVMC_STORAGE
+- REFURBTECH
+geohydro_allkm_1*geohydro_allkm_10:
+- RE
+- RSC
+- GEO
+- GEO_HYDRO
+- GEO_BASE
+geothermal:
+- CONV
+- RE
+- GEO
+hydD:
+- RE
+- RSC
+- HYDRO
+- HYDRO_D
+- cf_tech
+hydED:
+- RE
+- RSC
+- HYDRO
+- HYDRO_D
+- cf_tech
+hydEND:
+- RE
+- RSC
+- HYDRO
+- HYDRO_ND
+- cf_tech
+- NONDISPATCH
+hydND:
+- RE
+- RSC
+- HYDRO
+- HYDRO_ND
+- cf_tech
+- NONDISPATCH
+hydNPD:
+- RE
+- RSC
+- HYDRO
+- HYDRO_D
+- cf_tech
+hydNPND:
+- RE
+- RSC
+- HYDRO
+- HYDRO_ND
+- cf_tech
+- NONDISPATCH
+hydSD:
+- RE
+- RSC
+- HYDRO
+- HYDRO_D
+- cf_tech
+hydSND:
+- RE
+- RSC
+- HYDRO
+- HYDRO_ND
+- cf_tech
+- NONDISPATCH
+hydUD:
+- RE
+- RSC
+- HYDRO
+- HYDRO_D
+- cf_tech
+hydUND:
+- RE
+- RSC
+- HYDRO
+- HYDRO_ND
+- cf_tech
+- NONDISPATCH
+lfill-gas:
+- CONV
+- LFILL
+ng-fuel-cell:
+- GAS
+- FUEL_CELL
+- FOSSIL
+o-g-s:
+- CONV
+- OGS
+- FOSSIL
+- BOILER
+pumped-hydro:
+- RSC
+- STORAGE
+- STORAGE_STANDALONE
+- STORAGE_INTERDAY
+- PSH
+pumped-hydro-flex:
+- RSC
+- STORAGE
+- STORAGE_STANDALONE
+- PSH
+pvb1_1*pvb1_10:
+- RSC
+- PVB
+- PVB1
+- STORAGE
+- STORAGE_HYBRID
+- REFURBTECH
+- cf_tech
+pvb2_1*pvb2_10:
+- RSC
+- PVB
+- PVB2
+- STORAGE
+- STORAGE_HYBRID
+- REFURBTECH
+- cf_tech
+pvb3_1*pvb3_10:
+- RSC
+- PVB
+- PVB3
+- STORAGE
+- STORAGE_HYBRID
+- REFURBTECH
+- cf_tech
+smr:
+- CONV
+- CONSUME
+- H2
+- SMR
+smr_ccs:
+- CONV
+- CCS
+- CONSUME
+- H2
+- SMR
+upv_1*upv_10:
+- RE
+- VRE
+- RSC
+- UPV
+- PV
+- VRE_NO_CSP
+- VRE_UTILITY
+- REFURBTECH
+- cf_tech
+wind-ofs_1*wind-ofs_10:
+- RE
+- VRE
+- RSC
+- WIND
+- OFSWIND
+- VRE_NO_CSP
+- VRE_UTILITY
+- REFURBTECH
+- cf_tech
+wind-ons_1*wind-ons_10:
+- RE
+- VRE
+- RSC
+- WIND
+- ONSWIND
+- VRE_NO_CSP
+- VRE_UTILITY
+- REFURBTECH
+- cf_tech

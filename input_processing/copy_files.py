@@ -1554,6 +1554,20 @@ def write_miscellaneous_files(
         ).rename_axis('tech').dropna().astype(int)
         unitsize.to_csv(fpath_out)
 
+    ## Tech subset table
+    fpath = Path(reeds.io.reeds_path, 'inputs', 'tech-subset-table.yaml')
+    with open(fpath, 'r') as f:
+        _tech_subset_table = pd.json_normalize(yaml.safe_load(f)).T.squeeze(1)
+    tech_subset_table = []
+    for key, val in _tech_subset_table.items():
+        for i in val:
+            tech_subset_table.append((key,i))
+    (
+        pd.DataFrame(tech_subset_table, columns=['i','tech_group'])
+        .assign(val='YES')
+        .pivot(index='i', columns='tech_group', values='val')
+        .fillna('')
+    ).to_csv(os.path.join(inputs_case, 'tech-subset-table.csv'))
 
 def generate_maps_gpkg(inputs_case):
     """
