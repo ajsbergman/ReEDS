@@ -1,4 +1,3 @@
-## ReEDS submodules
 from . import checks as checks
 from . import financials as financials
 from . import inputs as inputs
