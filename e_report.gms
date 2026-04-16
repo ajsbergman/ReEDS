@@ -2072,6 +2072,61 @@ h2_usage(r,h,t)$tmodel_new(t) =
     + sum{(i,v)$[valgen(i,v,r,t)$h2_combustion(i)],
           GEN.l(i,v,r,h,t) * h2_combustion_intensity * heat_rate(i,v,r,t) } ;
 
+*=========================
+* EMPLOYMENT
+*=========================
+* Employment from generators
+* Generator O&M employment
+employment_generator_fom_ivrt(i,v,r,t)$valcap(i,v,r,t) = CAP.l(i,v,r,t) * employment_factor_plant(i,"fom") ;
+employment_generator_vom_ivrt(i,v,r,t)$valgen(i,v,r,t) = sum{h, GEN.l(i,v,r,h,t) 
+                                                                * hours(h)
+                                                                * employment_factor_plant(i,"vom")} ;
+employment_generator_om_ivrt(i,v,r,t) = employment_generator_fom_ivrt(i,v,r,t) + employment_generator_vom_ivrt(i,v,r,t) ;
+
+* Generator construction employment
+employment_generator_construction_inv_ivrt(i,v,r,t)$valinv(i,v,r,t) = INV.l(i,v,r,t) * employment_factor_plant(i,"construction") ;
+employment_generator_construction_ivrt(i,v,r,t) = employment_generator_construction_inv_ivrt(i,v,r,t) + sum{tt$tprev(t,tt),employment_generator_construction_inv_ivrt(i,v,r,tt)} ;
+* Total generator employment
+employment_generator_irt(i,r,t) = sum{v, employment_generator_om_ivrt(i,v,r,t) + employment_generator_construction_ivrt(i,v,r,t)} ;
+
+* Employment from transmission
+* Transmission construction employment
+employment_trans_construction_rt(r,rr,t) = 
+* AC lines
+sum{tscbin
+    $[routes_inv(r,rr,"AC",t)
+    $tsc_binwidth(r,rr,tscbin)],
+    trans_cost_cap_fin_mult(t) 
+    * ((TRAN_CAPEX_BINS.l(r,rr,tscbin,t) - sum{tt$tprev(t,tt), TRAN_CAPEX_BINS.l(r,rr,tscbin,tt)}) 
+    * employment_factor_inter_transmission("construction")) }
+* non AC lines
++ sum{trtype
+      $[routes_inv(r,rr,trtype,t)
+      $(not aclike(trtype))],
+      trans_cost_cap_fin_mult(t)
+      * transmission_cost_nonac(r,rr,trtype)
+      * INVTRAN.l(r,rr,trtype,t)
+      * employment_factor_inter_transmission("construction") / 2 } ;
+
+* Transmission O&M employment
+employment_trans_om_rt(r,rr,t) = sum{trtype
+                                     $[routes(r,rr,trtype,t)],
+                                     CAPTRAN_ENERGY.l(r,rr,trtype,t) 
+                                     * employment_factor_inter_transmission("fom") } ;
+
+* Total transmission employment
+employment_trans_rt(r,t) = sum{rr,(employment_trans_construction_rt(r,rr,t) + employment_trans_om_rt(r,rr,t)) / 2} ;
+
+* Total O&M employment (generator + transmission)
+employment_tot_om_rt(r,t) = sum{(i,v), employment_generator_om_ivrt(i,v,r,t)} + sum{rr,(employment_trans_om_rt(r,rr,t)) / 2} ;
+
+* Total construction employment (generator + transmission)
+employment_tot_construction_rt(r,t) = sum{(i,v), employment_generator_construction_ivrt(i,v,r,t)} + sum{rr,(employment_trans_construction_rt(r,rr,t)) / 2} ;
+
+* Total employment (generator + transmission) + (construction + O&M)
+employment_tot_rt(r,t) = sum{i, employment_generator_irt(i,r,t)} + employment_trans_rt(r,t)  ;
+employment_tot_t(t) = sum{r, employment_tot_rt(r,t)} ;
+
 *========================================
 * Calculate powfrac
 *========================================

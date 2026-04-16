@@ -160,6 +160,13 @@ $include inputs_case%ds%etype.csv
 $onlisting
 / ;
 
+set jtype "job types used in model (construction and o&m jobs)"
+/
+$offlisting
+$include inputs_case%ds%jtype.csv
+$onlisting
+/ ;
+
 Sets
 nercr "NERC regions"
 * https://www.nerc.com/pa/RAPA/ra/Reliability%20Assessments%20DL/NERC_LTRA_2021.pdf
@@ -442,7 +449,6 @@ set
   evmc_storage(i)      "ev flexibility as direct load control",
   evmc_shape(i)        "ev flexibility as adoptable change to load from response to pricing",
   fossil(i)            "fossil technologies"
-  fuel_cell(i)         "fuel cell technologies",
   gas_cc_ccs(i)        "techs that are gas combined cycle and have CCS",
   gas_cc(i)            "techs that are gas combined cycle",
   gas_ct(i)            "techs that are gas combustion turbine",
@@ -752,10 +758,6 @@ if(Sw_H2Combustionupgrade = 0,
   ban(i)$[i_subsets(i,'h2_combustion')$upgrade(i)] = yes ;
 ) ;
 
-if(Sw_FuelCell = 0,
-  ban(i)$i_subsets(i,'fuel_cell') = yes ;
-) ;
-
 if(Sw_LfillGas = 0,
   ban('lfill-gas') = yes ;
 ) ;
@@ -975,7 +977,6 @@ evmc(i)$(not ban(i))                = yes$i_subsets(i,'evmc') ;
 evmc_storage(i)$(not ban(i))        = yes$i_subsets(i,'evmc_storage') ;
 evmc_shape(i)$(not ban(i))          = yes$i_subsets(i,'evmc_shape') ;
 fossil(i)$(not ban(i))              = yes$i_subsets(i,'fossil') ;
-fuel_cell(i)$(not ban(i))           = yes$i_subsets(i,'fuel_cell') ;
 gas_cc_ccs(i)$(not ban(i))          = yes$i_subsets(i,'gas_cc_ccs') ;
 gas_cc(i)$(not ban(i))              = yes$i_subsets(i,'gas_cc') ;
 gas_ct(i)$(not ban(i))              = yes$i_subsets(i,'gas_ct') ;
@@ -3522,12 +3523,11 @@ $offempty
 $onempty
 parameter trancap_init_itlgrp(itlgrp,itlgrpp,trtype) "--MW-- initial upper limit on interface flows between itlgrps"
 /
-*** TEMPORARY 20260402: Skip itlgrp functionality until we fix it
-* $offlisting
-* $ondelim
-* $include inputs_case%ds%trancap_init_itlgrp.csv
-* $offdelim
-* $onlisting
+$offlisting
+$ondelim
+$include inputs_case%ds%trancap_init_itlgrp.csv
+$offdelim
+$onlisting
 / ;
 $offempty
 
@@ -6596,6 +6596,39 @@ parameter
 ;
 z_rep_inv(t) = 0 ;
 z_rep_op(t) = 0 ;
+
+*====================================
+*     --- Employment Factors ---
+*====================================
+* Employment factors of construction and operation of power plants
+$onempty
+Table employment_factor_plant(i,jtype) "--job-years/MW or job-years/MWh-- employment factors of power plants by technology and job type (construction and o&m jobs)"
+$offlisting
+$ondelim
+$include inputs_case%ds%employment_factor_plant.csv
+$offdelim
+$onlisting
+;
+$offempty
+
+* Employment factors of transmission deployment and flow
+parameter employment_factor_inter_transmission(jtype)  "--job-years/MW or job-years/$M-- employment factors of transmission lines by job type (construction or o&m jobs)"
+/
+$offlisting
+$ondelim
+$include inputs_case%ds%employment_factor_inter_transmission.csv
+$offdelim
+$onlisting
+/ ;
+
+* If upgrade techs, construction employment factor is half
+* Only apply this to non CCS upgrades if using JEDI EFs since JEDI already specifies CCS upgrade EFs
+$ifthen.upgrade_ef %GSw_EmploymentFactor% == "JEDI"
+employment_factor_plant(i,"construction")$[upgrade(i)
+                                         $(not ccs(i))] = employment_factor_plant(i,"construction") * 0.5 ;
+$else.upgrade_ef
+employment_factor_plant(i,"construction")$upgrade(i) = employment_factor_plant(i,"construction") * 0.5 ;
+$endif.upgrade_ef
 
 
 *================================================================================================

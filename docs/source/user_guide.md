@@ -36,7 +36,7 @@ Here is partial list of remotely hosted files used by ReEDS:
     - Switch to `GSw_HourlyType=wek`, which increases the length of the periods from 1 day to 5 days. If all the other switches are left at their defaults, switching to `wek` would increase the coverage from 42 days to 5*42=210 days.
     - Reduce `GSw_HourlyClusterRegionLevel` to something smaller than transreg (like `st`), and then increase `GSw_HourlyNumClusters`
     - Switch to `GSw_HourlyClusteAlgorithm=hierarchical` and then increase `GSw_HourlyNumClusters` (although that's less desirable, because hierarchical clustering doesn't do as good of a job of reproducing the actual spatial distribution of CF and load)
-    - Switch to `Gsw_HourlyType=year`. Although if you're running for the whole US you'll need to turn on region aggregation (`GSw_ZoneSet` in [`z54` or `z69`]) for it to solve.
+    - Switch to `Gsw_HourlyType=year`. Although if you're running for the whole US you'll need to turn on region aggregation (`GSw_RegionResolution=aggreg` and `GSw_HierarchyFile` in [`default` or `agg1`, or `agg2` or `agg3`]) for it to solve.
 - `GSw_HourlyClusterAlgorithm`
   - If set to 'hierarchical', then hierarchical clustering is used via
 
@@ -47,14 +47,15 @@ Here is partial list of remotely hosted files used by ReEDS:
   ```
 
   - If set to 'optimized', then a two-step custom optimization is performed using the `hourly_repperiods.optimize_period_weights()` and `hourly_repperiods.assign_representative_days()` functions to minimize the deviation in regional load and PV/wind CF between the weighted representative periods and the full year.
-  - If set to a string containing the substring 'user', then instead of optimizing the choice of representative periods for this run, the model reads a user-supplied file at `inputs/temporal/period_szn_{GSw_HourlyClusterAlgorithm}.csv`.
-      - So if you want to use the example period:szn map, set `GSw_HourlyClusterAlgorithm=user` and provide `inputs/temporal/period_szn_user.csv`.
-      - If you want to specify a different period:szn map, then create a file with your label in the filename and set `GSw_HourlyClusterAlgorithm` to that same label (which must contain the substring 'user'). For example, for `GSw_HourlyClusterAlgorithm=user_myname_20230130`, provide `inputs/temporal/period_szn_user_myname_20230130.csv`.
-      - Make sure the settings for `GSw_HourlyType` and `GSw_HourlyWeatherYears` match your user-defined map. For example, if your user-defined map includes 365 representative days for weather year 2012, then set `GSw_HourlyType=day` and `GSw_HourlyWeatherYears=2012`.
+  - If set to a string containing the substring 'user', then instead of optimizing the choice of representative periods for this run, we read them from the inputs/temporal/period_szn_user.csv file.
+    - The scenario name is in the first column, labeled 'scenario'. ReEDS will use rows with the same label as `GSw_HourlyClusterAlgorithm`.
+      - So if you want to use the example period:szn map, just set `GSw_HourlyClusterAlgorithm=user`.
+      - If you want to specify a different period:szn map, then add your mapping at the bottom of inputs/temporal/period_szn_user.csv with a unique scenario name in the 'scenario' column, and set `GSw_HourlyClusterAlgorithm` to your unique scenario name, *which must contain the substring 'user'*. (For example, I could use a mapping called 'user_myname_20230130' by adding my period:szn map to inputs/temporal/period_szn_user.csv with 'user_myname_20230130' in the 'scenario' column and setting `GSw_HourlyClusterAlgorithm=user_myname_20230130`.)
+      - Make sure the settings for `GSw_HourlyType` and `GSw_HourlyWeatherYears` match your user-defined map. For example, if your 'user_myname_20230130' map includes 365 representative days for weather year 2012, then set `GSw_HourlyType=day` and `GSw_HourlyWeatherYears=2012`.
       - You can feed the period:szn mapping from a completed run into the inputs folder of your repo to force ReEDS to use the same representative or stress periods.
       More detail can be found in the <a href="postprocessing_tools.html#fix-representative-stress-periods-preprocessing-get-case-periods-py">postprocessing tools</a> guide.
 
-- `GSw_PRM_StressThreshold`: The default setting of 'transgrp_1_EUE_sum' means a threshold of "**1** ppm NEUE in each **transgrp**", with stress periods selected by the daily **sum** of **EUE** within each **transgrp**.
+- `GSw_PRM_StressThreshold`: The default setting of 'transgrp_10_EUE_sum' means a threshold of "**10** ppm NEUE in each **transgrp**", with stress periods selected by the daily **sum** of **EUE** within each **transgrp**.
   - The first argument can be selected from ['country', 'interconnect', 'nercr', 'transreg', 'transgrp', 'st', 'r'] and specifies the hierarchy level within which to compare RA performance against the threshold.
   - The second argument can be any float and specifies the RA performance threshold in parts per million [ppm].
   - The third argument can be 'NEUE' or 'EUE', specifying which metric to use when selecting stress periods. If set to 'NEUE' the model will add stress periods with the largest **fraction** of dropped load; if set to 'EUE' the model will add stress periods with the largest **absolute MWh** of dropped load.
@@ -163,7 +164,7 @@ The low cost scenario assumes further declines from 2030 to 2050.
 Fixed O&M values are assumed to be 5% of CAPEX (source: <https://iopscience.iop.org/article/10.1088/1748-9326/acacb5>)
 
 Electrolyzer performance (efficiency) as well as SMR cost and performance assumptions are derived from assumptions [H2A: Hydrogen Analysis Production Models](https://www.nrel.gov/hydrogen/h2a-production-models.html), with guidance from Paige Jadun.
-See original input assumptions in the [ReEDS_Input_Processing repo](https://github.com/ReEDS-Model/ReEDS_Input_Processing/blob/main/hydrogen/costs/H2ProductionCosts-20210414.xlsx).
+See original input assumptions in the [ReEDS-2.0_Input_Processing repo](https://github.nrel.gov/ReEDS/ReEDS-2.0_Input_Processing/blob/main/H2/costs/H2ProductionCosts-20210414.xlsx).
 
 Note that SMR costs are currently in 2018$ and electrolyzer costs are in 2022$.
 
@@ -182,7 +183,7 @@ Note that SMR costs are currently in 2018$ and electrolyzer costs are in 2022$.
 | Storage  | Electric load  | MWh/metric ton |
 
 The values in `H2_transport_and_storage_costs.csv` are based on raw data provided from the SERA model by Paige Jadun.
-The raw data are formatted by the [`process-h2-inputs.py` script](https://github.com/ReEDS-Model/ReEDS_Input_Processing/blob/main/hydrogen/process-h2-inputs.py) in the input processing repository.
+The raw data are formatted by the [`process-h2-inputs.py` script](https://github.nrel.gov/ReEDS/ReEDS-2.0_Input_Processing/blob/main/H2/process-h2-inputs.py) in the input processing repository.
 
 ### Intra-Regional Hydrogen Transport Cost
 
@@ -379,9 +380,29 @@ In addition, the `GSw_ReducedResource` switch allows for a uniform reduction of 
 
 ## Transmission
 
+Most transmission input files are in the `inputs/transmission/` folder.
+
+### Input files
+
+1. *cost_hurdle_country.csv*: Indicates the hurdle rate for transmission flows between USA/Canada and USA/Mexico.
+1. *rev_transmission_basecost.csv*: Base transmission costs (before terrain multipliers) used in reV. Sources for numeric values are:
+    1. TEPPC: <https://www.wecc.org/Administrative/TEPPC_TransCapCostCalculator_E3_2019_Update.xlsx>
+    1. SCE: <http://www.caiso.com/Documents/SCE2019DraftPerUnitCostGuide.xlsx>
+    1. MISO: <https://cdn.misoenergy.org/20190212%20PSC%20Item%2005a%20Transmission%20Cost%20Estimation%20Guide%20for%20MTEP%202019_for%20review317692.pdf>
+        1. A more recent guide with a working link (as of 20230227) is available at <https://cdn.misoenergy.org/Transmission%20Cost%20Estimation%20Guide%20for%20MTEP22337433.pdf>.
+    1. Southeast: Private communication with a representative Southeastern utility
+1. *transmission_capacity_future_baseline.csv*: Historically installed (since 2010) and currently planned transmission capacity additions.
+1. *transmission_capacity_future_{`GSw_TransScen`}.csv*: Available future routes for transmission capacity as specified by `GSw_TransScen`.
+1. *transmission_capacity_init_AC_NARIS2024.csv*: Initial AC transmission capacities between 134 US ReEDS zones. Calculated using the code available at <https://github.nrel.gov/pbrown/TSC> and nodal network data from <https://www.nrel.gov/docs/fy21osti/79224.pdf>. The method is described by Brown, P.R. et al 2023, "A general method for estimating zonal transmission interface limits from nodal network data", in prep.
+1. *transmission_capacity_init_AC_REFS2009.csv*: Initial AC transmission capacities between 134 US ReEDS zones. Calculated for <https://www.nrel.gov/analysis/re-futures.html>.
+1. *transmission_capacity_init_nonAC.csv*: Initial DC transmission capacities between 134 US ReEDS zones.
+1. *transmission_cost_ac_500kv_ba.csv* and *transmission_distance_ba.csv*: Distance and cost for a representative transmission route between each pair of 134 US ReEDS zones, assuming a 500 kV single-circuit line. Routes are determined by the reV model using a least-cost-path algorithm accounting for terrain and land type multipliers. Costs represent the appropriate base cost from rev_transmission_basecost.csv multiplied by the appropriate terrain and land type multipliers for each 90m pixel crossed by the path. Endpoints are in inputs/shapefiles/transmission_endpoints and represent a point within the largest urban area in each of the 134 ReEDS zones.
+1. *transmission_cost_dc_ba.csv*: Same as transmission_cost_ac_500kv_ba.csv except assuming a 500 kV bipole DC line.
+
+
 ### Relevant switches
 
-1. `GSw_ZoneSet`: Defines the model zones via the `inputs/zones/{GSw_ZoneSet}` files.
+1. `GSw_HierarchyFile`: Indicate the suffix of the inputs/hierarchy.csv file you wish to use.
     1. By default the transreg boundaries are used for operating reserve sharing, capacity credit calculations, and the boundaries for limited-transmission cases.
 1. `GSw_TransInvMaxLongTerm`: Limit on annual transmission deployment nationwide **IN/AFTER** `firstyear_trans_longterm`, measured in TW-miles
 1. `GSw_TransInvMaxNearTerm`: Limit on annual transmission deployment nationwide **BEFORE** `firstyear_trans_longterm`, measured in TW-miles
@@ -391,9 +412,7 @@ In addition, the `GSw_ReducedResource` switch allows for a uniform reduction of 
 1. `GSw_TransHurdle`: Intra-US hurdle rate for interzonal flows, measured in $2004/MWh
 1. `GSw_TransHurdleLevel`: Indicate the level of hierarchy.csv between which to apply the hurdle rate specified by `GSw_TransHurdle`. i.e. if set to ‘st’, intra-state flows will have no hurdle rates but inter-state flows will have hurdle rates specified by `GSw_TransHurdle`.
 1. `GSw_TransRestrict`: Indicate the level of hierarchy.csv within which to allow transmission expansion. i.e. if set to ‘st’, no inter-state expansion is allowed.
-1. `GSw_TransScen`: Indicate the inputs/transmission/transmission_capacity_future_{`GSw_TransScen`}.csv file to use, which includes the list of interfaces that can be expanded.
-Note that the full list of expandable interfaces is indicated by this file plus transmission_capacity_future_default.csv (currently planned additions) plus existing AC and DC interfaces (which can be expanded by default).
-Applies to AC, LCC, and VSC.
+1. `GSw_TransScen`: Indicate the inputs/transmission/transmission_capacity_future_{`GSw_TransScen`}.csv file to use, which includes the list of interfaces that can be expanded. Note that the full list of expandable interfaces is indicated by this file plus transmission_capacity_future_default.csv (currently planned additions) plus transmission_capacity_init_AC_NARIS2024.csv (existing AC interfaces, which can be expanded by default) plus transmission_capacity_init_nonAC.csv (existing DC connections, which can be expanded by default). Applies to AC, LCC, and VSC.
 1. `GSw_PRM_hierarchy_level`: Level of hierarchy.csv within which to calculate net load, used for capacity credit. Larger levels indicate more planning coordination between regions.
 1. `GSw_PRMTRADE_level`: Level of hierarchy.csv within which to allow PRM trading. By default it’s set to ‘country’, indicating no limits. If set to ‘r’, no PRM trading is allowed.
 
@@ -596,7 +615,7 @@ MGA is turned off if set to 0; a reasonable choice for MGA is in the range of 0.
 - `GSw_MGA_Direction` (default `min`): Directionality of the second optimization.
 Options are `min` or `max`.
 - `GSw_MGA_Objective` (default `capacity`): Objective for MGA (uses `GSw_MGA_SubObjective` to specify technology subset if set to `capacity`).
-Options are `capacity`, `transmission`, `rasharing`, and `co2`.
+Options are `capacity`, `generation`, `transmission`, `rasharing`, and `co2`.
 - `GSw_MGA_SubObjective` (default `fossil`): Technology subset to minimize or maximize the capacity of (only used for `GSw_MGA_Objective = capacity`).
 Options are the column names in the `inputs/tech-subset-table.csv` file.
 

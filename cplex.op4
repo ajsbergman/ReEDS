@@ -41,6 +41,10 @@ barepcomp = 1e-8
 *## Some background details are available at
 *## https://www.slideshare.net/IEA-ETSAP/improving-the-solution-time-of-times-by-playing-with-cplexbarrier
 *## https://iea-etsap.org/webinar/CPLEX%20options%20for%20running%20TIMES%20models.pdf
+*## This setting is specifically for MGA runs which have difficulties with cplex.opt, cplex.op2, and cplex.op3
+*## This setting differs from cplex.opt and cplex.op2 in that it: 1. sets predual = -1, which does not
+*## dual to optimizer to reduce time; 2. sets barcrossalg = 1, which only performs primal crossover.
+*## It also differs from cplex.op3 in that it keeps baralg at default value (=0)
 
 *** numericalemphasis (boolean): emphasizes precision in numerically unstable or difficult problems [default 0]
 * numericalemphasis 1
@@ -50,13 +54,13 @@ barepcomp = 1e-8
 
 *** barcolnz (integer): specifies the number of entries in columns to be considered as dense [default 0]
 *** 0 lets CPLEX choose; values ranging from 30-300 can sometimes shorten runtime
-barcolnz 30
+barcolnz 100
 
 *** barorder (integer): row ordering algorithm selection. 1 = approximate minimum degree (AMD) [default 0]
 * barorder 1
 
 *** baralg (integer): barrier algorithm selection. 1 = infeasibility-estimate start, 3 = standard barrier [default 0]
-* baralg 1
+* baralg 3
 
 *** barstartalg (integer): barrier starting point algorithm. 2 = default primal, estimate dual [default 1]
 * barstartalg 2
@@ -69,3 +73,12 @@ barcolnz 30
 
 *** solutiontype (integer): type of solution (basic or non basic): 0 does basic with crossover, 2 skips crossover
 * solutiontype 2
+
+*** predual (integer) [default = 0]: 0 automatic, 1 gives dual to optimizer, -1 does not give dual to optimizer
+predual = -1
+
+*** barcrossalg (integer) [default = 0]: 0 automatic, 1 primal crossover, 2 dual crossver
+barcrossalg = 1
+
+*** ppriind (integer): Pricing algorithm
+*ppriind = 3

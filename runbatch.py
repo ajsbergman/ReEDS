@@ -9,7 +9,6 @@ import threading
 import time
 import shutil
 import csv
-import importlib
 import numpy as np
 import pandas as pd
 import subprocess
@@ -283,8 +282,6 @@ def check_compatibility(sw):
                 .format('\n'.join(err_switch_configs))
             )
 
-    reeds.inputs.validate_zoneset(sw['GSw_ZoneSet'])
-
     ### Aggregation
     if (sw['GSw_RegionResolution'] != 'aggreg') and (int(sw['GSw_NumCSPclasses']) != 12):
         raise NotImplementedError(
@@ -295,7 +292,7 @@ def check_compatibility(sw):
     ### Parsed string switches
     ## Automatic inputs
     reeds_path = os.path.dirname(__file__)
-    hierarchy = reeds.io.get_hierarchy(GSw_ZoneSet=sw['GSw_ZoneSet']).reset_index()
+    hierarchy = pd.read_csv(os.path.join(reeds_path,'inputs','hierarchy.csv'))
 
     for threshold in sw['GSw_PRM_StressThreshold'].split('/'):
         ## Example: threshold = 'transgrp_10_EUE_sum'
@@ -428,29 +425,33 @@ def check_compatibility(sw):
         raise ValueError(err)
 
     # Add a row for each county
-    ## TEMPORARY 20260402 until the aggregation procedure is updated
-    county2zone = reeds.io.get_county2zone(GSw_ZoneSet='z134', as_map=False)
+    county2zone = pd.read_csv(
+        os.path.join(reeds_path, 'inputs', 'county2zone.csv'), dtype={'FIPS':str},
+    )
     county2zone['county'] = 'p' + county2zone.FIPS
     # Add county info to hierarchy
-    hierarchy = hierarchy.merge(county2zone.drop(columns=['FIPS','state']), on='r')
+    hierarchy = hierarchy.merge(county2zone.drop(columns=['FIPS','state']), on='ba')
 
-    # Make sure specified regions are allowed for the specified hierarchy level
-    region_groups = sw['GSw_Region'].split('//') if '//' in sw['GSw_Region'] else [sw['GSw_Region']]
-    for group in region_groups:
-        level, regions = group.split('/')
-        if level not in hierarchy:
-            err = (
-                f"The specified hierarchy level '{level}' does not exist in the hierarchy file."
-                f"\nUpdate GSw_Region={sw['GSw_Region']} to specify a valid level."
-            )
-            raise ValueError(err)
-        invalid_regions = [
-            region for region in regions.split('.')
-            if region.lower() not in hierarchy[level].str.lower().values
-        ]
-        if invalid_regions:
-            err = f"GSw_Region: {', '.join(invalid_regions)} need to be in {hierarchy[level].unique()}"
-            raise Exception(err)
+    if '/' in sw['GSw_Region']:
+        # Handle multiple spatial resolutions
+        region_groups = sw['GSw_Region'].split('//') if '//' in sw['GSw_Region'] else [sw['GSw_Region']]
+        for group in region_groups:
+            level, regions = group.split('/')
+            if level not in hierarchy:
+                raise ValueError("Fix level in GSw_Region")
+            invalid_regions = [
+                region for region in regions.split('.')
+                if region.lower() not in hierarchy[level].str.lower().values
+            ]
+            if invalid_regions:
+                err = f"GSw_Region: {', '.join(invalid_regions)} need to be in {hierarchy[level].unique()}"
+                raise Exception(err)
+    else:
+        modeled_regions = pd.read_csv(
+            os.path.join(reeds_path,'inputs','userinput','modeled_regions.csv')
+        )
+        if sw['GSw_Region'] not in modeled_regions:
+            raise ValueError("No column in modeled_regions.csv matching GSw_Region")
 
     ### Compatible switch combinations
     if sw['GSw_LoadProfiles'] == 'historic':
@@ -496,19 +497,6 @@ def check_compatibility(sw):
     ### Contents of user-specified files
     reeds.checks.check_switches(sw)
 
-    ### Uncommonly used packages
-    if sw['GSw_HourlyClusterAlgorithm'].lower().startswith('kmedoids'):
-        if importlib.util.find_spec("sklearn_extra") is None:
-            err = (
-                "The scikit-learn-extra package is required for GSw_HourlyClusterAlgorithm="
-                f"{sw['GSw_HourlyClusterAlgorithm']} but is not available in your conda "
-                "environment. Please install it by running:\n"
-                "    pip install 'scikit-learn-extra>=0.2.0,<0.3.0'"
-                "\nor:\n"
-                "    conda install -c conda-forge scikit-learn-extra=0.2"
-            )
-            raise ModuleNotFoundError(err)
-
 
 def solvestring_sequential(
         batch_case, caseSwitches,
@@ -543,6 +531,7 @@ def solvestring_sequential(
             'GSw_ClimateHydro',
             'GSw_ClimateWater',
             'GSw_gopt',
+            'GSw_gopt_mga',
             'GSw_HourlyChunkLengthRep',
             'GSw_HourlyChunkLengthStress',
             'GSw_HourlyType',
