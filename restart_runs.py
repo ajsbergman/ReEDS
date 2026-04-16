@@ -4,6 +4,8 @@ import shutil
 import subprocess
 import argparse
 import pandas as pd
+import re
+import reeds
 from glob import glob
 from runbatch import submit_slurm_parallel_jobs
 from runstatus import get_run_status
@@ -92,7 +94,14 @@ for case in runs_failed:
 
     #%% Copy additional files if desired
     for f in more_copyfiles:
-        shutil.copy(os.path.join(reeds_path,f), os.path.join(case,f))
+        if f.lower().startswith('finito'):
+            # if file starts with 'finito' append the finito directory
+            sw = reeds.io.get_switches(case)
+            if int(sw.GSw_FINITO_Link):
+                f_copy = re.sub("^finito/", "" , f, flags=re.IGNORECASE)
+                shutil.copy(os.path.join(sw.finito_dir,f_copy), os.path.join(case,f))
+        else:
+            shutil.copy(os.path.join(reeds_path,f), os.path.join(case,f))
 
     #%% Make a backup copy of the original bash and sbatch scripts
     callfile = os.path.join(case,f'call_{casename}.sh')
@@ -165,7 +174,8 @@ else:
         # It is a single case or we are not on HPC
         if copy_srun_template:
             writelines_srun_case = writelines_srun.copy()
-            writelines_srun_case.append(f"\n#SBATCH --job-name={casename}\n")
+            writelines_srun_case.append(f"#SBATCH --job-name={casename}")
+            writelines_srun_case.append(f"#SBATCH --output={os.path.join(case, 'slurm-%j.out')}\n")
             writelines_srun_case.append(f"sh {callfile}")
             with open(sbatchfile, 'w') as f:
                 for line in writelines_srun_case:

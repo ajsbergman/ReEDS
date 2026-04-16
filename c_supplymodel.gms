@@ -396,6 +396,14 @@ eq_loadcon(r,h,t)$tmodel(t)..
 *   (the effect is the same but avoiding the h-indexed OP_LOADSITE reduces solve time)
     + OP_LOADSITE(r,h,t)$[Sw_LoadSiteCF$(Sw_LoadSiteCF<1)$val_loadsite(r)]
     + CAP_LOADSITE(r,t)$[(Sw_LoadSiteCF=1)$val_loadsite(r)]
+
+* [plus] load for industrial and converted fuel facilities (FINITO),
+* including the PRM for stress periods
+* TODO: should this include distloss?
+* [MWh/hr = MW]
+$ifthene.linked_load Sw_FINITO_Link==1
+    + USE_ELE_FINITO(r,h,t)$[t_finito(t)] * (1 + prm(r,t)$h_stress(h)) 
+$endif.linked_load
 ;
 
 * ---------------------------------------------------------------------------
@@ -1040,7 +1048,6 @@ eq_rsc_INVlim(r,i,rscbin,t)$[tmodel(t)
 *plus exogenous (pre-start-year) capacity, using its level in the first year (tfirst)
     + sum{(ii,v,tt)$[tfirst(tt)$rsc_agg(i,ii)$exog_rsc(i)],
          capacity_exog_rsc(ii,v,r,rscbin,tt) }
-
 ;
 
 * ---------------------------------------------------------------------------
@@ -2881,7 +2888,7 @@ eq_national_gen(t)$[tmodel(t)$national_gen_frac(t)$Sw_GenMandate]..
 * ---------------------------------------------------------------------------
 
 *gas used from each bin is the sum of all gas used
-eq_gasused(cendiv,h,t)$[tmodel(t)$((Sw_GasCurve=0) or (Sw_GasCurve=3))]..
+eq_gasused(cendiv,h,t)$[tmodel(t)$tfuel(t)$((Sw_GasCurve=0) or (Sw_GasCurve=3))]..
 
     sum{gb,GASUSED(cendiv,gb,h,t) }
 
@@ -2898,7 +2905,7 @@ eq_gasused(cendiv,h,t)$[tmodel(t)$((Sw_GasCurve=0) or (Sw_GasCurve=3))]..
 * ---------------------------------------------------------------------------
 
 * gas from each bin needs to less than its capacity
-eq_gasbinlimit(cendiv,gb,t)$[tmodel(t)$(Sw_GasCurve=0)]..
+eq_gasbinlimit(cendiv,gb,t)$[tmodel(t)$tfuel(t)$(Sw_GasCurve=0)]..
 
     gaslimit(cendiv,gb,t)
 
@@ -2909,7 +2916,7 @@ eq_gasbinlimit(cendiv,gb,t)$[tmodel(t)$(Sw_GasCurve=0)]..
 
 * ---------------------------------------------------------------------------
 
-eq_gasbinlimit_nat(gb,t)$[tmodel(t)$(Sw_GasCurve=3)]..
+eq_gasbinlimit_nat(gb,t)$[tmodel(t)$tfuel(t)$(Sw_GasCurve=3)]..
 
    gaslimit_nat(gb,t)
 
@@ -2922,7 +2929,7 @@ eq_gasbinlimit_nat(gb,t)$[tmodel(t)$(Sw_GasCurve=3)]..
 
 * ---------------------------------------------------------------------------
 
-eq_gasaccounting_regional(cendiv,t)$[tmodel(t)$(Sw_GasCurve=1)]..
+eq_gasaccounting_regional(cendiv,t)$[tmodel(t)$tfuel(t)$(Sw_GasCurve=1)]..
 
     sum{fuelbin, VGASBINQ_REGIONAL(fuelbin,cendiv,t) }
 
@@ -2935,7 +2942,7 @@ eq_gasaccounting_regional(cendiv,t)$[tmodel(t)$(Sw_GasCurve=1)]..
 
 * ---------------------------------------------------------------------------
 
-eq_gasaccounting_national(t)$[tmodel(t)$(Sw_GasCurve=1)]..
+eq_gasaccounting_national(t)$[tmodel(t)$tfuel(t)$(Sw_GasCurve=1)]..
 
     sum{fuelbin,VGASBINQ_NATIONAL(fuelbin,t) }
 
@@ -2948,7 +2955,7 @@ eq_gasaccounting_national(t)$[tmodel(t)$(Sw_GasCurve=1)]..
 
 * ---------------------------------------------------------------------------
 
-eq_gasbinlimit_regional(fuelbin,cendiv,t)$[tmodel(t)$(Sw_GasCurve=1)]..
+eq_gasbinlimit_regional(fuelbin,cendiv,t)$[tmodel(t)$tfuel(t)$(Sw_GasCurve=1)]..
 
     Gasbinwidth_regional(fuelbin,cendiv,t)
 
@@ -2959,7 +2966,7 @@ eq_gasbinlimit_regional(fuelbin,cendiv,t)$[tmodel(t)$(Sw_GasCurve=1)]..
 
 * ---------------------------------------------------------------------------
 
-eq_gasbinlimit_national(fuelbin,t)$[tmodel(t)$(Sw_GasCurve=1)]..
+eq_gasbinlimit_national(fuelbin,t)$[tmodel(t)$tfuel(t)$(Sw_GasCurve=1)]..
 
     Gasbinwidth_national(fuelbin,t)
 
@@ -2973,10 +2980,10 @@ eq_gasbinlimit_national(fuelbin,t)$[tmodel(t)$(Sw_GasCurve=1)]..
 *==============================
 * -- Bioenergy Supply Curve --
 *==============================
+* defer to FINITO representation when models are linked
 
 * ---------------------------------------------------------------------------
-
-eq_bioused(r,t)$[sum{(i,v)$(bio(i) or cofire(i)), valgen(i,v,r,t) }$tmodel(t)]..
+eq_bioused(r,t)$[sum{(i,v)$(bio(i) or cofire(i)), valgen(i,v,r,t) }$tmodel(t)$tfuel(t)]..
 
     sum{bioclass, BIOUSED(bioclass,r,t) }
 
@@ -2995,7 +3002,7 @@ eq_bioused(r,t)$[sum{(i,v)$(bio(i) or cofire(i)), valgen(i,v,r,t) }$tmodel(t)]..
 * ---------------------------------------------------------------------------
 
 * biomass consumption limit is annual
-eq_biousedlimit(bioclass,usda_region,t)$tmodel(t)..
+eq_biousedlimit(bioclass,usda_region,t)$[tmodel(t)$tfuel(t)]..
 
     biosupply(usda_region,bioclass,"cap")
 
@@ -3565,6 +3572,11 @@ eq_h2_demand(p,t)$[(sameas(p,"H2"))$tmodel(t)$(yeart(t)>=h2_demand_start)$(Sw_H2
     + sum{(i,v,r,h)$[valgen(i,v,r,t)$h2_combustion(i)$h_rep(h)],
             GEN(i,v,r,h,t) * hours(h) * h2_combustion_intensity * heat_rate(i,v,r,t)
     }
+
+* hydrogen demand from indusrty (FINITO): FINITO demand [MMBtu/yr] * conversion [metric tons-H2/MMBtu-H2]
+$ifthene.linked_h2_nat Sw_FINITO_Link==1
+    + [sum{(r,h)$h_rep(h), hours(h) * USE_H2_FINITO(r,h,t) * h2_metric_tons_per_mmbtu }]$t_finito(t)
+$endif.linked_h2_nat
 ;
 
 * ---------------------------------------------------------------------------
@@ -3596,6 +3608,11 @@ eq_h2_demand_regional(r,h,t)
     + sum{(i,v)$[valgen(i,v,r,t)$h2_combustion(i)],
             GEN(i,v,r,h,t) * h2_combustion_intensity * heat_rate(i,v,r,t)
        }
+
+* regional hydrogen demand for industry (FINITO)
+$ifthene.linked_h2_reg Sw_FINITO_Link==1
+    + [ USE_H2_FINITO(r,h,t) * h2_metric_tons_per_mmbtu ]$t_finito(t)
+$endif.linked_h2_reg
 ;
 
 * ---------------------------------------------------------------------------
@@ -3838,11 +3855,16 @@ eq_co2_capture(r,h,t)
 
 * capture from DAC
     + sum{(i,v)$[dac(i)$valcap(i,v,r,t)$i_p(i,"DAC")], PRODUCE("DAC",i,v,r,h,t) }$Sw_DAC
+* (linked) capture from industry [metric_tons-CO2/hr]: 
+* calculation: hours_per_year [yrs/hr] * capture [scaled_metric_tons-CO2/yr] / co2_scale [scaled_metric_tons-CO2/metric_tons-CO2]
+$ifthene.linked_co2_capture Sw_FINITO_Link==1
+    + [CAPTURE_CO2EM(r,h,t) / co2_scale]$[t_finito(t)$h_rep(h)]
+$endif.linked_co2_capture
 ;
 
 * ---------------------------------------------------------------------------
 
-eq_co2_transport_caplimit(r,rr,h,t)$[co2_routes(r,rr)$Sw_CO2_Detail
+eq_co2_transport_caplimit(r,rr,h,t)$[co2_routes(r,rr)$Sw_CO2_Detail$h_rep(h)
                                     $tmodel(t)$(yeart(t)>=co2_detail_startyr)]..
 
 *capacity computed as cumulative investments of co2 pipelines up to the current year
@@ -3858,7 +3880,8 @@ eq_co2_transport_caplimit(r,rr,h,t)$[co2_routes(r,rr)$Sw_CO2_Detail
 
 * ---------------------------------------------------------------------------
 
-eq_co2_spurline_caplimit(r,cs,h,t)$[Sw_CO2_Detail$r_cs(r,cs)$tmodel(t)$(yeart(t)>=co2_detail_startyr)]..
+eq_co2_spurline_caplimit(r,cs,h,t)$[Sw_CO2_Detail$r_cs(r,cs)$h_rep(h)$tmodel(t)
+                                    $(yeart(t)>=co2_detail_startyr)]..
 
 *capacity computed as cumulative investments of co2 spurlines up to the current year
     sum{tt$[(yeart(tt)<=yeart(t))$(tmodel(tt) or tfix(tt))$(yeart(tt)>=co2_detail_startyr)],
@@ -3867,11 +3890,16 @@ eq_co2_spurline_caplimit(r,cs,h,t)$[Sw_CO2_Detail$r_cs(r,cs)$tmodel(t)$(yeart(t)
     =g=
 
     CO2_STORED(r,cs,h,t)
+* (linked) extraction of CO2 [metric_tons-CO2/hr] 
+* calculation: hours_per_year [yrs/hr] * (1 / co2_scale [scaled_metric_tons-CO2/metric_tons-CO2]) * use [scaled_metric_tons-CO2/yr] 
+$ifthene.linked_co2_spurline_caplimit Sw_FINITO_Link==1
+    + [ (1 / co2_scale) * EXTRACT_CO2_CS(cs,r,h,t) ]$[h_rep(h)$t_finito(t)]
+$endif.linked_co2_spurline_caplimit
 ;
 
 * ---------------------------------------------------------------------------
 
-eq_co2_sink(r,h,t)$[tmodel(t)$Sw_CO2_Detail$(yeart(t)>=co2_detail_startyr)]..
+eq_co2_sink(r,h,t)$[tmodel(t)$Sw_CO2_Detail$h_rep(h)$(yeart(t)>=co2_detail_startyr)]..
 
 *the amount of co2 stored from r in all of its cs sites
     sum{cs$r_cs(r,cs), CO2_STORED(r,cs,h,t) }
@@ -3886,11 +3914,24 @@ eq_co2_sink(r,h,t)$[tmodel(t)$Sw_CO2_Detail$(yeart(t)>=co2_detail_startyr)]..
 
 * net trade
     + sum{rr$co2_routes(r,rr), CO2_FLOW(rr,r,h,t) - CO2_FLOW(r,rr,h,t) }
+
+* (linked) extraction - use of CO2 [metric_tons-CO2/hr] 
+*calculation: hours_per_year [yrs/hr] * (1 / co2_scale [scaled_metric_tons-CO2/metric_tons-CO2]) * extraction/use [scaled_metric_tons-CO2/yr]
+$ifthene.linked_co2_sink Sw_FINITO_Link==1
+    + (1 / co2_scale) * [
+*       extraction from all cs sites in r 
+        + sum{cs$[csfeas(cs)$r_cs(r,cs)], EXTRACT_CO2_CS(cs,r,h,t)}
+*       total use of CO2, equivalent to supply 
+        - USE_CO2(r,h,t) 
+    ]$[h_rep(h)$t_finito(t)]
+$endif.linked_co2_sink
+
 ;
 
 * ---------------------------------------------------------------------------
 
-eq_co2_injection_limit(cs,h,t)$[Sw_CO2_Detail$tmodel(t)$(yeart(t)>=co2_detail_startyr)$csfeas(cs)]..
+eq_co2_injection_limit(cs,h,t)$[tmodel(t)$Sw_CO2_Detail$h_rep(h)
+                                $(yeart(t)>=co2_detail_startyr)$csfeas(cs)]..
 
 * exogenously defined injection limit
     co2_injection_limit(cs)
@@ -3899,6 +3940,14 @@ eq_co2_injection_limit(cs,h,t)$[Sw_CO2_Detail$tmodel(t)$(yeart(t)>=co2_detail_st
 
 * must exceed metric tons per hour entering storage
     sum{r$r_cs(r,cs), CO2_STORED(r,cs,h,t) }
+
+
+
+* (linked) extraction of CO2 for use [metric_tons-CO2/hr] 
+* calculation: hours_per_year [yrs/hr] * (1 / co2_scale [scaled_metric_tons-CO2/metric_tons-CO2]) * use [scaled_metric_tons-CO2/yr] 
+$ifthene.linked_co2_injection_limit Sw_FINITO_Link==1
+    + (1 / co2_scale) * sum{r$[r_cs(r,cs)], EXTRACT_CO2_CS(cs,r,h,t) }$[h_rep(h)$t_finito(t)]
+$endif.linked_co2_injection_limit
 ;
 
 * ---------------------------------------------------------------------------
@@ -3915,7 +3964,16 @@ eq_co2_cumul_limit(cs,t)$[tmodel(t)$Sw_CO2_Detail$(yeart(t)>=co2_detail_startyr)
         $[(yeart(tt)<=yeart(t))$(tmodel(tt) or tfix(tt))$(yeart(tt)>=co2_detail_startyr)
         $r_cs(r,cs)$h_rep(h)],
         yearweight(tt) * hours(h) * CO2_STORED(r,cs,h,tt) }
+
+* (linked) cumulative amount extracted over time
+$ifthene.linked_co2_storage_cumul_limit Sw_FINITO_Link==1
+    - sum{(r,h,tt)
+        $[(yeart(tt)<=yeart(t))$(tmodel(tt) or tfix(tt))$(yeart(tt)>=co2_detail_startyr)
+        $r_cs(r,cs)$(tfuel(tt))],
+        yearweight(tt) * hours(h) * EXTRACT_CO2_CS(cs,r,h,tt) }$[t_finito(t)]
+$endif.linked_co2_storage_cumul_limit 
 ;
+
 * ---------------------------------------------------------------------------
 
 *===================

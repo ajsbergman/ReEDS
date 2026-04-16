@@ -1341,7 +1341,8 @@ set tmodel(t) "years to include in the model",
     tfix(t) "years to fix variables over when summing over previous years",
     tprev(t,tt) "previous modeled tt from year t",
     stfeas(st) "states to include in the model",
-    tsolved(t) "years that have solved" ;
+    tsolved(t) "years that have solved",
+    tfuel(t) "years that use ReEDS fuel supply curve module (otherwise uses supply curves in FINITO)" ;
 
 *following parameters get re-defined when the solve years have been declared
 parameter mindiff(t) "minimum difference between t and all other tt that are in tmodel(t)" ;
@@ -1354,7 +1355,7 @@ tfix(t) = no ;
 stfeas(st) = no ;
 tprev(t,tt) = no ;
 tsolved(t) = no ;
-
+tfuel(t)=no;
 
 *==============================
 * Year specification
@@ -1378,6 +1379,12 @@ tlast(t)$[ord(t) = smax{tt$tmodel_new(tt), ord(tt) }] = yes ;
 tprev(t,tt)$[tmodel_new(t)$tmodel_new(tt)$(tt.val<t.val)] = yes ;
 mindiff(t)$tmodel_new(t) = smin{tt$tprev(t,tt), t.val-tt.val} ;
 tprev(t,tt)$[tmodel_new(t)$tmodel_new(tt)$(t.val-tt.val<>mindiff(t))] = no ;
+
+* If FINITO linkage is on, remove all modeled years from tfuel after first_year_finito
+* as the FINITO supply curves will be used instead of those in ReEDS;
+* otherwise, all modeled years use ReEDS supply curves and are eligible for tfuel 
+tfuel(t)$[tmodel_new(t)]=yes;
+tfuel(t)$[tmodel_new(t)$Sw_FINITO_Link$(t.val>=%first_year_finito%)] = no ;
 
 * In order to fill all necessary dimensions of upgrade techs parameters, we require
 * Sw_UpgradeYear in ban(i) to be a modeled year and thus we compute as either
@@ -2331,6 +2338,7 @@ noncumulative_prescriptions(pcat,r,t)$tmodel_new(t)
                                           ],
                                         prescribednonrsc(tt,pcat,r,"value") + prescribedrsc(tt,pcat,r,"value")
                                       } ;
+noncumulative_prescriptions(pcat,r,t)$noncumulative_prescriptions(pcat,r,t) = round(noncumulative_prescriptions(pcat,r,t),6);
 
 parameter noncumulative_prescriptions_energy(pcat,r,t) "--MWh-- prescribed energy capacity that comes online in a given year" ;
 noncumulative_prescriptions_energy(pcat,r,t)$tmodel_new(t)
@@ -2776,6 +2784,7 @@ h2_ptc(i,v,r,t)$valcap(i,v,r,t) = h2_ptc_in(i,v,t) ;
 * if Sw_H2_PTC = 1, then tech 'electrolyzer' can also receive the hydrogen PTC, as designated in h2_ptc.
 * Otherwise, we assume it receives $0/kg because the cleanliness of its carbon cannot be proven
 h2_ptc("electrolyzer",v,r,t)$[(not Sw_H2_PTC)] = 0;
+
 
 set h2_ptc_years(t) "years in which the hydrogen production incentive is active";
 h2_ptc_years(t) = tmodel_new(t)$[sum{(i,v,r),h2_ptc(i,v,r,t)}];
@@ -3571,6 +3580,7 @@ $include inputs_case%ds%tsc_binwidth.csv
 $offdelim
 $onlisting
 / ;
+tsc_binwidth(r,rr,tscbin) = 1e9;
 
 parameter tsc_forward(r,rr,tscbin) "--$/MW-- transmission upgrade cost for forward direction"
 /
@@ -6543,22 +6553,25 @@ $offdelim
 $ondigit
 $onlisting
 / ,
-          min_co2_spurline_distance     "--mi-- minimum distance for a spur line (used to provide a floor for pipeline distances in r_cs_distance)"
+          min_co2_spurline_distance     "--mi-- minimum distance for a spur line (used to provide a floor for pipeline distances in r_cs_distance)",
+          min_r_cs_distance(r)          "--mi-- mininum euclidean distance between BA transmission endpoints and storage formations"
 ;
 $offempty
 
-* Wherever BA centroids fall within formation boundaries, assume some average spur line distance to connect a CCS or DAC plant with an injection site
+* Wherever BA centroids fall within formation boundaries, r_cs_distance will be equal to 0, to ensure these are not dropped from the set, set these elements to a small number
+r_cs_distance(r,cs)$[r_cs(r,cs)$(r_cs_distance(r,cs) = 0)] = 1e-3 ;
+* find the closest site to each region
+min_r_cs_distance(r) = smin(cs$[r_cs(r,cs)], r_cs_distance(r,cs));
+
+$ifthene.rcslimit %GSw_CO2_LimitStorageSites% == 1
+* remove the region site combinations that are not the closest 
+r_cs_distance(r,cs)$[r_cs(r,cs)$(r_cs_distance(r,cs) <= min_r_cs_distance(r))] = min_r_cs_distance(r) ;
+r_cs_distance(r,cs)$[r_cs(r,cs)$(r_cs_distance(r,cs) > min_r_cs_distance(r))] = 0 ;
+$endif.rcslimit
+
+* Wherever BA centroids fall within formation boundaries, assume some average spur line distance to connect a CCS or DAC plant with an injection site 
 min_co2_spurline_distance = 20 ;
-r_cs_distance(r,cs)$[r_cs_distance(r,cs) < min_co2_spurline_distance] = min_co2_spurline_distance ;
-
-* Assign spurline costs
-cost_co2_spurline_cap(r,cs,t)$[r_cs(r,cs)$tmodel_new(t)] = Sw_CO2_spurline_cost * r_cs_distance(r,cs) ;
-
-* CO2 pipelines can be build between any two adjacent BAs
-cost_co2_pipeline_cap(r,rr,t)$[routes_adjacent(r,rr)$tmodel_new(t)] = Sw_CO2_pipeline_cost * pipeline_distance(r,rr) ;
-cost_co2_pipeline_fom(r,rr,t)$[routes_adjacent(r,rr)$tmodel_new(t)] = Sw_CO2_pipeline_fom * pipeline_distance(r,rr) ;
-
-co2_routes(r,rr)$routes_adjacent(r,rr) = yes ;
+r_cs_distance(r,cs)$[r_cs_distance(r,cs)$(r_cs_distance(r,cs) <= min_co2_spurline_distance )] = min_co2_spurline_distance ;
 
 $onempty
 table co2_char(cs,*) "co2 site characteristics including injection rate limit, total storage limit, and break even cost"
@@ -6577,8 +6590,17 @@ cost_co2_stor_bec(cs,t) = co2_char(cs,"bec_%GSw_CO2_BEC%");
 csfeas(cs)$[co2_storage_limit(cs)$co2_injection_limit(cs)] = yes ;
 * only want to consider r_cs pairs which have available capacity
 r_cs(r,cs)$[not csfeas(cs)] = no ;
+r_cs(r,cs)$[not r_cs_distance(r,cs)] = no ;
 
+* Assign spurline costs
+cost_co2_spurline_cap(r,cs,t)$[r_cs(r,cs)$tmodel_new(t)] = Sw_CO2_spurline_cost * r_cs_distance(r,cs) ;
 cost_co2_spurline_fom(r,cs,t)$[r_cs(r,cs)$tmodel_new(t)] = Sw_CO2_spurline_fom * r_cs_distance(r,cs) ;
+
+* CO2 pipelines can be build between any two adjacent BAs
+cost_co2_pipeline_cap(r,rr,t)$[routes_adjacent(r,rr)$tmodel_new(t)] = Sw_CO2_pipeline_cost * pipeline_distance(r,rr) ;
+cost_co2_pipeline_fom(r,rr,t)$[routes_adjacent(r,rr)$tmodel_new(t)] = Sw_CO2_pipeline_fom * pipeline_distance(r,rr) ;
+
+co2_routes(r,rr)$routes_adjacent(r,rr) = yes ;
 
 cost_co2_pipeline_cap(r,rr,t) =  %GSw_CO2_CostAdj% * cost_co2_pipeline_cap(r,rr,t);
 cost_co2_pipeline_fom(r,rr,t) =  %GSw_CO2_CostAdj% * cost_co2_pipeline_fom(r,rr,t);
