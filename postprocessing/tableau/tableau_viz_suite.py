@@ -2,15 +2,7 @@
 import os
 import sys
 import pandas as pd
-import numpy as np
-import matplotlib as mpl
-import matplotlib.pyplot as plt
-from matplotlib import patheffects as pe
 import geopandas as gpd
-from glob import glob
-import traceback
-import gdxpds
-import cmocean
 from tqdm import tqdm
 import time
 import datetime
@@ -27,7 +19,6 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')
 import reeds
 from reeds import plots
 plots.plotparams()
-from reeds import reedsplots
 
 
 #%%### GENERAL FUNCTIONS
@@ -69,7 +60,7 @@ def create_scenarios_csv(output_dir,cases):
             # Assign a Load Profile
             try:
                 df.loc[df['machine_readable_scenario_name'] == scenario, 'Demand'] = sw.GSw_LoadProfiles
-            except:
+            except Exception:
                 df.loc[df['machine_readable_scenario_name'] == scenario, 'Demand'] = sw.GSw_EFS1_AllYearLoad
             
             # Assign a Policy
@@ -140,10 +131,7 @@ def produce_shapefiles():
     try:
         for x in ['US_PCA']:
             os.mkdir(os.path.join(output_dir,'shapefiles',x))
-            src_file  = os.path.join(reeds_path,'inputs','shapefiles',x,f'{x}.shp')
             # read in the source file and check its columns
-            x_cols = gpd.read_file(src_file).columns.tolist()
-
             dst_file  = os.path.join(output_dir,'shapefiles',x,f'{x}.shp')
             # Read the shapefile
             gdf = reeds.io.get_zonemap(cases[basecase])
@@ -243,7 +231,7 @@ def add_custom_palette(file_path, palette_name, color_list, overwrite):
     Adds a custom color palette to a Tableau Preferences.tps file.
     """
     # If the Prefences.tps file has not already been created, create a new one with a basic structure
-    file_path = os.path.join(output_dir, f'Preferences.tps')
+    file_path = os.path.join(output_dir, 'Preferences.tps')
     if not os.path.exists(file_path):
         root = ET.Element('workbook')
         tree = ET.ElementTree(root)
@@ -503,7 +491,7 @@ def export(dictin,output_dir):
         try:
             df = pd.concat(dictin_data.values(), axis=0, ignore_index=True)
             df.to_csv(os.path.join(output_dir,'data',f'{metric}.csv'),index=False)
-        except Exception as error:
+        except Exception:
             print(f'{metric} is empty, not printing this to csv.')
             # create a blank df to export so that the csv still gets created and Tableau does not break when trying to read in the data
             df_blank = pd.DataFrame(columns=['Metric','Scenario','County','BA','Year','Value'])
@@ -591,7 +579,7 @@ if __name__ == '__main__':
     os.mkdir(os.path.join(output_dir,'shapefiles'))
 
     # copy this script, the inputs cases .csv file (if applicable) to the output directory
-    shutil.copy2(os.path.join(this_dir_path, f'tableau_viz_suite.py'), os.path.join(output_dir))
+    shutil.copy2(os.path.join(this_dir_path, 'tableau_viz_suite.py'), os.path.join(output_dir))
     shutil.copy2(caselist[0], os.path.join(output_dir))
 
     #%%### formatting
