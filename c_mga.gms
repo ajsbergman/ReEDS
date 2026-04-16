@@ -25,7 +25,6 @@ eq_MGA_Objective$Sw_MGA..
     }
 ;
 
-$endif.mgasubobj
 * ---------------------------------------------------------------------------
 
 $elseif.mgaobj %GSw_MGA_Objective% == 'generation'
