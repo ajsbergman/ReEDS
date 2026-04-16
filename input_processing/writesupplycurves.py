@@ -133,11 +133,11 @@ def main(
     reeds_path, inputs_case, AggregateRegions=1, rsc_wsc_dat=None, exog_rsc_dat=None, write=True, **kwargs
 ):
     # #%% Settings for testing
-    # reeds_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    # inputs_case = os.path.join(reeds_path,'runs','v20251209_scM0_Pacific','inputs_case')
-    # AggregateRegions = 1
-    # rsc_wsc_dat = None
-    # write = True
+    #reeds_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    #inputs_case = os.path.join(reeds_path,'runs','test_Ref','inputs_case')
+    #AggregateRegions = 1
+    #rsc_wsc_dat = None
+    #write = True
     # kwargs = {}
 
     #%% Inputs from switches
@@ -339,7 +339,7 @@ def main(
         dfwindonsexog = get_exog_cap(dfwindonsexog, dfsc=wind['ons'])
         dfwindonsexog.round(3).to_csv(os.path.join(inputs_case, "exog_wind_ons_rsc.csv"))
         dfwindofsexog = get_exog_cap(dfwindofsexog, dfsc=wind['ofs'])
-        dfwindofsexog.round(3).to_csv(os.path.join(inputs_case, "exog_wind_ons_rsc.csv"))
+        dfwindofsexog.round(3).to_csv(os.path.join(inputs_case, "exog_wind_ofs_rsc.csv"))
 
     # %%###############
     #    -- PV --    #
@@ -1137,6 +1137,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
     reeds_path = args.reeds_path
     inputs_case = args.inputs_case
+    #reeds_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    #inputs_case = os.path.join(reeds_path,'runs','test_Ref','inputs_case')
 
     #%% Set up logger
     log = reeds.log.makelog(
