@@ -326,7 +326,7 @@ This assumption is enforced by the constraints `eq_h2_ptc_region_balance` and `e
 | -- | -- | -- | -- |
 | GSw_H2_PTC | 1 | Required | Turns on and off hydrogen production tax credit  |
 | GSw_H2 | 2 | Recommended | Representation of hydrogen supply/demand balance. Sw_H2=1 will not cause the model to fail but it is not recommended for the most accurate representation of the H2 PTC.  |
-| GSw_H2_Demand_Case | Anything except 'none' | Recommended |  Annual H2 demand profile  |
+| GSw_H2_Demand_Case | Anything except 'none' | Recommended |  Annual H2 demand profile  |
 | GSw_H2_IntraReg_Transport | 0.32 | Recommended | Flat cost for intra-ReEDS BA hydrogen transport and storage in $2004 / kg H2 produced. Note: This is now included as the default representation even if the H2 PTC is not enabled. This is assuming transport via pipelines. Transport costs could be more expensive if you assume other methods of H2 transport (ex. trucking).  |
 | GSw_RetailAdder  | $0/MWh | Recommended | 2004$/MWh adder to the cost of energy consumed by hydrogen producing facilities and direct air CO2 capture facilities. Included to represent the non-bulk-power-system costs of increasing electrical loads that are not captured within ReEDS. The default value of 0 indicates an assumption that these facilities are large enough to participate directly in wholesale markets.  |
 
@@ -597,7 +597,7 @@ MGA is turned off if set to 0; a reasonable choice for MGA is in the range of 0.
 Options are `min` or `max`.
 - `GSw_MGA_Objective` (default `capacity`): Objective for MGA (uses `GSw_MGA_SubObjective` to specify technology subset if set to `capacity`).
 Options are `capacity`, `generation`, `transmission`, `rasharing`, and `co2`.
-- `GSw_MGA_SubObjective` (default `gentech`): Technology subset to minimize or maximize the capacity of (only used for `GSw_MGA_Objective = capacity`).
+- `GSw_MGA_SubObjective` (default `fossil`): Technology subset to minimize or maximize the capacity of (only used for `GSw_MGA_Objective = capacity`).
 Options are the column names in the `inputs/tech-subset-table.csv` file.
 
 Users familiar with GAMS can add alternative objective functions to the `c_mga.gms` file and associated options to the `GSw_MGA_Objective` switch in `cases.csv`.

@@ -241,7 +241,7 @@ load_2010.csv,,1,sum,ignore,r,wide,,1,0,,1,,,,disaggfunc set to ignore because l
 load_allyear.csv,,1,sum,ignore,*r,"h,t",,0,0,,1,,,,disaggfunc set to ignore because load will already be in correct spatial resolution
 load_multiplier.csv,inputs/load/demand_{demandscen}.csv,1,ignore,ignore,,,,,0,,,,,,
 load_multiplier_r.csv,,1,ignore,ignore,,,,1,0,,,,,,
-loadsite_annual.csv,inputs/load/loadsite_{GSw_LoadSiteTrajectory}.csv,int(sw.GSw_LoadSiteCF) != 0,ignore,ignore,*loadsitereg,t,,,0,,,,,,
+loadsite_annual.csv,inputs/load/loadsite_{GSw_LoadSiteTrajectory}.csv,float(sw.GSw_LoadSiteCF) > 0,ignore,ignore,*loadsitereg,t,,,0,,,,,,
 maps.gpkg,,1,ignore,ignore,,,,,,,1,,,,
 maxage.csv,inputs/plant_characteristics/maxage.csv,1,ignore,ignore,,,,,0,,,,,,
 maxdailycf.csv,inputs/plant_characteristics/maxdailycf.csv,int(sw.GSw_MaxDailyCF) != 0,ignore,ignore,,,,,0,,,,,,
@@ -317,6 +317,7 @@ plantchar_dr_shed_vom.csv,inputs/plant_characteristics/dr_shed_vom_{dr_shedscen}
 plantchar_dr_shed_fom.csv,inputs/plant_characteristics/dr_shed_fom_{dr_shedscen}.csv,int(sw.GSw_DRShed) != 0,ignore,ignore,r,"tech,wide",,1,0,,,,,,used to define plantcharout.csv
 plantchar_evmc_shape.csv,inputs/plant_characteristics/evmc_shape_{evmcscen}.csv,1,ignore,ignore,,,,,0,,,,,,used to define plantcharout.csv
 plantchar_evmc_storage.csv,inputs/plant_characteristics/evmc_storage_{evmcscen}.csv,1,ignore,ignore,,,,,0,,,,,,used to define plantcharout.csv
+plantchar_fuelcell.csv,inputs/plant_characteristics/{plantchar_fuelcell}.csv,1,ignore,ignore,,,,,0,,,,,,used to define plantcharout.csv
 plantchar_gas_ccs.csv,inputs/plant_characteristics/{plantchar_gas_ccs}.csv,1,ignore,ignore,,,,,0,,,,,,used to define plantcharout.csv
 plantchar_gas.csv,inputs/plant_characteristics/{plantchar_gas}.csv,1,ignore,ignore,,,,,0,,,,,,used to define plantcharout.csv
 plantchar_geo.csv,inputs/plant_characteristics/{plantchar_geo}.csv,int(sw.GSw_Geothermal) != 0,ignore,ignore,,,,,0,,,,,,used to define plantcharout.csv
@@ -429,10 +430,6 @@ tranloss.csv,,1,trans_lookup,ignore,"*r,rr",trtype,,0,0,drop_dup_r,1,,,,disaggfu
 trans_itc_fractions.csv,,1,ignore,ignore,,,,,0,,,,,,
 transmission_capacity_future.csv,inputs/transmission/transmission_capacity_future_{lvl}_{GSw_TransScen}.csv,1,sum,ignore,"r,rr","status,trtype,t",,0,0,drop_dup_r,,,,,'ignore’ in disaggfunc because all transmisison data will be read into model at appropriate spatial resolution
 transmission_capacity_future_baseline.csv,inputs/transmission/transmission_capacity_future_{lvl}_baseline.csv,1,sum,ignore,"r,rr","status,trtype,t",,0,0,drop_dup_r,,,,,'ignore’ in disaggfunc because all transmisison data will be read into model at appropriate spatial resolution
-transmission_capacity_init_AC_r.csv,inputs/transmission/transmission_capacity_init_AC_{lvl}_{GSw_TransNetworkSource}.csv,1,sum,ignore,"r,rr",interface,,0,0,drop_dup_r,,,,,
-transmission_capacity_init_AC_itlgrp.csv,inputs/transmission/transmission_capacity_init_AC_ba_{GSw_TransNetworkSource}.csv,1,sum,ignore,"r,rr",interface,,0,0,drop_dup_r,,,,,
-transmission_capacity_init_AC_transgrp.csv,inputs/transmission/transmission_capacity_init_AC_transgrp_{GSw_TransNetworkSource}.csv,1,sum,ignore,"transgrp,transgrpp",interface,,0,0,,,,,,
-transmission_capacity_init_nonAC.csv,inputs/transmission/transmission_capacity_init_nonAC_{lvl}.csv,1,sum,ignore,"r,rr",trtype,,0,0,drop_dup_r,,,,,'ignore’ in disaggfunc because all transmisison data will be read into model at appropriate spatial resolution
 transmission_cost_ac.csv,inputs/transmission/transmission_cost_ac_{GSw_TransUpgradeMethod}_{lvl}.h5,1,trans_lookup,ignore,"r,rr",tscbin,,0,0,drop_dup_r,,,,,
 transmission_cost_dc.csv,inputs/transmission/transmission_cost_dc_{lvl}.csv,1,trans_lookup,ignore,"r,rr",,,0,0,drop_dup_r,,,,,
 transmission_distance.csv,inputs/transmission/transmission_distance_{lvl}.h5,1,trans_lookup,ignore,"r,rr",,,0,0,drop_dup_r,,,,,Stored in wide-format h5 to reduce county filesize but converted to long in copy_files.py

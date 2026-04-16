@@ -449,11 +449,11 @@ set
   evmc_storage(i)      "ev flexibility as direct load control",
   evmc_shape(i)        "ev flexibility as adoptable change to load from response to pricing",
   fossil(i)            "fossil technologies"
+  fuel_cell(i)         "fuel cell technologies",
   gas_cc_ccs(i)        "techs that are gas combined cycle and have CCS",
   gas_cc(i)            "techs that are gas combined cycle",
   gas_ct(i)            "techs that are gas combustion turbine",
   gas(i)               "techs that use gas (but not o-g-s)",
-  gentech(i)           "generation technologies",
   geo(i)               "geothermal technologies",
   geo_base(i)          "geothermal technologies typically considered in model runs",
   geo_hydro(i)         "geothermal hydrothermal technologies",
@@ -759,6 +759,10 @@ if(Sw_H2Combustionupgrade = 0,
   ban(i)$[i_subsets(i,'h2_combustion')$upgrade(i)] = yes ;
 ) ;
 
+if(Sw_FuelCell = 0,
+  ban(i)$i_subsets(i,'fuel_cell') = yes ;
+) ;
+
 if(Sw_LfillGas = 0,
   ban('lfill-gas') = yes ;
 ) ;
@@ -978,11 +982,11 @@ evmc(i)$(not ban(i))                = yes$i_subsets(i,'evmc') ;
 evmc_storage(i)$(not ban(i))        = yes$i_subsets(i,'evmc_storage') ;
 evmc_shape(i)$(not ban(i))          = yes$i_subsets(i,'evmc_shape') ;
 fossil(i)$(not ban(i))              = yes$i_subsets(i,'fossil') ;
+fuel_cell(i)$(not ban(i))           = yes$i_subsets(i,'fuel_cell') ;
 gas_cc_ccs(i)$(not ban(i))          = yes$i_subsets(i,'gas_cc_ccs') ;
 gas_cc(i)$(not ban(i))              = yes$i_subsets(i,'gas_cc') ;
 gas_ct(i)$(not ban(i))              = yes$i_subsets(i,'gas_ct') ;
 gas(i)$(not ban(i))                 = yes$i_subsets(i,'gas') ;
-gentech(i)$(not ban(i))             = yes$i_subsets(i,'gentech')
 geo(i)$(not ban(i))                 = yes$i_subsets(i,'geo') ;
 geo_base(i)$(not ban(i))            = yes$i_subsets(i,'geo_base') ;
 geo_hydro(i)$(not ban(i))           = yes$i_subsets(i,'geo_hydro') ;
@@ -3525,11 +3529,12 @@ $offempty
 $onempty
 parameter trancap_init_itlgrp(itlgrp,itlgrpp,trtype) "--MW-- initial upper limit on interface flows between itlgrps"
 /
-$offlisting
-$ondelim
-$include inputs_case%ds%trancap_init_itlgrp.csv
-$offdelim
-$onlisting
+*** TEMPORARY 20260402: Skip itlgrp functionality until we fix it
+* $offlisting
+* $ondelim
+* $include inputs_case%ds%trancap_init_itlgrp.csv
+* $offdelim
+* $onlisting
 / ;
 $offempty
 

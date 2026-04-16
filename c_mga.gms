@@ -12,6 +12,19 @@ eq_MGA_CostEnvelope(t)$[tmodel(t)$Sw_MGA]..
 * ---------------------------------------------------------------------------
 
 $ifthen.mgaobj %GSw_MGA_Objective% == 'capacity'
+$ifthen.mgasubobj %GSw_MGA_SubObjective% == 'all'
+Equation eq_MGA_Objective "--MW-- Defines generation capacity for MGA" ;
+Variable MGA_OBJ "--MW-- Capacity of all technologies to be minimized/maximied" ;
+eq_MGA_Objective$Sw_MGA..
+    MGA_OBJ
+    =e=
+    sum{(i,v,r,t)
+        $[tmodel(t)
+        $valcap(i,v,r,t)],
+        CAP(i,v,r,t)
+    }
+;
+$else.mgasubobj
 Equation eq_MGA_Objective "--MW-- Defines generation capacity for MGA" ;
 Variable MGA_OBJ "--MW-- Capacity of technology to be minimized/maximied" ;
 eq_MGA_Objective$Sw_MGA..

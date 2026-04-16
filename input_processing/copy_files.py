@@ -11,6 +11,7 @@ import shutil
 import yaml
 import json
 import h5py
+from pathlib import Path
 # Local Imports
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import reeds
@@ -180,7 +181,6 @@ def get_regions_and_agglevel(
     reeds_path,
     inputs_case,
     save_regions_and_agglevel=True,
-    NARIS=False
 ):
     """
     Create a regional mapping to help filter for specific regions and aggregation levels.
@@ -192,17 +192,18 @@ def get_regions_and_agglevel(
     """
     sw = reeds.io.get_switches(inputs_case)
 
-    # Load the full regions list
+    ## TEMPORARY 20260402: Load the full regions list
+    ## Use the line below once we make the switch
+    # hierarchy = reeds.io.assemble_hierarchy(inputs_case)
     hierarchy = pd.read_csv(
-        os.path.join(reeds_path, 'inputs', 'hierarchy{}.csv'.format(
-            '' if (sw['GSw_HierarchyFile'] == 'default')
-            else '_'+sw['GSw_HierarchyFile']))
+        Path(reeds.io.reeds_path, 'inputs', 'zones', sw.GSw_ZoneSet, 'hierarchy_from134.csv')
     )
     hierarchy['offshore'] = 0
     # Append offshore zones if using
     if int(sw.GSw_OffshoreZones):
-        hierarchy_offshore = pd.read_csv(
-            os.path.join(reeds_path, 'inputs', 'hierarchy_offshore.csv')
+        hierarchy_offshore = reeds.io.assemble_hierarchy(
+            fpath=os.path.join(reeds_path, 'inputs', 'zones', 'hierarchy_offshore.csv'),
+            extra=False,
         ).assign(offshore=1)
         hierarchy = pd.concat([hierarchy, hierarchy_offshore], ignore_index=True)
 
@@ -213,12 +214,11 @@ def get_regions_and_agglevel(
             index=False, header=True
             )
 
-    if not NARIS:
-        hierarchy = hierarchy.loc[hierarchy.country.str.lower()=='usa'].copy()
-
     # Add a row for each county
-    county2zone = pd.read_csv(
-        os.path.join(reeds_path, 'inputs', 'county2zone.csv'), dtype={'FIPS':str},
+    ## TEMPORARY 20260402: Use the old 134-zone county2zone until the aggregation approach is updated
+    county2zone = (
+        reeds.io.get_county2zone(GSw_ZoneSet='z134', as_map=False)
+        .rename(columns={'r':'ba'})
     )
     county2zone['county'] = 'p' + county2zone.FIPS
     county2zone.to_csv(
@@ -232,44 +232,32 @@ def get_regions_and_agglevel(
     # Subset hierarchy for the region of interest (based on the GSw_Region switch)
     # Parse the GSw_Region switch. If it includes a '/' character, it has the format
     # {column of hierarchy.csv}/{period-delimited entries to keep from that column}.
-    if '/' in sw['GSw_Region']:
-        hier_sub = pd.DataFrame()
-        # allow the list defined by the user to include multiple spatial resolutions
-        region_groups = sw['GSw_Region'].split('//') if '//' in sw['GSw_Region'] else [sw['GSw_Region']]
-        # separate lists associated with each spatial resolution
-        for region_group in region_groups:
-            GSw_RegionLevel, GSw_Region = region_group.split('/')
-            GSw_Region = GSw_Region.split('.')
+    hier_sub = pd.DataFrame()
+    # allow the list defined by the user to include multiple spatial resolutions
+    region_groups = sw['GSw_Region'].split('//') if '//' in sw['GSw_Region'] else [sw['GSw_Region']]
+    # separate lists associated with each spatial resolution
+    for region_group in region_groups:
+        GSw_RegionLevel, GSw_Region = region_group.split('/')
+        GSw_Region = GSw_Region.split('.')
 
-            hier_sub_partial = pd.concat([
-                hierarchy[hierarchy[GSw_RegionLevel] == region] for region in GSw_Region
-            ])
+        hier_sub_partial = pd.concat([
+            hierarchy[hierarchy[GSw_RegionLevel] == region] for region in GSw_Region
+        ])
 
-            hier_sub = pd.concat([hier_sub, hier_sub_partial])
-    # Otherwise use the modeled_regions.csv file to define the regions
-    else:
-        modeled_regions = pd.read_csv(
-            os.path.join(reeds_path,'inputs','userinput','modeled_regions.csv'))
-        modeled_regions.columns = modeled_regions.columns.str.lower()
-        val_r_in = list(
-            modeled_regions[~modeled_regions[sw['GSw_Region'].lower()].isna()]['r'].unique())
-        hier_sub = hierarchy[hierarchy['ba'].isin(val_r_in)].copy()
-
+        hier_sub = pd.concat([hier_sub, hier_sub_partial])
 
     # Read region resolution switch to determine agglevel
     agglevel = sw['GSw_RegionResolution'].lower()
 
     # Check if desired spatial resolution is mixed
     if agglevel == 'mixed':
-
         #Set value in resolution column of hier_sub to match value assigned in modeled_regions.csv
         region_def = pd.read_csv(
-            os.path.join(reeds_path,'inputs','userinput','modeled_regions.csv'))
-        region_def =  region_def[['r', sw['GSw_Region']]]
+            os.path.join(reeds_path,'inputs','userinput','modeled_regions.csv')
+        )[['r', sw.GSw_ZoneSet]]
 
-        res_map = region_def.set_index('r')[sw['GSw_Region']].to_dict()
+        res_map = region_def.set_index('r').squeeze(1).to_dict()
         hier_sub['resolution'] = hier_sub['ba'].map(res_map)
-
     else:
         hier_sub['resolution'] = agglevel
 
@@ -337,7 +325,7 @@ def get_regions_and_agglevel(
             os.path.join(inputs_case, 'val_r_all.csv'), header=False, index=False)
 
     # Rename columns and save as hierarchy_with_res.csv for use in agglevel_variables function
-    hier_sub.rename(columns={'r':'*r'}).to_csv(
+    hier_sub.drop(columns='offshore', errors='ignore').rename(columns={'r':'*r'}).to_csv(
         os.path.join(inputs_case, 'hierarchy_with_res.csv'), index=False)
 
     # Drop county name and resolution columns
@@ -362,7 +350,7 @@ def get_regions_and_agglevel(
     if sw.GSw_RegionResolution == 'mixed':
         mod_reg = pd.read_csv(
             os.path.join(reeds_path,'inputs','userinput','modeled_regions.csv'))
-        if 'aggreg' in mod_reg[sw.GSw_Region].tolist():
+        if 'aggreg' in mod_reg[sw.GSw_ZoneSet].tolist():
             hier_sub['itlgrp'] = hier_sub['aggreg']
     hier_sub[['r','itlgrp']].rename(columns={'r':'*r'}).to_csv(
         os.path.join(inputs_case, 'hierarchy_itlgrp.csv'), index=False)
@@ -372,7 +360,7 @@ def get_regions_and_agglevel(
         os.path.join(inputs_case, 'val_itlgrp.csv'), header=False, index=False)
 
     # Drop any substate region columns as these will no longer be needed
-    hier_sub = hier_sub.drop(['county','ba','itlgrp','st_interconnect'],axis=1)
+    hier_sub = hier_sub.drop(['county', 'ba', 'itlgrp'], axis=1)
 
     # Populate val_st as unique states (not st_int) from the subsetted hierarchy table
     # Also include "voluntary" state for modeling voluntary market REC trading
@@ -401,7 +389,7 @@ def get_regions_and_agglevel(
             os.path.join(inputs_case, 'offshore.csv'), index=False, header=False,
         )
 
-    levels = list(hier_sub.columns)
+    levels = [i for i in hier_sub if i != 'offshore']
     valid_regions = {level: list(hier_sub[level].unique()) for level in levels}
 
     val_r = sorted(valid_regions['r'])
@@ -635,8 +623,6 @@ def subset_to_valid_regions(
 
         # Transmission files need to be filtered differently to allow interfaces between BA and county resolution regions
         transmission_files = [
-            'transmission_capacity_init_AC_r.csv',
-            'transmission_capacity_init_nonAC.csv',
             'transmission_cost_ac.csv',
             'transmission_cost_dc.csv',
             'transmission_distance.csv',
@@ -1088,7 +1074,11 @@ def write_disagg_data_files(runfiles, inputs_case):
     # region-to-county fractions, and the latter is needed to calculate
     # state-to-county and BA-to-county fractions.
     county_r_map = reeds.io.get_county2zone(os.path.dirname(inputs_case))
-    county2zone = reeds.io.get_county2zone(as_map=False)
+    ## TEMPORARY 20260402: Use the old 134-zone county2zone until the aggregation approach is updated
+    county2zone = (
+        reeds.io.get_county2zone(GSw_ZoneSet='z134', as_map=False)
+        .rename(columns={'r':'ba'})
+    )
     county2zone['county'] = 'p' + county2zone['FIPS'].astype(str).str.zfill(5)
     county2zone['r'] = county2zone['FIPS'].map(county_r_map)
 
@@ -1589,14 +1579,13 @@ def generate_maps_gpkg(inputs_case):
 #%% ===========================================================================
 ### --- PROCEDURE ---
 ### ===========================================================================
-def main(reeds_path, inputs_case, NARIS=False):
+def main(reeds_path, inputs_case):
     """
     Run copy_files.py for use in the ReEDS workflow
 
     Parameters:
     reeds_path : str (Path to the ReEDS directory)
     inputs_case : str (Path to the run/inputs_case directory)
-    NARIS : Ture/False (NARIS: North American Renewable Integration Study)
 
     Returns:
     None (Writes files to the inputs_case directory)
@@ -1605,7 +1594,7 @@ def main(reeds_path, inputs_case, NARIS=False):
     ### --- Gather dataframes and dictionaries necessary for the script execution ---
     ### ===========================================================================
     # Obtain data necessary to filter and aggregate regions
-    regions_and_agglevel = get_regions_and_agglevel(reeds_path, inputs_case, NARIS=NARIS)
+    regions_and_agglevel = get_regions_and_agglevel(reeds_path, inputs_case)
     # Use agglevel_variables function to obtain spatial resolution variables
     agglevel_variables = reeds.spatial.get_agglevel_variables(reeds_path, inputs_case)
 
@@ -1682,8 +1671,7 @@ if __name__ == '__main__' and not hasattr(sys, 'ps1'):
 
     # #%% Settings for testing ###
     # reeds_path = reeds.io.reeds_path
-    #inputs_case = os.path.join(reeds_path,'runs','test_employment_Pacific','inputs_case')
-    #NARIS = False
+    # inputs_case = os.path.join(reeds_path,'runs','v20260305_itlM0_USA_defaults','inputs_case')
 
 
     # ---- Set up logger ----
