@@ -453,6 +453,7 @@ set
   gas_cc(i)            "techs that are gas combined cycle",
   gas_ct(i)            "techs that are gas combustion turbine",
   gas(i)               "techs that use gas (but not o-g-s)",
+  gentech(i)           "generation technologies",
   geo(i)               "geothermal technologies",
   geo_base(i)          "geothermal technologies typically considered in model runs",
   geo_hydro(i)         "geothermal hydrothermal technologies",
@@ -981,6 +982,7 @@ gas_cc_ccs(i)$(not ban(i))          = yes$i_subsets(i,'gas_cc_ccs') ;
 gas_cc(i)$(not ban(i))              = yes$i_subsets(i,'gas_cc') ;
 gas_ct(i)$(not ban(i))              = yes$i_subsets(i,'gas_ct') ;
 gas(i)$(not ban(i))                 = yes$i_subsets(i,'gas') ;
+gentech(i)$(not ban(i))             = yes$i_subsets(i,'gentech')
 geo(i)$(not ban(i))                 = yes$i_subsets(i,'geo') ;
 geo_base(i)$(not ban(i))            = yes$i_subsets(i,'geo_base') ;
 geo_hydro(i)$(not ban(i))           = yes$i_subsets(i,'geo_hydro') ;
