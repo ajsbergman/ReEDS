@@ -243,6 +243,7 @@ ivt_default.csv,.csv,1,None,9999,None,9999,0,constant,None,None,done (special ca
 ivt_small.csv,.csv,1,None,9999,None,9999,0,constant,None,None,done (special case: ivt is extended in calc_financial_inputs.py since ivt is needed there),constant
 ivt_step.csv,.csv,1,None,9999,None,9999,0,constant,None,None,done,constant
 ivt.csv,.csv,1,None,9999,None,9999,0,constant,None,None,done (special case: ivt is extended in calc_financial_inputs.py since ivt is needed there),constant
+jtype.csv,.csv,1,None,9999,None,9999,0,constant,None,None,,
 lcclike.csv,.csv,1,None,9999,None,9999,0,constant,None,None,new,
 load_2010.csv,.csv,1,None,9999,None,9999,0,constant,None,None,done,constant
 load_allyear.csv,.csv,0,None,t,"*r,h",0,0,linear_5,0,None,done,linear_5
