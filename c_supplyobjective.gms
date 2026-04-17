@@ -373,6 +373,9 @@ eq_Objfn_op(t)$tmodel(t)..
                    (crf(t) / crf_h2_incentive(t)) * h2_ptc("electrolyzer",v,r,t) * 1e3} 
                    $[(Sw_H2_PTC)$Sw_H2$h2_ptc_years(t)$(yeart(t) >= h2_demand_start)]
 
+* --- materials slack  ---
+* allow for material slack at a high penalty cost to avoid infeasibility when material constraints are binding
+              + 1e6 * sum(mat, mat_slack(mat,t))
 *end multiplier for pvf_onm
          )
 ;

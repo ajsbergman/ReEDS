@@ -4032,3 +4032,54 @@ eq_ccsflex_sto_storage_level_max(i,v,r,h,t)$[valgen(i,v,r,t)$valcap(i,v,r,t)$ccs
 ;
 
 * ---------------------------------------------------------------------------
+*-- begin materials --
+
+positive variable MAT_DEMAND, MAT_SLACK ; 
+equation eq_mat_track, eq_mat_procure ; 
+
+* Material tracking equation (metric tons of material)
+eq_mat_track(mat,t)$tmodel(t)..
+
+    MAT_DEMAND(mat,t) 
+
+    =e=
+* Materials needed for investment in new capacity 
+* material (metric ton / MW) * capacity investment (MW)
+    sum{(i,v,r)$[valinv(i,v,r,t)$i_int(i,mat)],
+        i_int(i,mat) * INV(i,v,r,t) }
+
+* Materials needed for upgrades of existing capacity
+* materials (metric ton / MW) * capacity upgraded (MW)
+    + sum{(i,v,r)$[valcap(i,v,r,t)$upgrade(i)$Sw_Upgrades$i_int(i,mat)],
+        i_int(i,mat) * UPGRADES(i,v,r,t) }
+
+* Materials needed for investment in transmission capacity 
+* transmission line material intensity [metric tons / MW-mile] * capacity investment between (MW) * distance (miles between regions)
+    + sum((r,rr,trtype)$[routes_inv(r,rr,trtype,t)$trt_int(trtype,mat)],
+         trt_int(trtype,mat) * (INVTRAN(r,rr,trtype,t) + invtran_exog(r,rr,trtype,t)) * distance(r,rr,trtype)) 
+;
+
+* material demand cannot exceed materials produced domestically (metric tons of materials)
+eq_mat_procure(mat,t)$[tmodel(t)$Sw_mat_restrict$[t.val>=2029]]..
+
+* materials produced domestically (metric tons) * last year weight (multiplier) + slack variable for unmet demand (metric tons)
+* domestic production
+      (Sw_prod_multiplier_usa * sum{mat_ctry$[usa(mat_ctry)], mat_prod(mat,mat_ctry)} * yearweight(t))
+* add allied production
+    + (Sw_prod_multiplier_allies * sum{mat_ctry$[allies(mat_ctry)], mat_prod(mat,mat_ctry)} * yearweight(t))$Sw_mat_allies
+* add global production
+    + (Sw_prod_multiplier_glb * sum{mat_ctry$[not usa(mat_ctry)], mat_prod(mat,mat_ctry)} * yearweight(t))$Sw_mat_glb
+* add global production without china
+    + (sum{mat_ctry$[glb_nochina(mat_ctry)], mat_prod(mat,mat_ctry)} * yearweight(t))$Sw_mat_glb_nochina
+* add global production without specific material
+    + (sum{mat_ctry$[(not usa(mat_ctry))$(not sameas(mat,'%GSw_specmat%'))], mat_prod(mat,mat_ctry)} * yearweight(t))$Sw_mat_glb_specmat
+* add global production of specific material only 
+    + (sum{mat_ctry$[(not usa(mat_ctry))$(sameas(mat,'%GSw_specmat%'))], mat_prod(mat,mat_ctry)} * yearweight(t))$Sw_mat_dom_specmat
+* material slack to meet demand
+    + MAT_SLACK(mat,t)
+
+    =g=
+
+* material demand (metric tons)
+    MAT_DEMAND(mat,t)
+;

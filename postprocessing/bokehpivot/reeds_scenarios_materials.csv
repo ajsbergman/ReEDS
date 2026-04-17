@@ -1,0 +1,8 @@
+name,color,path
+norestrict_mid_case,#1f77b4,/projects/finitoreeds/kpitman/ReEDS-2.0/runs/mattest_Norestrict_Mid_Case
+restrict_mid_case_50pct,#ff7f0e,/projects/finitoreeds/kpitman/ReEDS-2.0/runs/mattest_Restrict_Mid_Case_50pct
+restrict_mid_case_100pct,#2ca02c,/projects/finitoreeds/kpitman/ReEDS-2.0/runs/mattest_Restrict_Mid_Case_100pct
+restrict_mid_case_150pct,#d62728,/projects/finitoreeds/kpitman/ReEDS-2.0/runs/mattest_Restrict_Mid_Case_150pct
+
+
+

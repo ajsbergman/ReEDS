@@ -6794,3 +6794,105 @@ emit_rate(etype,e,i,v,r,t)$[not valgen(i,v,r,t)] = 0 ;
 
 valinv_init(i,v,r,t) = valinv(i,v,r,t) ;
 valcap_init(i,v,r,t) = valcap(i,v,r,t) ;
+
+*==============================
+* -- Begin Material Tracking --
+*==============================
+
+
+* country sets 
+
+set mat_ctry "countries for material sourcing and production data"
+/
+$offlisting
+$include ../../cmm_countries.csv
+$onlisting
+/ ;
+
+set usa(mat_ctry) "USA subset"
+  / USA / ; 
+
+set allies(mat_ctry) "subset of countries considered as allies for material sourcing" 
+/
+$offlisting
+$include ../../cmm_allies.csv
+$onlisting
+/ ;
+
+set glb_nochina(mat_ctry) "set of countries excluding USA and China"
+;
+
+glb_nochina(mat_ctry)$[(not usa(mat_ctry))$(not sameas(mat_ctry,'China'))] = yes ;
+
+* materials sets
+set mat "materials"     
+  /Alumina, Aluminum, Bauxite, Boron, Cadmium, Chromium, Cobalt, Copper, Dysprosium, Gallium, Gold, Hafnium, Indium, Iron_ore, Lead, Lithium, Magnesium, Manganese, Molybdenum, Neodymium, Nickel, Niobium, Praseodymium, Phosphate_rock, Selenium, Silicon, Silver, Steel, Tantalum, Tellurium, Terbium, Tin, Titanium, Tungsten, Vanadium, Yttrium, Zinc, Zirconium/ ;
+ 
+set tcat "technology category for materials tracking"
+  /Oil, Coal, CoalCCS, NaturalGas, NaturalGasCCS, Nuclear, BiomassAndWaste, BiomassCCS, Hydro, Geothermal, WindOnshore, WindOffshore, SolarPV, SolarCSP, Ocean, StationaryLiionbatteries, EVLiionbatteries, SolarPVCSi, SolarPVCIGS, SolarPVCdte, SolarCSPtrough, SolarCSPtower/ ;
+
+set ptype "transmission line power type"
+  /AC, DC/ ;
+
+set i_tcat(i,tcat);
+ 
+i_tcat(i,"Oil")$[ogs(i)] = yes ;
+i_tcat(i,"Coal")$[coal(i)$(not ccs(i))] = yes ;
+i_tcat(i,"CoalCCS")$[coal(i)$ccs(i)] = yes ;
+i_tcat(i,"NaturalGas")$[gas(i)$(not ccs(i))] = yes ;
+i_tcat(i,"NaturalGasCCS")$[gas(i)$ccs(i)] = yes ;
+i_tcat(i,"Nuclear")$[nuclear(i)] = yes ;
+i_tcat(i,"BiomassAndWaste")$[bio(i)$(not ccs(i))] = yes ;
+i_tcat(i,"BiomassCCS")$[bio(i)$ccs(i)] = yes ;
+i_tcat(i,"Hydro")$[hydro(i)] = yes ;
+i_tcat(i,"Geothermal")$[geo(i)] = yes ;
+i_tcat(i,"WindOnshore")$[onswind(i)] = yes ;
+i_tcat(i,"WindOffshore")$[ofswind(i)] = yes ;
+* note we only want to include invested-in technologies, distributed PV can be handled separately
+i_tcat(i,"SolarPV")$[pv(i)$(not sameas(i,"distpv"))] = yes ;
+i_tcat(i,"SolarCSP")$[csp(i)] = yes ;
+i_tcat(i,"StationaryLiionbatteries")$[battery(i)] = yes ;
+
+set trtype_ptype(trtype,ptype) "mapping between detailed transmission types and AC/DC power types" ;
+
+trtype_ptype(trtype,"AC")$[aclike(trtype)] = yes ;
+trtype_ptype(trtype,"DC")$[(not aclike(trtype))] = yes;
+
+table mat_int(tcat,mat) "--metric tons per GW-- material intensity matrix by technology category "
+$ondelim
+$include ../../cmm_dataset_generation_storage.csv
+$offdelim
+;
+
+* update lithium intensity for li-ion batteries to incorporate duration storage of 4 hours 
+mat_int('StationaryLiionbatteries','Lithium') = mat_int('StationaryLiionbatteries','Lithium') * 4 ;
+
+table tran_int(ptype,mat) "--metric tons per GW-mile-- material intesnity matric for each transmission line power type (AC or DC)"
+$ondelim
+$include ../../cmm_dataset_transmission.csv
+$offdelim
+;
+
+parameters
+ i_int(i,mat) "--metric tons / MW-- material intensity matrix by reeds generation technology" 
+ trt_int(trtype,mat) "--metric tons per MW-mile-- material intensity matrix by reeds transmission capacity type"
+ ;
+ 
+i_int(i,mat) = sum(tcat$i_tcat(i,tcat),mat_int(tcat,mat)) / 1000 ;
+trt_int(trtype,mat) =  sum{ptype$trtype_ptype(trtype,ptype), tran_int(ptype,mat)} / 1000 ; 
+
+* update the intensities to be incremental for upgrade technologies
+i_int(i,mat)$[upgrade(i)] = i_int(i,mat) - sum{ii$upgrade_from(i,ii), i_int(ii,mat)};
+i_int(i,mat)$i_subsets(i,'h2_combustion') = no ;
+
+parameter mat_prod(mat,mat_ctry) "--metric tons-- material production by country"
+/
+$offlisting
+$ondelim
+$include ../../cmm_global_mat_prod.csv
+$offdelim
+$onlisting
+/ ;
+
+*!!! set this up as the average, hardcoding now
+yearweight(t)$tlast(t) = 3 ; 

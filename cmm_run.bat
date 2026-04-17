@@ -1,0 +1,2 @@
+gams cmm_custom_report.gms r=C:/Users/kavery/Documents/GitHub/ReEDS-2.0/runs/globalmatrestrict_Pacific/g00files/globalmatrestrict_Pacific_2032i0.g00 --case=restrict
+gams cmm_custom_report.gms r=C:/Users/kavery/Documents/GitHub/ReEDS-2.0/runs/globalprodmat_Pacific/g00files/globalprodmat_Pacific_2032i0.g00 --case=unrestrict
