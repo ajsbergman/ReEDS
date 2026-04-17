@@ -772,40 +772,6 @@ def save_sc_outputs(
     #Round now to prevent infeasibility in model because existing (pre-2010 + prescribed) capacity is slightly higher than supply curve capacity
     df_sc[['capacity','existing_capacity']] = df_sc[['capacity','existing_capacity']].round(decimals)
     if existing_sites:
-        # bincol = ['sc_point_gid'] if exog_bin else []
-        df_exist = df_sc[df_sc['existing_capacity'] > 0].copy()
-        #Exogenous (pre-start-year) capacity output
-        df_exog = df_exist[df_exist['online_year'] < start_year].copy()
-        # Aggregate existing capacity to (i,rs,t)
-        if not df_exog.empty:
-            df_exog = df_exog[[profile_id_col, 'class','retire_year','existing_capacity']].copy()
-            max_exog_ret_year = df_exog['retire_year'].max()
-            ret_year_ls = list(range(start_year,max_exog_ret_year + 1))
-            df_exog = df_exog.pivot_table(index=[profile_id_col,'class'], columns='retire_year', values='existing_capacity')
-            # Make a column for every year until the largest retirement year
-            df_exog = df_exog.reindex(columns=ret_year_ls).fillna(method='bfill', axis='columns')
-            df_exog = pd.melt(
-                df_exog.reset_index(), id_vars= [profile_id_col,'class'],
-                value_vars=ret_year_ls, var_name='year', value_name='capacity')
-            df_exog = df_exog[df_exog['capacity'].notnull()].copy()
-            if(tech == 'egs' or tech == 'geohydro'):
-                df_exog['tech'] = tech + '_allkm_' + df_exog['class'].astype(str)
-            else:
-                df_exog['tech'] = tech + '_' + df_exog['class'].astype(str)
-            df_exog = df_exog[[profile_id_col,'tech','year','capacity']].copy()
-            df_exog = df_exog.groupby(['tech','year',profile_id_col], sort=False, as_index=False).sum()
-            df_exog = df_exog.sort_values(['year',profile_id_col]).round(decimals)
-            df_exog.to_csv(os.path.join(outpath, 'results', tech + '_exog_cap.csv'), index=False)
-        #Prescribed capacity output
-        if tech in ['wind-ons', 'wind-ofs']:
-            df_pre = df_exist[df_exist['online_year'] >= start_year].copy()
-            if not df_pre.empty:
-                df_pre = df_pre[[profile_id_col,'online_year','existing_capacity']].copy()
-                df_pre = df_pre.rename(columns={'online_year':'year', 'existing_capacity':'capacity'})
-                df_pre = df_pre.groupby([profile_id_col,'year'], sort=False, as_index =False).sum()
-                df_pre['capacity'] =  df_pre['capacity'].round(decimals)
-                df_pre = df_pre.sort_values(['year',profile_id_col])
-                df_pre.to_csv(os.path.join(outpath, 'results', tech + '_prescribed_builds.csv'), index=False)
         #Reduce supply curve based on exogenous (pre-start-year) capacity
         if subtract_exog:
             criteria = (df_sc['online_year'] > 0) & (df_sc['online_year'] < start_year)
@@ -860,27 +826,6 @@ def copy_outputs(
             os.path.join(inputspath, 'supply_curve', f'supplycurve_{tech}-{access_case}.csv')
         )
 
-        #Prescribed builds and exogenous capacity (if they exist)
-        try:
-            shutil.copy2(
-                os.path.join(resultspath, f'{tech}_prescribed_builds.csv'),
-                os.path.join(
-                    inputspath, 'capacity_exogenous',
-                    f'prescribed_builds_{techlabel}_{access_case}.csv',
-                )
-            )
-        except Exception:
-            print('WARNING: No prescribed builds')
-
-        try:
-            df = pd.read_csv(os.path.join(resultspath,f'{tech}_exog_cap.csv'))
-            df.rename(columns={df.columns[0]: '*'+str(df.columns[0])}, inplace=True)
-            df.to_csv(
-                os.path.join(inputspath,'capacity_exogenous',f'exog_cap_{tech}_{access_case}.csv'),
-                index=False
-            )
-        except Exception:
-            print('WARNING: No exogenous capacity')
 
         ## Metadata
         # rev configs
