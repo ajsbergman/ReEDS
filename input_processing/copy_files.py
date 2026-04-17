@@ -1255,12 +1255,7 @@ def write_region_indexed_file(
                     df_rev = df[df.tech.isin(tech_sub)]
                     if len(df_rev) > 0:
                         df_rev['sc_point_gid'] = df_rev['sc_point_gid'].fillna(0).astype(np.int64)
-                        if tech == 'upv':
-                            supply_curve = pd.read_csv(os.path.join(reeds_path,'inputs','supply_curve','supplycurve_'+tech+'-'+'open'+'.csv'))
-                        elif tech == 'wind-ons':
-                            supply_curve = pd.read_csv(os.path.join(reeds_path,'inputs','supply_curve','supplycurve_'+tech+'-'+'open'+'.csv'))
-                        elif tech == 'wind-ofs':
-                            supply_curve = pd.read_csv(os.path.join(reeds_path,'inputs','supply_curve','supplycurve_'+tech+'-'+'open'+'.csv'))
+                        supply_curve = pd.read_csv(os.path.join(reeds_path,'inputs','supply_curve','supplycurve_'+tech+'-'+'open'+'.csv'))
                         df_rev = df_rev.merge(supply_curve[['sc_point_gid','cf']],
                                               on='sc_point_gid',
                                               how='left').rename(columns={'cf':'reV_capacity_factor_ac'})
