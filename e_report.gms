@@ -630,7 +630,7 @@ gen_h(i,r,h,t)$[tmodel_new(t)$valgen_irt(i,r,t)] =
 * so don't need to account for ILR.
 gen_h("csp-ns",r,h,t)$[cap_cspns(r,t)$tmodel_new(t)]
     = cap_cspns(r,t) * m_cf("upv_5","new1",r,h,t) ;
-* We have to take csp-ns generation from somewhere, so take it from upv_6 (which all the
+* We have to take csp-ns generation from somewhere, so take it from upv_5 (which all the
 * csp-ns-containing regions have)
 gen_h("upv_5",r,h,t)$[cap_cspns(r,t)$tmodel_new(t)]
     = gen_h("upv_5",r,h,t) - gen_h("csp-ns",r,h,t) ;
