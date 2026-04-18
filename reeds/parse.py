@@ -378,7 +378,7 @@ def solvestring_sequential(
             'GSw_MGA_CostDelta',
             'GSw_MGA_Direction',
             'GSw_PVB_Dur',
-            'GSw_SkipAugurYear',
+            'GSw_SkipRAyear',
             'GSw_StateCO2ImportLevel',
             'GSw_StartMarkets',
             'GSw_ValStr',

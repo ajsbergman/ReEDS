@@ -99,7 +99,6 @@ def main(
     Run prep_data, ReEDS2PRAS, and PRAS as necessary.
     If running PRAS, append the number of samples to the filename.
     """
-    ### Import Augur scripts
     if repo:
         site.addsitedir(reeds_path)
     else:
@@ -132,7 +131,7 @@ def main(
     print(f'Running PRAS for {t}i{iteration}')
 
     ### Check if prep_data.py outputs exist; if not, run it
-    augur_data = os.path.join(case,'ReEDS_Augur','augur_data')
+    reeds_data = os.path.join(case,'handoff','reeds_data')
     files_expected = [
         f'cap_converter_{t}.csv',
         f'energy_cap_{t}.csv',
@@ -142,13 +141,13 @@ def main(
         f'pras_vre_gen_{t}.h5',
     ]
     if (
-        any([not os.path.isfile(os.path.join(augur_data,f)) for f in files_expected])
+        any([not os.path.isfile(os.path.join(reeds_data,f)) for f in files_expected])
         or overwrite
     ):
-        augur_csv, augur_h5 = reeds.resource_adequacy.prep_data.main(t, case)
+        reeds_csv, reeds_h5 = reeds.resource_adequacy.prep_data.main(t, case)
 
     ### Run ReEDS2PRAS
-    reeds.resource_adequacy.Augur.run_pras(
+    reeds.resource_adequacy.ra_calcs.run_pras(
         case,
         t,
         iteration=iteration,
@@ -187,7 +186,7 @@ if __name__ == '__main__':
     parser.add_argument('--samples', '-s', type=int, default=0,
                         help='PRAS samples to run')
     parser.add_argument('--repo', '-r', action='store_true',
-                        help=('Import Augur scripts from local repo '
+                        help=('Import RA scripts from local repo '
                               '(instead of from the case being rerun)'))
     parser.add_argument('--local', '-l', action='store_true',
                         help='Run locally (not as SLURM job)')
@@ -205,7 +204,7 @@ if __name__ == '__main__':
                         help="Write hourly unit availability by sample from PRAS")
     parser.add_argument('--switch_mods', '-m', type=json.loads, default=json.dumps({}),
                         help=('Dictionary-formated string of switch arguments for '
-                        'Augur.run_pras(). Use single quotes outside the dictionary and '
+                        'ra_calcs.run_pras(). Use single quotes outside the dictionary and '
                         'double quotes for keys, as in:\n'
                         '`-s \'{"pras_seed":0}\'`'))
 

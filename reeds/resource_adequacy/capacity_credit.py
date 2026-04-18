@@ -34,8 +34,8 @@ def set_marg_vre_step_size(t, sw, gdx, hierarchy):
     Inputs
     * marg_vre_steps [int]: Number of previous solve years to consider when
       evaluating the marginal VRE step size (default: 2). Must be at least 1;
-      a value of 2 can help reduce oscillations. Augur will automatically drop
-      from consideration solves that are more than 5 years from the previous solve.
+      a value of 2 can help reduce oscillations. Solves that are more than
+      5 years from the previous solve are automatically dropped.
     '''
     # load yearset for getting various previous steps
     yearset = gdx['tmodel_new'].allt.astype(int).tolist()
@@ -45,8 +45,7 @@ def set_marg_vre_step_size(t, sw, gdx, hierarchy):
     step_sizes = []
     for step in range(int(sw['marg_vre_steps'])):
 
-        # try-except to handle cases where there aren't multiple
-        # steps to go back to (e.g. running Augur after 1st solve)
+        # try-except to handle cases where there aren't multiple steps to go back to
         try:
             target_last_step = yearset[yearset.index(t)-step]
 
@@ -56,7 +55,7 @@ def set_marg_vre_step_size(t, sw, gdx, hierarchy):
                 step_sizes.append(get_relative_step_sizes(t, yearset, target_last_step))
                 prev_year_list.append(target_last_step)
         except Exception:
-            print('First Augur year so no previous steps')
+            print('First resource adequacy year so no previous steps')
 
     relative_step_sizes = pd.DataFrame(list(zip(prev_year_list, step_sizes)),
                                             columns=['t', 'step'])
@@ -121,10 +120,10 @@ def reeds_cc(t, tnext, casedir):
     hierarchy = reeds.io.get_hierarchy(casedir).reset_index()
     resources = pd.read_csv(os.path.join(inputs_case, 'resources.csv'))
     
-    augur_data = os.path.join(casedir,'ReEDS_Augur','augur_data')
-    cap = pd.read_csv(os.path.join(augur_data, f'max_cap_{t}.csv'))
+    reeds_data = os.path.join(casedir, 'handoff', 'reeds_data')
+    cap = pd.read_csv(os.path.join(reeds_data, f'max_cap_{t}.csv'))
 
-    gdx = gdxpds.to_dataframes(os.path.join(augur_data,f'reeds_data_{t}.gdx'))
+    gdx = gdxpds.to_dataframes(os.path.join(reeds_data, f'reeds_data_{t}.gdx'))
     techs = gdx['i_subsets'].pivot(columns='i_subtech',index='i',values='Value')
     techs.columns = techs.columns.str.lower()
     r = gdx['rfeas']
@@ -170,9 +169,9 @@ def reeds_cc(t, tnext, casedir):
     ### Prepare the seasonal profiles
     ## vre_gen needs to have tech_class_r columns
     ## last version has (ccseason,year,h,hour) index
-    vre_gen = pd.read_hdf(os.path.join(augur_data,f'vre_gen_exist_{t}.h5'))
+    vre_gen = pd.read_hdf(os.path.join(reeds_data,f'vre_gen_exist_{t}.h5'))
     ## vre_cf_marg has same columns and index as vre_gen
-    vre_cf_marg = pd.read_hdf(os.path.join(augur_data,f'vre_cf_marg_{t}.h5'))
+    vre_cf_marg = pd.read_hdf(os.path.join(reeds_data,f'vre_cf_marg_{t}.h5'))
 
     if int(sw['GSw_PRM_CapCreditMulti']) == 0:
         # Restrict capacity credit evaluation to use 2012 only (rather than multi-year)
@@ -191,7 +190,7 @@ def reeds_cc(t, tnext, casedir):
 
     load_profiles = (
         # HOURLY_PROFILES['load'].profiles
-        pd.read_hdf(os.path.join(augur_data,f'load_{t}.h5'))
+        pd.read_hdf(os.path.join(reeds_data,f'load_{t}.h5'))
         ### Map BA regions to ccreg's and sum over them
         .rename(columns=hierarchy.set_index('r').ccreg)
         .groupby(axis=1, level=0).sum()

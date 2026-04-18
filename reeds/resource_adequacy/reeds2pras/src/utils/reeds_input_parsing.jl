@@ -75,15 +75,15 @@ end
     Returns
     -------
     HDF5.h5read(filepath, "data")
-        A readout of the Augur load h5 file associated with the given ReEDS
+        A readout of the load h5 file associated with the given ReEDS
         filepath and year.
 
 """
 function get_load_file(data::ReEDSdatapaths)
     filepath = joinpath(
         data.ReEDSfilepath,
-        "ReEDS_Augur",
-        "augur_data",
+        "handoff",
+        "reeds_data",
         "pras_load_$(string(data.year)).h5",
     )
     columns = HDF5.h5read(filepath, "columns")
@@ -93,7 +93,7 @@ function get_load_file(data::ReEDSdatapaths)
 end
 
 """
-    This function reads a hdf5 file from the ReEDS Augur directory, based on
+    This function reads a hdf5 file from the ReEDS directory, based on
     the year provided in the ReEDSdatapaths struct.
 
     Parameters
@@ -109,8 +109,8 @@ end
 function get_vg_cf_data(data::ReEDSdatapaths)
     filepath = joinpath(
         data.ReEDSfilepath,
-        "ReEDS_Augur",
-        "augur_data",
+        "handoff",
+        "reeds_data",
         "pras_vre_gen_$(string(data.year)).h5",
     )
     columns = HDF5.h5read(filepath, "columns")
@@ -145,7 +145,7 @@ end
 """
 function get_max_unitsize(data::ReEDSdatapaths)
     filepath = joinpath(
-        data.ReEDSfilepath, "ReEDS_Augur", "augur_data",
+        data.ReEDSfilepath, "handoff", "reeds_data",
         "max_unitsize_$(string(data.year)).csv"
     )
     df = DataFrames.DataFrame(CSV.File(filepath))
@@ -154,7 +154,7 @@ end
 
 
 """
-    Get the forced outage data from the augur files.
+    Get the forced outage data.
 
     Parameters
     ----------
@@ -227,8 +227,8 @@ function get_line_capacity_data(data::ReEDSdatapaths)
     #assumes this file has been formatted by ReEDS to be PRM line capacity data
     filepath = joinpath(
         data.ReEDSfilepath,
-        "ReEDS_Augur",
-        "augur_data",
+        "handoff",
+        "reeds_data",
         "tran_cap_$(string(data.year)).csv",
     )
     return DataFrames.DataFrame(CSV.File(filepath))
@@ -251,8 +251,8 @@ end
 function get_converter_capacity_data(data::ReEDSdatapaths)
     filepath = joinpath(
         data.ReEDSfilepath,
-        "ReEDS_Augur",
-        "augur_data",
+        "handoff",
+        "reeds_data",
         "cap_converter_$(string(data.year)).csv",
     )
     return DataFrames.DataFrame(CSV.File(filepath))
@@ -285,7 +285,7 @@ end
 
 """
     Returns a DataFrame containing the installed capacity of generators for a
-    given year, read from {case}/ReEDS_Augur/augur_data/max_cap_{year}.csv.
+    given year, read from {case}/handoff/reeds_data/max_cap_{year}.csv.
 
     Parameters
     ----------
@@ -305,8 +305,8 @@ end
 function get_ICAP_data(data::ReEDSdatapaths)
     filepath = joinpath(
         data.ReEDSfilepath,
-        "ReEDS_Augur",
-        "augur_data",
+        "handoff",
+        "reeds_data",
         "max_cap_$(string(data.year)).csv",
     )
     return DataFrames.DataFrame(CSV.File(filepath))
@@ -380,8 +380,8 @@ end
 function get_storage_energy_capacity_data(data::ReEDSdatapaths)
     filepath = joinpath(
         data.ReEDSfilepath,
-        "ReEDS_Augur",
-        "augur_data",
+        "handoff",
+        "reeds_data",
         "energy_cap_$(string(data.year)).csv",
     )
     return DataFrames.DataFrame(CSV.File(filepath))
@@ -420,7 +420,7 @@ function get_hourly_scheduled_outage_data(data::ReEDSdatapaths)
 end
 
 """
-    Get the hourly forced outage data from the augur files.
+    Get the hourly forced outage data.
 
     Parameters
     ----------

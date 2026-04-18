@@ -621,7 +621,7 @@ def standardize_case(case=None):
 
 def get_switches(case=None, **kwargs):
     """
-    Get pd.Series of switch values from switches.csv, augur_switches.csv,
+    Get pd.Series of switch values from switches.csv, ra_switches.csv,
     and CPLEX opt file.
     Accepts either {case} or {case}/inputs_case as input.
 
@@ -646,11 +646,11 @@ def get_switches(case=None, **kwargs):
             index_col=0,
             header=None,
         ).squeeze(1)
-    ### Augur-specific switches
+    ### Resource-adequacy-specific switches
     try:
         fpath_asw = os.path.join(
             (case if case is not None else reeds_path),
-            'reeds', 'resource_adequacy', 'augur_switches.csv',
+            'reeds', 'resource_adequacy', 'ra_switches.csv',
         )
         asw = pd.read_csv(fpath_asw, index_col='key')
         for i, row in asw.iterrows():
@@ -670,7 +670,7 @@ def get_switches(case=None, **kwargs):
                 row.value = float(row.value)
         sw = pd.concat([sw, asw.value])
     except FileNotFoundError:
-        print(f"{fpath_asw} not found so leaving out Augur switches")
+        print(f"{fpath_asw} not found so leaving out resource adequacy switches")
     ### Add derivative switches
     sw['resource_adequacy_years_list'] = [int(y) for y in sw['resource_adequacy_years'].split('_')]
     sw['num_resource_adequacy_years'] = len(sw['resource_adequacy_years_list'])
@@ -1230,7 +1230,7 @@ def get_last_iteration(case, year=2050, datum=None, samples=None):
         raise ValueError(f"datum must be in [None,'flow','energy'] but is {datum}")
     infile = sorted(glob(
         os.path.join(
-            case, 'ReEDS_Augur', 'PRAS',
+            case, 'handoff', 'PRAS',
             f"PRAS_{year}i*"
             + (f'-{samples}' if samples is not None else '')
             + (f'-{datum}' if datum is not None else '')
@@ -1254,11 +1254,11 @@ def get_pras_system(case, year=None, iteration='last', verbose=0):
         get_last_iteration(case, t)[1] if iteration in [None, 'last']
         else iteration
     )
-    infile = os.path.join(case, 'ReEDS_Augur', 'PRAS', f"PRAS_{t}i{_iteration}.pras")
+    infile = os.path.join(case, 'handoff', 'PRAS', f"PRAS_{t}i{_iteration}.pras")
     if not os.path.exists(infile):
         raise FileNotFoundError(
             f'{infile} does not exist; run postprocessing/run_reeds2pras.py or rerun '
-            'the ReEDS case with keep_augur_files=1'
+            'the ReEDS case with keep_resource_adequacy_files=1'
         )
     pras = {}
     with h5py.File(infile,'r') as f:

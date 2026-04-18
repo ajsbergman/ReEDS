@@ -1425,7 +1425,7 @@ ivt(i,newv,t)$[ord(newv) = ivt_num(i,t)] = yes ;
 ivt(i,v,t)$[i_water_cooling(i)$Sw_WaterMain] =
   sum{ii$ctt_i_ii(i,ii), ivt(ii,v,t) } ;
 
-*Also expand ivt_num to water techs for use in Augur
+*Also expand ivt_num to water techs for use in resource adequacy calculations
 ivt_num(i,t)$[i_water_cooling(i)$Sw_WaterMain] =
   sum{ii$ctt_i_ii(i,ii), ivt_num(ii,t) } ;
 
@@ -6111,7 +6111,7 @@ scalar bio_transport_cost ;
 * biomass transport cost enter in $ per ton, convert to $ per MMBtu
 bio_transport_cost = Sw_BioTransportCost / bio_energy_content ;
 
-* get price of cheapest supply curve bin that has resources (needed for Augur)
+* get price of cheapest supply curve bin that has resources (needed for resource adequacy calculations)
 * price includes any transport costs for biomass
 parameter rep_bio_price_unused(r) "--2004$/MWh-- marginal price of lowest cost available supply curve bin for biofuel" ;
 rep_bio_price_unused(r)$[sum{usda_region, 1$r_usda(r,usda_region) }] =

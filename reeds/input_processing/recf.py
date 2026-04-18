@@ -5,7 +5,7 @@ various technologies are combined into single files for output:
 
 Resources:
         - Creates a resource-to-(i,r,ccreg) lookup table for use in hourly_writesupplycurves.py 
-          and Augur
+          and resource adequacy calculations
         - Add the distributed PV resources
 RECF:
         - Add the distributed PV recf profiles

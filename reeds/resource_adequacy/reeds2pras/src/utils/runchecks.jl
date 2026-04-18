@@ -14,17 +14,17 @@ function check_file(loc::String)
 end
 
 function run_checks(data::ReEDSdatapaths)
-    augur_data_path = joinpath(data.ReEDSfilepath, "ReEDS_Augur", "augur_data")
+    reeds_data_path = joinpath(data.ReEDSfilepath, "handoff", "reeds_data")
     filepaths = [
-        joinpath(augur_data_path, "cap_converter_$(string(data.year)).csv"),
-        joinpath(augur_data_path, "charge_eff_$(string(data.year)).csv"),
-        joinpath(augur_data_path, "discharge_eff_$(string(data.year)).csv"),
-        joinpath(augur_data_path, "energy_cap_$(string(data.year)).csv"),
-        joinpath(augur_data_path, "max_cap_$(string(data.year)).csv"),
-        joinpath(augur_data_path, "max_unitsize_$(string(data.year)).csv"),
-        joinpath(augur_data_path, "pras_load_$(string(data.year)).h5"),
-        joinpath(augur_data_path, "pras_vre_gen_$(string(data.year)).h5"),
-        joinpath(augur_data_path, "tran_cap_$(string(data.year)).csv"),
+        joinpath(reeds_data_path, "cap_converter_$(string(data.year)).csv"),
+        joinpath(reeds_data_path, "charge_eff_$(string(data.year)).csv"),
+        joinpath(reeds_data_path, "discharge_eff_$(string(data.year)).csv"),
+        joinpath(reeds_data_path, "energy_cap_$(string(data.year)).csv"),
+        joinpath(reeds_data_path, "max_cap_$(string(data.year)).csv"),
+        joinpath(reeds_data_path, "max_unitsize_$(string(data.year)).csv"),
+        joinpath(reeds_data_path, "pras_load_$(string(data.year)).h5"),
+        joinpath(reeds_data_path, "pras_vre_gen_$(string(data.year)).h5"),
+        joinpath(reeds_data_path, "tran_cap_$(string(data.year)).csv"),
         joinpath(data.ReEDSfilepath, "inputs_case", "hydcapadj.csv"),
         joinpath(data.ReEDSfilepath, "inputs_case", "hydcf.csv"),
         joinpath(data.ReEDSfilepath, "inputs_case", "mttr.csv"),

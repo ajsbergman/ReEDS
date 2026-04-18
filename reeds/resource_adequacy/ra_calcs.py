@@ -6,6 +6,8 @@ import subprocess
 import datetime
 import pandas as pd
 import gdxpds
+from pathlib import Path
+sys.path.append(str(Path(__file__).parent.parent.parent))
 import reeds
 
 
@@ -55,7 +57,7 @@ def run_pras(
             '--threads=1' if (sys.platform == 'darwin') or int(sw.get('pras_singlethread', 0))
             else f"--threads={sw['threads'] if sw['threads'] > 0 else 'auto'}"
         ),
-        f"{os.path.join(scriptpath, 'ReEDS_Augur','run_pras.jl')}",
+        f"{os.path.join(scriptpath, 'reeds', 'resource_adequacy', 'run_pras.jl')}",
         f"--reeds_path={sw['reeds_path']}",
         f"--reedscase={casedir}",
         f"--solve_year={t}",
@@ -97,20 +99,20 @@ def run_pras(
 def main(t, tnext, casedir, iteration=0):
 
     # #%% To debug, uncomment these lines and update the run path
-    # t = 2026
-    # tnext = 2029
+    # t = 2020
+    # tnext = 2023
     # reeds_path = reeds.io.reeds_path
     # casedir = os.path.join(
-    #     reeds_path,'runs','v20250521_prasM0_Pacific')
+    #     reeds_path,'runs','v20260417_reorgM1_Pacific')
     # iteration = 0
     # assert tnext >= t
     # os.chdir(casedir)
     # ## Copy reeds2pras from repo to run folder
     # import shutil
-    # shutil.rmtree(os.path.join(casedir, 'reeds2pras'))
+    # shutil.rmtree(os.path.join(casedir, 'reeds', 'resource_adequacy', 'reeds2pras'))
     # shutil.copytree(
-    #     os.path.join(reeds_path, 'reeds2pras'),
-    #     os.path.join(casedir, 'reeds2pras'),
+    #     os.path.join(reeds_path, 'reeds', 'resource_adequacy', 'reeds2pras'),
+    #     os.path.join(casedir, 'reeds', 'resource_adequacy', 'reeds2pras'),
     #     ignore=shutil.ignore_patterns('test'),
     # )
 
@@ -121,7 +123,7 @@ def main(t, tnext, casedir, iteration=0):
     #%% Prep data for resource adequacy
     print('Preparing data for resource adequacy calculations')
     tic = datetime.datetime.now()
-    augur_csv, augur_h5 = reeds.resource_adequacy.prep_data.main(t, casedir, iteration)
+    reeds_csv, reeds_h5 = reeds.resource_adequacy.prep_data.main(t, casedir, iteration)
     reeds.log.toc(tic=tic, year=t, process='ra/prep_data.py')
 
     #%% Calculate capacity credit if necessary; otherwise bypass
@@ -184,14 +186,13 @@ def main(t, tnext, casedir, iteration=0):
             )
             gdx[-1].dataframe = cc_results[key]
         gdx.write(
-            os.path.join('ReEDS_Augur', 'augur_data', f'ReEDS_Augur_{t}.gdx')
+            os.path.join('handoff', 'reeds_data', f'ccdata_{t}.gdx')
         )
 
     # #%% Uncomment to run diagnostic_plots
     # ### (typically run from call_{}.sh script for parallelization)
     # try:
-    #     import ReEDS_Augur.diagnostic_plots as diagnostic_plots
-    #     diagnostic_plots.main(sw)
+    #     reeds.resource_adequacy.diagnostic_plots.main(sw)
     # except Exception as err:
     #     print('diagnostic_plots.py failed with the following exception:')
     #     print(err)
@@ -200,7 +201,7 @@ def main(t, tnext, casedir, iteration=0):
 #%% Procedure
 if __name__ == '__main__':
 
-    parser = argparse.ArgumentParser(description="""Running ReEDS Augur""")
+    parser = argparse.ArgumentParser(description="Resource adequacy calculations")
 
     parser.add_argument("tnext", help="Next ReEDS solve year", type=int)
     parser.add_argument("t", help="Previous ReEDS solve year", type=int)

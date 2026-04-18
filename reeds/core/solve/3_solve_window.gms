@@ -44,7 +44,7 @@ $ifthene.notfirstiter %niter%>0
 *indicate we're loading data
 tload(t)$tmodel(t) = yes ;
 
-$gdxin ReEDS_Augur%ds%augur_data%ds%ReEDS_Augur_merged_%niter%.gdx
+$gdxin handoff%ds%reeds_data%ds%ccdata_merged_%niter%.gdx
 $loaddcr loadset = merged_set_1
 $loaddcr cc_old_load2 = cc_old
 $loaddcr cc_mar_load2 = cc_mar
@@ -126,7 +126,7 @@ cc_int(i,v,r,szn,t)$[cc_int(i,v,r,szn,t) < 0.001] = 0 ;
 
 cc_iter(i,v,r,szn,t,"%niter%")$cc_int(i,v,r,szn,t) = cc_int(i,v,r,szn,t) ;
 
-execute_unload 'ReEDS_Augur%ds%augur_data%ds%curtout_%case%_%niter%.gdx' cc_int ;
+execute_unload 'handoff%ds%reeds_data%ds%curtout_%case%_%niter%.gdx' cc_int ;
 
 *following line will load in the level values if the switch is enabled
 *note that this is still within the conditional that we are now past the first iteration

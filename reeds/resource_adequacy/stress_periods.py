@@ -45,7 +45,7 @@ def plot_eue_diagnostics(sw, t, iteration, high_eue_periods):
                 vmax=vmax[outage_type],
             )
             plt.savefig(
-                os.path.join(sw.casedir, 'outputs', 'Augur_plots', savename)
+                os.path.join(sw.casedir, 'outputs', 'figures', 'resource_adequacy', savename)
             )
             plt.close()
     except Exception as err:
@@ -64,7 +64,7 @@ def get_and_write_neue(sw, write=True):
     """
     infiles = [
         i for i in sorted(glob(
-            os.path.join(sw['casedir'], 'ReEDS_Augur', 'PRAS', 'PRAS_*.h5')))
+            os.path.join(sw['casedir'], 'handoff', 'PRAS', 'PRAS_*.h5')))
         if re.match(r"PRAS_[0-9]+i[0-9]+.h5", os.path.basename(i))
     ]
     eue = {}
@@ -94,12 +94,12 @@ def get_annual_neue(case, t, iteration=0):
     """
     """
     ### Get EUE from PRAS
-    dfeue = reeds.resource_adequacy.get_pras_eue(case=case, t=t, iteration=iteration)
+    dfeue = reeds.resource_adequacy.ra.get_pras_eue(case=case, t=t, iteration=iteration)
 
     ### Get load (for calculating NEUE)
     dfload = reeds.io.read_h5py_file(
         os.path.join(
-            case,'ReEDS_Augur','augur_data',f'pras_load_{t}.h5')
+            case,'handoff','reeds_data',f'pras_load_{t}.h5')
     )
     dfload.index = dfeue.index
 
@@ -204,7 +204,7 @@ def get_shoulder_periods(sw, criterion, dfenergy_r, high_eue_periods):
 def get_eue_sorted_periods(sw, t, iteration):
     ### Get storage state of charge (SOC) to use in selection of "shoulder" stress periods
     dfenergy = reeds.io.read_pras_results(
-        os.path.join(sw['casedir'], 'ReEDS_Augur', 'PRAS', f"PRAS_{t}i{iteration}-energy.h5")
+        os.path.join(sw['casedir'], 'handoff', 'PRAS', f"PRAS_{t}i{iteration}-energy.h5")
     )
     timeindex = reeds.timeseries.get_timeindex(sw['resource_adequacy_years'])
     dfenergy.index = timeindex
@@ -364,7 +364,7 @@ def prm_increment_pras(sw, t, iteration, combined_periods_write, failed_regions)
     ## shortfall data
     # read the net shortfall (positive) and net surplus (negative) results
     # by sample from PRAS run (MWh)
-    filepath = os.path.join(sw['casedir'], 'ReEDS_Augur', 'PRAS',
+    filepath = os.path.join(sw['casedir'], 'handoff', 'PRAS',
                             f'PRAS_{sw["t"]}i{iteration}-shortfall_samples.h5')
     net_short = reeds.io.read_pras_results(filepath)
     # get number of samples
@@ -387,7 +387,7 @@ def prm_increment_pras(sw, t, iteration, combined_periods_write, failed_regions)
     ## get load data
     dfload = reeds.io.read_file(
         os.path.join(
-        sw['casedir'],'ReEDS_Augur','augur_data',f'pras_load_{t}.h5'),
+        sw['casedir'],'handoff','reeds_data',f'pras_load_{t}.h5'),
         parse_timestamps=True
     )
 
@@ -536,11 +536,6 @@ def update_prm(sw, t, iteration, failed, combined_periods_write):
 def main(sw, t, iteration=0, logging=True):
     """
     """
-    #%% More imports and settings
-    site.addsitedir(os.path.join(sw['casedir'],'reeds','inputs'))
-    import hourly_writetimeseries
-    newstresspath = f'stress{t}i{iteration+1}'
-
     #%% Write consolidated NEUE so far
     try:
         _neue_simple = get_and_write_neue(sw, write=True)
@@ -573,7 +568,8 @@ def main(sw, t, iteration=0, logging=True):
         return
 
     #%% Write timeseries data for stress periods for the next iteration of ReEDS
-    hourly_writetimeseries.main(
+    newstresspath = f'stress{t}i{iteration+1}'
+    reeds.input_processing.hourly_writetimeseries.main(
         sw=sw, reeds_path=sw['reeds_path'],
         inputs_case=os.path.join(sw['casedir'], 'inputs_case'),
         periodtype=newstresspath,

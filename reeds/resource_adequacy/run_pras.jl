@@ -391,7 +391,7 @@ end
 function main(args::Dict)
     #%% Define some intermediate filenames
     pras_system_path = joinpath(
-        args["reedscase"],"ReEDS_Augur","PRAS",
+        args["reedscase"], "handoff", "PRAS",
         "PRAS_$(args["solve_year"])i$(args["iteration"]).pras"
     )
 
@@ -477,7 +477,9 @@ if abspath(PROGRAM_FILE) == @__FILE__
     args = parse_commandline()
 
     #%% Include ReEDS2PRAS
-    include(joinpath(args["reedscase"], "reeds2pras", "src", "ReEDS2PRAS.jl"))
+    include(joinpath(
+        args["reedscase"], "reeds", "resource_adequacy", "reeds2pras", "src", "ReEDS2PRAS.jl"
+    ))
 
     #%% Run it
     main(args)

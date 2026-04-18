@@ -5,7 +5,7 @@ This script writes inputs for resource adequacy calculations:
 * run_pras.jl -> ReEDS2PRAS.jl -> PRAS.jl (probabilistic resource adequacy)
 
 The files used by PRAS are:
-* In {case}/ReEDS_Augur/augur_data:
+* In {case}/handoff/reeds_data:
     * cap_converter_{year}.csv
     * energy_cap_{year}.csv
     * max_cap_{year}.csv
@@ -105,11 +105,11 @@ def errorcheck_reeds2pras(casedir, csvout, h5out):
 def main(t, casedir, iteration=0):
     #%%### DEBUGGING: Inputs
     # t = 2020
-    # reeds_path = os.path.expanduser('~/github2/ReEDS-2.0')
-    # casedir = os.path.join(reeds_path,'runs','v20230214_PRMaugurM0_Pacific_d7fIrh4_CC_y2012')
+    # reeds_path = os.path.expanduser('~/github/ReEDS')
+    # casedir = os.path.join(reeds_path,'runs','v20260417_reorgM0_Pacific')
 
     #%%### Get inputs from ReEDS
-    gdx_file = os.path.join(casedir,'ReEDS_Augur','augur_data',f'reeds_data_{t}.gdx')
+    gdx_file = os.path.join(casedir,'handoff','reeds_data',f'reeds_data_{t}.gdx')
     gdxreeds = gdxpds.to_dataframes(gdx_file)
     ### Use indices as multiindex
     for key in gdxreeds:
@@ -567,7 +567,7 @@ def main(t, casedir, iteration=0):
     #%% .csv files
     for key in csvout:
         csvout[key].round(int(sw['decimals'])).to_csv(
-            os.path.join(casedir,'ReEDS_Augur','augur_data',f'{key}_{t}.csv'),
+            os.path.join(casedir,'handoff','reeds_data',f'{key}_{t}.csv'),
         )
 
     #%% .h5 files
@@ -576,11 +576,11 @@ def main(t, casedir, iteration=0):
             reeds.io.write_profile_to_h5(
                 df=h5out[key].astype(np.float32),
                 filename=f'{key}_{t}.h5',
-                outfolder=os.path.join(casedir,'ReEDS_Augur','augur_data'),
+                outfolder=os.path.join(casedir,'handoff','reeds_data'),
             )
         else:
             h5out[key].astype(np.float32).to_hdf(
-                os.path.join(casedir,'ReEDS_Augur','augur_data',f'{key}_{t}.h5'),
+                os.path.join(casedir,'handoff','reeds_data',f'{key}_{t}.h5'),
                 key='data', complevel=4, mode='w',
             )
 

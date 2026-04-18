@@ -31,10 +31,10 @@ def delete_temporary_files(sw):
     Delete temporary csv, pkl, and h5 files
     """
     dropfiles = (
-        glob(os.path.join(sw['casedir'],'ReEDS_Augur','augur_data',f"*_{sw['t']}.pkl"))
-        + glob(os.path.join(sw['casedir'],'ReEDS_Augur','augur_data',f"*_{sw['t']}.h5"))
-        + glob(os.path.join(sw['casedir'],'ReEDS_Augur','augur_data',f"*_{sw['t']}.csv"))
-        + glob(os.path.join(sw['casedir'],'ReEDS_Augur','PRAS',f"PRAS_{sw['t']}*.pras"))
+        glob(os.path.join(sw['casedir'],'handoff','reeds_data',f"*_{sw['t']}.pkl"))
+        + glob(os.path.join(sw['casedir'],'handoff','reeds_data',f"*_{sw['t']}.h5"))
+        + glob(os.path.join(sw['casedir'],'handoff','reeds_data',f"*_{sw['t']}.csv"))
+        + glob(os.path.join(sw['casedir'],'handoff','PRAS',f"PRAS_{sw['t']}*.pras"))
     )
 
     for keyword in sw['keepfiles']:
@@ -46,7 +46,7 @@ def delete_temporary_files(sw):
 #%% Input-loading function
 def get_inputs(sw):
     ### Make savepath
-    sw['savepath'] = os.path.join(sw['casedir'], 'outputs', 'Augur_plots')
+    sw['savepath'] = os.path.join(sw['casedir'], 'outputs', 'figures', 'resource_adequacy')
     os.makedirs(sw['savepath'], exist_ok=True)
 
     ##### Load shared parameters
@@ -61,7 +61,7 @@ def get_inputs(sw):
     h_dt_szn['d'] = h_dt_szn.datetime.dt.strftime('sy%Yd%j')
 
     gdxreeds = gdxpds.to_dataframes(
-        os.path.join(sw['casedir'],'ReEDS_Augur','augur_data',f'reeds_data_{sw["t"]}.gdx'))
+        os.path.join(sw['casedir'],'handoff','reeds_data',f'reeds_data_{sw["t"]}.gdx'))
 
     techs = gdxreeds['i_subsets'].pivot(columns='i_subtech',index='i',values='Value')
     h2dac = techs['CONSUME'].dropna().index
@@ -89,7 +89,7 @@ def get_inputs(sw):
     ### Load and aggregate the VRE generation profiles by tech group
     try:
         vre_gen = reeds.io.read_file(
-            os.path.join(sw['casedir'],'ReEDS_Augur','augur_data',f'pras_vre_gen_{sw.t}.h5'),
+            os.path.join(sw['casedir'],'handoff','reeds_data',f'pras_vre_gen_{sw.t}.h5'),
             parse_timestamps=True,
         )
     except FileNotFoundError:
@@ -118,7 +118,7 @@ def get_inputs(sw):
     try:
         load_r = pd.read_hdf(
             os.path.join(
-                sw['casedir'],'ReEDS_Augur','augur_data',f'load_{sw.t}.h5')
+                sw['casedir'],'handoff','reeds_data',f'load_{sw.t}.h5')
         )
         load_r.index = fulltimeindex
     except FileNotFoundError:
@@ -127,7 +127,7 @@ def get_inputs(sw):
     ### Load PRAS load
     try:
         pras_load = reeds.io.read_file(
-            os.path.join(sw['casedir'],'ReEDS_Augur','augur_data',f'pras_load_{sw.t}.h5'),
+            os.path.join(sw['casedir'],'handoff','reeds_data',f'pras_load_{sw.t}.h5'),
             parse_timestamps=True,
         )
     except FileNotFoundError:
@@ -136,7 +136,7 @@ def get_inputs(sw):
     try:
         pras_h2dac_load = reeds.io.read_file(
             os.path.join(
-                sw['casedir'],'ReEDS_Augur','augur_data',
+                sw['casedir'],'handoff','reeds_data',
                 f"pras_h2dac_load_{sw['t']}.h5"),
             parse_timestamps=True,
         )
@@ -148,7 +148,7 @@ def get_inputs(sw):
     try:
         max_cap = pd.read_csv(
             os.path.join(
-                sw['casedir'],'ReEDS_Augur','augur_data',f"max_cap_{sw['t']}.csv"))
+                sw['casedir'],'handoff','reeds_data',f"max_cap_{sw['t']}.csv"))
         max_cap.i = reeds.reedsplots.simplify_techs(max_cap.i, display_level = 'diagnostics')
     except FileNotFoundError:
         max_cap = pd.DataFrame(columns=['i','v','r','MW'])
@@ -156,7 +156,7 @@ def get_inputs(sw):
     ### Load LOLE/EUE/NEUE from PRAS
     try:
         pras = reeds.io.read_pras_results(
-            os.path.join(sw['casedir'], 'ReEDS_Augur', 'PRAS',
+            os.path.join(sw['casedir'], 'handoff', 'PRAS',
                          f"PRAS_{sw.t}i{sw.iteration}.h5")
         )
         pras.index = fulltimeindex
@@ -499,14 +499,14 @@ def plot_pras_ICAP(sw, dfs):
         plt.close()
 
 
-def plot_augur_pras_capacity(sw, dfs):
+def plot_reeds_pras_capacity(sw, dfs):
     """
-    Plot the nameplate capacity from Augur and PRAS to check consistency
+    Plot the nameplate capacity from ReEDS and PRAS to check consistency
     """
     if not len(dfs['pras_system']):
         print('PRAS system was not loaded')
         return
-    savename = f"PRAS-Augur-capacity-{sw['t']}.png"
+    savename = f"PRAS-ReEDS-capacity-{sw['t']}.png"
     ### Get the colors
     tech_style = dfs['tech_style']['color'].squeeze()
     ### Collect the PRAS system capacities
@@ -523,12 +523,12 @@ def plot_augur_pras_capacity(sw, dfs):
         .groupby(axis=1, level=[1,0]).sum().max().rename('MW')
     )
 
-    ### Collect the Augur capacities
-    cap['augur'] = dfs['max_cap'].groupby(['i','r'], as_index=False).MW.sum()
+    ### Collect the ReEDS capacities
+    cap['reeds'] = dfs['max_cap'].groupby(['i','r'], as_index=False).MW.sum()
     ## Convert from s to p regions
-    cap['augur'].r = cap['augur'].r
+    cap['reeds'].r = cap['reeds'].r
     ## Aggregate by type
-    cap['augur'] = (cap['augur']
+    cap['reeds'] = (cap['reeds']
         .replace({'i':{'Hydropower Existing':'Hydropower', 'Hydropower New':'Hydropower'}})
         .groupby(['r','i']).MW.sum() / 1e3
     )
@@ -556,7 +556,7 @@ def plot_augur_pras_capacity(sw, dfs):
     )
     alltechs = set()
     for r in zones:
-        df = pd.concat({'A':cap['augur'].get(r,pd.Series()), 'P':cap['pras'].get(r,pd.Series())}, axis=1).T
+        df = pd.concat({'A':cap['reeds'].get(r,pd.Series()), 'P':cap['pras'].get(r,pd.Series())}, axis=1).T
         order = [c for c in tech_style.index if c in df]
         missing = [c for c in df if c not in order]
         if len(missing):
@@ -906,17 +906,17 @@ def plot_pras_load_units(sw, dfs):
     plt.close()
 
 
-def plot_pras_augur_load(sw, dfs):
-    """PRAS load against Augur load"""
+def plot_pras_reeds_load(sw, dfs):
+    """PRAS load against ReEDS load"""
     dfpras = dfs['pras_system']['load'].sum(axis=1).rename('PRAS')
-    dfaugur = dfs['load_r'].set_axis(dfpras.index).sum(axis=1).rename('Augur')
+    dfreeds = dfs['load_r'].set_axis(dfpras.index).sum(axis=1).rename('ReEDS')
     years = dfpras.index.year.unique()
-    linecolors = {'Augur':'C0', 'PRAS':'C3'}
+    linecolors = {'ReEDS':'C0', 'PRAS':'C3'}
     for year in years:
-        savename = f"demand_USA-Augur-PRAS-w{year}-{sw['t']}.png"
+        savename = f"demand_USA-ReEDS-PRAS-w{year}-{sw['t']}.png"
         plt.close()
         f,ax = plots.plotyearbymonth(
-            dfaugur.loc[str(year)], style='line', colors=linecolors['Augur'])
+            dfreeds.loc[str(year)], style='line', colors=linecolors['ReEDS'])
         plots.plotyearbymonth(
             dfpras.loc[str(year)], style='line', colors=linecolors['PRAS'], f=f, ax=ax)
         ## Legend
@@ -1033,8 +1033,7 @@ def plot_cc_mar(sw, dfs):
     if not int(sw['GSw_PRM_CapCredit']):
         raise KeyError('No capacity credit values to plot')
     cc_results = gdxpds.to_dataframes(os.path.join(
-        sw['casedir'],'ReEDS_Augur','augur_data',
-        'ReEDS_Augur_{}.gdx'.format(sw['t'])
+        sw['casedir'], 'handoff', 'reeds_data', f"ccdata_{sw['t']}.gdx"
     ))
 
     dfplot = cc_results[param].drop('t',axis=1).copy()
@@ -1177,7 +1176,7 @@ def plot_netloadhours_histogram(sw, dfs):
 
 def plot_stressors(sw, dfs):
     """
-    Map demand/CF/FOR (organized differently to allow use outside of Augur)
+    Map demand/CF/FOR (organized differently to allow for independent use)
     """
     for iteration in range(sw['iteration']):
         plot_generator = reeds.reedsplots.map_stressors(
@@ -1231,9 +1230,9 @@ def main(sw, debug=False):
             print('plot_pras_unitnumber() failed:', traceback.format_exc())
 
         try:
-            plot_augur_pras_capacity(sw, dfs)
+            plot_reeds_pras_capacity(sw, dfs)
         except Exception:
-            print('plot_augur_pras_capacity() failed:', traceback.format_exc())
+            print('plot_reeds_pras_capacity() failed:', traceback.format_exc())
 
         try:
             plot_pras_load(sw, dfs)
@@ -1279,9 +1278,9 @@ def main(sw, debug=False):
 
     if debug:
         try:
-            plot_pras_augur_load(sw, dfs)
+            plot_pras_reeds_load(sw, dfs)
         except Exception:
-            print('plot_pras_augur_load() failed:', traceback.format_exc())
+            print('plot_pras_reeds_load() failed:', traceback.format_exc())
 
         try:
             plot_pras_ICAP(sw, dfs)
@@ -1347,7 +1346,7 @@ if __name__ == '__main__':
         sw['iteration'] = iteration
 
     ### Make the plots
-    print('plotting intermediate Augur results...')
+    print('plotting intermediate resource adequacy results...')
     try:
         main(sw, debug)
     except Exception as _err:
@@ -1355,5 +1354,5 @@ if __name__ == '__main__':
         print(traceback.format_exc())
 
     ### Remove intermediate csv files to save drive space
-    if (not int(sw['keep_augur_files'])) and (not int(sw['debug'])):
+    if (not int(sw['keep_resource_adequacy_files'])) and (not int(sw['debug'])):
         delete_temporary_files(sw)

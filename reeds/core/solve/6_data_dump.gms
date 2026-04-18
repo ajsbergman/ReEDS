@@ -1,5 +1,5 @@
 $ontext
-This file creates a gdx file with all of the data necessary for the Augur module to solve. This includes:
+This file creates a gdx file with all of the data necessary for the resource adequacy calculations:
     - Generator capacities
     - Exogenous retirments (sequential solves only)
     - Wind capacity by build year (because wind CFs change by build year)
@@ -16,7 +16,7 @@ $if not set start_year $setglobal start_year %startyear%
 * Set and parameter definitions
 *===============================
 
-set rfeas(r)                 "list of feasible r regions - for use in Augur only"
+set rfeas(r)                 "list of feasible r regions"
     trange(t)                "range from first year to current year"
     tcur(t)                  "current year"
     tnext(t)                 "next year"
@@ -280,7 +280,7 @@ cap_trans_prm(r,rr,trtype) = sum{t$tcur(t), CAPTRAN_PRM.l(r,rr,trtype,t) } ;
 
 cap_converter_filt(r) = sum{t$tcur(t), CAP_CONVERTER.l(r,t) } ;
 
-* In Augur, trtype="AC" includes everything except for VSC
+* In resource adequacy calculations, trtype="AC" includes everything except for VSC
 routes_filt(r,rr,trtype) = sum{t$tcur(t), routes(r,rr,trtype,t) } ;
 
 *============================
@@ -334,7 +334,7 @@ energy_price(r,h)$hours(h) =
 * Unload all relevant data to a gdx file
 *=======================================
 
-execute_unload 'ReEDS_Augur%ds%augur_data%ds%reeds_data_%cur_year%.gdx'
+execute_unload 'handoff%ds%reeds_data%ds%reeds_data_%cur_year%.gdx'
     avail_filt
     bcr
     bir_pvb_config

@@ -537,17 +537,17 @@ def setup_sequential_year(
         ## check to see if the restart file exists
         OPATH.writelines(writeerrorcheck(os.path.join("g00files", savefile + ".g*")))
 
-    ## Run Augur if it not the final solve year and if not skipping Augur
+    ## Run resource adequacy (RA) calculations if it not the final solve year and if not skipping RA
     if ((
         (cur_year < max(solveyears))
-        and (next_year > int(caseSwitches['GSw_SkipAugurYear']))
+        and (next_year > int(caseSwitches['GSw_SkipRAyear']))
     ) or (cur_year == max(solveyears))):
         OPATH.writelines(
-            f"\npython Augur.py {next_year} {cur_year} {casedir}\n")
-        ## Check to make sure Augur ran successfully; quit otherwise
+            f"\npython {Path('reeds', 'resource_adequacy', 'ra_calcs.py')} {next_year} {cur_year} {casedir}\n")
+        ## Check to make sure RA ran successfully; quit otherwise
         OPATH.writelines(
             writeerrorcheck(os.path.join(
-                "ReEDS_Augur", "augur_data", f"ReEDS_Augur_{cur_year}.gdx")))
+                "handoff", "reeds_data", f"ccdata_{cur_year}.gdx")))
 
     ## delete the previous restart file unless we're keeping them
     if (cur_year > min(solveyears)) and (not int(caseSwitches['keep_g00_files'])):
@@ -582,7 +582,7 @@ def setup_sequential(
         ### Write the tax credit phaseout call
         OPATH.writelines(f"python {Path('reeds','core','solve','1_tc_phaseout.py')} {cur_year} {casedir}\n\n")
 
-        ### Write the GAMS LP and Augur calls
+        ### Write the GAMS LP and resource adequacy calls
         if int(caseSwitches['GSw_PRM_StressIterateMax']):
             OPATH.writelines(
                 f"python {Path('reeds','core','solve','solve.py')} {casedir} {cur_year}\n"
@@ -600,12 +600,12 @@ def setup_sequential(
             ### multipliers aren't created until the first solve year is run)
             if cur_year == min(solveyears):
                 OPATH.writelines(
-                    f"\npython {os.path.join(casedir, 'reeds', 'inputs', 'check_inputs.py')} "
+                    f"\npython {os.path.join(casedir, 'reeds', 'input_processing', 'check_inputs.py')} "
                     f"{casedir}\n"
                 )
                 OPATH.writelines(writescripterrorcheck('check_inputs.py')+'\n')
 
-        ### Run Augur plots in background
+        ### Run resource adequacy plots in background
         OPATH.writelines(
             f"python {Path('reeds','resource_adequacy','diagnostic_plots.py')} "
             f"--reeds_path={reeds_path} --casedir={casedir} --t={cur_year} &\n")
@@ -613,9 +613,9 @@ def setup_sequential(
 
 def setup_intertemporal(
         caseSwitches, startiter, niter, ccworkers,
-        solveyears, endyear, batch_case, toLogGamsString, yearset_augur, OPATH,
+        solveyears, endyear, batch_case, toLogGamsString, modeledyears, OPATH,
     ):
-    ### beginning year is passed to augurbatch
+    ### beginning year is passed to rabatch
     begyear = min(solveyears)
     ### first save file from d_solveprep is just the case name
     savefile = batch_case
@@ -658,10 +658,10 @@ def setup_intertemporal(
         ## start threads for cc/curt
         ## no need to run cc curt scripts for final iteration
         if i < niter-1:
-            ## batch out calls to augurbatch
+            ## batch out calls to rabatch
             OPATH.writelines(
-                "python augurbatch.py " + batch_case + " " + str(ccworkers) + " "
-                + yearset_augur + " " + savefile + " " + str(begyear) + " "
+                "python rabatch.py " + batch_case + " " + str(ccworkers) + " "
+                + modeledyears + " " + savefile + " " + str(begyear) + " "
                 + str(endyear) + " " + caseSwitches['distpvscen'] + " "
                 + str(caseSwitches['calc_csp_cc']) + " "
                 + str(caseSwitches['timetype']) + " "
@@ -674,10 +674,10 @@ def setup_intertemporal(
             ## the output file will be for the next iteration
             nextiter = i+1
             gdxmergedfile = os.path.join(
-                "ReEDS_Augur","augur_data","ReEDS_Augur_merged_" + str(nextiter))
+                'handoff', 'reeds_data', f'ccdata_merged_{nextiter}')
             OPATH.writelines(
-                "gdxmerge "+os.path.join("ReEDS_Augur","augur_data","ReEDS_Augur*")
-                + " output=" + gdxmergedfile  + ' \n')
+                'gdxmerge ' + os.path.join('handoff', 'reeds_data', 'ccdata*')
+                + f' output={gdxmergedfile} \n')
             ## check to make sure previous calls were successful
             OPATH.writelines(writeerrorcheck(gdxmergedfile+".gdx"))
 
@@ -690,7 +690,7 @@ def setup_intertemporal(
 
 def setup_window(
         caseSwitches, startiter, niter, ccworkers, reeds_path,
-        batch_case, toLogGamsString, yearset_augur, OPATH,
+        batch_case, toLogGamsString, modeledyears, OPATH,
     ):
     ### load the windows
     win_in = list(csv.reader(open(
@@ -727,8 +727,8 @@ def setup_window(
             ## start threads for cc/curt
             OPATH.writelines(writeerrorcheck(os.path.join("g00files",savefile + ".g*")))
             OPATH.writelines(
-                "python augurbatch.py " + batch_case + " " + str(ccworkers) + " "
-                + yearset_augur + " " + savefile + " " + str(begyear) + " "
+                "python rabatch.py " + batch_case + " " + str(ccworkers) + " "
+                + modeledyears + " " + savefile + " " + str(begyear) + " "
                 + str(endyear) + " " + caseSwitches['distpvscen'] + " "
                 + str(caseSwitches['calc_csp_cc']) + " "
                 + str(caseSwitches['timetype']) + " "
@@ -742,10 +742,10 @@ def setup_window(
             nextiter = i+1
             ## create names for then merge the curt and cc gdx files
             gdxmergedfile = os.path.join(
-                "ReEDS_Augur","augur_data","ReEDS_Augur_merged_" + str(nextiter))
+                'handoff', 'reeds_data', f'ccdata_merged_{nextiter}')
             OPATH.writelines(
-                "gdxmerge " + os.path.join("ReEDS_Augur","augur_data","ReEDS_Augur*")
-                + " output=" + gdxmergedfile  + ' \n')
+                'gdxmerge ' + os.path.join('handoff', 'reeds_data', 'ccdata*')
+                + f' output={gdxmergedfile} \n')
             ## check to make sure previous calls were successful
             OPATH.writelines(writeerrorcheck(gdxmergedfile+".gdx"))
             restartfile = savefile
@@ -1176,7 +1176,7 @@ def write_batch_script(
     shutil.copy2(os.path.join(reeds_path, cases_filename), casedir)
 
     ### Switches with values derived from other switches
-    ## Get hpc setting (used in Augur)
+    ## Determine whether we're running on the HPC
     caseSwitches['hpc'] = int(hpc)
     ## Get numclass from the max value in ivt
     caseSwitches['numclass'] = get_ivt_numclass(
@@ -1203,7 +1203,7 @@ def write_batch_script(
 
     solveyears = [y for y in solveyears if (y <= endyear and y >= startyear)]
 
-    yearset_augur = os.path.join('inputs_case','modeledyears.csv')
+    modeledyears = os.path.join('inputs_case','modeledyears.csv')
     toLogGamsString = ' logOption=4 logFile=gamslog.txt appendLog=1 '
 
     ## Copy code folders
@@ -1214,9 +1214,9 @@ def write_batch_script(
             ignore=shutil.ignore_patterns('test'),
         )
 
-    #make the augur_data folder
-    os.makedirs(os.path.join(casedir,'ReEDS_Augur','augur_data'), exist_ok=True)
-    os.makedirs(os.path.join(casedir,'ReEDS_Augur','PRAS'), exist_ok=True)
+    #make the reeds_data folder
+    os.makedirs(os.path.join(casedir,'handoff','reeds_data'), exist_ok=True)
+    os.makedirs(os.path.join(casedir,'handoff','PRAS'), exist_ok=True)
 
     ###### Replace files according to 'file_replacements' in cases. Ignore quotes in input text.
     # << is used to separate the file that is to be replaced from the file that is used
@@ -1322,12 +1322,12 @@ def write_batch_script(
         elif caseSwitches['timetype'] == 'int':
             setup_intertemporal(
                 caseSwitches, startiter, niter, ccworkers,
-                solveyears, endyear, batch_case, toLogGamsString, yearset_augur, OPATH,
+                solveyears, endyear, batch_case, toLogGamsString, modeledyears, OPATH,
             )
         elif caseSwitches['timetype'] == 'win':
             setup_window(
                 caseSwitches, startiter, niter, ccworkers, reeds_path,
-                batch_case, toLogGamsString, yearset_augur, OPATH,
+                batch_case, toLogGamsString, modeledyears, OPATH,
             )
 
         #################################

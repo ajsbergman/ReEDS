@@ -790,7 +790,7 @@ def main(sw, reeds_path, inputs_case, periodtype='rep', make_plots=1, logging=Tr
         np.ravel([[c]*GSw_HourlyChunkLength for c in outchunks_allyrs])
     ))
 
-    # %%### h_dt_szn for Augur
+    # %%### h_dt_szn for resource adequacy calculations
     if not len(hmap_myr) % 8760:
         ## Important: When modeling a single weather year, rep periods in the
         ## h_dt_szn table are just the single-year periods concatenated n times.
@@ -1331,7 +1331,7 @@ def main(sw, reeds_path, inputs_case, periodtype='rep', make_plots=1, logging=Tr
             False,
             False,
         ],
-        ## 8760 hour linkage set for Augur (h,szn,year,hour)
+        ## 8760 hour linkage set for resource adequacy (h,szn,year,hour)
         "h_dt_szn": [
             h_dt_szn[["h", "season", "ccseason", "year", "hour"]].assign(
                 h=h_dt_szn.h.map(chunkmap)

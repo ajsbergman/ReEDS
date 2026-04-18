@@ -136,14 +136,13 @@ if(Sw_GrowthPenalties > 0,
 $endif.post_startyear
 
 * Load capacity credit results
-$ifthene.tcheck %cur_year%>%GSw_SkipAugurYear%
+$ifthene.tcheck %cur_year%>%GSw_SkipRAyear%
 
 *indicate we're loading data
 tload("%cur_year%") = yes ;
 
-*file written by ReEDS_Augur.py
 * loaddcr = domain check (dc) + overwrite values storage previously (r)
-$gdxin ReEDS_Augur%ds%augur_data%ds%ReEDS_Augur_%prev_year%.gdx
+$gdxin handoff%ds%reeds_data%ds%ccdata_%prev_year%.gdx
 $loaddcr cc_old_load = cc_old
 $loaddcr cc_mar_load = cc_mar
 $loaddcr cc_evmc_load = cc_evmc

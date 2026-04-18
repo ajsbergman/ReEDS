@@ -8,7 +8,6 @@ from glob import glob
 from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent.parent.parent))
 import reeds
-from reeds.resource_adequacy import Augur
 
 
 #%% Main function
@@ -31,7 +30,7 @@ def run_reeds(casepath, t, onlygams=False, iteration=0):
     tnext = {**dict(zip(years, years[1:])), **{years[-1]:years[-1]}}
 
     #%%### Run GAMS LP
-    if not onlyaugur:
+    if not onlyra:
         #%% Get the command to run GAMS for this solve year
         batch_case = os.path.basename(casepath)
         stress_year = f"{t}i{iteration}"
@@ -77,9 +76,14 @@ def run_reeds(casepath, t, onlygams=False, iteration=0):
             raise Exception(f"Missing {savefile}.g00")
 
 
-    #%%### Run Augur
-    if (not onlygams) and (tnext[t] > int(sw.GSw_SkipAugurYear)):
-        Augur.main(t=t, tnext=tnext[t], casedir=casepath, iteration=iteration)
+    #%%### Run resource adequacy calculations
+    if (not onlygams) and (tnext[t] > int(sw.GSw_SkipRAyear)):
+        reeds.resource_adequacy.ra_calcs.main(
+            t=t,
+            tnext=tnext[t],
+            casedir=casepath,
+            iteration=iteration,
+        )
 
 
 #%% Driver function
@@ -103,15 +107,15 @@ def main(casepath, t, overwrite=False):
             and os.path.isfile(
                 os.path.join(
                     sw.casedir, 'inputs_case', f'stress{t}i{iteration+1}', 'cf_vre.csv'))
-            ## Check if Augur finished
+            ## Check if resource adequacy calculations finished
             and os.path.isfile(
                 os.path.join(
-                    sw.casedir, 'ReEDS_Augur', 'augur_data', f'ReEDS_Augur_{t}.gdx'))
+                    sw.casedir, 'handoff', 'reeds_data', f'ccdata_{t}.gdx'))
         ):
             print(f'Already ran {t}i{iteration} so continuing to next iteration')
             continue
 
-        #%% Run ReEDS and Augur
+        #%% Run ReEDS and RA calculations
         run_reeds(casepath, t, iteration=iteration)
 
         #%% Stop here if there's no stress period data for the next iteration
@@ -150,9 +154,9 @@ if __name__ == '__main__':
     parser.add_argument('--iteration', '-i', type=int, default=0,
                         help='iteration counter for this run')
     parser.add_argument('--onlygams', '-g', action='store_true',
-                        help='Only run GAMS (skip Augur)')
-    parser.add_argument('--onlyaugur', '-a', action='store_true',
-                        help='Only run Augur (skip GAMS)')
+                        help='Only run GAMS (skip resource adequacy)')
+    parser.add_argument('--onlyra', '-a', action='store_true',
+                        help='Only run resource adequacy (RA) (skip GAMS)')
     parser.add_argument('--overwrite', '-o', action='store_true',
                         help='Overwrite iterations that have already finished')
 
@@ -161,7 +165,7 @@ if __name__ == '__main__':
     t = args.t
     iteration = args.iteration
     onlygams = args.onlygams
-    onlyaugur = args.onlyaugur
+    onlyra = args.onlyra
     overwrite = args.overwrite
 
     #%% Switch to run folder

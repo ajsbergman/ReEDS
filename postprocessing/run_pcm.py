@@ -78,7 +78,7 @@ def solvestring_pcm(
             [
                 f" --{s}={sw[s]}"
                 for s in [
-                    'GSw_SkipAugurYear',
+                    'GSw_SkipRAyear',
                     'GSw_HourlyType',
                     'GSw_HourlyWrapLevel',
                     'GSw_ClimateWater',

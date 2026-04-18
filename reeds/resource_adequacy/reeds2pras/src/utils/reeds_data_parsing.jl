@@ -173,7 +173,7 @@ function split_generator_types(ReEDS_data::ReEDSdatapaths)
     ## Read {case}/inputs_case/tech-subset-table.csv
     tech_subset_table = get_technology_types(ReEDS_data)
     @debug "tech_subset_table is $(tech_subset_table)"
-    ## Read {case}/ReEDS_Augur/augur_data/max_cap_{year}.csv
+    ## Read {case}/handoff/reeds_data/max_cap_{year}.csv
     capacity_data = get_ICAP_data(ReEDS_data)
     ## Read {case}/inputs_case/resources.csv
     resources = get_valid_resources(ReEDS_data)
@@ -738,8 +738,8 @@ function process_storages(
     efficiency_in = Dict(
         polarity => DataFrames.DataFrame(CSV.File(joinpath(
             ReEDS_data.ReEDSfilepath,
-            "ReEDS_Augur",
-            "augur_data",
+            "handoff",
+            "reeds_data",
             "$(polarity)_eff_$(ReEDS_data.year).csv"
         )))
         for polarity in ["charge", "discharge"]
