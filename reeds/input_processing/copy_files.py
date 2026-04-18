@@ -930,7 +930,7 @@ def write_GAMS_sets(runfiles, reeds_path, inputs_case):
         for i, row in sets.iterrows()
     ]) + '\n$onlisting\n'
     # Write to file
-    with open(os.path.join(casedir,'b_sets.gms'), 'w') as f:
+    with open(os.path.join(casedir, 'reeds', 'core', 'setup', 'b_sets.gms'), 'w') as f:
         f.write(settext)
 
 

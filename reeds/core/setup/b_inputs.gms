@@ -233,7 +233,7 @@ $include inputs_case%ds%val_hurdlereg.csv
 ;
 
 * Written by copy_files.py
-$include b_sets.gms
+$include reeds%ds%core%ds%setup%ds%b_sets.gms
 
 sets
 *The following two sets:
