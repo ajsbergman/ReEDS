@@ -223,7 +223,7 @@ $offdelim
 $onlisting
 / ;
 
-* Written by reeds/inputs/hourly_writetimeseries.py
+* Written by reeds/input_processing/hourly_writetimeseries.py
 parameter frac_h_quarter_weights(allh,quarter) "--unitless-- fraction of timeslice associated with each quarter"
 /
 $offlisting
@@ -456,7 +456,7 @@ cf_in(i,r,h)$[i_water_cooling(i)$Sw_WaterMain] =
 cf_rsc(i,v,r,allh,t) = 0 ;
 cf_rsc(i,v,r,h,t)$[cf_in(i,r,h)$cf_tech(i)$valcap(i,v,r,t)] = cf_in(i,r,h) ;
 
-* Written by reeds/inputs/hourly_writetimeseries.py
+* Written by reeds/input_processing/hourly_writetimeseries.py
 $onempty
 parameter cf_hyd(i,allszn,r,allt) "--fraction-- hydro capacity factors by season and year"
 /
@@ -492,7 +492,7 @@ cf_hyd(i,szn,r,t)$[hydro_d(i)$(yeart(t)>=Sw_ClimateStartYear)]  =
 
 $endif.climatehydro
 
-*created by /reeds/inputs/writecapdat.py
+*created by reeds/input_processing/writecapdat.py
 parameter cap_hyd_szn_adj(i,allszn,r) "--fraction-- seasonal max capacity adjustment for dispatchable hydro"
 /
 $offlisting

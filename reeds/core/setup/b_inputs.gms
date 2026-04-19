@@ -1512,7 +1512,7 @@ $onlisting
 /,
 
           h2_ptc(i,v,r,allt)        "--2004$/kg h2 produced -- incentive on hydrogen production by electrolyzers which purchase Energy Attribute Credits"
-          h2_ptc_in(i,v,allt)       "--2004$/kg h2 produced -- incentive on hydrogen production by electrolyzers which purchase Energy Attribute Credits, this parameter is used to build h2_ptc and is produced in reeds/inputs/calc_financial_inputs.py"
+          h2_ptc_in(i,v,allt)       "--2004$/kg h2 produced -- incentive on hydrogen production by electrolyzers which purchase Energy Attribute Credits, this parameter is used to build h2_ptc"
 /
 $offlisting
 $ondelim
@@ -1611,8 +1611,8 @@ $offdelim
 $onlisting
 / ;
 
-*created by /reeds/inputs/writecapdat.py
-table capnonrsc(i,r,*) "--MW-- raw power capacity data for non-RSC tech created by .\reeds/inputs\writecapdat.py"
+*created by reeds/input_processing/writecapdat.py
+table capnonrsc(i,r,*) "--MW-- raw power capacity data for non-RSC tech"
 $offlisting
 $ondelim
 $include inputs_case%ds%capnonrsc.csv
@@ -1620,9 +1620,9 @@ $offdelim
 $onlisting
 ;
 
-*created by /reeds/inputs/writecapdat.py
+*created by reeds/input_processing/writecapdat.py
 $onempty
-table capnonrsc_energy(i,r,*) "--MWh-- raw energy capacity data for battery tech created by .\reeds/inputs\writecapdat.py"
+table capnonrsc_energy(i,r,*) "--MWh-- raw energy capacity data for battery tech"
 $offlisting
 $ondelim
 $include inputs_case%ds%capnonrsc_energy.csv
@@ -1631,9 +1631,9 @@ $onlisting
 ;
 $offempty
 
-*created by /reeds/inputs/writecapdat.py
+*created by reeds/input_processing/writecapdat.py
 $onempty
-table caprsc(pcat,r,*) "--MW-- raw RSC capacity data, created by .\writecapdat.py"
+table caprsc(pcat,r,*) "--MW-- raw RSC capacity data"
 $offlisting
 $ondelim
 $include inputs_case%ds%caprsc.csv
@@ -1642,10 +1642,10 @@ $onlisting
 ;
 $offempty
 
-*created by /reeds/inputs/writecapdat.py
+*created by reeds/input_processing/writecapdat.py
 * declared over allt to allow for external data files that extend beyond end_year
 $onempty
-table prescribednonrsc(allt,pcat,r,*) "--MW-- raw prescribed capacity data for non-RSC tech created by writecapdat.py"
+table prescribednonrsc(allt,pcat,r,*) "--MW-- raw prescribed capacity data for non-RSC tech"
 $offlisting
 $ondelim
 $include inputs_case%ds%prescribed_nonRSC.csv
@@ -1655,7 +1655,7 @@ $onlisting
 $offempty
 
 $onempty
-table prescribednonrsc_energy(allt,pcat,r,*) "--MWh-- raw prescribed energy capacity data for non-RSC tech created by writecapdat.py"
+table prescribednonrsc_energy(allt,pcat,r,*) "--MWh-- raw prescribed energy capacity data for non-RSC tech"
 $offlisting
 $ondelim
 $include inputs_case%ds%prescribed_nonRSC_energy.csv
@@ -1664,9 +1664,9 @@ $onlisting
 ;
 $offempty
 
-*Created using reeds/inputs\writecapdat.py
+*Created using reeds/input_processing/writecapdat.py
 $onempty
-table prescribedrsc(allt,pcat,r,*) "--MW-- raw prescribed capacity data for RSC tech created by .\reeds/inputs\writecapdat.py"
+table prescribedrsc(allt,pcat,r,*) "--MW-- raw prescribed capacity data for RSC tech"
 $offlisting
 $ondelim
 $include inputs_case%ds%prescribed_rsc.csv
@@ -1700,11 +1700,11 @@ $offempty
 
 prescribedrsc(allt,"wind-ofs",r,"value") = prescribed_wind_ofs(r,allt,"capacity") ;
 
-*created by /reeds/inputs/writecapdat.py
+*created by reeds/input_processing/writecapdat.py
 *following does not include wind
 *Retirements for techs binned by heatrates are handled in hintage_data.csv
 $onempty
-table prescribedretirements(allt,r,i,*) "--MW-- raw prescribed power capacity retirement data for non-RSC, non-heatrate binned tech created by /reeds/inputs/writecapdat.py"
+table prescribedretirements(allt,r,i,*) "--MW-- raw prescribed power capacity retirement data for non-RSC, non-heatrate binned tech"
 $offlisting
 $ondelim
 $include inputs_case%ds%retirements.csv
@@ -1713,10 +1713,10 @@ $onlisting
 ;
 $offempty
 
-*created by /reeds/inputs/writecapdat.py
+*created by reeds/input_processing/writecapdat.py
 *Retirements for techs binned by heatrates are handled in hintage_data.csv
 $onempty
-table prescribedretirements_energy(allt,r,i,*) "--MWh-- raw prescribed energy capacity retirement data for battery tech created by /reeds/inputs/writecapdat.py"
+table prescribedretirements_energy(allt,r,i,*) "--MWh-- raw prescribed energy capacity retirement data for battery tech"
 $offlisting
 $ondelim
 $include inputs_case%ds%retirements_energy.csv
@@ -1750,8 +1750,8 @@ $include inputs_case%ds%hintage_char.csv
 $onlisting
 / ;
 
-*created by /reeds/inputs/writehintage.py
-table hintage_data(i,v,r,allt,hintage_char) "table of existing unit characteristics written by writehintage.py"
+*created by reeds/input_processing/writehintage.py
+table hintage_data(i,v,r,allt,hintage_char) "table of existing unit characteristics"
 $offlisting
 $ondelim
 $include inputs_case%ds%hintage_data.csv
@@ -1791,7 +1791,7 @@ if(Sw_Upgrades = 1,
   ) ;
 ) ;
 
-*created by /reeds/inputs/writecapdat.py
+*created by reeds/input_processing/writecapdat.py
 parameter binned_capacity(i,v,r,allt) "existing capacity (that is not rsc, but including distpv) binned by heat rates" ;
 
 binned_capacity(i,v,r,allt) = hintage_data(i,v,r,allt,"cap") ;
@@ -4605,7 +4605,7 @@ heat_rate(i,v,r,t)$[heat_rate_adj(i,'post2010')$newv(v)] = heat_rate_adj(i,'post
 parameter fuel_price(i,r,t) "$/MMBtu - fuel prices by technology" ;
 
 
-* Written by reeds/inputs\fuelcostprep.py
+* Written by reeds/input_processing/fuelcostprep.py
 * declared over allt to allow for external data files that extend beyond end_year
 table fprice(allt,r,f) "--2004$/MMBtu-- fuel prices by fuel type"
 $offlisting
@@ -4673,7 +4673,7 @@ $endif.climatewater
 * -- Capacity Factor Adjustments over Time -- 
 *=============================================
 
-*created by /reeds/inputs/writecapdat.py
+*created by reeds/input_processing/writecapdat.py
 parameter cap_hyd_ccseason_adj(i,ccseason,r) "--fraction-- ccseason max capacity adjustment for dispatchable hydro"
 /
 $offlisting
@@ -5638,7 +5638,7 @@ nat_beta(t)$(not tfirst(t)) =  nat_beta_nonenergy ;
 
 $endif.gassector
 
-* Written by reeds/inputs\fuelcostprep.py
+* Written by reeds/input_processing/fuelcostprep.py
 * declared over allt to allow for external data files that extend beyond end_year
 table cd_alpha(allt,cendiv) "--$/MMBtu-- alpha value for natural gas supply curves"
 $offlisting

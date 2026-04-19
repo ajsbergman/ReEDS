@@ -13,11 +13,9 @@
 
 This GitHub repository contains the source code for NLR's ReEDS model.
 The ReEDS model source code is available at no cost from the National Laboratory of the Rockies.
-The ReEDS model can be downloaded or cloned from [https://github.com/NatLabRockies/ReEDS-2.0](https://github.com/NatLabRockies/ReEDS-2.0).
+The ReEDS model can be downloaded or cloned from [https://github.com/ReEDS-Model/ReEDS](https://github.com/ReEDS-Model/ReEDS).
 
-**For more information about the model, see the [ReEDS-2.0 Documentation](https://pages.github.nrel.gov/ReEDS/ReEDS-2.0).**
-
-<!-- **For more information about the model, see the [open source ReEDS-2.0 Documentation](https://natlabrockies.github.io/ReEDS-2.0).** -->
+**For more information about the model, see the [ReEDS Documentation](https://reeds-model.github.io/ReEDS).**
 
 ReEDS training videos are available on the [NLR Learning YouTube channel](https://youtube.com/playlist?list=PLmIn8Hncs7bG558qNlmz2QbKhsv7QCKiC&si=NgGBaL_MxNcYiIEX).
 
