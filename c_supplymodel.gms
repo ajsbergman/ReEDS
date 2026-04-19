@@ -285,6 +285,7 @@ eq_interconnection_queues(tg,r,t)         "--MW-- capacity deployment limit base
  eq_CAP_CONVERTER(r,t)                       "--MW-- capacity accounting for VSC AC/DC converters"
  eq_CAP_SPUR(x,t)                            "--MW-- capacity accounting for spur lines"
  eq_converter_max(r,t)                       "--MW-- upper limit for VSC AC/DC converter capacity in individual BAs"
+ eq_converter_max_national(t)                "--MW-- upper limit for national VSC AC/DC converter capacity "
  eq_CONVERSION_limit_energy(r,allh,t)        "--MW-- AC/DC energy conversion is limited to converter capacity"
  eq_CONVERSION_limit_prm(r,ccseason,t)       "--MW-- AC/DC PRM conversion is limited to converter capacity"
  eq_PRMTRADE_VSC(r,ccseason,t)               "--MW-- PRM capacity can flow through VSC lines but doesn't directly contribute to PRM"
@@ -295,7 +296,8 @@ eq_interconnection_queues(tg,r,t)         "--MW-- capacity deployment limit base
  eq_CAPTRAN_ITL(itlgrp,itlgrpp,t)            "--MW-- combined flow capacity between ITL groups"
  eq_itlgrp_limit_energy(itlgrp,itlgrpp,allh,t) "--MW-- limit on combined interface energy flows for ITLs"
  eq_itlgrp_limit_prm(itlgrp,itlgrpp,ccseason,t) "--MW-- limit on combined interface PRM flows for ITLs"
- eq_firm_transfer_limit(nercr,allh,t)        "--MW-- limit net firm capacity imports into NERC regions when using stress periods"
+ eq_firm_transfer_limit_frac(nercr,allh,t)        "--MW-- limit net firm capacity imports into NERC regions when using stress periods"
+ eq_firm_transfer_limit_abs(nercr,allh,t)        "--MW-- limit net firm capacity imports into NERC regions when using stress periods"
  eq_firm_transfer_limit_cc(nercr,ccseason,t) "--MW-- limit net firm capacity imports into NERC regions when using capacity credit"
  eq_offshore_no_backflow(r,rr,trtype,allh,t) "--MW-- disallow transmission flows from land to offshore zones"
 
@@ -2171,14 +2173,40 @@ eq_itlgrp_limit_prm(itlgrp,itlgrpp,ccseason,t)
 
 * ---------------------------------------------------------------------------
 
-* NERC regions are only allowed to import firm capacity up to their limit
-eq_firm_transfer_limit(nercr,h,t)
+* NERC regions are only allowed to import firm capacity up to their limit - fraction
+eq_firm_transfer_limit_frac(nercr,h,t)
     $[tmodel(t)
     $Sw_PRM_NetImportLimit
+    $Sw_PRM_NetImportLimitFrac
     $h_stress(h)]..
 
-* max net import fraction [.] * peak demand by NERC region [MW]
-    firm_import_limit(nercr,t) * peakload_nercr(nercr,t)
+* max net import fraction [.] * peak demand by NERC region [MW] (only when SW_PRM_NetImportLimitType = frac)
+    firm_import_limit(nercr,t) * peakload_nercr(nercr,t) 
+
+    =g=
+
+* net transmission imports (i.e. minus exports) accounting for losses on imports
+* imports [MW]
+    + sum{(r,rr,trtype,nercrr)
+          $[routes(rr,r,trtype,t)$routes_prm(rr,r)$routes_nercr(nercrr,nercr,rr,r)],
+          FLOW(rr,r,h,t,trtype) * (1 - tranloss(rr,r,trtype)) }
+* exports [MW]
+    - sum{(r,rr,trtype,nercrr)
+          $[routes(r,rr,trtype,t)$routes_prm(r,rr)$routes_nercr(nercr,nercrr,r,rr)],
+          FLOW(r,rr,h,t,trtype) }
+;
+
+
+
+* NERC regions are only allowed to import firm capacity up to their limit - absolute
+eq_firm_transfer_limit_abs(nercr,h,t)
+    $[tmodel(t)
+    $Sw_PRM_NetImportLimit
+    $Sw_PRM_NetImportLimitAbs
+    $h_stress(h)]..
+
+* max net import fraction [.] * peak demand by NERC region [MW] (only when SW_PRM_NetImportLimitType = frac)
+    firm_import_limit(nercr,t) 
 
     =g=
 
@@ -2361,6 +2389,21 @@ eq_converter_max(r,t)
     CAP_CONVERTER(r,t)
 ;
 
+* Limit the total VSC AC/DC converter capacity nationally to converter_cap
+eq_converter_max_national(t)
+    $[tmodel(t)
+    $Sw_VSC
+    $Sw_VSC_national_cap
+    $sum(tt, converter_cap(tt))]..
+
+*   exogenous VSC converter cap limit
+    converter_cap(t)
+
+    =g=
+
+*   must exceed sum of all AC/DC converter capacity for VSC in all BAs
+    sum{r,CAP_CONVERTER(r,t)}
+;
 * ---------------------------------------------------------------------------
 * Disallow transmission flows from land to offshore zones
 eq_offshore_no_backflow(r,rr,trtype,h,t)

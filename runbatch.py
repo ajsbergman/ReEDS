@@ -358,7 +358,7 @@ def check_compatibility(sw):
             int(year)
         except ValueError:
             raise ValueError(err)
-        if limit not in ['hist', 'histmax']:
+        if limit not in ['hist', 'histmax','zero']:
             try:
                 float(limit)
             except ValueError:

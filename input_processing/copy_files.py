@@ -1455,6 +1455,11 @@ def write_miscellaneous_files(
         os.path.join(inputs_case,'upgrade_costs_ccs_gas.csv')
     )
 
+    # VSC Converter cap 
+    pd.read_csv(os.path.join(reeds_path,'inputs','transmission','vsc_converter_cap.csv'), 
+                        index_col='t',).loc[sw['GSw_VSC_national_cap_scen']].rename_axis('*t').to_csv(
+                            os.path.join(inputs_case,'vsc_converter_cap.csv'))
+
     ccseason_dates = pd.read_csv(
         os.path.join(reeds_path, 'inputs', 'reserves', 'ccseason_dates.csv'),
         index_col=['month', 'day'],

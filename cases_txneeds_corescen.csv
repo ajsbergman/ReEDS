@@ -1,0 +1,26 @@
+,Default Value,USA_decarb_high_Load_10ppm,USA_decarb_high_Load_20ppm,USA_decarb_high_Load_2ppm,USA_decarb_10ppm,USA_decarb_20ppm,USA_decarb_2ppm,USA_BAU_high_Load_10ppm,USA_BAU_high_Load_20ppm,USA_BAU_high_Load_2ppm,USA_BAU_10ppm,USA_BAU_20ppm,USA_BAU_2ppm
+ignore,1,1,1,1,1,1,1,0,1,1,1,1,1
+endyear,2032,2050,2050,2050,2050,2050,2050,2050,2050,2050,2050,2050,2050
+GSw_Region,usa,,,,,,,,,,,,
+GSw_PRM_CapCredit,,,,,,,,,,,,,
+yearset_suffix,5yr,,,,,,,,,,,,
+GSw_TransScen,,VSC_all,VSC_all,VSC_all,VSC_all,VSC_all,VSC_all,VSC_all,VSC_all,VSC_all,VSC_all,VSC_all,VSC_all
+GSw_VSC,,1,1,1,1,1,1,1,1,1,1,1,1
+GSw_AnnualCap,0,1,1,1,1,1,1,,,,,,
+GSw_AnnualCapScen,start2023_90pct2035_100pct2050,,,,,,,,,,,,
+GSw_EFS1_AllYearLoad,EER_IRAlow,EER_100by2050,EER_100by2050,EER_100by2050,,,,EER_100by2050,EER_100by2050,EER_100by2050,,,
+GSw_CO2_Detail,0,,,,,,,,,,,,
+GSw_HourlyType,,,,,,,,,,,,,
+GSw_PRM_StressThreshold,transgrp_10_EUE_sum,,transgrp_20_EUE_sum,transgrp_2_EUE_sum,,transgrp_20_EUE_sum,transgrp_2_EUE_sum,,transgrp_20_EUE_sum,transgrp_2_EUE_sum,,transgrp_20_EUE_sum,transgrp_2_EUE_sum
+GSw_PRM_StressIterateMax,5,,,,,,,,,,,,
+GSw_PRM_StressModel,,,,,,,,,,,,,
+GSw_VSC_national_cap,,1,1,1,1,1,1,1,1,1,1,1,1
+GSw_VSC_national_cap_scen,,6_weighted_low,6_weighted_low,6_weighted_low,6_weighted_low,6_weighted_low,6_weighted_low,6_weighted_low,6_weighted_low,6_weighted_low,6_weighted_low,6_weighted_low,6_weighted_low
+GSw_OutageScen,murphy2019,,,,,,,,,,,,
+GSw_PRM_NetImportLimit,1,,,,,,,,,,,,
+GSw_PRM_NetImportLimitScen,2031_hist/2050_100,,,,,,,,,,,,
+distpvscen,stscen2023_mid_case,stscen2023_mid_case_95_by_2050,stscen2023_mid_case_95_by_2050,stscen2023_mid_case_95_by_2050,stscen2023_mid_case_95_by_2050,stscen2023_mid_case_95_by_2050,stscen2023_mid_case_95_by_2050,,,,,,
+GSw_BECCS,1,,,,,,,,,,,,
+GSw_H2,2,,,,,,,,,,,,
+GSw_PRM_scenario,st_scen,,,,,,,,,,,,
+GSw_GasCurve,1,,,,,,,,,,,,

@@ -3746,6 +3746,16 @@ val_converter(r,t)$[sum{rr, routes_inv(rr,r,"VSC",t) }] = yes ;
 * Use LCC DC per-MW costs for VSC (converters are handled separately)
 transmission_line_fom(r,rr,"VSC")$sum{t, routes(r,rr,"VSC",t) } = transmission_line_fom(r,rr,"LCC") ;
 
+* National limit on VSC converter cap 
+parameter converter_cap(allt)      "--GW-- VSC converter cap used when Sw_VSC_national_cap is on"
+/
+$offlisting
+$ondelim
+$include inputs_case%ds%vsc_converter_cap.csv
+$offdelim
+$onlisting
+/ ;
+
 
 * --- Transmission switches ---
 * Sw_TransInvMax: According to

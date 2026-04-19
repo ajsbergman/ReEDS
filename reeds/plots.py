@@ -2287,6 +2287,7 @@ def plot_segmented_arrow(
             path_effects=[pe.withStroke(
                 linewidth=labelborderlw, foreground='w', alpha=labelborderalpha)],
         )
+    ax.axis('off')
 
 
 def wraptext(text, width, fontsize=14):
