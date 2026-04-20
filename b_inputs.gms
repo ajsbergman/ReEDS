@@ -3010,6 +3010,9 @@ $offempty
 
 RecPerc(RPSCat,st,t) = sum{allt$att(allt,t), rps_fraction(allt,st,RPSCat) } ;
 RecPerc(RPSCat,st,t)$[(Sw_StateRPS_Carveouts = 0)$(sameas(RPSCat, "RPS_solar") or sameas(RPSCat, "RPS_Wind"))] = 0;
+RecPerc(RPSCat,st,t)$[(Sw_StateRPS = 0)$(sameas(RPSCat, "RPS_solar")
+                                      or sameas(RPSCat, "RPS_Wind")
+                                      or sameas(RPSCat, "RPS_All"))] = 0 ;
 RecPerc("CES",st,t) = ces_fraction(t,st) ;
 
 * RE generation creates both CES and RPS credits, which can cause double-counting

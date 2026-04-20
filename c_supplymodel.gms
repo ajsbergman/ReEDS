@@ -2613,7 +2613,7 @@ eq_caa_rate_standard(st,t)$[tmodel(t)
 * ---------------------------------------------------------------------------
 
 eq_REC_Generation(RPSCat,i,st,t)$[stfeas(st)$(not tfirst(t))$tmodel(t)
-                                 $Sw_StateRPS$(yeart(t)>=firstyear_RPS)
+                                 $Sw_StateRPS_CES$(yeart(t)>=firstyear_RPS)
                                  $(not sameas(RPSCat,"RPS_Bundled"))
                                  $(not sameas(RPSCat,"CES_Bundled"))
                                  $RecTech(RPSCat,i,st,t)
@@ -2651,7 +2651,7 @@ eq_REC_Generation(RPSCat,i,st,t)$[stfeas(st)$(not tfirst(t))$tmodel(t)
 * to comply with the RPS_All categeory
 * but it is not in itself explicit requirement
 eq_REC_Requirement(RPSCat,st,t)$[RecPerc(RPSCat,st,t)$(not tfirst(t))
-                                $tmodel(t)$Sw_StateRPS$(yeart(t)>=firstyear_RPS)
+                                $tmodel(t)$Sw_StateRPS_CES$(yeart(t)>=firstyear_RPS)
                                 $(stfeas(st) or sameas(st,"voluntary"))
                                 $(not sameas(RPSCat,"RPS_Bundled"))
                                 $(not sameas(RPSCat,"CES_Bundled"))]..
@@ -2710,7 +2710,7 @@ eq_REC_Requirement(RPSCat,st,t)$[RecPerc(RPSCat,st,t)$(not tfirst(t))
 * ---------------------------------------------------------------------------
 
 eq_REC_BundleLimit(RPSCat,st,ast,t)$[stfeas(st)$stfeas(ast)$tmodel(t)
-                              $(not sameas(st,ast))$Sw_StateRPS
+                              $(not sameas(st,ast))$Sw_StateRPS_CES
                               $(sum{i,RecMap(i,RPSCat,st,ast,t) })
                               $(sameas(RPSCat,"RPS_Bundled") or sameas(RPSCat,"CES_Bundled"))
                               $(yeart(t)>=firstyear_RPS)]..
@@ -2729,7 +2729,7 @@ eq_REC_BundleLimit(RPSCat,st,ast,t)$[stfeas(st)$stfeas(ast)$tmodel(t)
 * ---------------------------------------------------------------------------
 
 eq_REC_unbundledLimit(RPSCat,st,t)$[st_unbundled_limit(RPScat,st)$tmodel(t)$stfeas(st)
-                            $(yeart(t)>=firstyear_RPS)$Sw_StateRPS
+                            $(yeart(t)>=firstyear_RPS)$Sw_StateRPS_CES
                             $(sameas(RPSCat,"RPS_All") or sameas(RPSCat,"CES"))]..
 *the limit on unbundled RECS times the REC requirement (based on end-use sales)
       REC_unbundled_limit(RPSCat,st,t) * RecPerc(RPSCat,st,t) *
@@ -2754,7 +2754,7 @@ eq_REC_unbundledLimit(RPSCat,st,t)$[st_unbundled_limit(RPScat,st)$tmodel(t)$stfe
 * ---------------------------------------------------------------------------
 
 eq_REC_ooslim(RPSCat,st,t)$[RecPerc(RPSCat,st,t)$(yeart(t)>=firstyear_RPS)
-                           $RPS_oosfrac(st)$stfeas(st)$tmodel(t)$Sw_StateRPS
+                           $RPS_oosfrac(st)$stfeas(st)$tmodel(t)$Sw_StateRPS_CES
                            $(not sameas(RPSCat,"RPS_Bundled"))
                            $(not sameas(RPSCat,"CES_Bundled"))]..
 
@@ -2784,7 +2784,7 @@ eq_REC_ooslim(RPSCat,st,t)$[RecPerc(RPSCat,st,t)$(yeart(t)>=firstyear_RPS)
 
 *exports must be less than RECS generated
 eq_REC_launder(RPSCat,st,t)$[RecStates(RPSCat,st,t)$(not tfirst(t))$(yeart(t)>=firstyear_RPS)
-                               $tmodel(t)$stfeas(st)$Sw_StateRPS
+                               $tmodel(t)$stfeas(st)$Sw_StateRPS_CES
                                $(not sameas(RPSCat,"RPS_Bundled"))
                                $(not sameas(RPSCat,"CES_Bundled"))]..
 
@@ -2815,7 +2815,7 @@ eq_REC_launder(RPSCat,st,t)$[RecStates(RPSCat,st,t)$(not tfirst(t))$(yeart(t)>=f
 
 * ---------------------------------------------------------------------------
 
-eq_RPS_OFSWind(st,t)$[tmodel(t)$stfeas(st)$offshore_cap_req(st,t)$Sw_StateRPS
+eq_RPS_OFSWind(st,t)$[tmodel(t)$stfeas(st)$offshore_cap_req(st,t)$Sw_StateRPS_CES
                       $sum{(i,v,r)$[r_st(r,st)$ofswind(i)], valcap(i,v,r,t) }
                       $(yeart(t)>=firstyear_RPS)$(not Sw_PCM)]..
 

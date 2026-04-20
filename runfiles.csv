@@ -141,7 +141,7 @@ financials_transmission.csv,inputs/financials/financials_transmission_{financial
 financing_risk_mult.csv,,1,ignore,ignore,,,,,0,,,,,,
 firm_import_limit.csv,,1,ignore,ignore,,,,,0,,1,,,,
 firstyear.csv,,1,ignore,ignore,,,,,0,,1,,,,
-years_until_endogenous.csv,inputs/plant_characteristics/years_until_endogenous.csv,1,ignore,ignore,,,,,0,,,,,,
+years_until_endogenous.csv,inputs/plant_characteristics/years_until_endogenous_{GSw_YearsUntilFile}.csv,1,ignore,ignore,,,,,0,,,,,,
 flex_frac_all.csv,,1,mean,population,r,"*flextype,h,wide",,1,0,,1,,,,
 flex_type.csv,inputs/sets/flex_type.csv,1,ignore,ignore,,,,,,,,,flex_type,,
 forced_retirements.csv,inputs/state_policies/forced_retirements.csv,1,ignore,ignore,st,"*i,t",,0,0,,,,,,
