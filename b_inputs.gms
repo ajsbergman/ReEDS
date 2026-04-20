@@ -6877,10 +6877,27 @@ $offdelim
 ;
 
 parameters
- i_int(i,mat) "--metric tons / MW-- material intensity matrix by reeds generation technology" 
- trt_int(trtype,mat) "--metric tons per MW-mile-- material intensity matrix by reeds transmission capacity type"
- ;
- 
+i_int(i,mat)            "--metric tons / MW-- material intensity matrix by reeds generation technology" 
+trt_int(trtype,mat)     "--metric tons per MW-mile-- material intensity matrix by reeds transmission capacity type"
+mat_prod(mat,mat_ctry)  "--metric tons-- material production by country"
+/
+$offlisting
+$ondelim
+$include ../../cmm_global_mat_prod.csv
+$offdelim
+$onlisting
+/
+mat_price(mat)           "-- 2004$ / metric ton -- price per metric ton of material used"
+/
+$offlisting
+$ondelim
+$include ../../cmm_global_mat_price.csv
+$offdelim
+$onlisting
+/
+i_theta(i,mat,t)        "-- share -- share of capital costs attributable to materials for each technology, by year"
+;
+
 i_int(i,mat) = sum(tcat$i_tcat(i,tcat),mat_int(tcat,mat)) / 1000 ;
 trt_int(trtype,mat) =  sum{ptype$trtype_ptype(trtype,ptype), tran_int(ptype,mat)} / 1000 ; 
 
@@ -6888,14 +6905,10 @@ trt_int(trtype,mat) =  sum{ptype$trtype_ptype(trtype,ptype), tran_int(ptype,mat)
 i_int(i,mat)$[upgrade(i)] = i_int(i,mat) - sum{ii$upgrade_from(i,ii), i_int(ii,mat)};
 i_int(i,mat)$i_subsets(i,'h2_combustion') = no ;
 
-parameter mat_prod(mat,mat_ctry) "--metric tons-- material production by country"
-/
-$offlisting
-$ondelim
-$include ../../cmm_global_mat_prod.csv
-$offdelim
-$onlisting
-/ ;
 
 *!!! set this up as the average, hardcoding now
 yearweight(t)$tlast(t) = 3 ; 
+
+* calculate share of capital costs that is attributable to materials for each technology
+
+i_theta(i,mat,t) = i_int(i,mat) * mat_price(mat) / cost_cap(i,t) ; 

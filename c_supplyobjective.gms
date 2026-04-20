@@ -376,6 +376,17 @@ eq_Objfn_op(t)$tmodel(t)..
 * --- materials slack  ---
 * allow for material slack at a high penalty cost to avoid infeasibility when material constraints are binding
               + 1e6 * sum(mat, mat_slack(mat,t))
+
+* --- materials costs --- 
+* subtract off share of capital costs attributable to materials to avoid double counting 
+              -  sum{(i,v,r,mat)$valinv(i,v,r,t), i_theta(i,mat,t) * 
+                       cost_cap_fin_mult(i,r,t) * cost_cap(i,t) * INV(i,v,r,t)
+                      }
+
+               + sum{(i, mat)$(not sameas(mat,'%GSw_specmat%')), i_int(i,mat) * mat_price(mat)} 
+
+               + sum{(i, mat)$(sameas(mat,'%GSw_specmat%')), Sw_matprice_multiplier * i_int(i,mat) * mat_price(mat)} 
+
 *end multiplier for pvf_onm
          )
 ;
