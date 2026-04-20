@@ -56,7 +56,15 @@ hydNPD,1,1,1,1
 hydNPND,1,1,1,1
 hydED,1,1,1,1
 hydEND,1,1,1,1
-egs_allkm_1*egs_allkm_10,1,1,1,1
-geohydro_allkm_1*geohydro_allkm_10,1,1,1,1
+egs1_1*egs1_10,1,1,1,1
+egs2_1*egs2_10,1,1,1,1
+egs3_1*egs3_10,1,1,1,1
+egs4_1*egs4_10,1,1,1,1
+egs5_1*egs5_10,1,1,1,1
+geohydro1_1*geohydro1_10,1,1,1,1
+geohydro2_1*geohydro2_10,1,1,1,1
+geohydro3_1*geohydro3_10,1,1,1,1
+geohydro4_1*geohydro4_10,1,1,1,1
+geohydro5_1*geohydro5_10,1,1,1,1
 egs_nearfield_1*egs_nearfield_10,1,1,1,1
 dr_shed_1*dr_shed_2,1,1,1,1

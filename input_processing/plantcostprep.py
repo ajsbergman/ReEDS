@@ -10,6 +10,8 @@ import argparse
 import datetime
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import reeds
+import geo_cost_adjustments
+import traceback
 # Time the operation of this script
 tic = datetime.datetime.now()
 
@@ -188,8 +190,75 @@ wind_stack = winddata[['t','i','capcost','fom','vom']].copy()
 
 geodata = pd.read_csv(os.path.join(inputs_case,'plantchar_geo.csv'))
 geodata.columns = ['tech','class','depth','t','capcost','fom','vom']
-geodata['i'] = geodata['tech'] + '_' + geodata['depth'] + '_' + geodata['class'].astype(str)
+
+#create a tech identifier to process cost adjustments later
+geodata['i'] = geodata['tech'] + '1_' + geodata['class'].astype(str)
+geodata.loc[geodata['depth'] == 'nearfield', 'i'] = 'egs_nearfield_' + geodata.loc[geodata['depth'] == 'nearfield', 'class'].astype(str)
 geodata = deflate_func(geodata, sw.plantchar_geo)
+
+# ensure baseline rows exist for egs2_<class> by copying egs1_<class> if missing
+mask_egs1 = geodata['i'].str.startswith('egs1_')
+if mask_egs1.any():
+    egs1_df = geodata.loc[mask_egs1].copy()
+    egs2_df = egs1_df.copy()
+    egs2_df['i'] = egs2_df['i'].str.replace('egs1_', 'egs2_', regex=False)
+    # determine which egs2 ids are not present already
+    existing_ids = set(geodata['i'].unique())
+    new_ids = [iid for iid in egs2_df['i'].unique() if iid not in existing_ids]
+    if new_ids:
+        egs2_to_add = egs2_df[egs2_df['i'].isin(new_ids)].copy()
+        geodata = pd.concat([geodata, egs2_to_add], ignore_index=True, sort=False)
+        print(f"Added {len(egs2_to_add)} baseline egs2 rows copied from egs1")
+
+# always generate cost multipliers for EGS
+try:
+    geo_cost_multipliers = geo_cost_adjustments.main(inputs_case, sw.plantchar_geo, tech_type='egs', output_multipliers=True)
+except Exception as e:
+    print(f"Error in generating cost multipliers: {e}")
+    traceback.print_exc()
+    geo_cost_multipliers = None
+
+# if we have aggregated multipliers, write a GAMS-friendly CSV and do NOT apply per-bin adjustments
+gm = None
+if geo_cost_multipliers is not None:
+    # expected columns: ['r','tech','occ_mult']
+    gm = geo_cost_multipliers.copy()
+    if '*i' in gm.columns and 'i' not in gm.columns:
+        gm = gm.rename(columns={'*i': 'i'})
+else:
+    # long-format file produced by geo_cost_adjustments.py with *i,r,value columns
+    alt_path = os.path.join(inputs_case, 'egs_cap_cost_mult.csv')
+    if os.path.exists(alt_path):
+        gm = pd.read_csv(alt_path)
+        if '*i' in gm.columns and 'i' not in gm.columns:
+            gm = gm.rename(columns={'*i': 'i'})
+        if 'value' in gm.columns and 'occ_mult' not in gm.columns:
+            gm = gm.rename(columns={'value': 'occ_mult'})  # temporary internal name
+    else:
+        print(f"No EGS multipliers available: geo_cost_adjustments returned None and {alt_path} missing. Continuing without EGS regional multipliers.")
+        gm = pd.DataFrame(columns=['i', 'r', 'occ_mult'])
+
+#ensure multiplier column present and numeric
+if 'occ_mult' not in gm.columns:
+    mult_col = next((c for c in ['value','occ_mult','total_mult'] if c in gm.columns), None)
+    if mult_col:
+        gm['occ_mult'] = pd.to_numeric(gm[mult_col], errors='coerce')
+    else:
+        raise KeyError("EGS multipliers missing multiplier column; expected one of: value, occ_mult, total_mult")
+
+gm['occ_mult'] = gm['occ_mult'].fillna(1.0)
+gm['value'] = gm['occ_mult']
+
+# Write long-format (r,i,value) file to be added into reg_cap_cost_diff in b_inputs
+out_df = gm.copy()
+if 'i' in out_df.columns:
+    out_df = out_df.rename(columns={'i': '*i'})
+out_df = out_df[['*i','r','value']]
+
+##write csvs
+out_path = os.path.join(inputs_case, 'egs_cap_cost_mult.csv')
+out_df.to_csv(out_path, index=False)
+print(f"Wrote aggregated EGS multipliers to {out_path}")
 geo_stack = geodata[['t','i','capcost','fom','vom']].copy()
 
 

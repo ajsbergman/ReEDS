@@ -125,6 +125,8 @@ dr_shed_capacity_scalar.csv,inputs/demand_response/dr_shed_capacity_scalar_{dr_s
 dr_shed_hourly.h5,inputs/profiles_dr/dr_shed_hourly_{dr_shedscen}.h5,int(sw.GSw_DRShed) != 0,ignore,ignore,wide,"datetime,year",,1,keepindex,,,,,,Agg/Disagg handled in hourly_load
 e.csv,inputs/sets/e.csv,1,ignore,ignore,,,,,0,,,,e,,
 eall.csv,inputs/sets/eall.csv,1,ignore,ignore,,,,,,,,,eall,,
+egs_cap_cost_diff.csv,inputs/financials/egs_cap_cost_diff.csv,,ignore,ignore,r,wide,,1,0,,,,,,EGS capital cost multipliers
+egs_rep_depths.csv,,,ignore,ignore,r,"tech,class,bin,depth_bin",,0,0,,1,,,,
 emit_rate.csv,,1,ignore,ignore,,"etype,e,i,v,r",,0,0,,,,,,ReEDS-to-PLEXOS output
 emitrate.csv,inputs/emission_constraints/emitrate.csv,1,ignore,ignore,,,,,0,,,,,,
 energy_communities.csv,inputs/financials/energy_communities.csv,1,ignore,ignore,,,,,0,,,,,,region aggregation and filtering is handled in copy_files
@@ -158,6 +160,8 @@ gbin.csv,inputs/sets/gbin.csv,1,ignore,ignore,,,,,,,,,gbin,,
 gbin_min.csv,inputs/growth_constraints/gbin_min.csv,1,ignore,ignore,,,,,0,,,,,,
 gen_mandate_tech_list.csv,,1,ignore,ignore,,,,,0,,,,,,
 gen_mandate_trajectory.csv,,1,ignore,ignore,,,,,0,,,,,,
+geo_atb_reference.csv,inputs/geothermal/geo_atb_reference.csv,int(sw.GSw_Geothermal) != 0,ignore,ignore,,,,,0,,,,,,ATB reference depths for geothermal technologies
+geo_cost_curves.csv,inputs/geothermal/geo_cost_curves.csv,int(sw.GSw_Geothermal) != 0,ignore,ignore,,,,,0,,,,,,drilling cost curve coefficients for geothermal technologies
 geo_discovery_factor.csv,inputs/geothermal/geo_discovery_factor_{geohydrosupplycurve}.csv,int(sw.GSw_Geothermal) != 0,mean,uniform,r,*i,*i,0,0,,,,,,
 geo_discovery_rate.csv,inputs/geothermal/geo_discovery_{geodiscov}.csv,int(sw.GSw_Geothermal) != 0,ignore,ignore,,,,0,,,,,,,
 geo_fom.csv,,1,mean,uniform,r,*i,,0,0,,1,,,,
@@ -166,6 +170,7 @@ geo_retirements.csv,,1,sum,ignore,r,"i,v,wide",,1,0,,1,,,,disaggfunc set to igno
 geo_rsc.csv,inputs/geothermal/geo_rsc_ATB_2023.csv,int(sw.GSw_Geothermal) != 0,sc_cat,geosize,r,*i,,0,0,value,,,,,
 geocapcostmult.csv,,1,ignore,ignore,,,,1,0,,,,,,
 geoexist.csv,,1,ignore,ignore,r,*i,,0,0,,1,,,,written to proper spatial aggregation in writecapdat.py
+geohydro_rep_depths.csv,,,ignore,ignore,r,"tech,class,bin,depth_bin",,0,0,,1,,,,
 growth_bin_size_mult.csv,inputs/growth_constraints/growth_bin_size_mult.csv,1,ignore,ignore,,,,,0,,,,,,
 growth_limit_absolute.csv,inputs/growth_constraints/growth_limit_absolute.csv,1,ignore,ignore,,,,,0,,,,,,
 growth_penalty.csv,inputs/growth_constraints/growth_penalty.csv,1,ignore,ignore,,,,,0,,,,,,
@@ -395,7 +400,7 @@ storinmaxfrac.csv,,1,ignore,ignore,r,"*i,v",,0,0,,1,,,,
 stressperiods_user.csv,inputs/temporal/stressperiods_{GSw_PRM_StressModel}.csv,sw.GSw_PRM_StressModel == 'user*',ignore,ignore,,,,,,,,,,,
 stressperiods_seed.csv,,1,ignore,ignore,,,,,0,,,,,,
 supply_chain_adjust.csv,inputs/financials/supply_chain_adjust.csv,1,ignore,ignore,,,,,0,,,,,,
-supplycurve_egs.csv,inputs/supply_curve/supplycurve_egs-reference.csv,int(sw.GSw_Geothermal) != 0,ignore,ignore,region,,,,0,,,,,,No fix_col (only region_col) because this is an intermediate input file
+supplycurve_egs.csv,inputs/supply_curve/supplycurve_egs-{GSw_SitingGeo}.csv,int(sw.GSw_Geothermal) != 0,ignore,ignore,region,,,,0,,,,,,No fix_col (only region_col) because this is an intermediate input file
 supplycurve_upv.csv,inputs/supply_curve/supplycurve_upv-{GSw_SitingUPV}.csv,1,ignore,ignore,region,,,,0,,,,,,No fix_col (only region_col) because this is an intermediate input file
 supplycurve_wind-ofs.csv,inputs/supply_curve/supplycurve_wind-ofs-{GSw_SitingWindOfs}.csv,int(sw.GSw_OfsWind) != 0,ignore,ignore,region,,,,0,,,,,,No fix_col (only region_col) because this is an intermediate input file
 supplycurve_wind-ons.csv,inputs/supply_curve/supplycurve_wind-ons-{GSw_SitingWindOns}.csv,1,ignore,ignore,region,,,,0,,,,,,No fix_col (only region_col) because this is an intermediate input file
