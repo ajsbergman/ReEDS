@@ -379,13 +379,12 @@ eq_Objfn_op(t)$tmodel(t)..
 
 * --- materials costs --- 
 * subtract off share of capital costs attributable to materials to avoid double counting 
-              -  sum{(i,v,r,mat)$valinv(i,v,r,t), i_theta(i,mat,t) * 
+              -  sum{(i,v,r,mat)$[valinv(i,v,r,t)$i_theta(i,mat,t)], i_theta(i,mat,t) * 
                        cost_cap_fin_mult(i,r,t) * cost_cap(i,t) * INV(i,v,r,t)
                       }
 
-               + sum{(i, mat)$(not sameas(mat,'%GSw_specmat%')), i_int(i,mat) * mat_price(mat)} 
-
-               + sum{(i, mat)$(sameas(mat,'%GSw_specmat%')), Sw_matprice_multiplier * i_int(i,mat) * mat_price(mat)} 
+               + sum{(i,v,r,mat)$[valinv(i,v,r,t)$i_int(i,mat)], 
+                    cost_cap_fin_mult(i,r,t) * matprice_multiplier(mat) * i_int(i,mat) * mat_price(mat) * INV(i,v,r,t)} 
 
 *end multiplier for pvf_onm
          )

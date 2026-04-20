@@ -6896,6 +6896,7 @@ $offdelim
 $onlisting
 /
 i_theta(i,mat,t)        "-- share -- share of capital costs attributable to materials for each technology, by year"
+matprice_multiplier(mat) "-- multiplier -- multiplier on material prices"
 ;
 
 i_int(i,mat) = sum(tcat$i_tcat(i,tcat),mat_int(tcat,mat)) / 1000 ;
@@ -6910,5 +6911,9 @@ i_int(i,mat)$i_subsets(i,'h2_combustion') = no ;
 yearweight(t)$tlast(t) = 3 ; 
 
 * calculate share of capital costs that is attributable to materials for each technology
-
+* [metric tonnes / MW] * [$2004 / metric tonne] / [$2004 / MW]
 i_theta(i,mat,t) = i_int(i,mat) * mat_price(mat) / cost_cap(i,t) ; 
+
+* set price multiplier for materials
+matprice_multiplier(mat) = 1;
+matprice_multiplier(mat)$[(sameas(mat,'%GSw_specmat%'))] = %GSw_matprice_multiplier% ;
