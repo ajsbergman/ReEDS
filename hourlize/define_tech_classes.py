@@ -41,9 +41,9 @@ sub_tech_list = ['fixed','floating']
 ### --- FUNCTIONS ---
 ### ===========================================================================
 
-#Load a supply-curve CSV for `tech` and `access_type`, compute class ranges,
-#and return a DataFrame with class id, min/max of the selected metric, and
-#the access case.
+# Load a supply-curve CSV for `tech` and `access_type`, compute class ranges,
+# and return a DataFrame with class id, min/max of the selected metric, and
+# the access case.
 def prep_supply_curve(tech, access_type, subtech):
 
     rev_file_part = rev_file[(rev_file['tech'] == tech) & (rev_file['access_case'] == access_type)]
@@ -51,7 +51,11 @@ def prep_supply_curve(tech, access_type, subtech):
     class_def_name = 'reV_cf_ac'
 
     # Load the supply curve raw file produced by reV
-    df = pd.read_csv(os.path.join(remotepath,rev_file_part['sc_path'].iloc[0],f"{tech}_{rev_file_part['access_case'].iloc[0]}_ba","results",f"{tech}_supply_curve_raw.csv" ),on_bad_lines='skip',low_memory=False)
+    df = pd.read_csv(os.path.join(
+        remotepath,rev_file_part['sc_path'].iloc[0],
+        f"{tech}_{rev_file_part['access_case'].iloc[0]}_ba","results",
+        f"{tech}_supply_curve_raw.csv" ),
+        on_bad_lines='skip',low_memory=False)
 
     # Aggregate min/max by class and attach access_case
     if tech == 'wind-ofs':
