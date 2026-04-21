@@ -8,6 +8,7 @@ import re
 import matplotlib.pyplot as plt
 
 import reeds
+from reeds.input_processing import hourly_writetimeseries
 
 # #%% Debugging
 # sw['reeds_path'] = os.path.expanduser('~/github/ReEDS-2.0/')
@@ -679,7 +680,7 @@ def main(sw, t, iteration=0, logging=True):
 
     #%% Write timeseries data for stress periods for the next iteration of ReEDS
     newstresspath = f'stress{t}i{iteration+1}'
-    reeds.input_processing.hourly_writetimeseries.main(
+    hourly_writetimeseries.main(
         sw=sw, reeds_path=sw['reeds_path'],
         inputs_case=os.path.join(sw['casedir'], 'inputs_case'),
         periodtype=newstresspath,
