@@ -56,10 +56,15 @@ def prep_supply_curve(tech, access_type):
     summary_df['access_case'] = access_type
     summary_df.columns = ['class', f'min_{class_def_name}', f'max_{class_def_name}', 'access_case']
     
+    # Only use max capacity factors as class cut offs to avoid gaps
     for c in summary_df['class'].unique().tolist():
         if c > 1:
             summary_df.loc[summary_df['class']==c,f'min_{class_def_name}'] = summary_df.loc[summary_df['class']==c-1][f'max_{class_def_name}'].iloc[0]
-    
+
+    # Round values to 4 decimal places
+    summary_df[f'min_{class_def_name}'] = summary_df[f'min_{class_def_name}'].round(4)
+    summary_df[f'max_{class_def_name}'] = summary_df[f'max_{class_def_name}'].round(4)
+
     return summary_df
 
 
