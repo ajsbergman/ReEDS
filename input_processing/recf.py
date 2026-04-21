@@ -116,10 +116,10 @@ def make_fake_profiles(
     Args:
         sitecf (pd.Series): index = sc_point_gids, values = capacity factor [fraction]
         timeindex (pd.DatetimeIndex): Time index for the output dataframe
-        seed (int): (optional) RNG seed
+        seed (int): (optional) Random number generator (RNG) seed
 
     Returns:
-        pd.DataFrame (len(timeindex) rows × len(sitecf) columns)
+        pd.DataFrame: len(timeindex) rows × len(sitecf) columns
 
     Inputs for testing:
         sitecf = pd.Series{{36432:0.24, 37116:0.59, 37787:0.07, 38464:0.27})
