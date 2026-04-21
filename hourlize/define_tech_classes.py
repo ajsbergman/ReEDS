@@ -26,7 +26,7 @@ if sys.platform == 'win32':
 elif sys.platform == 'darwin':
     remotepath = '/Volumes/ReEDS/Supply_Curve_Data'         #TODO: Move supply curves to zenodo
 
-reeds_path = os.path.expanduser('~/Documents/Github/ReEDS/ReEDS-2.0/')
+reeds_path = os.path.expanduser('~/Documents/Github/ReEDS/public_ReEDS/ReEDS')
 sys.path.append(reeds_path)
 
 rev_file = pd.read_csv(os.path.join(reeds_path,'inputs/supply_curve/rev_paths.csv'))
@@ -55,11 +55,11 @@ def prep_supply_curve(tech, access_type):
     summary_df = df.groupby('class')[class_def].agg(['min', 'max']).reset_index()
     summary_df['access_case'] = access_type
     summary_df.columns = ['class', f'min_{class_def_name}', f'max_{class_def_name}', 'access_case']
-
-    # Round values to 4 decimal places
-    summary_df[f'min_{class_def_name}'] = summary_df[f'min_{class_def_name}'].round(4)
-    summary_df[f'max_{class_def_name}'] = summary_df[f'max_{class_def_name}'].round(4)
-
+    
+    for c in summary_df['class'].unique().tolist():
+        if c > 1:
+            summary_df.loc[summary_df['class']==c,f'min_{class_def_name}'] = summary_df.loc[summary_df['class']==c-1][f'max_{class_def_name}'].iloc[0]
+    
     return summary_df
 
 
