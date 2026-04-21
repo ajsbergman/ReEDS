@@ -31,9 +31,11 @@ sys.path.append(reeds_path)
 
 rev_file = pd.read_csv(os.path.join(reeds_path,'inputs/supply_curve/rev_paths.csv'))
 
-tech_list = ['upv','wind-ons','wind-ofs'] # technologies to prepare supply curve data for, egs is included in the supply curve file 
-access_type_list=['open','reference','limited'] # access type for each technology, geohydro and egs use reference, upv and wind use open
+# technologies to prepare supply curve data for, egs is included in the supply curve file 
+tech_list = ['upv','wind-ons','wind-ofs'] 
 
+# for offshore wind
+sub_tech_list = ['fixed','floating']
 
 #%% ===========================================================================
 ### --- FUNCTIONS ---
@@ -42,7 +44,7 @@ access_type_list=['open','reference','limited'] # access type for each technolog
 #Load a supply-curve CSV for `tech` and `access_type`, compute class ranges,
 #and return a DataFrame with class id, min/max of the selected metric, and
 #the access case.
-def prep_supply_curve(tech, access_type):
+def prep_supply_curve(tech, access_type, subtech):
 
     rev_file_part = rev_file[(rev_file['tech'] == tech) & (rev_file['access_case'] == access_type)]
     class_def = 'capacity_factor_ac'
@@ -52,13 +54,21 @@ def prep_supply_curve(tech, access_type):
     df = pd.read_csv(os.path.join(remotepath,rev_file_part['sc_path'].iloc[0],f"{tech}_{rev_file_part['access_case'].iloc[0]}_ba","results",f"{tech}_supply_curve_raw.csv" ),on_bad_lines='skip',low_memory=False)
 
     # Aggregate min/max by class and attach access_case
-    summary_df = df.groupby('class')[class_def].agg(['min', 'max']).reset_index()
-    summary_df['access_case'] = access_type
-    summary_df.columns = ['class', f'min_{class_def_name}', f'max_{class_def_name}', 'access_case']
+    if tech == 'wind-ofs':
+        df_sub = df[df['technology']==subtech]
+        summary_df = df_sub.groupby('class')[class_def].agg(['min', 'max']).reset_index()
+        summary_df['subtech'] = subtech
+        summary_df['access_case'] = access_type
+        summary_df.columns = ['class', f'min_{class_def_name}', f'max_{class_def_name}', 'subtech', 'access_case']
+    else:
+        summary_df = df.groupby('class')[class_def].agg(['min', 'max']).reset_index()
+        summary_df['access_case'] = access_type
+        summary_df.columns = ['class', f'min_{class_def_name}', f'max_{class_def_name}', 'access_case']
     
     # Only use max capacity factors as class cut offs to avoid gaps
+    summary_df = summary_df.sort_values(by=['class',f'min_{class_def_name}'])
     for c in summary_df['class'].unique().tolist():
-        if c > 1:
+        if c > min(summary_df['class'].unique().tolist()):
             summary_df.loc[summary_df['class']==c,f'min_{class_def_name}'] = summary_df.loc[summary_df['class']==c-1][f'max_{class_def_name}'].iloc[0]
 
     # Round values to 4 decimal places
@@ -75,7 +85,15 @@ for tech in tech_list:
     all_supply_curve_dfs = []
     for access_type in rev_file[(rev_file['tech'] == tech)]['access_case'].unique():
         print(access_type)
-        supply_curve_df = prep_supply_curve(tech, access_type)
+        if tech == 'wind-ofs':
+            all_supply_curve_sub_dfs = []
+            for subtech in sub_tech_list:
+                supply_curve_sub_df = prep_supply_curve(tech, access_type, subtech)
+                all_supply_curve_sub_dfs.append(supply_curve_sub_df)
+            supply_curve_df = pd.concat(all_supply_curve_sub_dfs, ignore_index=True)    
+        else:
+            supply_curve_df = prep_supply_curve(tech, access_type, subtech='')
+        
         all_supply_curve_dfs.append(supply_curve_df)
     df = pd.concat(all_supply_curve_dfs, ignore_index=True)
 
