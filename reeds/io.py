@@ -1910,7 +1910,7 @@ def get_folder_size(casedir):
     total_size /= 1e9
     return total_size
 
-def get_degree_days(case, base_temp_c=18.3333333333):
+def get_degree_days(case, base_temp_c=18.3333333333, hourly_formula=False):
     """
     Return daily HDD/CDD by ngreg for the modeled years in this case,
     using temperature shapes from GSw_HourlyWeatherYears and annual totals
@@ -2022,13 +2022,24 @@ def get_degree_days(case, base_temp_c=18.3333333333):
     for y in leap_years_present:
         temp.drop(temp.loc[f'{y}-12-31'].index, inplace=True)
 
-    # hourly HDD/CDD by state 
-    hdd = (base_temp_c - temp).clip(lower=0)
-    cdd = (temp - base_temp_c).clip(lower=0)
+    if hourly_formula:
 
-    # daily sums by state
-    hdd_daily_st = hdd.resample('D').sum()
-    cdd_daily_st = cdd.resample('D').sum()
+        # hourly HDD/CDD by state 
+        hdd = (base_temp_c - temp).clip(lower=0)
+        cdd = (temp - base_temp_c).clip(lower=0)
+
+        # daily sums by state
+        hdd_daily_st = hdd.resample('D').sum()
+        cdd_daily_st = cdd.resample('D').sum()
+    else:
+
+        temp_daily_st = temp.resample('D').agg(['min', 'max'])
+
+        tavg_daily_st = (temp_daily_st.xs('min', axis=1, level=1) +
+                        temp_daily_st.xs('max', axis=1, level=1)) / 2
+
+        hdd_daily_st = (base_temp_c - tavg_daily_st).clip(lower=0)
+        cdd_daily_st = (tavg_daily_st - base_temp_c).clip(lower=0)
 
     # weighted aggregation to ngreg 
     state_weights = pop_state['weight'].to_dict()
