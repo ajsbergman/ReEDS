@@ -220,6 +220,35 @@ def calculate_regional_distpv_cf(inputs_case, cap_min=0.0001):
 
     return regional_distpv_cf
 
+def get_missing_class_resource(existing_techs, resources):
+    existing_techs = existing_techs.merge(resources[['i','r']],
+                                          on=['i','r'],
+                                          how='left',
+                                          indicator=True)
+    missing_class_resource = existing_techs[existing_techs['_merge'] == 'left_only'][['i','r']].copy()
+    missing_class_resource = missing_class_resource[missing_class_resource["i"].str.contains("upv|wind")].reset_index(drop=True)
+    # Assign closest matching technology class based on available resources 
+    # Assign lower class if available, otherwise assign the next higher class
+    if len(missing_class_resource) > 0:
+        for idx, row in missing_class_resource.iterrows():
+            tech = row['i']
+            region = row['r']
+            available_resources = resources[resources["i"].astype(str).str.contains(tech.split("_")[0], na=False)&(resources['r'] == region)].copy()
+            available_resources.loc[:, "num"] = available_resources["i"].str.split("_").str[1].astype(int)        
+            lower = available_resources[available_resources["num"] <= int(tech.split("_")[1])]
+            if not lower.empty:
+                match = lower.loc[lower["num"].idxmax()]
+            else:
+                upper = available_resources[available_resources["num"] > int(tech.split("_")[1])]
+                if upper.empty:
+                    raise ValueError(f"No matching tech class found for '{tech}'. Exiting program.")
+                match = upper.loc[upper["num"].idxmin()]
+            missing_class_resource.loc[idx, "ii"] = match['i']
+    else:
+        missing_class_resource['ii'] = missing_class_resource['i']
+    missing_class_resource=missing_class_resource[['i','ii','r']].rename(columns={'i': '*i'})
+
+    return missing_class_resource
 
 #%% ===========================================================================
 ### --- MAIN FUNCTION ---
@@ -464,36 +493,9 @@ def main(reeds_path, inputs_case):
         [existing_exog_techs, prescribed_rsc],
         axis=0, ignore_index=True
     )[['i','r']].drop_duplicates()
-    # Identify missing technology-class - region combinations in resources
-    existing_techs = existing_techs.merge(
-        resources[['i','r']],
-        on=['i','r'],
-        how='left',
-        indicator=True
-    )
 
-    missing_class_resource = existing_techs[existing_techs['_merge'] == 'left_only'][['i','r']].copy()
-    missing_class_resource = missing_class_resource[missing_class_resource["i"].str.contains("upv|wind")].reset_index(drop=True)
-    # Assign closest matching technology class based on available resources 
-    # Assign lower class if available, otherwise assign the next higher class
-    if len(missing_class_resource) > 0:
-        for idx, row in missing_class_resource.iterrows():
-            tech = row['i']
-            region = row['r']
-            available_resources = resources[resources["i"].astype(str).str.contains(tech.split("_")[0], na=False)&(resources['r'] == region)].copy()
-            available_resources.loc[:, "num"] = available_resources["i"].str.split("_").str[1].astype(int)        
-            lower = available_resources[available_resources["num"] <= int(tech.split("_")[1])]
-            if not lower.empty:
-                match = lower.loc[lower["num"].idxmax()]
-            else:
-                upper = available_resources[available_resources["num"] > int(tech.split("_")[1])]
-                if upper.empty:
-                    raise ValueError(f"No matching tech class found for '{tech}'. Exiting program.")
-                match = upper.loc[upper["num"].idxmin()]
-            missing_class_resource.loc[idx, "ii"] = match['i']
-    else:
-        missing_class_resource['ii'] = missing_class_resource['i']
-    missing_class_resource=missing_class_resource[['i','ii','r']].rename(columns={'i': '*i'})
+    # Identify missing technology-class - region combinations in resources
+    missing_class_resource = get_missing_class_resource(existing_techs, resources)
     
     #%% Check for errors
     nulls = recf.isnull().sum()
