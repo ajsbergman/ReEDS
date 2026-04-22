@@ -15,10 +15,6 @@
 
 ### Relevant sources or documentation <!-- if any, otherwise delete -->
 
-
-## Charge code for review
-
-
 ## Validation, testing, and comparison report(s)
 
 <!--
@@ -44,7 +40,7 @@ Include additional illustrative plots describing input data, methods, testing, a
 
 ### Details to double-check
 <!-- Delete or ~~strikethrough~~ if not relevant for this PR -->
-- [ ] Charge code provided for review
+- [ ] Charge code sent reviewer
 - [ ] Included comparison reports for appropriate test cases
 - [ ] Documentation updated if necessary
   <!--
