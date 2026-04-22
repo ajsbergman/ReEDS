@@ -33,7 +33,6 @@ rev_file = pd.read_csv(os.path.join(reeds_path,'inputs/supply_curve/rev_paths.cs
 
 # technologies to prepare supply curve data for
 tech_list = ['upv','wind-ons','wind-ofs'] 
-tech_list = [] 
 
 # for offshore wind
 sub_tech_list = ['fixed','floating']
