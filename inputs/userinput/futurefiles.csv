@@ -514,7 +514,7 @@ wind_retirements.csv,.csv,1,None,9999,None,9999,0,constant,None,None,done,consta
 wind-ofs_classification.csv,.csv,1,None,9999,None,9999,0,constant,None,None,done,
 wind-ons_classification.csv,.csv,1,None,9999,None,9999,0,constant,None,None,done,
 upv_classification.csv,.csv,1,None,9999,None,9999,0,constant,None,None,done,
-geohydro_classification.csv,.csv,1,None,9999,None,9999,0,constant,None,None,done,
+geothermal_classification.csv,.csv,1,None,9999,None,9999,0,constant,None,None,done,
 windcfmult.csv,.csv,0,None,t,None,1,0,constant,None,None,constant or saturate?,constant
 windows_2100.csv,.csv,1,None,9999,None,9999,0,constant,None,None,done,constant
 windows_default.csv,.csv,1,None,9999,None,9999,0,constant,None,None,done,constant

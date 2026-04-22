@@ -163,7 +163,7 @@ geo_retirements.csv,,1,sum,ignore,r,"i,v,wide",,1,0,,1,,,,disaggfunc set to igno
 geo_rsc.csv,inputs/geothermal/geo_rsc_ATB_2023.csv,int(sw.GSw_Geothermal) != 0,sc_cat,geosize,r,*i,,0,0,value,,,,,
 geocapcostmult.csv,,1,ignore,ignore,,,,1,0,,,,,,
 geoexist.csv,,1,ignore,ignore,r,*i,,0,0,,1,,,,written to proper spatial aggregation in writecapdat.py
-geohydro_classification.csv,inputs/capacity_exogenous/geohydro_classification.csv,1,ignore,ignore,,,,,,,,,,,
+geothermal_classification.csv,inputs/capacity_exogenous/geothermal_classification.csv,1,ignore,ignore,,,,,,,,,,,
 growth_bin_size_mult.csv,inputs/growth_constraints/growth_bin_size_mult.csv,1,ignore,ignore,,,,,0,,,,,,
 growth_limit_absolute.csv,inputs/growth_constraints/growth_limit_absolute.csv,1,ignore,ignore,,,,,0,,,,,,
 growth_penalty.csv,inputs/growth_constraints/growth_penalty.csv,1,ignore,ignore,,,,,0,,,,,,

@@ -31,11 +31,58 @@ sys.path.append(reeds_path)
 
 rev_file = pd.read_csv(os.path.join(reeds_path,'inputs/supply_curve/rev_paths.csv'))
 
-# technologies to prepare supply curve data for, egs is included in the supply curve file 
+# technologies to prepare supply curve data for
 tech_list = ['upv','wind-ons','wind-ofs'] 
+tech_list = [] 
 
 # for offshore wind
 sub_tech_list = ['fixed','floating']
+
+
+def main(rev_file):
+    for tech in tech_list:
+        # Prepare the class capacity factor range for each technology
+        print("Prepare class capacity factors for " + tech)
+        all_supply_curve_dfs = []
+        for access_type in rev_file[(rev_file['tech'] == tech)]['access_case'].unique():
+            print(access_type)
+            if tech == 'wind-ofs':
+                all_supply_curve_sub_dfs = []
+                for subtech in sub_tech_list:
+                    supply_curve_sub_df = prep_supply_curve(tech, access_type, subtech)
+                    all_supply_curve_sub_dfs.append(supply_curve_sub_df)
+                supply_curve_df = pd.concat(all_supply_curve_sub_dfs, ignore_index=True)    
+            else:
+                supply_curve_df = prep_supply_curve(tech, access_type, subtech='')
+            
+            all_supply_curve_dfs.append(supply_curve_df)
+        df = pd.concat(all_supply_curve_dfs, ignore_index=True)
+
+        df.to_csv(os.path.join(reeds_path,'inputs','capacity_exogenous',tech+'_classification.csv'),index=False)
+
+    ## One-off modification to supplycurve_egs/geohydro-reference.csv to add resource temp column
+    # Can remove the next time running hourlize
+
+    for tech in ['geohydro','egs']:
+        rev_file = pd.read_csv(os.path.join(reeds_path,'inputs/supply_curve/rev_paths.csv'))
+        rev_file_part_geo=rev_file[(rev_file['tech'] == tech) & (rev_file['access_case'] == 'reference')]
+        # Load the supply curve file for geothermal
+        df = pd.read_csv(os.path.join(remotepath,rev_file_part_geo['sc_path'].iloc[0],
+                                        f"{tech}_{rev_file_part_geo['access_case'].iloc[0]}_ba","results",
+                                        f"{tech}_supply_curve_raw.csv" ))
+
+        # Select relevant columns and convert longitude to negative if needed
+        df['longitude'] = df['longitude'] * -1  # Convert longitude to negative if needed
+        # resource temp to geothermal supply curves in ReEDS
+        if tech == 'geohydro':
+            geo_sc = df[['sc_point_gid','class','capacity','capital_adder_per_mw','mean_cf','mean_resource_temp']].copy()
+            geo_sc = geo_sc.rename(columns={'mean_cf':'cf'})
+        elif tech == 'egs':
+            df_sc = df[['sc_point_gid','class','capacity','capital_adder_per_mw','capacity_factor_ac','mean_resource_temp']].copy()
+            df_sc = df_sc.rename(columns={'capacity_factor_ac':'cf'})
+            geo_sc = pd.read_csv(os.path.join(reeds_path,'inputs','supply_curve','supplycurve_egs-reference.csv'))
+            geo_sc = geo_sc.merge(df_sc, on='sc_point_gid', how='left', indicator=True)
+        geo_sc.to_csv(os.path.join(reeds_path,'inputs', 'supply_curve','supplycurve_'+tech+'-reference.csv'),index=False)
 
 #%% ===========================================================================
 ### --- FUNCTIONS ---
@@ -81,25 +128,4 @@ def prep_supply_curve(tech, access_type, subtech):
 
     return summary_df
 
-
- # %% ===========================================================================
-for tech in tech_list:
-    # Prepare the class capacity factor range for each technology
-    print("Prepare class capacity factors for " + tech)
-    all_supply_curve_dfs = []
-    for access_type in rev_file[(rev_file['tech'] == tech)]['access_case'].unique():
-        print(access_type)
-        if tech == 'wind-ofs':
-            all_supply_curve_sub_dfs = []
-            for subtech in sub_tech_list:
-                supply_curve_sub_df = prep_supply_curve(tech, access_type, subtech)
-                all_supply_curve_sub_dfs.append(supply_curve_sub_df)
-            supply_curve_df = pd.concat(all_supply_curve_sub_dfs, ignore_index=True)    
-        else:
-            supply_curve_df = prep_supply_curve(tech, access_type, subtech='')
-        
-        all_supply_curve_dfs.append(supply_curve_df)
-    df = pd.concat(all_supply_curve_dfs, ignore_index=True)
-
-    df.to_csv(os.path.join(reeds_path,'inputs','capacity_exogenous',tech+'_classification.csv'),index=False)
-
+main(rev_file)
