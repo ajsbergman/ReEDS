@@ -2078,7 +2078,7 @@ load_cat("h2_network",r,t)$tmodel_new(t) =
 ;
 load_cat("dac",r,t)$tmodel_new(t) = sum{i$dac(i), prod_load_ann(i,r,t) } ;
 
-load_cat("finito",r,t)$tmodel_new(t) = sum{h, hours(h) * USE_ELE_FINITO.l(r,h,t) } ;
+*load_cat("finito",r,t)$tmodel_new(t) = sum{h, hours(h) * USE_ELE_FINITO.l(r,h,t) } ;
 
 *========================================
 * H2 NETWORK
