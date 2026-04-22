@@ -14,7 +14,7 @@ plantchar_onswind,Onshore wind cost and performance characteristics,ons-wind_ATB
 plantchar_ofswind,Offshore wind cost and performance characteristics,ofs-wind_ATB_2024_moderate,,,,ofs-wind_ATB_2024_advanced,ofs-wind_ATB_2024_conservative,,,,,,ofs-wind_ATB_2024_advanced,ofs-wind_ATB_2024_conservative
 plantchar_nuclear_smr,Small modular reactor (SMR) cost and performance characteristics,nuclear-smr_ATB_2024_moderate,,,,,,,,,,,nuclear-smr_ATB_2024_conservative,nuclear-smr_ATB_2024_advanced
 plantchar_nuclear,Large nuclear cost and performance characteristics,nuclear_ATB_2024_moderate,,,,,,,,,,,,
-GSw_LoadProfiles,"Switch to choose EFS profiles - e.g. historic, EPREFERENCE, EPMEDIUM, EPHIGH",demand_EER_scaled_reference.h5,,,,,,demand_EER_scaled_low.h5,demand_EER_scaled_high.h5,,,,demand_EER_scaled_high.h5,demand_EER_scaled_high.h5
+GSw_LoadProfiles,"Switch to choose EFS profiles - e.g. historic, EPREFERENCE, EPMEDIUM, EPHIGH",/projects/finitoreeds/kpitman/dc_load_EER_scaled/demand_EER_scaled_reference.h5,,,,,,/projects/finitoreeds/kpitman/dc_load_EER_scaled/demand_EER_scaled_low.h5,/projects/finitoreeds/kpitman/dc_load_EER_scaled/demand_EER_scaled_high.h5,,,,/projects/finitoreeds/kpitman/dc_load_EER_scaled/demand_EER_scaled_high.h5,/projects/finitoreeds/kpitman/dc_load_EER_scaled/demand_EER_scaled_high.h5
 GSw_Geothermal,"Geothermal can be turned off [0], left to the default representation [1], or have an extended representation [2]",1,,,,,,,,,,,,
 GSw_GrowthPenalties,Turn on/off relative growth penalties,0,,,,,,,,1,1,1,,
 GSw_BECCS,Turn on/off BECCS technology,0,,,,,,,,,,,,

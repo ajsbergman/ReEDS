@@ -6912,7 +6912,7 @@ yearweight(t)$tlast(t) = 3 ;
 
 * calculate share of capital costs that is attributable to materials for each technology
 * [metric tonnes / MW] * [$2004 / metric tonne] / [$2004 / MW]
-i_theta(i,mat,t) = i_int(i,mat) * mat_price(mat) / cost_cap(i,t) ; 
+i_theta(i,mat,t)$[i_int(i,mat)$cost_cap(i,t)] = i_int(i,mat) * mat_price(mat) / cost_cap(i,t) ; 
 
 * set price multiplier for materials
 matprice_multiplier(mat) = 1;
