@@ -26,7 +26,7 @@ def main(reeds_path, casedir, inputs_case):
     crs = 'EPSG:5070'
     
     print('Processing generator database:')
-    df = pd.read_csv(os.path.join('inputs','capacity_exogenous','ReEDS_generator_database_final_'+sw.unitdata+'.csv'), low_memory=False)
+    df = pd.read_csv(os.path.join(reeds_path,'inputs','capacity_exogenous','ReEDS_generator_database_final_'+sw.unitdata+'.csv'), low_memory=False)
     
     regions_and_agglevel = get_regions_and_agglevel(reeds_path, inputs_case)
 
@@ -62,30 +62,44 @@ def main(reeds_path, casedir, inputs_case):
         crs=crs)
 
     # 
-    gdf = gpd.sjoin_nearest(gdf, land_gdf, distance_col="distance", how='left')
+    gdf = gpd.sjoin_nearest(gdf, land_gdf, distance_col='distance', how='left')
 
     # Merge unit database with VRE supply curves to assign AC capacity factors to VRE units
+    # and mean resource temp for geothermal units
     gdf = gdf[['sc_point_gid'] + df.columns.to_list()]
     gdf['temp_id'] = gdf.index
 
     df_rev_list = []
-    tech_match = {"upv": ["upv","dupv","pvb_pv","csp-wp","csp-ns"],
-                    "wind-ons": ["wind-ons"], 
-                    "wind-ofs": ["wind-ofs"]}
-    for tech in ['upv','wind-ons','wind-ofs']:
+    tech_match = {'upv': ['upv','dupv','pvb_pv','csp-wp','csp-ns'],
+                  'wind-ons': ["wind-ons"], 
+                  'wind-ofs': ["wind-ofs"],
+                  'geohydro': ['geohydro_allkm', 'geothermal'],
+                  'egs':['egs']}
+    for tech in ['upv','wind-ons','wind-ofs','geohydro']:
         tech_sub = tech_match[tech]
         df_rev = gdf[gdf.tech.isin(tech_sub)]
         if len(df_rev) > 0:
             df_rev['sc_point_gid'] = df_rev['sc_point_gid'].fillna(0).astype(np.int64)
-            supply_curve = pd.read_csv(os.path.join(reeds_path,'inputs','supply_curve','supplycurve_'+tech+'-'+'open'+'.csv'))
-            df_rev = df_rev.merge(supply_curve[['sc_point_gid','cf']],
-                                    on='sc_point_gid',
-                                    how='left').rename(columns={'cf':'reV_capacity_factor_ac'})
+            if (tech == 'geohydro') or (tech == 'egs'):
+                geo_tech = 'egs'            # Using 'egs' for geohydro for now since there are issues with geohydro supply curves
+                supply_curve = pd.read_csv(os.path.join(reeds_path,'inputs','supply_curve','supplycurve_'+geo_tech+'-'+'reference'+'.csv'))
+                df_rev = df_rev.merge(supply_curve[['sc_point_gid','mean_resource_temp']],
+                                        on='sc_point_gid',
+                                        how='left').rename(columns={'mean_resource_temp':'reV_mean_resource_temp'})
+                df_rev['reV_capacity_factor_ac'] = np.nan
+            else:
+                supply_curve = pd.read_csv(os.path.join(reeds_path,'inputs','supply_curve','supplycurve_'+tech+'-'+'open'+'.csv'))
+                df_rev = df_rev.merge(supply_curve[['sc_point_gid','cf']],
+                                        on='sc_point_gid',
+                                        how='left').rename(columns={'cf':'reV_capacity_factor_ac'})
+                df_rev['reV_mean_resource_temp'] = np.nan
             df_rev_list = df_rev_list + [df_rev]
         
     df_rev = pd.concat(df_rev_list, ignore_index=False, sort=False)
     df = gdf.merge(df_rev[['temp_id','reV_capacity_factor_ac']],
                     on = 'temp_id',how = 'left').drop('temp_id', axis=1)  
+    
+    df.to_csv(os.path.join(inputs_case,'unitdata.csv'))
 
 if __name__ == '__main__':
     ### Time the operation of this script
@@ -96,15 +110,15 @@ if __name__ == '__main__':
     parser.add_argument("reeds_path", help="ReEDS directory")
     parser.add_argument("inputs_case", help="path to runs/{case}/inputs_case")
 
-    #args = parser.parse_args()
-    #reeds_path = args.reeds_path
-    #inputs_case = args.inputs_case
+    args = parser.parse_args()
+    reeds_path = args.reeds_path
+    inputs_case = args.inputs_case
     #casedir = args.casedir
     
     # for testing
-    reeds_path = os.path.expanduser('~/Documents/GitHub/ReEDS/public_ReEDS/ReEDS')
+    # reeds_path = os.path.expanduser('~/Documents/GitHub/ReEDS/public_ReEDS/ReEDS')
     casedir = os.path.join(reeds_path,'runs','test_github_MA_county_CC')
-    inputs_case = os.path.join(reeds_path,'runs','test_github_MA_county_CC','inputs_case')
+    # inputs_case = os.path.join(reeds_path,'runs','test_github_MA_county_CC','inputs_case')
 
     #%% Set up logger
     log = reeds.log.makelog(
