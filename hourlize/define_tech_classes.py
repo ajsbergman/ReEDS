@@ -81,6 +81,8 @@ def main(rev_file):
             df_sc = df_sc.rename(columns={'capacity_factor_ac':'cf'})
             geo_sc = pd.read_csv(os.path.join(reeds_path,'inputs','supply_curve','supplycurve_egs-reference.csv'))
             geo_sc = geo_sc.merge(df_sc, on='sc_point_gid', how='left', indicator=True)
+            geo_sc = geo_sc.rename(columns={'class_x':'class','cf_x':'cf','capacity_x':'capacity','capital_adder_per_mw_x':'capital_adder_per_mw'})
+            geo_sc = geo_sc[df_sc.columns.to_list()]
         geo_sc.to_csv(os.path.join(reeds_path,'inputs', 'supply_curve','supplycurve_'+tech+'-reference.csv'),index=False)
 
 #%% ===========================================================================
