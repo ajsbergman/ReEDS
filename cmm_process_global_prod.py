@@ -152,6 +152,7 @@ price_df['price_per_tonne_2004'] = price_df['price_per_tonne_2004'].round(2)
 
 price_df = price_df[['Material','Product','Type','price_per_tonne_2004']]
 price_df['Material'] = price_df['Material'].str.strip()
+price_df['Material'] = price_df['Material'].str.replace(r'\s+', '_', regex=True)
 
 
 # remove prices not needed 
