@@ -1562,7 +1562,7 @@ def write_batch_script(
             + f" --first_year_finito={caseSwitches['first_year_finito']} \n"
         )
         OPATH.writelines(writescripterrorcheck("e_report.gms"))
-        if not LINUXORMAC:
+        if not LINUXORMAC and int(caseSwitches['GSw_FINITO_Link']) != 1:
             OPATH.writelines("endlocal\n")
         OPATH.writelines(f'python {logger}\n')
         OPATH.writelines(f'python e_report_dump.py {casedir} -c\n\n')
@@ -1598,7 +1598,8 @@ def write_batch_script(
             + f" -l {caseSwitches['GSw_FINITO_Link']}"
             + f' -c {batch_case} \n\n'
             )  
-
+            if not LINUXORMAC:
+                OPATH.writelines("endlocal\n")
         ### Run the retail rate module
         OPATH.writelines(
             "python"
