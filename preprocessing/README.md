@@ -24,7 +24,7 @@ The general steps for creating or updating a Zenodo record are:
     1. Determine the author list
     1. Include each author's [ORCID ID](https://orcid.org/) if they have one
     1. Write or update the following sections for the description, using an [existing](https://zenodo.org/records/18435263) [record](https://zenodo.org/records/18407659) as a guide:
-        1. General description, including links to relevant model github pages, the [ReEDS](https://github.com/NREL/ReEDS-2.0) model, and the [ReEDS documentation](https://reeds-model.github.io/ReEDS/model_documentation.html)
+        1. General description, including links to relevant model github pages, the [ReEDS](https://github.com/ReEDS-Model/ReEDS) model, and the [ReEDS documentation](https://reeds-model.github.io/ReEDS/model_documentation.html)
         2. Technical assumptions (such as losses, orientation and inverter loading ratio for PV, specific power and hub height for wind, etc.), with citations to relevant published papers or reports
         3. Temporal resolution
         4. Spatial resolution
