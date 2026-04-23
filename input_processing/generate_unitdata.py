@@ -71,7 +71,7 @@ def main(reeds_path, casepath, inputs_case):
                   'geohydro': ['geohydro_allkm', 'geothermal'],
                   'egs':['egs']}
     for tech in ['upv','wind-ons','wind-ofs','geohydro']:
-        print(f'Processing {tech} classes')
+        print(f'Assigning {tech} classes')
 
         # Only consider the sc_point_pids that are in supply curves:
         if (tech == 'geohydro') or (tech == 'egs'):
@@ -90,7 +90,7 @@ def main(reeds_path, casepath, inputs_case):
         tech_sub = tech_match[tech]
         df_rev = gdf_joined[gdf_joined.tech.isin(tech_sub)]
         if len(df_rev) > 0:
-            #df_rev['sc_point_gid'] = df_rev['sc_point_gid'].fillna(0).astype(np.int64)
+            df_rev.loc[:, ['sc_point_gid']] = df_rev.loc[:, ['sc_point_gid']].fillna(0).astype(np.int64)
             if (tech == 'geohydro') or (tech == 'egs'):
                 df_rev = df_rev.merge(supply_curve[['sc_point_gid','mean_resource_temp']],
                                         on='sc_point_gid',
@@ -102,9 +102,13 @@ def main(reeds_path, casepath, inputs_case):
             df_rev_list = df_rev_list + [df_rev]
         
     df_rev = pd.concat(df_rev_list, ignore_index=False, sort=False)
-    df = gdf.merge(df_rev[['temp_id','reV_capacity_factor_ac','reV_mean_resource_temp']],
-                    on = 'temp_id',how = 'left').drop(['temp_id','geometry'], axis=1)  
+    df = gdf.merge(df_rev[['sc_point_gid','temp_id','reV_capacity_factor_ac','reV_mean_resource_temp']],
+                    on = 'temp_id',how = 'left') 
     
+    # Rearrange column orders
+    cols = df_rev.columns.to_list()
+    df = df[cols]
+
     df.to_csv(os.path.join(inputs_case,'unitdata.csv'),index=False)
 
 if __name__ == '__main__':
@@ -121,8 +125,8 @@ if __name__ == '__main__':
     inputs_case = args.inputs_case
     
     # for testing
-    #reeds_path = os.path.expanduser('~/Documents/GitHub/ReEDS/public_ReEDS/ReEDS')
-    #inputs_case = os.path.join(reeds_path,'runs','test_Pacific','inputs_case')
+    # reeds_path = os.path.expanduser('~/Documents/GitHub/ReEDS/public_ReEDS/ReEDS')
+    # inputs_case = os.path.join(reeds_path,'runs','test_Pacific','inputs_case')
 
     casepath = os.path.dirname(inputs_case)
 
