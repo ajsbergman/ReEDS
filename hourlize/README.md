@@ -51,7 +51,7 @@ Before running resource hourlize the reV runs should be copied from their origin
 Under the appropriate tech folder (UPV, ONSHORE, OFFSHORE, etc.) create a directory with a descrptive name for the supply curves (e.g., 2023_06_06_Update). Then copy the reV supply curves and profiles into a folder called `reV`. A good approach is to use rsync; below is an example copying original reV files from Eagle to Kestrel:
 
 ```bash
-rsync -aPu [username]@eagle.hpc.nlr.gov://shared-projects/rev/projects/seto/fy23/rev/standard_scenarios/aggregation/  /projects/shared-projects-reeds/reeds/Supply_Curve_Data/UPV/2023_06_06_Update/reV
+rsync -aPu [username]@kestrel.nlr.gov://shared-projects/rev/projects/seto/fy23/rev/standard_scenarios/aggregation/  /kfs2/shared-projects/reeds/Supply_Curve_Data/UPV/2023_06_06_Update/reV
 ```
 
 ### 2. Update the rev_paths files
