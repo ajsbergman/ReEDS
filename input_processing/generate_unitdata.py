@@ -25,7 +25,6 @@ def main(reeds_path, casepath, inputs_case):
     sw = reeds.io.get_switches(casepath)
     crs = 'EPSG:5070'
     
-    print('Processing generator database:')
     df = pd.read_csv(os.path.join(reeds_path,'inputs','capacity_exogenous','ReEDS_generator_database_final_'+sw.unitdata+'.csv'), low_memory=False)
     
     regions_and_agglevel = get_regions_and_agglevel(reeds_path, inputs_case)
