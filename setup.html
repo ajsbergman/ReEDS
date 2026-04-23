@@ -103,7 +103,7 @@
              
   <section class="tex2jax_ignore mathjax_ignore" id="getting-started">
 <h1>Getting Started<a class="headerlink" href="#getting-started" title="Link to this heading"></a></h1>
-<p>The ReEDS model source code is available at no cost from the National Laboratory of the Rockies (NLR). The ReEDS model can be downloaded or cloned from <a class="reference external" href="https://github.com/NatLabRockies/ReEDS-2.0">https://github.com/NatLabRockies/ReEDS-2.0</a>.</p>
+<p>The ReEDS model source code is available at no cost from the National Laboratory of the Rockies (NLR). The ReEDS model can be downloaded or cloned from <a class="reference external" href="https://github.com/ReEDS-Model/ReEDS">https://github.com/ReEDS-Model/ReEDS</a>.</p>
 <p>New users may also wish to start with some ReEDS training videos which are available on the <a class="reference external" href="https://youtu.be/aGj3Jnspk9M?si=iqCRNn5MbGZc8ZIO">NLR YouTube channel</a>.</p>
 <section id="installation-guide">
 <h2>Installation Guide<a class="headerlink" href="#installation-guide" title="Link to this heading"></a></h2>
@@ -248,7 +248,7 @@
 </section>
 <section id="repository-setup">
 <h3>Repository Setup<a class="headerlink" href="#repository-setup" title="Link to this heading"></a></h3>
-<p>The ReEDS source code is hosted on GitHub: <a class="reference external" href="https://github.com/NatLabRockies/ReEDS-2.0">https://github.com/NatLabRockies/ReEDS-2.0</a></p>
+<p>The ReEDS source code is hosted on GitHub at <a class="reference external" href="https://github.com/ReEDS-Model/ReEDS">https://github.com/ReEDS-Model/ReEDS</a>.</p>
 <ol class="arabic simple">
 <li><p>Install Git Large File Storage, instructions can be found here: <a class="reference external" href="https://docs.github.com/en/repositories/working-with-files/managing-large-files/installing-git-large-file-storage">Installing Git Large File Storage</a></p></li>
 <li><p>From the Git command line run the following command to enable large file storage.</p></li>
@@ -268,39 +268,82 @@
 </section>
 <section id="reeds2pras-julia-and-stress-periods-setup">
 <h3>ReEDS2PRAS, Julia, and Stress Periods Setup<a class="headerlink" href="#reeds2pras-julia-and-stress-periods-setup" title="Link to this heading"></a></h3>
-<p>Julia will need to be installed and set up to successfully run the model since ReEDS uses stress periods by default. To get Julia and stress periods set up:</p>
-<ol class="arabic simple">
-<li><p>Install Julia</p>
-<ol class="arabic simple">
-<li><p>[max/linux]: Julia is included in the conda environment so no additional installation is needed</p></li>
-<li><p>[windows]: install Julia from <a class="reference external" href="https://julialang.org/downloads/">https://julialang.org/downloads/</a></p></li>
-</ol>
-</li>
-<li><p>Navigate to the ReEDS-2.0 directory from the command line, then run <code class="docutils literal notranslate"><span class="pre">julia</span> <span class="pre">--project=.</span> <span class="pre">instantiate.jl</span></code></p></li>
-</ol>
+<p>Julia will need to be installed and set up to successfully run the model since ReEDS uses stress periods by default. The recommended way to install Julia is via <strong>juliaup</strong>, the official Julia version manager, which makes it easy to install and switch between specific Julia versions. Julia <code class="docutils literal notranslate"><span class="pre">1.12.1</span></code> is the currently tested version across all platforms.</p>
+<section id="step-1-install-juliaup">
+<h4>Step 1: Install juliaup<a class="headerlink" href="#step-1-install-juliaup" title="Link to this heading"></a></h4>
+<div class="sd-tab-set docutils">
+<input checked="checked" id="sd-tab-item-0" name="sd-tab-set-0" type="radio">
+<label class="sd-tab-label" for="sd-tab-item-0">
+Windows</label><div class="sd-tab-content docutils">
+<p>Install juliaup using <code class="docutils literal notranslate"><span class="pre">winget</span></code> from a terminal (Command Prompt or PowerShell):</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>winget install --id Julialang.juliaup
+</pre></div>
+</div>
+<p>Alternatively, install from the <a class="reference external" href="https://www.microsoft.com/store/apps/9NJNWW8PVKMN">Microsoft Store</a>.</p>
+</div>
+<input id="sd-tab-item-1" name="sd-tab-set-0" type="radio">
+<label class="sd-tab-label" for="sd-tab-item-1">
+macOS / Linux</label><div class="sd-tab-content docutils">
+<p>Run the following command from a terminal:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>curl -fsSL https://install.julialang.org | sh
+</pre></div>
+</div>
+<p>Follow the on-screen prompts. When installation is complete, open a new terminal session (or run <code class="docutils literal notranslate"><span class="pre">source</span> <span class="pre">~/.bashrc</span></code> / <code class="docutils literal notranslate"><span class="pre">source</span> <span class="pre">~/.zshrc</span></code>) so that <code class="docutils literal notranslate"><span class="pre">juliaup</span></code> is available on your PATH.</p>
+<p>macOS and Linux users can also install via Homebrew:</p>
+<div class="highlight-none notranslate"><div class="highlight"><pre><span></span>brew install juliaup
+</pre></div>
+</div>
+</div>
+</div>
+<p>Verify the installation was successful:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">juliaup</span> <span class="n">status</span>
+</pre></div>
+</div>
+</section>
+<section id="step-2-install-and-pin-the-tested-julia-version">
+<h4>Step 2: Install and pin the tested Julia version<a class="headerlink" href="#step-2-install-and-pin-the-tested-julia-version" title="Link to this heading"></a></h4>
+<p>Install Julia <code class="docutils literal notranslate"><span class="pre">1.12.1</span></code> and set it as the default:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">juliaup</span> <span class="n">add</span> <span class="mf">1.12.1</span>
+<span class="n">juliaup</span> <span class="n">default</span> <span class="mf">1.12.1</span>
+</pre></div>
+</div>
+<p>Confirm the active version:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">julia</span> <span class="o">--</span><span class="n">version</span>
+</pre></div>
+</div>
+<p>You should see <code class="docutils literal notranslate"><span class="pre">julia</span> <span class="pre">version</span> <span class="pre">1.12.1</span></code>.</p>
+<p><strong>NOTE</strong>: If you need other versions of Julia for other purposes, you can run those other Julia versions using <code class="docutils literal notranslate"><span class="pre">julia</span> <span class="pre">+channel</span></code> (More info on the <a class="reference external" href="https://github.com/JuliaLang/juliaup#using-juliaup">juliaup README</a>). Or you can easily switch between versions with juliaup. For example, to switch to version <code class="docutils literal notranslate"><span class="pre">1.11.2</span></code>, run <code class="docutils literal notranslate"><span class="pre">juliaup</span> <span class="pre">default</span> <span class="pre">1.11.2</span></code>. To switch back to <code class="docutils literal notranslate"><span class="pre">1.12.1</span></code>, run <code class="docutils literal notranslate"><span class="pre">juliaup</span> <span class="pre">default</span> <span class="pre">1.12.1</span></code>.</p>
+</section>
+<section id="step-3-instantiate-the-julia-environment">
+<h4>Step 3: Instantiate the Julia environment<a class="headerlink" href="#step-3-instantiate-the-julia-environment" title="Link to this heading"></a></h4>
+<p>Navigate to the ReEDS directory from the command line, then run:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">julia</span> <span class="o">--</span><span class="n">project</span><span class="o">=.</span> <span class="n">instantiate</span><span class="o">.</span><span class="n">jl</span>
+</pre></div>
+</div>
+</section>
 <section id="troubleshooting-issues-with-julia-setup">
 <h4>Troubleshooting Issues with Julia Setup<a class="headerlink" href="#troubleshooting-issues-with-julia-setup" title="Link to this heading"></a></h4>
-<p>When setting up julia on Windows, you may run into some issues when running <code class="docutils literal notranslate"><span class="pre">julia</span> <span class="pre">--project=.</span> <span class="pre">instantiate.jl</span></code>. The following steps can be followed to help resolve issues and get julia set up successfully:</p>
+<p><strong>Windows</strong></p>
+<p>When setting up Julia on Windows, you may run into some issues when running <code class="docutils literal notranslate"><span class="pre">julia</span> <span class="pre">--project=.</span> <span class="pre">instantiate.jl</span></code>. The following steps can be followed to help resolve issues and get Julia set up successfully:</p>
 <ol class="arabic simple">
+<li><p>If you’ve used another version of Julia (from the reeds2 conda environment or a previous installation), you may get errors about conflicting manifest. To get past this, you can delete the <code class="docutils literal notranslate"><span class="pre">Manifest.toml</span></code> file with <code class="docutils literal notranslate"><span class="pre">rm</span> <span class="pre">Manifest.toml</span></code> (on Unix systems) or <code class="docutils literal notranslate"><span class="pre">del</span> <span class="pre">Manifest.toml</span></code> (on Windows systems).</p></li>
 <li><p>Manually install <a class="reference external" href="https://github.com/JuliaRandom/Random123.jl">Random123</a></p></li>
 <li><p>Re-run <code class="docutils literal notranslate"><span class="pre">julia</span> <span class="pre">--project=.</span> <span class="pre">instantiate.jl</span></code></p></li>
 </ol>
-<p>If that doesn’t resolve the issue, the following may help:</p>
+<p>If that doesn’t resolve the issue, try a clean install using juliaup:</p>
 <ol class="arabic simple">
-<li><p>If you previously installed julia, uninstall it: <code class="docutils literal notranslate"><span class="pre">winget</span> <span class="pre">uninstall</span> <span class="pre">julia</span></code></p></li>
-<li><p>Manually install <a class="reference external" href="https://julialang.org/downloads/oldreleases/#:~:text=ea85e0489c36324c4da62163aa1b82fcf2f52f72d173ee7dd213a3a92992cab7-,Windows,-x86_64">Julia 1.8.5</a></p></li>
-<li><p>Add the julia bin path to your environment PATH variable</p></li>
-<li><p>Install <a class="reference external" href="https://www.mingw-w64.org/downloads/">MinGW</a></p></li>
-<li><p>Open the julia interactive command line: <code class="docutils literal notranslate"><span class="pre">julia</span></code></p></li>
-<li><p>Enter the julia package manager by pressing <code class="docutils literal notranslate"><span class="pre">]</span></code>, then run the following commands:</p>
+<li><p>Remove any previously installed Julia version managed by juliaup: <code class="docutils literal notranslate"><span class="pre">juliaup</span> <span class="pre">remove</span> <span class="pre">1.12.1</span></code></p></li>
+<li><p>If Julia was installed outside of juliaup, uninstall it first: <code class="docutils literal notranslate"><span class="pre">winget</span> <span class="pre">uninstall</span> <span class="pre">julia</span></code></p></li>
+<li><p>Re-install Julia <code class="docutils literal notranslate"><span class="pre">1.12.1</span></code> via juliaup: <code class="docutils literal notranslate"><span class="pre">juliaup</span> <span class="pre">add</span> <span class="pre">1.12.1</span> <span class="pre">&amp;&amp;</span> <span class="pre">juliaup</span> <span class="pre">default</span> <span class="pre">1.12.1</span></code></p></li>
+<li><p>Open the Julia interactive command line: <code class="docutils literal notranslate"><span class="pre">julia</span></code></p></li>
+<li><p>Enter the Julia package manager by pressing <code class="docutils literal notranslate"><span class="pre">]</span></code>, then run the following commands:</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">add</span> <span class="pre">Random123</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">registry</span> <span class="pre">add</span> <span class="pre">https://github.com/JuliaRegistries/General.git</span></code></p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">registry</span> <span class="pre">add</span> <span class="pre">https://github.com/NatLabRockies/JuliaRegistries.git</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">instantiate</span></code></p></li>
 </ul>
 </li>
-<li><p>Leave the package manager by pressing backspace or Ctrl+C</p></li>
+<li><p>Leave the package manager by pressing Backspace or Ctrl+C</p></li>
 <li><p>Run the following commands to finish setup:</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">import</span> <span class="pre">PRAS</span></code></p></li>
@@ -308,17 +351,30 @@
 <li><p><code class="docutils literal notranslate"><span class="pre">TimeZones.build()</span></code></p></li>
 </ul>
 </li>
-<li><p>You can then leave the julia command line by typing <code class="docutils literal notranslate"><span class="pre">exit()</span></code></p></li>
+<li><p>You can then leave the Julia command line by typing <code class="docutils literal notranslate"><span class="pre">exit()</span></code></p></li>
 </ol>
-<p><strong>If you’re experiencing issues on Mac, a possible solution is:</strong></p>
-<ol class="arabic simple">
-<li><p>Update the version of julia</p></li>
-<li><p>Create the ‘reeds2’ conda environment with the environment.yml file</p></li>
+<p><strong>macOS / Linux</strong></p>
+<p>If you experience issues, try the following:</p>
+<ol class="arabic">
+<li><p>Update to a known-good Julia version via juliaup:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">juliaup</span> <span class="n">add</span> <span class="mf">1.12.1</span>
+<span class="n">juliaup</span> <span class="n">default</span> <span class="mf">1.12.1</span>
+</pre></div>
+</div>
+</li>
 <li><p>Run <code class="docutils literal notranslate"><span class="pre">julia</span></code> from the terminal to open the interactive command line</p></li>
-<li><p>Run <code class="docutils literal notranslate"><span class="pre">import</span> <span class="pre">Pkg;</span> <span class="pre">Pkg.add(&quot;PRAS&quot;)</span></code></p></li>
-<li><p>Run <code class="docutils literal notranslate"><span class="pre">Pkg.add(&quot;TimeZones&quot;)</span></code></p></li>
-<li><p>Exit julia with the command <code class="docutils literal notranslate"><span class="pre">exit()</span></code>, then run <code class="docutils literal notranslate"><span class="pre">julia</span> <span class="pre">instantiate.jl</span></code></p></li>
-<li><p>Manually move the Manifest.toml file from the julia environment (~/miniconda3/envs/reeds2/share/julia/environments/reeds2/Manifest.toml) to the ReEDS repo</p></li>
+<li><p>Run:</p>
+<div class="highlight-julia notranslate"><div class="highlight"><pre><span></span><span class="k">import</span><span class="w"> </span><span class="n">Pkg</span>
+<span class="n">Pkg</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s">&quot;PRAS&quot;</span><span class="p">)</span>
+<span class="n">Pkg</span><span class="o">.</span><span class="n">add</span><span class="p">(</span><span class="s">&quot;TimeZones&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</li>
+<li><p>Exit Julia with <code class="docutils literal notranslate"><span class="pre">exit()</span></code>, then re-run:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">julia</span> <span class="o">--</span><span class="n">project</span><span class="o">=.</span> <span class="n">instantiate</span><span class="o">.</span><span class="n">jl</span>
+</pre></div>
+</div>
+</li>
 </ol>
 </section>
 </section>
@@ -380,12 +436,12 @@
 <p>If you’d like practice with running a specific ReEDS scenario, you can walk through the <a class="reference internal" href="reeds_training_homework.html"><span class="doc std std-doc">ReEDS Training Homework</span></a>.</p>
 <p>Additional resources and learning:</p>
 <ul class="simple">
-<li><p><a class="reference external" href="https://www.nrel.gov/analysis/reeds/">General information on ReEDS</a></p></li>
+<li><p><a class="reference external" href="https://www.nlr.gov/analysis/reeds/">General information on ReEDS</a></p></li>
 <li><p><a class="reference external" href="https://nrel.sharepoint.com/:w:/s/ReEDS/ES6GQTyzXo1DnnCPlnAhg5QB8cPY--_01HkQkiOnrPskxw?e=flEAtY">ReEDS POC list</a></p></li>
-<li><p><a class="reference external" href="https://github.nrel.gov/ReEDS/ReEDS-2.0/blob/main/README.md">GitHub README</a></p></li>
+<li><p><a class="reference external" href="https://github.com/ReEDS-Model/ReEDS/blob/main/README.md">GitHub README</a></p></li>
 <li><p><a class="reference external" href="https://www.youtube.com/playlist?list=PLmIn8Hncs7bG558qNlmz2QbKhsv7QCKiC">YouTube tutorials</a></p></li>
 <li><p><a class="reference external" href="https://www.gams.com/latest/docs/UG_MAIN.html#UG_Language_Environment">GAMS language information</a></p></li>
-<li><p><a class="reference external" href="https://nrel-my.sharepoint.com/:p:/r/personal/ssundar_nrel_gov/Documents/Microsoft%20Teams%20Chat%20Files/02062024_what_the_shell.pptx?d=wa7aea3514f814d51924bf2dfa737d414&amp;amp;csf=1&amp;amp;web=1&amp;amp;e=qr1YuP">Tips and tricks for the bash shell</a></p></li>
+<li><p><a class="reference external" href="https://nlr-my.sharepoint.com/:p:/r/personal/ssundar_nrel_gov/Documents/Microsoft%20Teams%20Chat%20Files/02062024_what_the_shell.pptx?d=wa7aea3514f814d51924bf2dfa737d414&amp;amp;csf=1&amp;amp;web=1&amp;amp;e=qr1YuP">Tips and tricks for the bash shell</a></p></li>
 </ul>
 </section>
 <section id="nlr-specific-setup">
@@ -407,7 +463,7 @@
 
   <div role="contentinfo">
     <p>&#169; Copyright 2024, NREL.
-      <span class="lastupdated">Last updated on April 22, 2026.
+      <span class="lastupdated">Last updated on April 23, 2026.
       </span></p>
   </div>
 

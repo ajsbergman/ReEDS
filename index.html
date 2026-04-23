@@ -89,25 +89,25 @@
 <section id="reeds-2-0">
 <h2>ReEDS 2.0<a class="headerlink" href="#reeds-2-0" title="Link to this heading"></a></h2>
 <p><strong>Regional Energy Deployment System (ReEDS) Model</strong></p>
-<p><a class="reference external" href="https://github.nrel.gov/ReEDS/ReEDS-2.0/actions/workflows/python-app.yaml"><img alt="CI" src="https://github.nrel.gov/ReEDS/ReEDS-2.0/actions/workflows/python-app.yaml/badge.svg" /></a>
-<a class="reference external" href="https://natlabrockies.github.io/ReEDS-2.0"><img alt="Documentation" src="https://img.shields.io/badge/Documentation-view%20online-0a7f5e?logo=readthedocs&amp;logoColor=white&amp;labelColor=555" /></a>
+<p><a class="reference external" href="https://github.com/ReEDS-Model/ReEDS/actions/workflows/python-app.yaml"><img alt="CI" src="https://github.com/ReEDS-Model/ReEDS/actions/workflows/python-app.yaml/badge.svg?branch=main" /></a>
+<a class="reference external" href="https://reeds-model.github.io/ReEDS"><img alt="Documentation" src="https://img.shields.io/badge/Documentation-view%20online-0a7f5e?logo=readthedocs&amp;logoColor=white&amp;labelColor=555" /></a>
 <img alt="Static Badge" src="https://img.shields.io/badge/python-3.11-blue" />
-<img alt="GitHub License" src="https://img.shields.io/github/license/NatLabRockies/ReEDS-2.0" />
+<img alt="GitHub License" src="https://img.shields.io/github/license/ReEDS-Model/ReEDS" />
 <a class="reference external" href="https://doi.org/10.5281/zenodo.16943302"><img alt="DOI" src="https://zenodo.org/badge/189060033.svg" /></a></p>
 </br>
 </br>
 <p>This GitHub repository contains the source code for NLR’s ReEDS model.
 The ReEDS model source code is available at no cost from the National Laboratory of the Rockies.
 The ReEDS model can be downloaded or cloned from <a class="reference external" href="https://github.com/ReEDS-Model/ReEDS">https://github.com/ReEDS-Model/ReEDS</a>.</p>
-<p><strong>For more information about the model, see the <a class="reference external" href="https://reeds-model.github.io/ReEDS">open source ReEDS-2.0 Documentation</a>.</strong></p>
+<p><strong>For more information about the model, see the <a class="reference external" href="https://reeds-model.github.io/ReEDS">ReEDS Documentation</a>.</strong></p>
 <p>ReEDS training videos are available on the <a class="reference external" href="https://youtube.com/playlist?list=PLmIn8Hncs7bG558qNlmz2QbKhsv7QCKiC&amp;amp;si=NgGBaL_MxNcYiIEX">NLR Learning YouTube channel</a>.</p>
 <p><a name="Introduction"></a></p>
 </section>
 <section id="introduction">
 <h2>Introduction<a class="headerlink" href="#introduction" title="Link to this heading"></a></h2>
-<p><a class="reference external" href="https://www.nrel.gov/analysis/reeds/">ReEDS</a> is a capacity planning and dispatch model for the U.S. electricity system.</p>
-<p>As NLR’s flagship long-term power sector model, ReEDS has served as the primary analytic tool for <a class="reference external" href="https://natlabrockies.github.io/ReEDS-2.0/publications.html">many studies</a> of electricity sector research questions.
-Example model results are available in the <a class="reference external" href="https://scenarioviewer.nrel.gov/">Scenario Viewer</a>.</p>
+<p><a class="reference external" href="https://www.nlr.gov/analysis/reeds/">ReEDS</a> is a capacity planning and dispatch model for the U.S. electricity system.</p>
+<p>As NLR’s flagship long-term power sector model, ReEDS has served as the primary analytic tool for <a class="reference external" href="https://reeds-model.github.io/ReEDS/publications.html">many studies</a> of electricity sector research questions.
+Example model results are available in the <a class="reference external" href="https://scenarioviewer.nlr.gov/">Scenario Viewer</a>.</p>
 <p><a name="Software"></a></p>
 </section>
 <section id="quick-start-guide">
@@ -115,7 +115,7 @@ Example model results are available in the <a class="reference external" href="h
 <p>The ReEDS model is written in <a class="reference external" href="https://www.python.org/">Python</a>, <a class="reference external" href="https://www.gams.com/">GAMS</a>, and <a class="reference external" href="https://julialang.org/">Julia</a>.
 Python and Julia are free, open-source languages;
 GAMS requires a software license from the vendor.
-A step-by-step guide for getting started with ReEDS is available <a class="reference external" href="https://pages.github.nrel.gov/ReEDS/ReEDS-2.0/setup.html">here</a>, and a quick-start guide for advanced users is outlined below.</p>
+A step-by-step guide for getting started with ReEDS is available <a class="reference external" href="https://reeds-model.github.io/ReEDS/setup.html">here</a>, and a quick-start guide for advanced users is outlined below.</p>
 <ol class="arabic simple">
 <li><p>Install Python using the Anaconda Distribution: <a class="reference external" href="https://www.anaconda.com/download/success">https://www.anaconda.com/download/success</a></p></li>
 <li><p>Set up GAMS:</p>
@@ -123,27 +123,33 @@ A step-by-step guide for getting started with ReEDS is available <a class="refer
 <li><p>Install GAMS: <a class="reference external" href="https://www.gams.com/download/">https://www.gams.com/download/</a></p></li>
 <li><p>Obtain a combined GAMS/CPLEX license: <a class="reference external" href="https://www.gams.com/sales/licensing/">https://www.gams.com/sales/licensing/</a></p>
 <ol class="arabic simple">
-<li><p>Small ReEDS systems have been solved using the open-source <a class="reference external" href="https://www.coin-or.org/">COIN-OR</a> solver as described <a class="reference external" href="https://www.nrel.gov/docs/fy21osti/77907.pdf">here</a>, but this capability is not actively maintained.</p></li>
+<li><p>Small ReEDS systems have been solved using the open-source <a class="reference external" href="https://www.coin-or.org/">COIN-OR</a> solver as described <a class="reference external" href="https://www.nlr.gov/docs/fy21osti/77907.pdf">here</a>, but this capability is not actively maintained.</p></li>
 <li><p>Other commercial solvers have also been successfully applied to ReEDS, but setup details and some solver tuning are specific to the CPLEX solver.</p></li>
 </ol>
 </li>
 </ol>
 </li>
-<li><p>Install Julia: <a class="reference external" href="https://julialang.org/downloads/">https://julialang.org/downloads/</a></p></li>
-<li><p>Open a command-line interface and set up your environments:</p>
+<li><p>Install Julia version 1.12.1 as described in the <a class="reference external" href="https://reeds-model.github.io/ReEDS/setup.html#reeds2pras-julia-and-stress-periods-setup">documentation</a>:</p>
 <ol class="arabic simple">
-<li><p>Clone the ReEDS repository: <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">clone</span> <span class="pre">git&#64;github.com:NatLabRockies/ReEDS-2.0.git</span></code> or <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">clone</span> <span class="pre">https://github.com/NatLabRockies/ReEDS-2.0.git</span></code></p></li>
-<li><p>Navigate to the cloned repository</p></li>
-<li><p>Create the <code class="docutils literal notranslate"><span class="pre">reeds2</span></code> <a class="reference external" href="https://docs.conda.io/projects/conda/en/stable/user-guide/tasks/manage-environments.html">conda environment</a>: <code class="docutils literal notranslate"><span class="pre">conda</span> <span class="pre">env</span> <span class="pre">create</span> <span class="pre">-f</span> <span class="pre">environment.yml</span></code></p>
+<li><p>Follow the platform-dependent installation instructions at <a class="reference external" href="https://julialang.org/downloads/">https://julialang.org/downloads/</a> to install both <code class="docutils literal notranslate"><span class="pre">julia</span></code> and <code class="docutils literal notranslate"><span class="pre">juliaup</span></code></p></li>
+<li><p>Specify version 1.12.1 by running:</p>
 <ol class="arabic simple">
-<li><p>Linux and Mac users can use the environment.yml directly. Windows users need to comment out the <code class="docutils literal notranslate"><span class="pre">-</span> <span class="pre">julia=1.8</span></code> line from the environment.yml file before creating the environment and use the version of Julia installed above.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">juliaup</span> <span class="pre">add</span> <span class="pre">1.12.1</span></code></p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">juliaup</span> <span class="pre">default</span> <span class="pre">1.12.1</span></code></p></li>
 </ol>
 </li>
+</ol>
+</li>
+<li><p>Open a command-line interface and set up your environments:</p>
+<ol class="arabic simple">
+<li><p>Clone the ReEDS repository: <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">clone</span> <span class="pre">git&#64;github.com:ReEDS-Model/ReEDS.git</span></code> or <code class="docutils literal notranslate"><span class="pre">git</span> <span class="pre">clone</span> <span class="pre">https://github.com/ReEDS-Model/ReEDS.git</span></code></p></li>
+<li><p>Navigate to the cloned repository</p></li>
+<li><p>Create the <code class="docutils literal notranslate"><span class="pre">reeds2</span></code> <a class="reference external" href="https://docs.conda.io/projects/conda/en/stable/user-guide/tasks/manage-environments.html">conda environment</a>: <code class="docutils literal notranslate"><span class="pre">conda</span> <span class="pre">env</span> <span class="pre">create</span> <span class="pre">-f</span> <span class="pre">environment.yml</span></code></p></li>
 <li><p>Activate the <code class="docutils literal notranslate"><span class="pre">reeds2</span></code> environment: <code class="docutils literal notranslate"><span class="pre">conda</span> <span class="pre">activate</span> <span class="pre">reeds2</span></code></p></li>
 <li><p>Instantiate the Julia environment: <code class="docutils literal notranslate"><span class="pre">julia</span> <span class="pre">--project=.</span> <span class="pre">instantiate.jl</span></code></p></li>
 <li><p>(Optional) Several large data files are hosted remotely.
 These files are downloaded automatically as needed during a ReEDS run, but to finish all the internet-requiring steps up front, you can download them all by running <code class="docutils literal notranslate"><span class="pre">python</span> <span class="pre">reeds/remote.py</span></code>.
-Additional details on remote files and other topics can be found in the <a class="reference external" href="https://pages.github.nrel.gov/ReEDS/ReEDS-2.0/user_guide.html#large-input-files">user guide</a>.</p></li>
+Additional details on remote files and other topics can be found in the <a class="reference external" href="https://reeds-model.github.io/ReEDS/user_guide.html#large-input-files">user guide</a>.</p></li>
 </ol>
 </li>
 <li><p>Run ReEDS on a test case from the root of the cloned repository:</p>
@@ -159,7 +165,7 @@ Run <code class="docutils literal notranslate"><span class="pre">python</span> <
 </section>
 <section id="contact-us">
 <h2>Contact Us<a class="headerlink" href="#contact-us" title="Link to this heading"></a></h2>
-<p>If you have comments and/or questions, you can contact the ReEDS team at <a class="reference external" href="mailto:ReEDS&#46;Inquiries&#37;&#52;&#48;nlr&#46;gov">ReEDS<span>&#46;</span>Inquiries<span>&#64;</span>nlr<span>&#46;</span>gov</a> or post a question on the <a class="reference external" href="https://github.com/NatLabRockies/ReEDS-2.0/discussions">discussion pages</a>.</p>
+<p>If you have comments and/or questions, you can contact the ReEDS team at <a class="reference external" href="mailto:ReEDS&#46;Inquiries&#37;&#52;&#48;nlr&#46;gov">ReEDS<span>&#46;</span>Inquiries<span>&#64;</span>nlr<span>&#46;</span>gov</a> or post a question on the <a class="reference external" href="https://github.com/ReEDS-Model/ReEDS/discussions">discussion pages</a>.</p>
 <div class="toctree-wrapper compound">
 </div>
 <!--
@@ -179,7 +185,7 @@ note: to change the maxdepth of the toctree, you need to change 'navigation_dept
 
   <div role="contentinfo">
     <p>&#169; Copyright 2024, NREL.
-      <span class="lastupdated">Last updated on April 22, 2026.
+      <span class="lastupdated">Last updated on April 23, 2026.
       </span></p>
   </div>
 
