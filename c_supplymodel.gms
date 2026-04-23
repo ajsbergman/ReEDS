@@ -4064,7 +4064,7 @@ eq_mat_procure(mat,t)$[tmodel(t)$Sw_mat_restrict$[t.val>=2029]]..
 
 * materials produced domestically (metric tons) * last year weight (multiplier) + slack variable for unmet demand (metric tons)
 * domestic production
-      (Sw_prod_multiplier_usa * sum{mat_ctry$[usa(mat_ctry)], mat_prod(mat,mat_ctry)} * yearweight(t))
+      (Sw_prod_multiplier_usa * sum{mat_ctry$[usa(mat_ctry)$(not sameas(mat,'%GSw_specmat%'))], mat_prod(mat,mat_ctry)} * yearweight(t))
 * add allied production
     + (Sw_prod_multiplier_allies * sum{mat_ctry$[allies(mat_ctry)], mat_prod(mat,mat_ctry)} * yearweight(t))$Sw_mat_allies
 * add global production
