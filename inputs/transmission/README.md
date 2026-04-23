@@ -17,7 +17,7 @@ These lines are mapped to ReEDS zone interfaces during input processing.
 Metadata only; not used directly in ReEDS.
 
 - `itl_NARIS.csv`: Database of initial forward/reverse AC ITLs [MW] between pairs of connected ReEDS model zones for all supported zone resolutions.
-Calculated using the [TSC](https://github.nrel.gov/pbrown/TSC) model as described by [Brown et al.](https://arxiv.org/abs/2308.03612) using nodal network data from [NARIS](https://www.nrel.gov/docs/fy21osti/79224.pdf).
+Calculated using the [TSC](https://github.nrel.gov/pbrown/TSC) model as described by [Brown et al.](https://arxiv.org/abs/2308.03612) using nodal network data from [NARIS](https://www.nlr.gov/docs/fy21osti/79224.pdf).
   - The zone identifier is the md5 hash of the ','-delimited sorted list of 5-digit FIPS codes for the counties that define the zone.
     - For example, Delaware is 3 counties, with FIPS codes 10001, 10003, and 10005.
     Its delimited string is `10001,10003,10005`, and the md5 hash of that string is `a182e260da3f30b54260bf499f0db584`.
