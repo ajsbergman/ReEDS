@@ -20,9 +20,9 @@ from copy_files import get_regions_and_agglevel
 #%% ===========================================================================
 ### --- General Read Functions---
 ### ===========================================================================
-def main(reeds_path, casedir, inputs_case):
+def main(reeds_path, casepath, inputs_case):
 
-    sw = reeds.io.get_switches(casedir)
+    sw = reeds.io.get_switches(casepath)
     crs = 'EPSG:5070'
     
     print('Processing generator database:')
@@ -44,10 +44,12 @@ def main(reeds_path, casedir, inputs_case):
     
     gdf = reeds.plots.df2gdf(
         df,
-        lat='T_LONG',
-        lon='T_LAT',
+        lat='T_LAT',
+        lon='T_LONG',
         crs=crs)
     
+    gdf['temp_id'] = gdf.index
+
     # Assign sc_point_gids to units based on distance
     # Read land data
     ilpath = os.path.join(reeds_path,'inputs','supply_curve','interconnection_land.h5')
@@ -61,13 +63,6 @@ def main(reeds_path, casedir, inputs_case):
         lon='longitude',
         crs=crs)
 
-    # 
-    gdf = gpd.sjoin_nearest(gdf, land_gdf, distance_col='distance', how='left')
-
-    # Merge unit database with VRE supply curves to assign AC capacity factors to VRE units
-    # and mean resource temp for geothermal units
-    gdf = gdf[['sc_point_gid'] + df.columns.to_list()]
-    gdf['temp_id'] = gdf.index
 
     df_rev_list = []
     tech_match = {'upv': ['upv','dupv','pvb_pv','csp-wp','csp-ns'],
@@ -76,30 +71,41 @@ def main(reeds_path, casedir, inputs_case):
                   'geohydro': ['geohydro_allkm', 'geothermal'],
                   'egs':['egs']}
     for tech in ['upv','wind-ons','wind-ofs','geohydro']:
+        print(f'Processing {tech} classes')
+
+        # Only consider the sc_point_pids that are in supply curves:
+        if (tech == 'geohydro') or (tech == 'egs'):
+            geo_tech = 'egs'
+            supply_curve = pd.read_csv(os.path.join(reeds_path,'inputs','supply_curve','supplycurve_'+geo_tech+'-'+'reference'+'.csv'))
+        else:
+            supply_curve = pd.read_csv(os.path.join(reeds_path,'inputs','supply_curve','supplycurve_'+tech+'-'+'open'+'.csv'))    
+        
+        land_filtered_pdf = land_gdf[land_gdf['sc_point_gid'].isin(supply_curve['sc_point_gid'].to_list())]
+        gdf_joined = gpd.sjoin_nearest(gdf, land_filtered_pdf, distance_col='distance', how='left')
+
+        # Merge unit database with VRE supply curves to assign AC capacity factors to VRE units
+        # and mean resource temp for geothermal units
+        gdf_joined = gdf_joined[['sc_point_gid'] + df.columns.to_list() + ['temp_id']]
+
         tech_sub = tech_match[tech]
-        df_rev = gdf[gdf.tech.isin(tech_sub)]
+        df_rev = gdf_joined[gdf_joined.tech.isin(tech_sub)]
         if len(df_rev) > 0:
-            df_rev['sc_point_gid'] = df_rev['sc_point_gid'].fillna(0).astype(np.int64)
+            #df_rev['sc_point_gid'] = df_rev['sc_point_gid'].fillna(0).astype(np.int64)
             if (tech == 'geohydro') or (tech == 'egs'):
-                geo_tech = 'egs'            # Using 'egs' for geohydro for now since there are issues with geohydro supply curves
-                supply_curve = pd.read_csv(os.path.join(reeds_path,'inputs','supply_curve','supplycurve_'+geo_tech+'-'+'reference'+'.csv'))
                 df_rev = df_rev.merge(supply_curve[['sc_point_gid','mean_resource_temp']],
                                         on='sc_point_gid',
                                         how='left').rename(columns={'mean_resource_temp':'reV_mean_resource_temp'})
-                df_rev['reV_capacity_factor_ac'] = np.nan
             else:
-                supply_curve = pd.read_csv(os.path.join(reeds_path,'inputs','supply_curve','supplycurve_'+tech+'-'+'open'+'.csv'))
                 df_rev = df_rev.merge(supply_curve[['sc_point_gid','cf']],
                                         on='sc_point_gid',
                                         how='left').rename(columns={'cf':'reV_capacity_factor_ac'})
-                df_rev['reV_mean_resource_temp'] = np.nan
             df_rev_list = df_rev_list + [df_rev]
         
     df_rev = pd.concat(df_rev_list, ignore_index=False, sort=False)
-    df = gdf.merge(df_rev[['temp_id','reV_capacity_factor_ac']],
-                    on = 'temp_id',how = 'left').drop('temp_id', axis=1)  
+    df = gdf.merge(df_rev[['temp_id','reV_capacity_factor_ac','reV_mean_resource_temp']],
+                    on = 'temp_id',how = 'left').drop(['temp_id','geometry'], axis=1)  
     
-    df.to_csv(os.path.join(inputs_case,'unitdata.csv'))
+    df.to_csv(os.path.join(inputs_case,'unitdata.csv'),index=False)
 
 if __name__ == '__main__':
     ### Time the operation of this script
@@ -107,18 +113,18 @@ if __name__ == '__main__':
     
     ### Parse arguments
     parser = argparse.ArgumentParser(description="""This file processes NEMS unitdata""")
-    parser.add_argument("reeds_path", help="ReEDS directory")
-    parser.add_argument("inputs_case", help="path to runs/{case}/inputs_case")
+    parser.add_argument('reeds_path', help="ReEDS directory")
+    parser.add_argument('inputs_case', help="path to runs/{case}/inputs_case")
 
     args = parser.parse_args()
     reeds_path = args.reeds_path
     inputs_case = args.inputs_case
-    #casedir = args.casedir
     
     # for testing
-    # reeds_path = os.path.expanduser('~/Documents/GitHub/ReEDS/public_ReEDS/ReEDS')
-    casedir = os.path.join(reeds_path,'runs','test_github_MA_county_CC')
-    # inputs_case = os.path.join(reeds_path,'runs','test_github_MA_county_CC','inputs_case')
+    #reeds_path = os.path.expanduser('~/Documents/GitHub/ReEDS/public_ReEDS/ReEDS')
+    #inputs_case = os.path.join(reeds_path,'runs','test_Pacific','inputs_case')
+
+    casepath = os.path.dirname(inputs_case)
 
     #%% Set up logger
     log = reeds.log.makelog(
@@ -126,4 +132,5 @@ if __name__ == '__main__':
         logpath=os.path.join(inputs_case,'..','gamslog.txt'),
     )
     print('Starting generate_unitdata.py')
-    main(reeds_path, casedir, inputs_case)
+    main(reeds_path, casepath, inputs_case)
+    print('Complete processsing generate_unitdata.py')
