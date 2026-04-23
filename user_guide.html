@@ -326,7 +326,7 @@ The <code class="docutils literal notranslate"><span class="pre">GSw_LoadProfile
 <tbody>
 <tr class="row-even"><td><p>historic</p></td>
 <td><p>Detrended historic demand from 2007-2013 and 2016-2023. This is multiplied by annual growth factors from AEO to forecast load growth.</p></td>
-<td><p>Produced by the ReEDS team from a compilation of data sources. More detail can be found in the <a class="reference external" href="https://github.com/NatLabRockies/ReEDS-2.0/tree/main/hourlize">hourlize readme</a>.</p></td>
+<td><p>Produced by the ReEDS team from a compilation of data sources. More detail can be found in the <a class="reference external" href="https://github.com/ReEDS-Model/ReEDS/tree/main/hourlize">hourlize readme</a>.</p></td>
 <td><p>2007-2013 &amp; 2016-2023</p></td>
 </tr>
 <tr class="row-odd"><td><p>EFS_Clean2035_LTS</p></td>
@@ -412,7 +412,7 @@ The <code class="docutils literal notranslate"><span class="pre">GSw_LoadProfile
 </section>
 <section id="different-weather-years">
 <h3>Different weather years<a class="headerlink" href="#different-weather-years" title="Link to this heading"></a></h3>
-<p>For EER’s load profiles, “weather” includes everything considered by NLR’s <a class="reference external" href="https://resstock.nrel.gov/">ResStock</a> and <a class="reference external" href="https://comstock.nrel.gov/">ComStock</a> building models (i.e., temperature, humidity, insolation, and wind speed). This information gets translated into variations in load through regressions and benchmarking with historical system load data for the weather year in question.</p>
+<p>For EER’s load profiles, “weather” includes everything considered by NLR’s <a class="reference external" href="https://resstock.nlr.gov/">ResStock</a> and <a class="reference external" href="https://comstock.nlr.gov/">ComStock</a> building models (i.e., temperature, humidity, insolation, and wind speed). This information gets translated into variations in load through regressions and benchmarking with historical system load data for the weather year in question.</p>
 </section>
 <section id="demand-response">
 <h3>Demand Response<a class="headerlink" href="#demand-response" title="Link to this heading"></a></h3>
@@ -434,7 +434,7 @@ The <code class="docutils literal notranslate"><span class="pre">GSw_LoadProfile
 The reference scenario assumes linearly decline from 1750 <span class="math notranslate nohighlight">\(/kW in 2022 to 550 \)</span>/kW in 2030, and then remain constant after.
 The low cost scenario assumes further declines from 2030 to 2050.</p>
 <p>Fixed O&amp;M values are assumed to be 5% of CAPEX (source: <a class="reference external" href="https://iopscience.iop.org/article/10.1088/1748-9326/acacb5">https://iopscience.iop.org/article/10.1088/1748-9326/acacb5</a>)</p>
-<p>Electrolyzer performance (efficiency) as well as SMR cost and performance assumptions are derived from assumptions <a class="reference external" href="https://www.nrel.gov/hydrogen/h2a-production-models.html">H2A: Hydrogen Analysis Production Models</a>, with guidance from Paige Jadun.
+<p>Electrolyzer performance (efficiency) as well as SMR cost and performance assumptions are derived from assumptions <a class="reference external" href="https://www.nlr.gov/hydrogen/h2a-production-models.html">H2A: Hydrogen Analysis Production Models</a>, with guidance from Paige Jadun.
 See original input assumptions in the <a class="reference external" href="https://github.com/ReEDS-Model/ReEDS_Input_Processing/blob/main/hydrogen/costs/H2ProductionCosts-20210414.xlsx">ReEDS_Input_Processing repo</a>.</p>
 <p>Note that SMR costs are currently in 2018<span class="math notranslate nohighlight">\( and electrolyzer costs are in 2022\)</span>.</p>
 </section>
@@ -1189,7 +1189,7 @@ temporally and spatially.</p>
 <li><p>on Kestrel at <code class="docutils literal notranslate"><span class="pre">/kfs2/shared-projects/reeds/Supply_Curve_Data</span></code></p></li>
 </ul>
 <p>Under the appropriate tech folder (UPV, ONSHORE, OFFSHORE, etc.) create a directory with a descrptive name for the supply curves (e.g., 2023_06_06_Update). Then copy the reV supply curves and profiles into a folder called <code class="docutils literal notranslate"><span class="pre">reV</span></code>. A good approach is to use rsync; below is an example copying original reV files from Eagle to Kestrel:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>rsync<span class="w"> </span>-aPu<span class="w"> </span><span class="o">[</span>username<span class="o">]</span>@eagle.hpc.nrel.gov://shared-projects/rev/projects/seto/fy23/rev/standard_scenarios/aggregation/<span class="w">  </span>/projects/shared-projects-reeds/reeds/Supply_Curve_Data/UPV/2023_06_06_Update/reV
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>rsync<span class="w"> </span>-aPu<span class="w"> </span><span class="o">[</span>username<span class="o">]</span>@kestrel.nlr.gov://shared-projects/rev/projects/seto/fy23/rev/standard_scenarios/aggregation/<span class="w">  </span>/kfs2/shared-projects/reeds/Supply_Curve_Data/UPV/2023_06_06_Update/reV
 </pre></div>
 </div>
 </section>
@@ -1214,7 +1214,7 @@ temporally and spatially.</p>
 <h4>4. Synchronize shared directories<a class="headerlink" href="#synchronize-shared-directories" title="Link to this heading"></a></h4>
 <p>By default hourlize will copy the required files in your ReEDS repository (<code class="docutils literal notranslate"><span class="pre">copy_to_reeds=True</span></code>). You can also copy the hourlize outputs back to the shared repository by setting <code class="docutils literal notranslate"><span class="pre">copy_to_shared=True</span></code>.</p>
 <p>Note that hourlize copies to only one of the shared locations (either the HPC or nrelnas01, depending on where you are running it), so even with <code class="docutils literal notranslate"><span class="pre">copy_to_shared=True</span></code> you’ll want to sync up the two shared folders. When starting from the HPC, be sure to open up permissions to the supply curve outputs you’ve just created (e.g., <code class="docutils literal notranslate"><span class="pre">chmod</span> <span class="pre">-R</span> <span class="pre">777</span> <span class="pre">UPV/2023_06_06_Update</span></code>). Then, from your local computer, use WinSCP or rsync to copy the files from Kestrel to nrelnas01:</p>
-<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>rsync<span class="w"> </span>-aPu<span class="w"> </span><span class="o">[</span>username<span class="o">]</span>@kestrel.nrel.gov://projects/shared-projects-reeds/reeds/Supply_Curve_Data/UPV/2023_11_02_LandCover<span class="w"> </span>/Volumes/ReEDS/Supply_Curve_Data/UPV
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span>rsync<span class="w"> </span>-aPu<span class="w"> </span><span class="o">[</span>username<span class="o">]</span>@kestrel.nlr.gov://projects/shared-projects-reeds/reeds/Supply_Curve_Data/UPV/2023_11_02_LandCover<span class="w"> </span>/Volumes/ReEDS/Supply_Curve_Data/UPV
 </pre></div>
 </div>
 </section>
