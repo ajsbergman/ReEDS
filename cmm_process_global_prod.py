@@ -170,6 +170,9 @@ price_df = price_df[~((price_df['Material'] == 'Titanium') & (price_df['Product'
 price_df = price_df[~((price_df['Material'] == 'Yttrium') & (price_df['Product'] == 'chemical compound'))]
 # keep only zinc metal
 price_df = price_df[~((price_df['Material'] == 'Zirconium') & (price_df['Product'] == 'ore'))]
+# keep only manganese metal 
+price_df = price_df[~((price_df['Material'] == 'Manganese') & (price_df['Product'] == 'ore'))]
+price_df = price_df[~((price_df['Material'] == 'Manganese') & (price_df['Product'] == 'alloy'))]
 
 # take average by material type
 price_df = price_df.groupby(['Material'], as_index=False)['price_per_tonne_2004'].mean().round(2)
