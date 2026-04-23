@@ -101,8 +101,13 @@ def main(reeds_path, casepath, inputs_case):
             df_rev_list = df_rev_list + [df_rev]
         
     df_rev = pd.concat(df_rev_list, ignore_index=False, sort=False)
-    df = gdf.merge(df_rev[['sc_point_gid','temp_id','reV_capacity_factor_ac','reV_mean_resource_temp']],
-                    on = 'temp_id',how = 'left') 
+    
+    if 'reV_mean_resource_temp' in df_rev.columns:
+        df = gdf.merge(df_rev[['sc_point_gid','temp_id','reV_capacity_factor_ac','reV_mean_resource_temp']],
+                       on = 'temp_id',how = 'left') 
+    else:
+        df = gdf.merge(df_rev[['sc_point_gid','temp_id','reV_capacity_factor_ac']],
+                       on = 'temp_id',how = 'left') 
     
     # Rearrange column orders
     cols = df_rev.columns.to_list()
@@ -124,8 +129,8 @@ if __name__ == '__main__':
     inputs_case = args.inputs_case
     
     # for testing
-    # reeds_path = os.path.expanduser('~/Documents/GitHub/ReEDS/public_ReEDS/ReEDS')
-    # inputs_case = os.path.join(reeds_path,'runs','test_Pacific','inputs_case')
+    #reeds_path = os.path.expanduser('~/Documents/GitHub/ReEDS/public_ReEDS/ReEDS')
+    #inputs_case = os.path.join(reeds_path,'runs','test_github_MA_county_CC','inputs_case')
 
     casepath = os.path.dirname(inputs_case)
 
