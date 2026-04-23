@@ -138,7 +138,7 @@ The `GSw_LoadProfiles` switch corresponds to a file saved to `inputs/remote/dema
 
 ### Different weather years
 
-For EER’s load profiles, “weather” includes everything considered by NLR's [ResStock](https://resstock.nrel.gov/) and [ComStock](https://comstock.nrel.gov/) building models (i.e., temperature, humidity, insolation, and wind speed). This information gets translated into variations in load through regressions and benchmarking with historical system load data for the weather year in question.
+For EER’s load profiles, “weather” includes everything considered by NLR's [ResStock](https://resstock.nlr.gov/) and [ComStock](https://comstock.nlr.gov/) building models (i.e., temperature, humidity, insolation, and wind speed). This information gets translated into variations in load through regressions and benchmarking with historical system load data for the weather year in question.
 
 ### Demand Response
 
@@ -162,7 +162,7 @@ The low cost scenario assumes further declines from 2030 to 2050.
 
 Fixed O&M values are assumed to be 5% of CAPEX (source: <https://iopscience.iop.org/article/10.1088/1748-9326/acacb5>)
 
-Electrolyzer performance (efficiency) as well as SMR cost and performance assumptions are derived from assumptions [H2A: Hydrogen Analysis Production Models](https://www.nrel.gov/hydrogen/h2a-production-models.html), with guidance from Paige Jadun.
+Electrolyzer performance (efficiency) as well as SMR cost and performance assumptions are derived from assumptions [H2A: Hydrogen Analysis Production Models](https://www.nlr.gov/hydrogen/h2a-production-models.html), with guidance from Paige Jadun.
 See original input assumptions in the [ReEDS_Input_Processing repo](https://github.com/ReEDS-Model/ReEDS_Input_Processing/blob/main/hydrogen/costs/H2ProductionCosts-20210414.xlsx).
 
 Note that SMR costs are currently in 2018$ and electrolyzer costs are in 2022$.
