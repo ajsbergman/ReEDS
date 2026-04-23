@@ -62,7 +62,19 @@ def main(reeds_path, casepath, inputs_case):
         lon='longitude',
         crs=crs)
 
+    # Read off-land data
+    iopath = os.path.join(reeds_path,'inputs','supply_curve','interconnection_offshore.h5')
+    offland_df = reeds.io.read_h5_groups(iopath)
+    offland_df['sc_point_gid'] = offland_df.index
+    offland_df = offland_df[['sc_point_gid','latitude','longitude']]
 
+    offland_gdf = reeds.plots.df2gdf(
+        offland_df,
+        lat='latitude',
+        lon='longitude',
+        crs=crs)
+
+    
     df_rev_list = []
     tech_match = {'upv': ['upv','dupv','pvb_pv','csp-wp','csp-ns'],
                   'wind-ons': ["wind-ons"], 
@@ -79,8 +91,11 @@ def main(reeds_path, casepath, inputs_case):
         else:
             supply_curve = pd.read_csv(os.path.join(reeds_path,'inputs','supply_curve','supplycurve_'+tech+'-'+'open'+'.csv'))    
         
-        land_filtered_pdf = land_gdf[land_gdf['sc_point_gid'].isin(supply_curve['sc_point_gid'].to_list())]
-        gdf_joined = gpd.sjoin_nearest(gdf, land_filtered_pdf, distance_col='distance', how='left')
+        if tech == 'wind-ofs':
+            sc_point_pid_pdf = offland_gdf[offland_gdf['sc_point_gid'].isin(supply_curve['sc_point_gid'].to_list())]
+        else:
+            sc_point_pid_pdf = land_gdf[land_gdf['sc_point_gid'].isin(supply_curve['sc_point_gid'].to_list())]
+        gdf_joined = gpd.sjoin_nearest(gdf, sc_point_pid_pdf, distance_col='distance', how='left')
 
         # Merge unit database with VRE supply curves to assign AC capacity factors to VRE units
         # and mean resource temp for geothermal units
