@@ -18,20 +18,23 @@ from copy_files import get_regions_and_agglevel
 
 
 #%% ===========================================================================
-### --- General Read Functions---
+### --- PROCEDURE ---
 ### ===========================================================================
 def main(reeds_path, casepath, inputs_case):
-
-    sw = reeds.io.get_switches(casepath)
-    crs = 'EPSG:5070'
     
+    # Read in switch setting
+    sw = reeds.io.get_switches(casepath)
+
+    # Read raw NEMS database
     df = pd.read_csv(os.path.join(reeds_path,'inputs','capacity_exogenous','ReEDS_generator_database_final_'+sw.unitdata+'.csv'), low_memory=False)
     
+    # Filter and process raw NEMS database to defined model resolution
     regions_and_agglevel = get_regions_and_agglevel(reeds_path, inputs_case)
 
     fips_ba_map = regions_and_agglevel['ba_county'].dropna().set_index('county')['ba']
     df['reeds_ba'] = df['FIPS'].map(fips_ba_map)
     df = df.dropna(subset=["reeds_ba"])
+
     ## If using offshore zones, map offshore wind units from land to offshore zones
     if int(sw.GSw_OffshoreZones):
         df = reeds.spatial.assign_to_offshore_zones(df)
@@ -41,56 +44,83 @@ def main(reeds_path, casepath, inputs_case):
             f"{num_units_missing_bas} units were not mapped to any BAs."
         )
     
+    ## Assign sc_point_gids and pv, wind capacity factors, and geothermal resource temperature to NEMS unit
+    # Using 'EPSG:5070' projection for nearest distance calculation
+    crs = 'EPSG:5070'
+    # Convert NEMS data base to geopandas dataframe by lon/lat
     gdf = reeds.plots.df2gdf(
         df,
         lat='T_LAT',
         lon='T_LONG',
         crs=crs)
-    
     gdf['temp_id'] = gdf.index
 
     # Assign sc_point_gids to units based on distance
-    # Read land data
+    # Using interconnection_land.h5 for sc_point_gids - lon/lat mapping for pv, land-based wind, and geothermal
     ilpath = os.path.join(reeds_path,'inputs','supply_curve','interconnection_land.h5')
-    land_df = reeds.io.read_h5_groups(ilpath)
-    land_df['sc_point_gid'] = land_df.index
-    land_df = land_df[['sc_point_gid','latitude','longitude']]
-
-    land_gdf = reeds.plots.df2gdf(
-        land_df,
-        lat='latitude',
-        lon='longitude',
-        crs=crs)
-
-    # Read off-land data
+    land_gdf = prepare_data_for_mapping(crs,ilpath)
+    # Using interconnection_offshore.h5 for sc_point_gids - lon/lat mapping for offshore wind
     iopath = os.path.join(reeds_path,'inputs','supply_curve','interconnection_offshore.h5')
-    offland_df = reeds.io.read_h5_groups(iopath)
-    offland_df['sc_point_gid'] = offland_df.index
-    offland_df = offland_df[['sc_point_gid','latitude','longitude']]
+    offland_gdf = prepare_data_for_mapping(crs,iopath)
+    
+    # Merge NEMS unitdata with interconnection_land/offshore data by 
+    # mapping each unit in NEMS by lon/lat to its closest sc_point_gid  
+    df_rev = assign_gids_to_unitdata(df, gdf, offland_gdf, land_gdf)
+        
+    # Clean up merged data    
+    if 'reV_mean_resource_temp' in df_rev.columns:
+        df = gdf.merge(df_rev[['sc_point_gid','temp_id','reV_capacity_factor_ac','reV_mean_resource_temp']],
+                       on = 'temp_id',how = 'left') 
+    else:
+        df = gdf.merge(df_rev[['sc_point_gid','temp_id','reV_capacity_factor_ac']],
+                       on = 'temp_id',how = 'left') 
+    
+    # Rearrange column orders
+    cols = df_rev.columns.to_list()
+    df = df[cols].drop(columns=['temp_id'])
+    
+    # Save processed unitdata
+    df.to_csv(os.path.join(inputs_case,'unitdata.csv'),index=False)
 
-    offland_gdf = reeds.plots.df2gdf(
-        offland_df,
+#%% ===========================================================================
+### --- General Read Functions---
+### ===========================================================================
+def prepare_data_for_mapping(crs, filepath):
+    df = reeds.io.read_h5_groups(filepath)
+    df['sc_point_gid'] = df.index
+    df = df[['sc_point_gid','latitude','longitude']]
+
+    gdf = reeds.plots.df2gdf(
+        df,
         lat='latitude',
         lon='longitude',
         crs=crs)
-
     
-    df_rev_list = []
+    return gdf
+
+# Function to merge NEMS unitdata with interconnection_land/offshore data by 
+# mapping each unit in NEMS by lon/lat to its closest sc_point_gid
+def assign_gids_to_unitdata(df, gdf, offland_gdf, land_gdf):
+    # Technologies to map - pv, wind, and geothermal
     tech_match = {'upv': ['upv','dupv','pvb_pv','csp-wp','csp-ns'],
                   'wind-ons': ["wind-ons"], 
                   'wind-ofs': ["wind-ofs"],
                   'geohydro': ['geohydro_allkm', 'geothermal'],
                   'egs':['egs']}
+    
+    df_rev_list = []
     for tech in ['upv','wind-ons','wind-ofs','geohydro']:
         print(f'Assigning {tech} classes')
-
-        # Only consider the sc_point_pids that are in supply curves:
+    
+        # Read supply curves
         if (tech == 'geohydro') or (tech == 'egs'):
             geo_tech = 'egs'
             supply_curve = pd.read_csv(os.path.join(reeds_path,'inputs','supply_curve','supplycurve_'+geo_tech+'-'+'reference'+'.csv'))
         else:
             supply_curve = pd.read_csv(os.path.join(reeds_path,'inputs','supply_curve','supplycurve_'+tech+'-'+'open'+'.csv'))    
         
+        # Only consider the sc_point_pids that are in supply curves:
+        # (to avoid unmatched units later)
         if tech == 'wind-ofs':
             sc_point_pid_pdf = offland_gdf[offland_gdf['sc_point_gid'].isin(supply_curve['sc_point_gid'].to_list())]
         else:
@@ -114,21 +144,10 @@ def main(reeds_path, casepath, inputs_case):
                                         on='sc_point_gid',
                                         how='left').rename(columns={'cf':'reV_capacity_factor_ac'})
             df_rev_list = df_rev_list + [df_rev]
-        
-    df_rev = pd.concat(df_rev_list, ignore_index=False, sort=False)
-    
-    if 'reV_mean_resource_temp' in df_rev.columns:
-        df = gdf.merge(df_rev[['sc_point_gid','temp_id','reV_capacity_factor_ac','reV_mean_resource_temp']],
-                       on = 'temp_id',how = 'left') 
-    else:
-        df = gdf.merge(df_rev[['sc_point_gid','temp_id','reV_capacity_factor_ac']],
-                       on = 'temp_id',how = 'left') 
-    
-    # Rearrange column orders
-    cols = df_rev.columns.to_list()
-    df = df[cols]
 
-    df.to_csv(os.path.join(inputs_case,'unitdata.csv'),index=False)
+    df_rev = pd.concat(df_rev_list, ignore_index=False, sort=False)
+    return df_rev
+
 
 if __name__ == '__main__':
     ### Time the operation of this script
@@ -145,7 +164,7 @@ if __name__ == '__main__':
     
     # for testing
     #reeds_path = os.path.expanduser('~/Documents/GitHub/ReEDS/public_ReEDS/ReEDS')
-    #inputs_case = os.path.join(reeds_path,'runs','test_github_MA_county_CC','inputs_case')
+    #inputs_case = os.path.join(reeds_path,'runs','test_Pacific','inputs_case')
 
     casepath = os.path.dirname(inputs_case)
 
