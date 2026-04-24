@@ -1,0 +1,92 @@
+"""Pydantic request / response models."""
+from __future__ import annotations
+
+from typing import Any, Literal
+
+from pydantic import BaseModel, Field
+
+
+# ── Chat ──────────────────────────────────────────────────────────────────────
+
+class ChatRequest(BaseModel):
+    message: str
+    mode: Literal["general", "docs", "code", "inputs", "outputs"] = "general"
+    selected_path: str | None = None  # optional file/dir for grounding
+
+
+class SourceSnippet(BaseModel):
+    file_path: str
+    snippet: str
+    match_type: str = ""
+    score: float = 0.0
+
+
+class ChatResponse(BaseModel):
+    answer: str
+    sources: list[SourceSnippet] = []
+
+
+# ── Search ────────────────────────────────────────────────────────────────────
+
+class SearchRequest(BaseModel):
+    query: str
+    category: Literal["all", "docs", "code", "inputs", "outputs"] = "all"
+    max_results: int = Field(default=10, le=50)
+
+
+class SearchResult(BaseModel):
+    file_path: str
+    snippet: str
+    match_type: str
+    score: float = 0.0
+
+
+class SearchResponse(BaseModel):
+    results: list[SearchResult]
+    total: int
+
+
+# ── Files ─────────────────────────────────────────────────────────────────────
+
+class FileEntry(BaseModel):
+    name: str
+    rel_path: str
+    is_dir: bool
+    size: int | None = None
+    category: str = ""
+
+
+class FileListResponse(BaseModel):
+    path: str
+    entries: list[FileEntry]
+
+
+class FilePreviewResponse(BaseModel):
+    rel_path: str
+    file_type: str
+    content: str | None = None          # text content
+    columns: list[str] | None = None    # CSV columns
+    rows: list[dict[str, Any]] | None = None  # CSV sample rows
+    total_rows: int | None = None
+    truncated: bool = False
+
+
+# ── Health ────────────────────────────────────────────────────────────────────
+
+class UpdateApiKeyRequest(BaseModel):
+    api_key: str
+    provider: str = "anthropic"
+
+
+class UpdateApiKeyResponse(BaseModel):
+    success: bool
+    message: str
+
+
+class HealthResponse(BaseModel):
+    status: str = "ok"
+    repo_root: str
+    repo_exists: bool
+    llm_provider: str
+    model_name: str
+    api_key_set: bool

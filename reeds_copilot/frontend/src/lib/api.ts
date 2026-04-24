@@ -1,0 +1,135 @@
+/** Thin API client for the ReEDS-Copilot backend. */
+
+const BASE = "/api"; // proxied by Vite to http://127.0.0.1:8000
+
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(`${BASE}${path}`, init);
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`API ${res.status}: ${body}`);
+  }
+  return res.json() as Promise<T>;
+}
+
+function post<T>(path: string, body: unknown): Promise<T> {
+  return request<T>(path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}
+
+/* ── Types ────────────────────────────────────────────────────────────────── */
+
+export interface SourceSnippet {
+  file_path: string;
+  snippet: string;
+  match_type: string;
+  score: number;
+}
+
+export interface ChatResponse {
+  answer: string;
+  sources: SourceSnippet[];
+}
+
+export interface SearchResult {
+  file_path: string;
+  snippet: string;
+  match_type: string;
+  score: number;
+}
+
+export interface SearchResponse {
+  results: SearchResult[];
+  total: number;
+}
+
+export interface FileEntry {
+  name: string;
+  rel_path: string;
+  is_dir: boolean;
+  size: number | null;
+  category: string;
+}
+
+export interface FileListResponse {
+  path: string;
+  entries: FileEntry[];
+}
+
+export interface FilePreviewResponse {
+  rel_path: string;
+  file_type: string;
+  content?: string | null;
+  columns?: string[] | null;
+  rows?: Record<string, unknown>[] | null;
+  total_rows?: number | null;
+  truncated: boolean;
+}
+
+export interface HealthResponse {
+  status: string;
+  repo_root: string;
+  repo_exists: boolean;
+  llm_provider: string;
+  model_name: string;
+  api_key_set: boolean;
+}
+
+/* ── Endpoints ────────────────────────────────────────────────────────────── */
+
+export function chatAPI(
+  message: string,
+  mode: string,
+  selectedPath?: string | null,
+): Promise<ChatResponse> {
+  return post<ChatResponse>("/chat", {
+    message,
+    mode,
+    selected_path: selectedPath ?? null,
+  });
+}
+
+export function searchAPI(
+  query: string,
+  category: string = "all",
+  maxResults: number = 10,
+): Promise<SearchResponse> {
+  return post<SearchResponse>("/search", {
+    query,
+    category,
+    max_results: maxResults,
+  });
+}
+
+export function listFilesAPI(path: string = "."): Promise<FileListResponse> {
+  return request<FileListResponse>(
+    `/files/list?path=${encodeURIComponent(path)}`,
+  );
+}
+
+export function previewFileAPI(path: string): Promise<FilePreviewResponse> {
+  return request<FilePreviewResponse>(
+    `/files/preview?path=${encodeURIComponent(path)}`,
+  );
+}
+
+export function healthAPI(): Promise<HealthResponse> {
+  return request<HealthResponse>("/health");
+}
+
+export interface UpdateApiKeyResponse {
+  success: boolean;
+  message: string;
+}
+
+export function updateApiKeyAPI(
+  apiKey: string,
+  provider: string = "anthropic",
+): Promise<UpdateApiKeyResponse> {
+  return post<UpdateApiKeyResponse>("/config/api-key", {
+    api_key: apiKey,
+    provider,
+  });
+}
