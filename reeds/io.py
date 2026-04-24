@@ -619,10 +619,9 @@ def standardize_case(case=None):
     return case
 
 
-def get_switches(case=None, **kwargs):
+def get_switches_base(case=None, **kwargs):
     """
-    Get pd.Series of switch values from switches.csv, ra_switches.csv,
-    and solver settings file.
+    Get pd.Series of switch values from switches.csv.
     Accepts either {case} or {case}/inputs_case as input.
 
     If {case} is None, the default switch values listed in cases.csv are retrieved.
@@ -646,6 +645,44 @@ def get_switches(case=None, **kwargs):
             index_col=0,
             header=None,
         ).squeeze(1)
+    return sw
+
+
+def get_optfile(case=None, **kwargs):
+    """
+    Get the name of the optfile used by GAMS, formatted as described by
+    https://gams.com/49/docs/UG_GamsCall.html#GAMSAOoptfile
+    """
+    sw = reeds.io.get_switches_base(case, **kwargs)
+    GSw_gopt = int(sw.GSw_gopt)
+    if GSw_gopt == 1:
+        suffix = 'opt'
+    elif len(str(GSw_gopt)) == 1:
+        suffix = f'op{GSw_gopt}'
+    elif len(str(GSw_gopt)) == 2:
+        suffix = f'o{GSw_gopt}'
+    else:
+        suffix = str(GSw_gopt)
+    optfile = f'{sw.solver}.{suffix}'.lower()
+    return optfile
+
+
+def get_switches(case=None, **kwargs):
+    """
+    Get pd.Series of switch values from switches.csv, ra_switches.csv,
+    and solver settings file.
+    Accepts either {case} or {case}/inputs_case as input.
+
+    If {case} is None, the default switch values listed in cases.csv are retrieved.
+
+    If additional keyword arguments are provided, they replace the values specified
+    in {case}. This behavior can be used to read all the switches for a case (or all
+    the default settings) but change a single switch to a different value (when
+    making plots for different input settings, for example). If a key is provided
+    that is not a valid switch name, it is ignored.
+    """
+    case = standardize_case(case)
+    sw = get_switches_base(case)
     ### Resource-adequacy-specific switches
     try:
         fpath_asw = os.path.join(
@@ -679,22 +716,22 @@ def get_switches(case=None, **kwargs):
     sw['future_hydcf_rep_years_list'] = [
         int(y) for y in sw.get('GSw_FutureHydCF_RepYears', _fallback).split('_')
     ]
-    ### Get number of threads to use in PRAS
-    opt_file = reeds.inputs.get_optfile(case)
-    try:
-        threads = get_param_value(os.path.join(case, 'reeds', 'solver', opt_file), "threads", dtype=int)
-    except (FileNotFoundError, TypeError):
-        threads = get_param_value(os.path.join(reeds_path, 'reeds', 'solver', opt_file), "threads", dtype=int)
+    ## Get number of threads to use in PRAS
+    opt_file = reeds.io.get_optfile(case)
+    fpath_opt = Path(case, 'reeds', 'solver', opt_file)
+    if not fpath_opt.is_file():
+        fpath_opt = Path(reeds_path, 'reeds', 'solver', opt_file)
+    threads = get_param_value(fpath_opt, "threads", dtype=int)
     sw['threads'] = threads
-    ### Determine whether run is on HPC
+    ## Determine whether run is on HPC
     sw['hpc'] = True if int(os.environ.get('REEDS_USE_SLURM', 0)) else False
-    ### Add the run location
+    ## Add the run location
     sw['casedir'] = case
     sw['reeds_path'] = reeds_path if case is None else os.path.dirname(os.path.dirname(case))
-    ### Get the number of hours per period to use in plots
+    ## Get the number of hours per period to use in plots
     sw['hoursperperiod'] = {'day': 24, 'wek': 120, 'year': 24}[sw['GSw_HourlyType']]
     sw['periodsperyear'] = {'day': 365, 'wek': 73, 'year': 365}[sw['GSw_HourlyType']]
-
+    ### Overwrite values with keyword arguments if provided
     for key, value in kwargs.items():
         if key in sw.keys():
             sw[key] = value

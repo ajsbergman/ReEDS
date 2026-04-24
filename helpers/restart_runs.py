@@ -89,7 +89,7 @@ for case in runs_failed:
     #%% Copy the solver settings file if desired
     if copy_solver_settings:
         fpath_settings = Path(
-            reeds.io.reeds_path, 'reeds', 'solver', reeds.inputs.get_optfile(case)
+            reeds.io.reeds_path, 'reeds', 'solver', reeds.io.get_optfile(case)
         )
         shutil.copy(fpath_settings, os.path.join(case,''))
 

@@ -1302,7 +1302,7 @@ def write_miscellaneous_files(
     """
     ### Solver file
     case = Path(inputs_case).parent
-    optfile = reeds.inputs.get_optfile(case)
+    optfile = reeds.io.get_optfile(case)
     shutil.copy(Path(reeds_path, 'reeds', 'solver', optfile), case)
 
     ### Parsed switches

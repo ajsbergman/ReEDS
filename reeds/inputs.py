@@ -338,25 +338,6 @@ def parse_cases(
     return dfcases_out
 
 
-def get_optfile(case=None, **kwargs):
-    """
-    Get the name of the optfile used by GAMS, formatted as described by
-    https://gams.com/49/docs/UG_GamsCall.html#GAMSAOoptfile
-    """
-    sw = reeds.io.get_switches(case, **kwargs)
-    GSw_gopt = int(sw.GSw_gopt)
-    if GSw_gopt == 1:
-        suffix = 'opt'
-    elif len(str(GSw_gopt)) == 1:
-        suffix = f'op{GSw_gopt}'
-    elif len(str(GSw_gopt)) == 2:
-        suffix = f'o{GSw_gopt}'
-    else:
-        suffix = str(GSw_gopt)
-    optfile = f'{sw.solver}.{suffix}'.lower()
-    return optfile
-
-
 def solvestring_sequential(
         batch_case, caseSwitches,
         cur_year, next_year, prev_year, restartfile,
