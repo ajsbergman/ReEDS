@@ -1151,7 +1151,7 @@ set dispatchtech(i)                 "technologies that are dispatchable",
 noret_upgrade_tech(i)$hyd_add_pump(i) = yes ;
 noret_upgrade_tech(i)$[(coal_ccs(i) or gas_cc_ccs(i))$upgrade(i)$Sw_CCS_NoRetire] = yes ;
 dispatchtech(i)$[not(vre(i) or hydro_nd(i) or ban(i))] = yes ;
-sccapcosttech(i)$[geo(i) or hydro(i) or psh(i) or dr_shed(i) or dr_shape(i) or dr_shift(i) ] = yes ;
+sccapcosttech(i)$[hydro(i) or psh(i) or dr_shed(i) or dr_shape(i) or dr_shift(i) ] = yes ;
 
 *initialize sets to "no"
 retiretech(i,v,r,t) = no ;

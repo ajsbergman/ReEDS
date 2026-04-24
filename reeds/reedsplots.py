@@ -2753,7 +2753,6 @@ def map_capacity_techs(
         _vmax = dfcap.loc[
             dfcap.i.isin(techs) & (dfcap.t.astype(int)==year)
         ].groupby(['i','r']).MW.sum().max() / 1e3
-        _vmax=2
     else:
         _vmax = None
     ### Arrange the subplots
@@ -6736,106 +6735,6 @@ def map_output_byyear(
                 **kwargs,
             )
     return f, ax, dictplot
-
-def evmc_resource_compare(case, year,savepath, region = 'p1'):
-
-    evmc_storage_input_files = {'Charge':'evmc_storage_profile_increase.csv',
-                                'Discharge':'evmc_storage_profile_decrease.csv',
-                                'Energy':'evmc_storage_profile_energy.csv',}
-
-    evmc_storage_rep_files = {'Charge':'evmc_storage_charge.csv',
-                            'Discharge':'evmc_storage_discharge.csv',
-                            'Energy':'evmc_storage_profile_energy.csv',}
-
-    evmc_storage_displatch_rep_files = {'Charge':'gen_h.csv',
-                            'Discharge':'gen_h.csv',
-                            'Energy':'stor_level.csv',}
-
-    output_csv = pd.DataFrame()
-
-    baseline_dfs ={}
-    for k,v in evmc_storage_input_files.items():
-        df = pd.read_csv(fr"{case}\inputs_case\{v}")
-        df = df.loc[(df.i == 'evmc_storage_ldv') & (df.year == year)]
-        df['date'] = pd.date_range(start=f'1/1/{year}', periods=8760, freq='H')
-        df.set_index('date', inplace=True)
-        baseline_dfs[k] = df
-        temp = df.rename(columns = {region:f'baseline_{k}'})
-        output_csv = pd.concat((output_csv,temp[[f'baseline_{k}']]),axis = 1)
-
-    rep_dfs = {}
-    for k,v in evmc_storage_rep_files.items():
-        df = pd.read_csv(os.path.join(case,'inputs_case','rep',v))
-        hr_map = pd.read_csv(os.path.join(case,'inputs_case','rep','hmap_myr.csv'))
-        df = pd.merge(left = df,right = hr_map, on = 'h', how = 'outer')
-        df = df.loc[(df.t == year)& (df['**i'] == 'evmc_storage_ldv')]
-        df = df.loc[df.r == region].sort_values('yearhour').rename(columns = {'t':'year'})
-        df['date'] = pd.date_range(start=f'1/1/{year}', periods=8760, freq='H')
-        df.set_index('date', inplace=True)
-        df = df[['Values']]
-        rep_dfs[k] = df
-        output_csv = pd.concat((output_csv,df.rename(columns = {'Values':f'rep_{k}'})),axis = 1)
-
-    rep_gen = {}
-    for k,v in evmc_storage_displatch_rep_files.items():
-        df = pd.read_csv(os.path.join(case,'outputs',v)).rename(columns = {'Value':'GEN','allh':'h'})
-        cap = pd.read_csv(os.path.join(case,'outputs','cap.csv')).rename(columns = {'Value':'CAP','allh':'h'})
-        df = pd.merge(left = df, right = cap)
-        hr_map = pd.read_csv(os.path.join(case,'inputs_case','rep','hmap_myr.csv'))
-        df = pd.merge(left = df,right = hr_map, on = 'h', how = 'outer')
-        df = df.loc[(df.t == year)& (df['i'].str.lower() == 'evmc_storage_ldv')]
-        df = df.loc[df.r == region].sort_values('yearhour').rename(columns = {'t':'year'})
-        temp = pd.DataFrame({'yearhour':range(1,8761),'date':pd.date_range(start=f'1/1/{year}', periods=8760, freq='H')})
-        df = pd.merge(left = temp, right = df, how = 'outer').fillna(0)
-        df.set_index('date', inplace=True)
-        df['Values'] = df.GEN/df.CAP
-        if k == 'Charge':
-            df.Values *= -1
-        df.Values
-        df.loc[df.Values <0,'Values'] = 0
-        df = df[['Values']]
-        rep_gen[k] = df
-        output_csv = pd.concat((output_csv,df.rename(columns = {'Values':f'deploy_{k}'})),axis = 1)
-
-    plots_evmc = {'EVMC Resource': {'Energy':(baseline_dfs['Energy'],'k','line'),
-                                'Charge':(baseline_dfs['Charge'],'red','fill'),
-                                'Discharge':(baseline_dfs['Discharge'],'green','fill')},
-                'EVMC Rep-period: Charge': {'Baseline':(baseline_dfs['Charge'],'k','line'),
-                                            'Rep':(rep_dfs['Charge'],'grey','fill'),
-                                            'Deploy':(rep_gen['Charge'],'red','line')},
-                'EVMC Rep-period: Discharge': {'Baseline':(baseline_dfs['Discharge'],'k','line'),
-                                            'Rep':(rep_dfs['Discharge'],'grey','fill'),
-                                            'Deploy':(rep_gen['Discharge'],'red','line')},
-                'EVMC Rep-period: Energy': {'Baseline':(baseline_dfs['Energy'],'k','line'),
-                                            'Rep':(rep_dfs['Energy'],'grey','fill'),
-                                            'Deploy':(rep_gen['Energy'],'red','line')},
-            }
-
-    output_csv.to_csv(os.path.join(os.path.split(savepath)[0],f"evmc_storage-{region}-{year}.csv"))
-
-    save_dict = {}
-    # Plot Charge, Discharge, Energy together through year
-    for title, plot_dict in plots_evmc.items():
-        key = list(plot_dict.keys())
-        plot_dict[key[0]][0]['Unit'] = 1
-        f,ax = plots.plotyearbymonth(
-            plot_dict[key[0]][0],
-            plotcols= ('Unit'),
-            colors=['grey'], style='line', lwforline=0.5, ls = ':'
-        )
-        for k in key:
-            plots.plotyearbymonth(
-                plot_dict[k][0], 
-                plotcols= ([region] if region in plot_dict[k][0].columns else 'Values'),
-                colors=[plot_dict[k][1]], alpha = 0.5,
-                style = plot_dict[k][2],
-                f=f, ax=ax,
-            )
-        ax.flat[0].set_title(f'{title}: {year}, {region}')
-
-        savename = f"evmc_storage-{title.replace(':','').replace(' ','_')}-{region}-{year}.png"
-        f.savefig(os.path.join(savepath, savename))
-
 
 
 def dr_shift_resource_compare(case, year,savepath, region = 'p1', shift_tech = 'dr_shift_1'):

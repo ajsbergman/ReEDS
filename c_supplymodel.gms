@@ -1065,8 +1065,8 @@ eq_rsc_INVlim(r,i,rscbin,t)$[tmodel(t)
 
 *capacity indicated by the resource supply curve (scaled by rsc_capacity_scalar)
     m_rsc_dat(r,i,rscbin,"cap") * (
-        1$(not rsc_capacity_scalar_i(i)) + rsc_capacity_scalar(i,r,t)$rsc_capacity_scalar_i(i) 
-        )
+        1$(not rsc_capacity_scalar_i(i)) + rsc_capacity_scalar(i,r,t)$rsc_capacity_scalar_i(i) )
+        
 * available hydro upgrade capacity
     + hyd_add_upg_cap(r,i,rscbin,t)$(Sw_HydroCapEnerUpgradeType=1)
 
@@ -1075,7 +1075,7 @@ eq_rsc_INVlim(r,i,rscbin,t)$[tmodel(t)
 *must exceed the cumulative invested capacity in that region/class/bin...
     sum{(ii,v,tt)$[valinv(ii,v,r,tt)$(yeart(tt) <= yeart(t))$rsc_agg(i,ii)],
          INV_RSC(ii,v,r,rscbin,tt) * resourcescaler(ii) }
-    
+
 *plus exogenous (pre-start-year) capacity, using its level in the first year (tfirst)
     + sum{(ii,v,tt)$[tfirst(tt)$rsc_agg(i,ii)$exog_rsc(i)],
          capacity_exog_rsc(ii,v,r,rscbin,tt) }
@@ -1259,7 +1259,6 @@ eq_capacity_limit(i,v,r,h,t)
 *[plus] power consumed for flexible ccs
     + CCSFLEX_POW(i,v,r,h,t) $[ccsflex(i)$(Sw_CCSFLEX_BYP OR Sw_CCSFLEX_STO OR Sw_CCSFLEX_DAC)]
 ;
-
 
 * ---------------------------------------------------------------------------
 * For hybrid resources, the sum of generation from constituent resources is
@@ -3085,7 +3084,7 @@ eq_storage_capacity(i,v,r,h,t)
 ;
 * ---------------------------------------------------------------------------
 * demand shifting specific storage constraints to handle 0 avaialbility fractions of charge/disharge.
-* constain generation from demand shifting storage to be less than or equal 
+* constrain generation from demand shifting storage to be less than or equal 
 * to capacity adjusted for availability fraction
 
 * DR shift resource can only generate when discharge fraction is non-zero

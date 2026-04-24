@@ -1136,7 +1136,7 @@ else:
     dfmap_r_agg.r = dfmap_r_agg.r.map(r2aggreg)
     dfmap_r_agg = dfmap_r_agg.dissolve('r').loc[aggreg2anchorreg.index].copy()
 
-    ## Map endpoints to anchor regions 
+    ## Map endpoints to anchor regions
     for j in ['x','y']:
         dfmap_r_agg[j] = dfmap['r'][j].loc[dfmap_r_agg[j].index.map(aggreg2anchorreg)].values
         dfmap_r_agg[f'centroid_{j}'] = dfmap_r_agg.centroid.x if j == 'x' else dfmap_r_agg.centroid.y

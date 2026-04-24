@@ -840,7 +840,7 @@ def main(
     state2r = disagg_data.groupby('state')['r'].unique().apply(list).to_dict()
     if int(sw["GSw_DRShed"]) and write:
         # DR Shed input data at state-level, need to assign to model resolution
-        # State cost are uniformaly distributed across model regions within the state 
+        # State cost are uniformly distributed across model regions within the state 
         # State capacity is distributed based on load 
 
         # Calculate state-to-region aggregation/disaggregation factors
@@ -876,6 +876,28 @@ def main(
         dr_shed_cap['class'] = dr_shed_cap['tech']
         dr_shed_cost = dr_shed_cost_reg.copy()
         dr_shed_cost['class'] = dr_shed_cost['tech']
+
+        dr_shed_cap = (pd.melt(dr_shed_cap, id_vars=['tech','class'])
+                    .set_index(['tech','class','variable'])
+                    .sort_index())
+        dr_shed_cap = dr_shed_cap.reset_index()
+        dr_shed_cost = pd.melt(dr_shed_cost, id_vars=['tech','class'])
+
+        # Convert dollar year
+        dr_shed_cost[dr_shed_cost.select_dtypes(include=['number']).columns] *= deflate['dr_shed']
+
+        # Assign rsc cat
+        dr_shed_cap['var'] = 'cap'
+        dr_shed_cost['var'] = 'cost'
+
+        # Combined cost and capacity
+        dr_shed_dat = pd.concat([dr_shed_cap, dr_shed_cost])
+        dr_shed_dat['bin'] = dr_shed_dat['class'].map(lambda x: x.replace('dr_shed_','bin'))
+        dr_shed_dat['class'] = dr_shed_dat['class'].map(lambda x: x.replace('dr_shed_',''))
+
+        dr_shed_dat.rename(columns={'variable':'r','bin':'variable'}, inplace=True)
+        dr_shed_dat = dr_shed_dat[['tech','r','value','var','variable']].fillna(0)
+        allout_list.append(dr_shed_dat)
     
     if write:
         # Update supply curve capacity multiplier from state-level to region-level
@@ -895,9 +917,9 @@ def main(
             dr_shed_capacity_scalar_reg = pd.concat(dr_shed_capacity_scalar_reg.values(), ignore_index=True)
             dr_shed_capacity_scalar_reg.to_csv(os.path.join(inputs_case,'dr_shed_capacity_scalar.csv'), index=False)
 
-    if int(sw.GSw_DRShed) == 1:
-        dr_shed_dat = process_dr_sc_data('dr_shed', 'dr_shed')
-        allout_list.append(dr_shed_dat)
+    # if int(sw.GSw_DRShed) == 1:
+    #     dr_shed_dat = process_dr_sc_data('dr_shed', 'dr_shed')
+    #     allout_list.append(dr_shed_dat)
 
     if int(sw.GSw_DRShape) == 1:
         dr_shape_dat = process_dr_sc_data('dr_shape', 'dr_shape')

@@ -1213,8 +1213,8 @@ def main(sw, reeds_path, inputs_case, periodtype='rep', make_plots=1, logging=Tr
         # identify year      
         t = int(periodtype[6:10])
 
-        # IEF demonstration data only for 1 weather year
-        if sw.dr_shedscen == 'demo_data_IEF_January_2025':
+        # Shed demonstration data only for 1 weather year
+        if sw.dr_shedscen == 'demo_data_January_2025':
             # each year (2030-2050) has a different dr shed profile
             # prior years assume 2030 data
             t_set = max(t, 2030)
