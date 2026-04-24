@@ -1,0 +1,8 @@
+{
+    "national_demand_source": "/projects/largeload/geospatial/runs/random_forest_base_weights_01_09_2026/downscaling_2026-01-07_agg64/eer_national_central/eer_national_central_downscaled_projections.csv",
+    "cooling_proportions_source": "/projects/largeload/reVeal2ReEDS/files/{scenario}_dc_cooling_prop.csv",
+    "propagation_source": "/projects/largeload/reVeal2ReEDS/files/weather_year_propagation.csv",
+    "replace_existing_data_center_demand": true,
+    "scenario": "central",
+    "state_proportions_source": "/projects/eerload/source_eer_load_profiles/20250512_eer_download/shape_outputs_2025-05-12/annual_files/data center load allocation ADP 2024.xlsx"
+}

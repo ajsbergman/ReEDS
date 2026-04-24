@@ -9,6 +9,19 @@ import os
 import pandas as pd
 import site
 from types import SimpleNamespace
+from reveal2reeds import reveal2reeds
+
+def get_reveal2reeds_config() -> dict:
+    configpath = "reveal2reeds/config.json"
+    with open(configpath, "r") as f:
+        config = json.load(f, object_pairs_hook=OrderedDict)
+    reveal2reeds_config = SimpleNamespace(**config)
+    reveal2reeds_config.cooling_proportions_source = (
+        reveal2reeds_config.cooling_proportions_source
+        .format(scenario=reveal2reeds_config.scenario)
+    )
+
+    return reveal2reeds_config
 
 def get_state_name_code_map(reeds_path: str) -> dict:
     """
@@ -269,6 +282,17 @@ def create_hourly_state_load_for_model_year(
         compression='gzip',
         parse_dates=['weather_datetime']
     )
+
+    # If applicable, replace data center cooling and IT projections with
+    # custom projections specified in reveal2reeds/config.json
+    if model_year in cf.custom_data_center_projection_years:
+        reveal2reeds_config = get_reveal2reeds_config()
+        df_load = reveal2reeds.apply_custom_data_center_demand_projections(
+            df_load,
+            model_year,
+            reveal2reeds_config
+        )
+
     # Downselect to specified weather years
     df_load = df_load.loc[df_load.weather_datetime.dt.year.isin(weather_years)]
 
