@@ -1,60 +1,77 @@
 #!/usr/bin/env bash
-# ReEDS-Copilot — one-click launcher (Linux / macOS / Git Bash on Windows)
+# ReEDS-Copilot — one-click launcher (Linux / macOS / Git Bash)
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$SCRIPT_DIR"
 
-echo "============================================"
-echo "  ReEDS-Copilot  —  Starting up..."
-echo "============================================"
+echo
+echo "  ╔══════════════════════════════════════════╗"
+echo "  ║         ReEDS-Copilot  Launcher          ║"
+echo "  ╚══════════════════════════════════════════╝"
 echo
 
-# ── Backend setup ────────────────────────────
-echo "[1/4] Setting up backend Python environment..."
-if [ ! -d "backend/.venv" ]; then
-    echo "       Creating virtual environment..."
-    python3 -m venv backend/.venv
+# ── Check Python ─────────────────────────────
+echo "  [1/5] Checking Python..."
+if ! command -v python3 &>/dev/null && ! command -v python &>/dev/null; then
+    echo "  ERROR: Python not found. Install Python 3.10+."
+    exit 1
 fi
-source backend/.venv/bin/activate
+PY=$(command -v python3 || command -v python)
+echo "        Found $($PY --version)"
 
-echo "[2/4] Installing backend dependencies..."
-pip install -q -r backend/requirements.txt
+# ── Check Node.js ────────────────────────────
+echo "  [2/5] Checking Node.js..."
+if ! command -v node &>/dev/null; then
+    echo "  ERROR: Node.js not found. Install Node.js 18+ from https://nodejs.org"
+    exit 1
+fi
+echo "        Found Node $(node --version)"
 
-# ── Frontend setup ───────────────────────────
-echo "[3/4] Installing frontend dependencies..."
-if [ ! -d "frontend/node_modules" ]; then
-    (cd frontend && npm install)
+# ── Backend dependencies ─────────────────────
+echo "  [3/5] Installing backend dependencies..."
+$PY -m pip install -q -r backend/requirements.txt
+echo "        Done."
+
+# ── Frontend dependencies ────────────────────
+echo "  [4/5] Installing frontend dependencies..."
+if [ ! -d "frontend/node_modules/vite" ]; then
+    echo "        Running npm install (first time only)..."
+    (cd frontend && npm install --silent)
 else
-    echo "       node_modules already present, skipping."
+    echo "        Already installed, skipping."
 fi
 
 # ── Launch servers ───────────────────────────
-echo "[4/4] Starting servers..."
+echo "  [5/5] Starting servers..."
 echo
 
-# Start backend in background
-(cd backend && uvicorn app.main:app --host 127.0.0.1 --port 8000) &
+# Kill leftover processes
+lsof -ti:8000 2>/dev/null | xargs kill -9 2>/dev/null || true
+lsof -ti:5173 2>/dev/null | xargs kill -9 2>/dev/null || true
+
+# Start backend
+(cd backend && $PY -m uvicorn app.main:app --host 127.0.0.1 --port 8000) &
 BACKEND_PID=$!
 
-sleep 2
+# Wait for backend
+echo "  Waiting for backend..."
+until curl -s http://127.0.0.1:8000/health >/dev/null 2>&1; do sleep 1; done
+echo "        Backend ready."
 
-# Start frontend in background
+# Start frontend
 (cd frontend && npm run dev) &
 FRONTEND_PID=$!
 
-sleep 4
+# Wait for frontend
+echo "  Waiting for frontend..."
+until curl -s http://localhost:5173 >/dev/null 2>&1; do sleep 1; done
+echo "        Frontend ready."
 
-# ── Open browser ─────────────────────────────
+sleep 1
+
+# Open browser
 URL="http://localhost:5173"
-echo
-echo "============================================"
-echo "  ReEDS-Copilot is running!"
-echo "  Backend  : http://127.0.0.1:8000"
-echo "  Frontend : $URL"
-echo "============================================"
-echo
-
 if command -v xdg-open &>/dev/null; then
     xdg-open "$URL"
 elif command -v open &>/dev/null; then
@@ -64,16 +81,23 @@ else
 fi
 
 echo
-echo "Press Ctrl+C to stop both servers."
+echo "  ╔══════════════════════════════════════════╗"
+echo "  ║       ReEDS-Copilot is running!          ║"
+echo "  ║                                          ║"
+echo "  ║   App:     http://localhost:5173          ║"
+echo "  ║   API:     http://127.0.0.1:8000         ║"
+echo "  ║                                          ║"
+echo "  ║   Press Ctrl+C to stop and exit.         ║"
+echo "  ╚══════════════════════════════════════════╝"
+echo
 
-# Clean up on exit
 cleanup() {
     echo
-    echo "Stopping servers..."
+    echo "  Stopping servers..."
     kill "$BACKEND_PID" 2>/dev/null || true
     kill "$FRONTEND_PID" 2>/dev/null || true
     wait 2>/dev/null
-    echo "Done."
+    echo "  Done. Goodbye!"
 }
 trap cleanup EXIT INT TERM
 

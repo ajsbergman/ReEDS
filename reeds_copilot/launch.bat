@@ -1,68 +1,116 @@
 @echo off
-setlocal
-title ReEDS-Copilot Launcher
-
+setlocal enabledelayedexpansion
+title ReEDS-Copilot
 cd /d "%~dp0"
 
-echo ============================================
-echo   ReEDS-Copilot  —  Starting up...
-echo ============================================
+echo.
+echo   ========================================
+echo       ReEDS-Copilot  Launcher
+echo   ========================================
 echo.
 
-:: ── Backend setup ────────────────────────────
-echo [1/4] Setting up backend Python environment...
-if not exist "backend\.venv\Scripts\python.exe" (
-    echo       Creating virtual environment...
-    python -m venv backend\.venv
+:: ── Check Python ─────────────────────────────
+echo   [1/5] Checking Python...
+where python >nul 2>&1
+if errorlevel 1 (
+    echo   ERROR: Python not found. Install Python 3.10+ and add it to PATH.
+    goto :fail
 )
-call backend\.venv\Scripts\activate.bat
+for /f "tokens=*" %%i in ('python --version 2^>^&1') do echo         Found %%i
 
-echo [2/4] Installing backend dependencies...
+:: ── Check Node.js ────────────────────────────
+echo   [2/5] Checking Node.js...
+where node >nul 2>&1
+if errorlevel 1 (
+    echo   ERROR: Node.js not found. Install from https://nodejs.org
+    goto :fail
+)
+for /f "tokens=*" %%i in ('node --version 2^>^&1') do echo         Found Node %%i
+
+:: ── Backend dependencies ─────────────────────
+echo   [3/5] Installing backend dependencies...
 pip install -q -r backend\requirements.txt
+echo         Done.
 
-:: ── Frontend setup ───────────────────────────
-echo [3/4] Installing frontend dependencies...
+:: ── Frontend dependencies ────────────────────
+echo   [4/5] Installing frontend dependencies...
 cd frontend
-if not exist "node_modules" (
+if not exist "node_modules\.package-lock.json" (
+    echo         Running npm install...
     call npm install
 ) else (
-    echo       node_modules already present, skipping.
+    echo         Already installed, skipping.
 )
-cd ..
+cd /d "%~dp0"
 
-:: ── Launch servers ───────────────────────────
-echo [4/4] Starting servers...
+:: ── Start servers ────────────────────────────
+echo   [5/5] Starting servers...
 echo.
 
-:: Start backend in a new minimized window
-start "ReEDS-Copilot Backend" /min cmd /c "call backend\.venv\Scripts\activate.bat && uvicorn app.main:app --host 127.0.0.1 --port 8000 --app-dir backend"
+:: Store the working directory
+set "COPILOT_DIR=%~dp0"
 
-:: Give the backend a moment to bind
-timeout /t 3 /nobreak >nul
+:: Start backend in a minimized window
+start "ReEDS-Copilot Backend" /min cmd /k "cd /d %COPILOT_DIR% && python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --app-dir backend"
 
-:: Start frontend in a new minimized window
-start "ReEDS-Copilot Frontend" /min cmd /c "cd frontend && npm run dev"
+:: Wait for backend (max 30 seconds)
+echo   Waiting for backend...
+set /a TRIES=0
+:wait_backend
+if !TRIES! geq 30 (
+    echo   ERROR: Backend did not start in 30 seconds.
+    goto :fail
+)
+timeout /t 1 /nobreak >nul
+set /a TRIES+=1
+python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')" >nul 2>&1
+if errorlevel 1 goto :wait_backend
+echo         Backend ready.
 
-:: Wait for Vite to be ready
-echo Waiting for frontend to start...
-timeout /t 5 /nobreak >nul
+:: Start frontend in a minimized window
+start "ReEDS-Copilot Frontend" /min cmd /k "cd /d %COPILOT_DIR%frontend && npm run dev"
+
+:: Wait for frontend (max 30 seconds)
+echo   Waiting for frontend...
+set /a TRIES=0
+:wait_frontend
+if !TRIES! geq 30 (
+    echo   ERROR: Frontend did not start in 30 seconds.
+    goto :fail
+)
+timeout /t 1 /nobreak >nul
+set /a TRIES+=1
+python -c "import urllib.request; urllib.request.urlopen('http://localhost:5173')" >nul 2>&1
+if errorlevel 1 goto :wait_frontend
+echo         Frontend ready.
 
 :: Open browser
-echo.
-echo ============================================
-echo   ReEDS-Copilot is running!
-echo   Backend  : http://127.0.0.1:8000
-echo   Frontend : http://localhost:5173
-echo ============================================
-echo.
-echo   Opening browser...
+timeout /t 1 /nobreak >nul
 start "" http://localhost:5173
 
 echo.
-echo Press any key to STOP both servers and exit.
+echo   ========================================
+echo       ReEDS-Copilot is running!
+echo.
+echo       App:  http://localhost:5173
+echo       API:  http://127.0.0.1:8000
+echo.
+echo       Press any key to STOP and exit.
+echo   ========================================
+echo.
 pause >nul
 
-:: Kill the server windows
-taskkill /fi "WINDOWTITLE eq ReEDS-Copilot Backend" /f >nul 2>&1
-taskkill /fi "WINDOWTITLE eq ReEDS-Copilot Frontend" /f >nul 2>&1
-echo Servers stopped.
+:: Cleanup
+echo   Stopping servers...
+taskkill /fi "WINDOWTITLE eq ReEDS-Copilot Backend*" /f >nul 2>&1
+taskkill /fi "WINDOWTITLE eq ReEDS-Copilot Frontend*" /f >nul 2>&1
+echo   Done. Goodbye!
+timeout /t 2 /nobreak >nul
+exit /b 0
+
+:fail
+echo.
+echo   Something went wrong. See the error above.
+echo   Press any key to exit.
+pause >nul
+exit /b 1

@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ChatPanel from "./components/ChatPanel";
 import SearchPanel from "./components/SearchPanel";
 import FileBrowser from "./components/FileBrowser";
 import RightPanel from "./components/RightPanel";
 import SettingsPanel from "./components/SettingsPanel";
-import type { SourceSnippet } from "./lib/api";
+import WelcomeScreen from "./components/WelcomeScreen";
+import { healthAPI, type SourceSnippet, type HealthResponse } from "./lib/api";
 
 type Tab = "chat" | "search" | "inputs" | "outputs" | "settings";
 type Mode = "general" | "docs" | "code" | "inputs" | "outputs";
@@ -22,6 +23,30 @@ export default function App() {
   const [mode, setMode] = useState<Mode>("general");
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [sources, setSources] = useState<SourceSnippet[]>([]);
+  const [health, setHealth] = useState<HealthResponse | null>(null);
+  const [showWelcome, setShowWelcome] = useState<boolean | null>(null); // null = loading
+
+  useEffect(() => {
+    healthAPI()
+      .then((h) => {
+        setHealth(h);
+        setShowWelcome(!h.api_key_set);
+      })
+      .catch(() => setShowWelcome(false));
+  }, []);
+
+  // Show nothing while checking
+  if (showWelcome === null) return null;
+
+  // Show welcome/onboarding if no API key
+  if (showWelcome) {
+    return (
+      <WelcomeScreen
+        health={health}
+        onComplete={() => setShowWelcome(false)}
+      />
+    );
+  }
 
   function handleSelectFile(path: string) {
     setSelectedFile(path);
