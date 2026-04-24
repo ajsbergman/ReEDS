@@ -71,7 +71,7 @@ def create_exog_rsc(inputs_case,gendb,TECH,COLNAMES,sw,startyear):
         cap_exog[tech]= gendb.loc[(gendb['tech']==tech) &
                                   (gendb[Sw_onlineyearcol] < startyear)  &
                                   (gendb['RetireYear']     > startyear)].copy()
-        if len(cap_exog[tech]) != 0:
+        if len(cap_exog[tech]) > 0:
             # Assigning each geothermal unit in unit database to a class based on groups' temperatures
             if tech in ['geohydro_allkm','egs_allkm']:
                 cap_exog[tech]["class"] = cap_exog[tech]["reV_mean_resource_temp"].apply(
@@ -92,10 +92,10 @@ def create_exog_rsc(inputs_case,gendb,TECH,COLNAMES,sw,startyear):
 
         cap_exog[tech] = cap_exog[tech][COLNAMES['capexog_rsc'][0]]
         cap_exog[tech].columns = COLNAMES['capexog_rsc'][1]
-        if len(cap_exog[tech]) != 0:
+        if len(cap_exog[tech]) > 0:
             cap_exog[tech] = pd.concat([expand_exog_cap(row, startyear) for _, row in cap_exog[tech].iterrows()],
                 ignore_index=True)
-    if len(cap_exog["upv"]) != 0:
+    if len(cap_exog["upv"]) > 0:
         cap_exog["upv"] = pd.concat([cap_exog[tech] for tech in TECH["rsc_all"] 
                                     if tech in cap_exog and not cap_exog[tech].empty],ignore_index=True)
 
@@ -231,7 +231,7 @@ TECH = {
     ],
     'storage'  : ['battery_li', 'pumped-hydro'
     ],
-    'rsc_all': ['upv','pvb_pv','csp-ns'],
+    'rsc_all': ['upv','dpv','pvb_pv'],
     'rsc_w': ['wind-ons','wind-ofs'],
     'rsc_csp': ['csp-ns'],
     'rsc_wsc': ['upv','pvb_pv','csp-ns','csp-ws','wind-ons','wind-ofs',
