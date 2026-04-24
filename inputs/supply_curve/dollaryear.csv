@@ -1,7 +1,8 @@
 Scenario,Dollar.Year
 BioFeedstockPrice,2004
 dr_shed,2020
-evmc_rsc_Baseline,2020
+dr_shift,2020
+dr_shape,2020
 geo_rsc_ATB_2023,2015
 hydcost,2004
 PSHcostn,2004

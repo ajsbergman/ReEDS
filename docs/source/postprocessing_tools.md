@@ -145,3 +145,4 @@ For more information on this module, see the [retail_rate_module documentation](
 The commercial software Tableau can be used for the analysis and publication of ReEDS results.
 
 For more information on how to use Tableau with ReEDS, see the [Tableau documentation](tableau.md).
+

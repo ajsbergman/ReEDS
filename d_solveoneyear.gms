@@ -146,7 +146,6 @@ tload("%cur_year%") = yes ;
 $gdxin ReEDS_Augur%ds%augur_data%ds%ReEDS_Augur_%prev_year%.gdx
 $loaddcr cc_old_load = cc_old
 $loaddcr cc_mar_load = cc_mar
-$loaddcr cc_evmc_load = cc_evmc
 $loaddcr sdbin_size_load = sdbin_size
 $gdxin
 

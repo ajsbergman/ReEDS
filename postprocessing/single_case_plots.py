@@ -110,7 +110,6 @@ val_r = pd.read_csv(
 ## If year not provided, use final solve year
 year = year if year > 0 else max(years)
 
-
 #%% Transmission line map with disaggregated transmission types
 ### Plot both total capacity (subtract_baseyear=None) and new (subtract_baseyear=2020)
 for subtract_baseyear in [None, 2020]:
@@ -895,3 +894,15 @@ try:
 except Exception:
     print('map_hybrids failed:')
     print(traceback.format_exc())
+
+
+#%% DR Shiftresource plots
+try: 
+    if int(sw.GSw_DRShift) == 1:
+        dr_plots = reedsplots.dr_shift_resource_compare(
+            case = case,
+            year = year,
+            savepath = savepath,
+        )
+except:
+    print('dr_shift_resource plots failed')

@@ -218,17 +218,12 @@ csp_stack = csp_stack[['t','capcost','fom','vom','i']]
 battery = pd.read_csv(os.path.join(inputs_case,'plantchar_battery.csv'))
 battery = deflate_func(battery, sw.plantchar_battery)
 
-evmc_storage = pd.read_csv(os.path.join(inputs_case,'plantchar_evmc_storage.csv'))
-evmc_storage = deflate_func(evmc_storage, 'evmc_storage_' + sw.evmcscen)
-evmc_shape = pd.read_csv(os.path.join(inputs_case,'plantchar_evmc_shape.csv'), dtype = {'fom':float,'vom':float,'rte':float})
-evmc_shape = deflate_func(evmc_shape, 'evmc_shape_' + sw.evmcscen)
-
 #%%############################
 #    -- Concat all data --    #
 ###############################
 
 alldata = pd.concat([conv,upv_stack,wind_stack,geo_stack,csp_stack,battery,
-                     evmc_storage,evmc_shape,beccs,ccsflex,h2combustion],sort=False)
+                     beccs,ccsflex,h2combustion],sort=False)
 
 if sw.upgradescen != 'default':
     alldata = pd.concat([alldata,upgrade])
@@ -330,6 +325,9 @@ else:
 
 ccsflex_perf = pd.read_csv(os.path.join(inputs_case,'plantchar_ccsflex_perf.csv'),index_col=0).round(6)
 hydro = pd.read_csv(os.path.join(inputs_case,'plantchar_hydro.csv'), index_col=0).round(6)
+dr_shed = pd.read_csv(os.path.join(inputs_case,'plantchar_dr_shed.csv'), index_col=0).round(6)
+dr_shape = pd.read_csv(os.path.join(inputs_case,'plantchar_dr_shape.csv'), index_col=0).round(6)
+dr_shift = pd.read_csv(os.path.join(inputs_case,'plantchar_dr_shift.csv'), index_col=0).round(6)
 degrade = pd.read_csv(
 	os.path.join(inputs_case,'degradation_annual.csv'),
 	header=None)
@@ -488,6 +486,8 @@ outwindcfmult.to_csv(os.path.join(inputs_case,'windcfmult.csv'))
 ccsflex_perf.to_csv(os.path.join(inputs_case,'ccsflex_perf.csv'))
 consume_char.to_csv(os.path.join(inputs_case,'consume_char.csv'),index=False)
 hydro.to_csv(os.path.join(inputs_case,'hydrocapcostmult.csv'))
+dr_shape.to_csv(os.path.join(inputs_case,'dr_shape_capcostmult.csv'))
+dr_shift.to_csv(os.path.join(inputs_case,'dr_shift_capcostmult.csv'))
 dr_shed_capcost_mult.to_csv(os.path.join(inputs_case,'dr_shed_capcostmult.csv'))
 dr_shed_fom_regional.to_csv(os.path.join(inputs_case,'plantchar_dr_shed_fom.csv'))
 dr_shed_vom_regional.to_csv(os.path.join(inputs_case,'plantchar_dr_shed_vom.csv'))

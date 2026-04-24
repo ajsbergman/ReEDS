@@ -811,6 +811,30 @@ def main(
     #######################################################
     #    -- Demand Response  --    #
     #######################################################
+    
+    ##### DR Shed, Shape, and Shift #####
+
+    def process_dr_sc_data(file_prefix, deflate_key):
+        cap = pd.read_csv(os.path.join(inputs_case, f'{file_prefix}_cap.csv'))
+        cost = pd.read_csv(os.path.join(inputs_case, f'{file_prefix}_cost.csv'))
+        # DR Shape supply curve data have a column for tech bin included
+        if file_prefix == 'dr_shape' or file_prefix == 'dr_shift':
+            cap = cap.rename(columns = {'rscbin':'class'})
+            cost = cost.rename(columns = {'rscbin':'class'})
+        # DR Shed supply curve data do not have a column for tech bin included
+        # Duplicate the tech column to class column to retain correct file format
+        else:
+            cap['class'], cost['class'] = cap['tech'], cost['tech']
+        cap = pd.melt(cap, id_vars=['tech', 'class']).reset_index()
+        cost = pd.melt(cost, id_vars=['tech', 'class'])
+        cost[cost.select_dtypes(include=['number']).columns] *= deflate[deflate_key]
+        cap['var'], cost['var'] = 'cap', 'cost'
+        data = pd.concat([cap, cost])
+        data['bin'] = data['class'].str.replace(f'{file_prefix}_', 'bin')
+        data['class'] = data['class'].str.replace(f'{file_prefix}_', '')
+        data.rename(columns={'variable': 'r', 'bin': 'variable'}, inplace=True)
+        return data[['tech', 'r', 'value', 'var', 'variable']].fillna(0)
+    # State-level DR shed data - need to modify this section of code to allow for state-level shape and shift data
     # Use capacity and cost to add DR Shed to rsc_combined
     disagg_data = pd.read_csv(os.path.join(inputs_case,'disagg_state_lpf.csv'))
     state2r = disagg_data.groupby('state')['r'].unique().apply(list).to_dict()
@@ -852,29 +876,7 @@ def main(
         dr_shed_cap['class'] = dr_shed_cap['tech']
         dr_shed_cost = dr_shed_cost_reg.copy()
         dr_shed_cost['class'] = dr_shed_cost['tech']
-
-        dr_shed_cap = (pd.melt(dr_shed_cap, id_vars=['tech','class'])
-                    .set_index(['tech','class','variable'])
-                    .sort_index())
-        dr_shed_cap = dr_shed_cap.reset_index()
-        dr_shed_cost = pd.melt(dr_shed_cost, id_vars=['tech','class'])
-
-        # Convert dollar year
-        dr_shed_cost[dr_shed_cost.select_dtypes(include=['number']).columns] *= deflate['dr_shed']
-
-        # Assign rsc cat
-        dr_shed_cap['var'] = 'cap'
-        dr_shed_cost['var'] = 'cost'
-
-        # Combined cost and capacity
-        dr_shed_dat = pd.concat([dr_shed_cap, dr_shed_cost])
-        dr_shed_dat['bin'] = dr_shed_dat['class'].map(lambda x: x.replace('dr_shed_','bin'))
-        dr_shed_dat['class'] = dr_shed_dat['class'].map(lambda x: x.replace('dr_shed_',''))
-
-        dr_shed_dat.rename(columns={'variable':'r','bin':'variable'}, inplace=True)
-        dr_shed_dat = dr_shed_dat[['tech','r','value','var','variable']].fillna(0)
-        allout_list.append(dr_shed_dat)
-
+    
     if write:
         # Update supply curve capacity multiplier from state-level to region-level
         dr_shed_capacity_scalar_state = pd.read_csv(os.path.join(inputs_case,'dr_shed_capacity_scalar.csv'))
@@ -892,7 +894,19 @@ def main(
                 dr_shed_capacity_scalar_reg[st] = pd.concat(scalar_df)
             dr_shed_capacity_scalar_reg = pd.concat(dr_shed_capacity_scalar_reg.values(), ignore_index=True)
             dr_shed_capacity_scalar_reg.to_csv(os.path.join(inputs_case,'dr_shed_capacity_scalar.csv'), index=False)
-            
+
+    if int(sw.GSw_DRShed) == 1:
+        dr_shed_dat = process_dr_sc_data('dr_shed', 'dr_shed')
+        allout_list.append(dr_shed_dat)
+
+    if int(sw.GSw_DRShape) == 1:
+        dr_shape_dat = process_dr_sc_data('dr_shape', 'dr_shape')
+        allout_list.append(dr_shape_dat)
+
+    if int(sw.GSw_DRShift) == 1:  
+        dr_shift_dat = process_dr_sc_data('dr_shift', 'dr_shift')
+        allout_list.append(dr_shift_dat)
+           
     # %%----------------------------------------------------------------------------------
     ##################################
     #    -- Combine everything --    #
@@ -968,7 +982,7 @@ def main(
         alloutm.to_csv(
             os.path.join(inputs_case, "rsc_combined.csv"), index=False, header=True
         )
-    
+
     #%%----------------------------------------------------------------------------------
     #######################
     #    -- Biomass --    #

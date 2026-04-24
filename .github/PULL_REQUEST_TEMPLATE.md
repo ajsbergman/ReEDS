@@ -15,6 +15,10 @@
 
 ### Relevant sources or documentation <!-- if any, otherwise delete -->
 
+
+## Charge code for review
+
+
 ## Validation, testing, and comparison report(s)
 
 <!--
@@ -40,7 +44,7 @@ Include additional illustrative plots describing input data, methods, testing, a
 
 ### Details to double-check
 <!-- Delete or ~~strikethrough~~ if not relevant for this PR -->
-- [ ] Charge code provided to reviewers
+- [ ] Charge code provided for review
 - [ ] Included comparison reports for appropriate test cases
 - [ ] Documentation updated if necessary
   <!--
@@ -63,7 +67,7 @@ Include additional illustrative plots describing input data, methods, testing, a
   - If entries are added/removed/changed in the EIA-NEMS unit database:
     - [ ] Changes have been committed to [ReEDS_Input_Processing](https://github.com/ReEDS-Model/ReEDS_Input_Processing)
     - [ ] `hourlize/resource.py` was rerun to regenerate the existing/prescribed VRE capacity data
-- [ ] Code formatting standardized <!-- Coding conventions: https://reeds-model.github.io/ReEDS/developer_best_practices.html#coding-standards-and-conventions -->
+- [ ] Code formatting standardized <!-- Coding conventions: https://pages.github.nrel.gov/ReEDS/ReEDS-2.0/internal/developer_best_practices.html#coding-standards-and-conventions -->
 - [ ] Reusable functions used where possible instead of copy/pasted code
 
 ### General information to guide review
@@ -86,7 +90,7 @@ Include additional illustrative plots describing input data, methods, testing, a
 <!-- - [ ] Financial calculations: @wcole -->
 <!-- - [ ] FINITO: @molmezt or @cavraam -->
 <!-- - [ ] Hybrids: @aschleif -->
-<!-- - [ ] Monte Carlo: @bsergi -->
+<!-- - [ ] Monte Carlo: @vduraes -->
 <!-- - [ ] Sparse chronology or interday diurnal storage: @ychen10 -->
 <!-- - [ ] State policies: @wcole or @aschleif -->
 <!-- - [ ] Stress periods, resource adequacy, or ReEDS2PRAS/Julia: @pbrown -->
@@ -109,7 +113,7 @@ Include additional illustrative plots describing input data, methods, testing, a
 
 <!-- Technologies -->
 <!-- - [ ] Batteries: @wcole -->
-<!-- - [ ] EV managed charging (EVMC): @mvanatta -->
+<!-- - [ ] Demand Response: @lserpe -->
 <!-- - [ ] Fossil, CCS, or DAC: @mbrown1 -->
 <!-- - [ ] Geothermal: @ssharma2 -->
 <!-- - [ ] Hydropower or PSH: @scohen -->

@@ -436,11 +436,10 @@ set
   csp4(i)              "csp-tes generation technologies 4",
   dac(i)               "direct air capture technologies",
   distpv(i)            "distpv (i.e., rooftop PV) generation technologies",
-  demand_flex(i)       "demand flexibility technologies (includes DR and EVMC)",
-  dr_shed(i)           "DR shed technologies"
-  evmc(i)              "ev flexibility technologies",
-  evmc_storage(i)      "ev flexibility as direct load control",
-  evmc_shape(i)        "ev flexibility as adoptable change to load from response to pricing",
+  demand_flex(i)       "demand flexibility technologies (includes DR)",
+  dr_shed(i)           "DR shed technologies",
+  dr_shape(i)          "DR shape technologies",
+  dr_shift(i)          "DR shift technologies",
   fossil(i)            "fossil technologies"
   fuel_cell(i)         "fuel cell technologies",
   gas_cc_ccs(i)        "techs that are gas combined cycle and have CCS",
@@ -704,10 +703,6 @@ if(Sw_DAC_Gas = 0,
   ban("dac_gas") = yes ;
 );
 
-if(Sw_EVMC = 0,
-  ban(i)$i_subsets(i,'evmc') = yes ;
-) ;
-
 if(Sw_GasCT_Aero = 0,
   ban('Gas-CT_aero') = yes ;
 ) ;
@@ -786,6 +781,14 @@ if(Sw_OnsWind6to10 = 0,
 
 if(Sw_DRShed = 0,
   ban(i)$i_subsets(i,'DR_SHED') = yes ; 
+) ;
+
+if(Sw_DRShape = 0,
+  ban(i)$i_subsets(i,'DR_SHAPE') = yes ; 
+) ;
+
+if(Sw_DRShift = 0,
+  ban(i)$i_subsets(i,'DR_SHIFT') = yes ; 
 ) ;
 
 * always allow PSH to use fresh surface water (fsa, fsu)
@@ -970,10 +973,9 @@ csp4(i)$(not ban(i))                = yes$i_subsets(i,'csp4') ;
 dac(i)$(not ban(i))                 = yes$i_subsets(i,'dac') ;
 distpv(i)$(not ban(i))              = yes$i_subsets(i,'distpv') ;
 dr_shed(i)$(not ban(i))             = yes$i_subsets(i,'dr_shed') ;
+dr_shape(i)$(not ban(i))             = yes$i_subsets(i,'dr_shape') ;
+dr_shift(i)$(not ban(i))            = yes$i_subsets(i,'dr_shift') ;
 demand_flex(i)$(not ban(i))         = yes$i_subsets(i,'demand_flex') ;
-evmc(i)$(not ban(i))                = yes$i_subsets(i,'evmc') ;
-evmc_storage(i)$(not ban(i))        = yes$i_subsets(i,'evmc_storage') ;
-evmc_shape(i)$(not ban(i))          = yes$i_subsets(i,'evmc_shape') ;
 fossil(i)$(not ban(i))              = yes$i_subsets(i,'fossil') ;
 fuel_cell(i)$(not ban(i))           = yes$i_subsets(i,'fuel_cell') ;
 gas_cc_ccs(i)$(not ban(i))          = yes$i_subsets(i,'gas_cc_ccs') ;
@@ -1041,6 +1043,8 @@ tg_i('geothermal',i)$geo(i) = yes ;
 tg_i('biomass',i)$bio(i) = yes ;
 tg_i('pumped-hydro',i)$psh(i) = yes ;
 tg_i('dr_shed',i)$dr_shed(i) = yes ;
+tg_i('dr_shape',i)$dr_shape(i) = yes ;
+tg_i('dr_shift',i)$dr_shift(i) = yes ;
 
 *Hybrid pv+battery (PVB) configurations are defined by:
 *  (1) inverter loading ratio (DC/AC) and
@@ -1147,7 +1151,7 @@ set dispatchtech(i)                 "technologies that are dispatchable",
 noret_upgrade_tech(i)$hyd_add_pump(i) = yes ;
 noret_upgrade_tech(i)$[(coal_ccs(i) or gas_cc_ccs(i))$upgrade(i)$Sw_CCS_NoRetire] = yes ;
 dispatchtech(i)$[not(vre(i) or hydro_nd(i) or ban(i))] = yes ;
-sccapcosttech(i)$[hydro(i) or psh(i) or dr_shed(i)] = yes ;
+sccapcosttech(i)$[geo(i) or hydro(i) or psh(i) or dr_shed(i) or dr_shape(i) or dr_shift(i) ] = yes ;
 
 *initialize sets to "no"
 retiretech(i,v,r,t) = no ;
@@ -2678,6 +2682,9 @@ valgen(i,v,r,t)$valcap(i,v,r,t) = yes ;
 
 * consuming technologies are not allowed to generate
 valgen(i,v,r,t)$consume(i) = no ;
+
+* load modification technologies not allowed to generate
+valgen(i,v,r,t)$dr_shape(i) = no ;
 
 * Remove technologies that are required to retire
 valgen(i,v,r,t)$forced_retire(i,r,t) = no ;
@@ -4325,6 +4332,29 @@ $onlisting
 ;
 $offempty
 
+* Written by plantcostprep.py
+$onempty
+table dr_shape_capmult(i,r,allt) "--unitless-- dr_shape capital cost multipliers over time"
+$offlisting
+$ondelim
+$include inputs_case%ds%dr_shape_capcostmult.csv
+$offdelim
+$onlisting
+;
+$offempty
+
+* Written by plantcostprep.py
+$onempty
+table dr_shift_capmult(i,r,allt) "--unitless-- dr_shift capital cost multipliers over time"
+$offlisting
+$ondelim
+$include inputs_case%ds%dr_shift_capcostmult.csv
+$offdelim
+$onlisting
+;
+$offempty
+
+* Written in input processing repo under Demand_Response
 $onempty
 table dr_shed_capacity_scalar(i,r,allt) "--unitless-- dr_shed capacity multipliers over time"
 $offlisting
@@ -4335,6 +4365,27 @@ $onlisting
 ;
 $offempty
 
+* Written in input processing repo under Demand_Response
+$onempty
+table dr_shape_capacity_scalar(i,r,allt) "--unitless-- dr_shape capacity multipliers over time"
+$offlisting
+$ondelim
+$include inputs_case%ds%dr_shape_capacity_scalar.csv
+$offdelim
+$onlisting
+;
+$offempty
+
+* Written in input processing repo under Demand_Response
+$onempty
+table dr_shift_capacity_scalar(i,r,allt) "--unitless-- dr_shift capacity multipliers over time"
+$offlisting
+$ondelim
+$include inputs_case%ds%dr_shift_capacity_scalar.csv
+$offdelim
+$onlisting
+;
+$offempty
 
 *Written in copy_files.py
 $onempty
@@ -4359,6 +4410,52 @@ $onlisting
 ;
 $offempty
 
+
+*Written in copy_files.py
+$onempty
+table vom_dr_shape(i,r,allt) "--$/MWh-- dr_shed vom costs over time"
+$offlisting
+$ondelim
+$include inputs_case%ds%plantchar_dr_shape_vom.csv
+$offdelim
+$onlisting
+;
+$offempty
+
+
+*Written in copy_files.py
+$onempty
+table fom_dr_shape(i,r,allt) "--$/MWh-- dr_shed vom costs over time"
+$offlisting
+$ondelim
+$include inputs_case%ds%plantchar_dr_shape_fom.csv
+$offdelim
+$onlisting
+;
+$offempty
+
+*Written in copy_files.py
+$onempty
+table vom_dr_shift(i,r,allt) "--$/MWh-- dr_shed vom costs over time"
+$offlisting
+$ondelim
+$include inputs_case%ds%plantchar_dr_shift_vom.csv
+$offdelim
+$onlisting
+;
+$offempty
+
+
+*Written in copy_files.py
+$onempty
+table fom_dr_shift(i,r,allt) "--$/MWh-- dr_shed vom costs over time"
+$offlisting
+$ondelim
+$include inputs_case%ds%plantchar_dr_shift_fom.csv
+$offdelim
+$onlisting
+;
+$offempty
 
 * Written by plantcostprep.py
 table ofswind_rsc_mult(allt,i) "--unitless-- multiplier by year for supply curve cost"
@@ -4403,6 +4500,11 @@ cost_vom(i,v,r,t)$[valcap(i,v,r,t)$hydro(i)] = vom_hyd ;
 * Add VOM cost for dr shed resource to cost_vom
 cost_vom(i,v,r,t)$[valcap(i,v,r,t)$dr_shed(i)] = vom_dr_shed(i,r,t) ;
 
+* Add VOM cost for dr shape resource to cost_vom
+cost_vom(i,v,r,t)$[valcap(i,v,r,t)$dr_shape(i)] = vom_dr_shape(i,r,t) ;
+
+* Add VOM cost for dr shift resource to cost_vom
+cost_vom(i,v,r,t)$[valcap(i,v,r,t)$dr_shift(i)] = vom_dr_shift(i,r,t) ;
 
 * Assign hybrid PV+battery to have the same value as UPV
 parameter cost_vom_pvb_p(i,v,r,t) "--2004$/MWh-- variable OM for the PV portion of hybrid PV+battery " ;
@@ -4512,6 +4614,12 @@ cost_fom(i,v,r,t)$[valcap(i,v,r,t)$hydro(i)$hyd_fom(i,r)] = hyd_fom(i,r) ;
 
 * Add FOM cost for dr shed resource to cost_fom
 cost_fom(i,v,r,t)$[valcap(i,v,r,t)$dr_shed(i)] = fom_dr_shed(i,r,t) ;
+
+* Add FOM cost for dr shape resource to cost_fom
+cost_fom(i,v,r,t)$[valcap(i,v,r,t)$dr_shape(i)] = fom_dr_shape(i,r,t) ;
+
+* Add FOM cost for dr shift resource to cost_fom
+cost_fom(i,v,r,t)$[valcap(i,v,r,t)$dr_shift(i)] = fom_dr_shift(i,r,t) ;
 
 cost_fom(i,initv,r,t)$[(not Sw_BinOM)$valcap(i,initv,r,t)] = sum{tt$tfirst(tt), cost_fom(i,initv,r,tt) } ;
 
@@ -5723,7 +5831,6 @@ parameter storage_eff(i,t) "--fraction-- round-trip efficiency of storage techno
 storage_eff(i,t)$storage(i) = 1 ;
 storage_eff(i,t)$psh(i) = storage_eff_psh ;
 storage_eff(i,t)$[storage(i)$plant_char0(i,t,'rte')] = plant_char0(i,t,'rte') ;
-storage_eff(i,t)$[evmc_storage(i)$plant_char0(i,t,'rte')] = plant_char0(i,t,'rte') ;
 storage_eff(i,t)$pvb(i) = storage_eff("battery_li",t) ;
 
 parameter storage_eff_pvb_p(i,t) "--fraction-- efficiency of hybrid PV+battery when charging from the coupled PV"
@@ -6307,7 +6414,8 @@ parameter rsc_reduct_frac(pcat,r)   "--unitless-- fraction of renewable resource
           rsc_capacity_scalar(i,r,t)    "--unitless-- resource scalar for any technology that has a change in the supply curve capacity over time"
 ;
 
-set rsc_capacity_scalar_i(i) "technologies that have a capacity resource scalar" ;
+set rsc_capacity_scalar_i(i) "technologies that have a capacity resource scalar" 
+;
 
 rsc_reduct_frac(pcat,r) = 0 ;
 prescrip_rsc_frac(pcat,r) = 0 ;
@@ -6338,8 +6446,8 @@ if (Sw_ReducedResource = 1,
           m_rsc_dat(r,i,rscbin,"cap") * (1 - sum{pcat$prescriptivelink(pcat,i), rsc_reduct_frac(pcat,r) }) ;
 ) ;
 
-*Currently only geothermal and dr_shed have supply curve capacities that change over time
-rsc_capacity_scalar(i,r,t) = geo_discovery(i,r,t) + dr_shed_capacity_scalar(i,r,t) ;
+* Only geothermal and dr_shed/shape/shift have supply curve capacities that change over time irrespective of bins
+rsc_capacity_scalar(i,r,t) = geo_discovery(i,r,t)+ dr_shed_capacity_scalar(i,r,t)  +dr_shape_capacity_scalar(i,r,t) + dr_shift_capacity_scalar(i,r,t) ;
 rsc_capacity_scalar_i(i)$[sum{(r,t), rsc_capacity_scalar(i,r,t) }] = yes ;
 
 *convert UPV and PVB interconnection costs from $/MW-AC to $/MW-DC using ILR
@@ -6707,14 +6815,11 @@ Parameter
     load_exog_flex(flex_type,r,allh,t)     "the amount of exogenous load that is flexible"
     load_exog_static(r,allh,t)             "the amount of exogenous load that is static"
     dr_shed_out(i,r,allh)                  "--fraction-- dr shed capacity availability"
-* EVMC storage
-    evmc_storage_discharge_frac(i,r,allh,allt) "--fraction-- fraction of adopted EV storage discharge capacity that can be discharged (deferred charging) in each timeslice h"
-    evmc_storage_charge_frac(i,r,allh,allt)    "--fraction-- fraction of adopted EV storage discharge capacity that can be charged (add back deferred charging) in each timeslice h"
-    evmc_storage_energy_hours(i,r,allh,allt)    "--hours-- Allowable EV storage SOC (quantity deferred EV charge) [MWh] divided by nameplate EVMC discharge capacity [MW]"
-* EVMC load
-    evmc_baseline_load(r,allh,allt)        "--MW-- baseline electricity load from EV charging by timeslice h and year t"
-    evmc_shape_load(i,r,allh)              "--fraction-- fraction of adopted price-responsive (shaped) EV load added by timeslice"
-    evmc_shape_gen(i,r,allh)               "--fraction-- fraction of adopted price-responsive (shaped) EV load subtracted by timeslice"
+    dr_shape_load(i,r,allh,allt)                "--fraction-- fraction of adopted price-responsive DR shape load added by timeslice"
+    dr_shape_gen(i,r,allh,allt)                 "--fraction-- fraction of adopted price-responsive DR shape load subtracted by timeslice"
+    dr_shift_discharge_frac(i,r,allh,allt) "--fraction-- fraction of adopted DR shift discharge capacity that can be discharged in each timeslice h"
+    dr_shift_charge_frac(i,r,allh,allt)    "--fraction-- fraction of adopted DR shift charge capacity that can be charged in each timeslice h"
+    dr_shift_energy_hours(i,r,allh,allt)   "--hours-- Allowable DR shift SOC (quantity deferred DR charge) [MWh] divided by nameplate DR shift discharge capacity [MW]"
 * Flexible Canadian imports/exports [Sw_Canada=1]
     can_imports_szn(r,allszn,t)            "--MWh-- [Sw_Canada=1] seasonal imports from Canada by year"
     can_imports_szn_frac(allszn)           "--fraction-- [Sw_Canada=1] fraction of annual imports that occur in each season"
