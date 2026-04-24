@@ -10,7 +10,6 @@ complex ReEDS output data like system costs, reinforcement transmission, etc.
 import os
 import sys
 import pandas as pd
-import numpy as np
 from itertools import product
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))  
@@ -660,7 +659,7 @@ def calc_transmission_capacity(case,levels):
 
     # pull intra and interregional transmission data into dictionaries for processing
     dict_inter = {}
-    level_map = reeds.output_calc.get_level_map(case)
+    level_map = get_level_map(case)
     hierarchy = reeds.io.get_hierarchy(case)
     for level in levels:
         
@@ -679,7 +678,7 @@ def calc_transmission_capacity(case,levels):
             dict_inter[spatial_resolution] = pd.concat({
                 r: (
                     trans_r.loc[
-                        (trans_r[f'inter_transreg'] == 1)
+                        (trans_r['inter_transreg'] == 1)
                     ].groupby(['trtype','t']).MW.sum()
                     .rename('GW')
                     / 1e3

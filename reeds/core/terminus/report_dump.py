@@ -200,13 +200,13 @@ def postprocess_outputs(case, outputs_path=None, verbose=0):
     _outputs_path = os.path.join(case, 'outputs') if outputs_path is None else outputs_path
 
     ## System cost
-    reeds.output_calc.calc_systemcost(case).to_csv(
+    reeds.results.calc_systemcost(case).to_csv(
         os.path.join(_outputs_path, 'post_systemcost_annualized.csv'),
         index=False,
     )
 
     ## Reinforcement and spur-line 
-    reeds.output_calc.calc_reinforcement_spur_capacity_miles(case).to_csv(
+    reeds.results.calc_reinforcement_spur_capacity_miles(case).to_csv(
         os.path.join(_outputs_path, 'post_tech_transmission.csv'),
         index=False,
     )
