@@ -139,6 +139,57 @@ fuel = fuel.merge(h2fuel,on=['t','r'],how='left')
 fuel = fuel.sort_values(['t','r'])
 
 #%%#################################### 
+### Natural Gas Price Diffs ###
+
+# Regression parameters for calculating natural gas price differences across regions based on degree days
+params = pd.read_csv(os.path.join(reeds_path,'inputs', 'fuelprices', 'temperature_price_regression_parameters.csv'), index_col='param')
+
+# Daily degree days by price region
+daily_dd = reeds.io.get_degree_days(inputs_case, hourly_formula=False)
+
+#apply the regional regression params to get daily multiplicative price differences from the annual price 
+daily_dd['date'] = pd.to_datetime(daily_dd['date'])
+daily_dd['month'] = daily_dd['date'].dt.month
+
+regions = [c for c in daily_dd.columns if c not in ['date','t','ddtype','month']]
+
+# split HDD / CDD
+hdd = daily_dd[daily_dd['ddtype'] == 'hdd'].set_index('date')
+cdd = daily_dd[daily_dd['ddtype'] == 'cdd'].set_index('date')
+
+# align
+hdd, cdd = hdd.align(cdd, join='outer', axis=0, fill_value=0)
+
+out = pd.DataFrame(index=hdd.index)
+
+for r in regions:
+    beta_cdd = params.loc['beta_CDD', r]
+    beta_hdd = params.loc['beta_HDD', r]
+    alpha = params.loc['alpha', r]
+
+    # monthly effects
+    month_map = {
+        i: params.loc[f'alpha_{m}', r]
+        for i, m in enumerate(
+            ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'],
+            start=1
+        )
+    }
+
+    #Align index of month effects with index of hdd/cdd
+    month_effect = hdd.index.month.map(month_map)
+
+    log_ret = (
+        alpha
+        + beta_cdd * cdd[r]
+        + beta_hdd * hdd[r]
+        + month_effect.values
+    )
+
+    out[r] = np.exp(log_ret)
+
+
+#%%#################################### 
 ### Natural Gas Demand Calculations ###
 
 # Natural Gas demand

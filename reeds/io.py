@@ -1920,17 +1920,17 @@ def get_degree_days(case, base_temp_c=18.3333333333, hourly_formula=False):
     inputs_case = os.path.join(case, 'inputs_case')
     sw = reeds.io.get_switches(case)
 
-    #  modeled years for outputs 
+    # modeled years for outputs
     model_years = reeds.io.get_years(case)
     model_years = np.array([y for y in model_years if y <= int(sw.endyear)], dtype=int)
 
-    # weather years for temperature shapes 
+    # weather years for temperature shapes
     weather_years = np.array(
         [int(y) for y in str(sw.GSw_HourlyWeatherYears).split('_') if str(y).strip()],
         dtype=int,
     )
 
-    #  annual ngreg totals 
+    # annual ngreg totals
     ddh = pd.read_csv(
         os.path.join(reeds_path, 'inputs', 'fuelprices', 'ngreg_hdd.csv'),
         index_col=0,
@@ -1941,6 +1941,7 @@ def get_degree_days(case, base_temp_c=18.3333333333, hourly_formula=False):
     )
     ddh.index = ddh.index.astype(int)
     ddc.index = ddc.index.astype(int)
+
     ddh = ddh.loc[ddh.index.intersection(model_years)].copy()
     ddc = ddc.loc[ddc.index.intersection(model_years)].copy()
 
@@ -1963,13 +1964,14 @@ def get_degree_days(case, base_temp_c=18.3333333333, hourly_formula=False):
     pop = pd.read_csv(
         os.path.join(reeds_path, 'inputs', 'disaggregation', 'county_population.csv'),
         dtype={'FIPS': str},
-    )
-    pop = pop.rename(columns={'value': 'population'})
+    ).rename(columns={'value': 'population'})
+
     county_state = pd.read_csv(
         os.path.join(reeds_path, 'inputs', 'zones', 'county_state.csv'),
         dtype={'FIPS': str, 'state': str},
     )
     county_state['FIPS'] = 'p' + county_state['FIPS'].str.zfill(5)
+
     pop_state = (
         pop.merge(county_state[['FIPS', 'state']], on='FIPS', how='left')
         .rename(columns={'state': 'st'})
@@ -1980,28 +1982,41 @@ def get_degree_days(case, base_temp_c=18.3333333333, hourly_formula=False):
         .rename('population')
         .to_frame()
     )
+
     pop_state = pop_state.loc[pop_state.index.intersection(valid_states)].copy()
     pop_state['ngreg'] = pop_state.index.map(st2ngreg)
 
-    # keep only ngregs represented in this case
     active_ngregs = sorted(pop_state['ngreg'].dropna().unique())
 
-    # population share within ngreg
     pop_state['weight'] = (
-        pop_state['population'] /
-        pop_state.groupby('ngreg')['population'].transform('sum')
+        pop_state['population']
+        / pop_state.groupby('ngreg')['population'].transform('sum')
     )
 
-    # read temperature file directly using chosen weather years 
+    # read temperature file using one extra year on each side
     h5path = os.path.join(
         reeds.io.reeds_path, 'inputs', 'profiles_temperature', 'temperature_state.h5'
     )
+
+    read_years = range(weather_years.min() - 1, weather_years.max() + 2)
+
     temp_dict = {}
     with h5py.File(h5path, 'r') as f:
         cols = pd.Series(f['columns']).map(lambda x: x.decode()).tolist()
-        for year in weather_years:
-            timeindex = pd.to_datetime(pd.Series(f[f'index_{year}'][:]).str.decode('utf-8'))
-            temp_dict[year] = pd.DataFrame(index=timeindex, columns=cols, data=f[str(year)])
+
+        for year in read_years:
+            if str(year) not in f:
+                continue
+
+            timeindex = pd.to_datetime(
+                pd.Series(f[f'index_{year}'][:]).str.decode('utf-8')
+            )
+
+            temp_dict[year] = pd.DataFrame(
+                index=timeindex,
+                columns=cols,
+                data=f[str(year)][:]
+            )
 
     temp = (
         pd.concat(temp_dict, names=['weather_year', 'timestamp'])
@@ -2013,35 +2028,44 @@ def get_degree_days(case, base_temp_c=18.3333333333, hourly_formula=False):
         .tz_convert('Etc/GMT+6')
     )
 
-    # keep valid states only
-    temp = temp[[c for c in temp.columns if c in valid_states]].copy()
+    # subset to selected weather years after timezone conversion
+    temp = temp.loc[temp.index.year.isin(weather_years)].copy()
 
-    # drop Dec 31 on leap years after tz conversion if needed
+    # match ReEDS convention; leap years have 8784 hours, drop Dec 31
     counts = temp.iloc[:, :1].groupby(temp.index.year).count().squeeze(1)
     leap_years_present = counts[counts == 8784].index.tolist()
+
     for y in leap_years_present:
         temp.drop(temp.loc[f'{y}-12-31'].index, inplace=True)
 
-    if hourly_formula:
+    expected_hours = len(weather_years) * 8760
+    if len(temp) != expected_hours:
+        raise ValueError(
+            f'len(temp) = {len(temp)} but should be {expected_hours}. '
+            'Check weather_years, timezone conversion, and temperature_state.h5 coverage.'
+        )
 
-        # hourly HDD/CDD by state 
+    # keep valid states only
+    temp = temp[[c for c in temp.columns if c in valid_states]].copy()
+
+    if hourly_formula:
         hdd = (base_temp_c - temp).clip(lower=0)
         cdd = (temp - base_temp_c).clip(lower=0)
 
-        # daily sums by state
         hdd_daily_st = hdd.resample('D').sum()
         cdd_daily_st = cdd.resample('D').sum()
     else:
-
         temp_daily_st = temp.resample('D').agg(['min', 'max'])
 
-        tavg_daily_st = (temp_daily_st.xs('min', axis=1, level=1) +
-                        temp_daily_st.xs('max', axis=1, level=1)) / 2
+        tavg_daily_st = (
+            temp_daily_st.xs('min', axis=1, level=1)
+            + temp_daily_st.xs('max', axis=1, level=1)
+        ) / 2
 
         hdd_daily_st = (base_temp_c - tavg_daily_st).clip(lower=0)
         cdd_daily_st = (tavg_daily_st - base_temp_c).clip(lower=0)
 
-    # weighted aggregation to ngreg 
+    # weighted aggregation to ngreg
     state_weights = pop_state['weight'].to_dict()
     state_ngreg = pop_state['ngreg'].to_dict()
 
@@ -2069,11 +2093,14 @@ def get_degree_days(case, base_temp_c=18.3333333333, hourly_formula=False):
     cdd_daily_reg = cdd_daily_reg.groupby(level=0, axis=1).sum()
     cdd_daily_reg = cdd_daily_reg[[c for c in cdd_daily_reg.columns if c in active_ngregs]]
 
-    #  normalize daily shapes within each weather year 
-    hdd_shape = hdd_daily_reg.div(hdd_daily_reg.groupby(hdd_daily_reg.index.year).transform('sum'))
-    cdd_shape = cdd_daily_reg.div(cdd_daily_reg.groupby(cdd_daily_reg.index.year).transform('sum'))
+    # normalize daily shapes within each weather year
+    hdd_shape = hdd_daily_reg.div(
+        hdd_daily_reg.groupby(hdd_daily_reg.index.year).transform('sum')
+    )
+    cdd_shape = cdd_daily_reg.div(
+        cdd_daily_reg.groupby(cdd_daily_reg.index.year).transform('sum')
+    )
 
-    # average shape across selected weather years by month-day
     hdd_shape['month'] = hdd_shape.index.month
     hdd_shape['day'] = hdd_shape.index.day
     cdd_shape['month'] = cdd_shape.index.month
@@ -2082,19 +2109,26 @@ def get_degree_days(case, base_temp_c=18.3333333333, hourly_formula=False):
     hdd_md = hdd_shape.groupby(['month', 'day'])[active_ngregs].mean()
     cdd_md = cdd_shape.groupby(['month', 'day'])[active_ngregs].mean()
 
-    # expand to model years and scale to annual ngreg totals 
+    # expand to model years and scale to annual ngreg totals
     out = []
+
     for t in model_years:
         idx = pd.date_range(f'{t}-01-01', f'{t}-12-31', freq='D')
-        # keep 365-day convention
-        idx = idx[~((idx.month == 2) & (idx.day == 29))]
+
+        # 365-day calendar excludes Dec 31, not Feb 29
+        idx = idx[~((idx.month == 12) & (idx.day == 31))]
+
+        # only needed if model year is leap year
+        if len(idx) > 365:
+            idx = idx[~((idx.month == 2) & (idx.day == 29))]
 
         hdd_t = pd.DataFrame(index=idx, columns=active_ngregs, dtype=float)
         cdd_t = pd.DataFrame(index=idx, columns=active_ngregs, dtype=float)
 
         for dt in idx:
-            hdd_t.loc[dt] = hdd_md.loc[(dt.month, dt.day)].values
-            cdd_t.loc[dt] = cdd_md.loc[(dt.month, dt.day)].values
+            key = (dt.month, dt.day)
+            hdd_t.loc[dt] = hdd_md.loc[key].values
+            cdd_t.loc[dt] = cdd_md.loc[key].values
 
         hdd_t = hdd_t.mul(ddh.loc[t, active_ngregs], axis=1)
         cdd_t = cdd_t.mul(ddc.loc[t, active_ngregs], axis=1)
