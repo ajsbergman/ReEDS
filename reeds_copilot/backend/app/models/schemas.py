@@ -76,6 +76,7 @@ class FilePreviewResponse(BaseModel):
 class UpdateApiKeyRequest(BaseModel):
     api_key: str
     provider: str = "anthropic"
+    model: str = ""  # empty = use provider default
 
 
 class UpdateApiKeyResponse(BaseModel):

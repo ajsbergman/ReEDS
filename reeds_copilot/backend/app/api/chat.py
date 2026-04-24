@@ -56,6 +56,9 @@ async def chat(body: ChatRequest, request: Request, settings: Settings = Depends
     mode_hint = f"The user is in '{body.mode}' mode."
     user_prompt = f"{mode_hint}\n\nUser question: {body.message}"
 
-    answer = await llm.generate(user_prompt=user_prompt, context=context)
+    try:
+        answer = await llm.generate(user_prompt=user_prompt, context=context)
+    except Exception as exc:
+        answer = f"**LLM Error:** {type(exc).__name__}: {exc}"
 
     return ChatResponse(answer=answer, sources=sources)

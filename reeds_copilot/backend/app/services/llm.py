@@ -24,7 +24,7 @@ Guidelines:
 DEFAULT_MODELS = {
     "anthropic": "claude-opus-4-1",
     "openai": "gpt-4o",
-    "google": "gemini-2.5-pro-preview-05-06",
+    "google": "gemini-2.5-flash",
 }
 
 
@@ -118,7 +118,7 @@ class OpenAIProvider(LLMProvider):
 # ── Google Gemini ─────────────────────────────────────────────────────────────
 
 class GoogleProvider(LLMProvider):
-    def __init__(self, api_key: str, model: str = "gemini-2.5-pro-preview-05-06"):
+    def __init__(self, api_key: str, model: str = "gemini-2.5-flash"):
         if not api_key:
             log.warning("No Google API key provided – using mock responses.")
         self._api_key = api_key

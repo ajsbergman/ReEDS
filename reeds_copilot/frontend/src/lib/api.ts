@@ -127,9 +127,11 @@ export interface UpdateApiKeyResponse {
 export function updateApiKeyAPI(
   apiKey: string,
   provider: string = "anthropic",
+  model: string = "",
 ): Promise<UpdateApiKeyResponse> {
   return post<UpdateApiKeyResponse>("/config/api-key", {
     api_key: apiKey,
     provider,
+    model,
   });
 }
