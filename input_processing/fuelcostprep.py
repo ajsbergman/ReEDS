@@ -13,6 +13,7 @@ well as NG demand for electricity generation) and natural gas alphas
 ### ===========================================================================
 
 import pandas as pd
+import numpy as np
 import os
 import sys
 import argparse
@@ -188,6 +189,22 @@ for r in regions:
 
     out[r] = np.exp(log_ret)
 
+out_year = hdd['t'].where(hdd['t'].notna(), cdd['t'])
+if out_year.isna().any():
+    raise ValueError('Missing weather year for one or more natural gas price diff dates')
+
+out_datetime = out.index
+if out_datetime.tz is None:
+    out_datetime = out_datetime.tz_localize('Etc/GMT+6')
+
+out = out.astype(np.float32)
+out.index = pd.MultiIndex.from_arrays(
+    [out_year.astype(np.int32), out_datetime],
+    names=['year', 'datetime'],
+)
+out = out.sort_index()
+reeds.io.write_profile_to_h5(out, 'gasprice_price_region_day.h5', inputs_case)
+
 
 #%%#################################### 
 ### Natural Gas Demand Calculations ###
@@ -215,6 +232,8 @@ alpha = alpha.round(6)
 
 fuel.to_csv(os.path.join(inputs_case,'fprice.csv'),index=False)
 ngprice_cendiv.to_csv(os.path.join(inputs_case,'gasprice_ref.csv'))
+
+
 
 ngdemand.to_csv(os.path.join(inputs_case,'ng_demand_elec.csv'))
 ngtotdemand.to_csv(os.path.join(inputs_case,'ng_demand_tot.csv'))
