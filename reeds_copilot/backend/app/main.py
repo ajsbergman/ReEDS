@@ -10,7 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from .core.config import get_settings
 from .services.llm import build_llm_provider
 from .services.repo_index import RepoIndex
-from .api import chat, search, files, health
+from .api import chat, search, files, health, sessions
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s  %(name)s  %(message)s")
 log = logging.getLogger(__name__)
@@ -63,6 +63,7 @@ def create_app() -> FastAPI:
     app.include_router(chat.router)
     app.include_router(search.router)
     app.include_router(files.router)
+    app.include_router(sessions.router)
 
     return app
 

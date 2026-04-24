@@ -1,20 +1,21 @@
-import { useState, useRef, useEffect, type FormEvent } from "react";
+import { useRef, useEffect, useState, type FormEvent } from "react";
 import ReactMarkdown from "react-markdown";
 import { chatAPI, type ChatResponse, type SourceSnippet } from "../lib/api";
+
+export interface Message {
+  role: "user" | "assistant";
+  content: string;
+}
 
 interface Props {
   mode: string;
   selectedPath: string | null;
   onSources: (sources: SourceSnippet[]) => void;
+  messages: Message[];
+  setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
 }
 
-interface Message {
-  role: "user" | "assistant";
-  content: string;
-}
-
-export default function ChatPanel({ mode, selectedPath, onSources }: Props) {
-  const [messages, setMessages] = useState<Message[]>([]);
+export default function ChatPanel({ mode, selectedPath, onSources, messages, setMessages }: Props) {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);

@@ -1,11 +1,19 @@
-import { useEffect, useState } from "react";
-import ChatPanel from "./components/ChatPanel";
+import { useEffect, useState, useCallback, useRef } from "react";
+import ChatPanel, { type Message } from "./components/ChatPanel";
+import ChatHistory from "./components/ChatHistory";
 import SearchPanel from "./components/SearchPanel";
 import FileBrowser from "./components/FileBrowser";
 import RightPanel from "./components/RightPanel";
 import SettingsPanel from "./components/SettingsPanel";
 import WelcomeScreen from "./components/WelcomeScreen";
-import { healthAPI, type SourceSnippet, type HealthResponse } from "./lib/api";
+import {
+  healthAPI,
+  createSessionAPI,
+  getSessionAPI,
+  updateSessionAPI,
+  type SourceSnippet,
+  type HealthResponse,
+} from "./lib/api";
 
 type Tab = "chat" | "search" | "inputs" | "outputs" | "settings";
 type Mode = "general" | "docs" | "code" | "inputs" | "outputs";
@@ -23,8 +31,14 @@ export default function App() {
   const [mode, setMode] = useState<Mode>("general");
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [sources, setSources] = useState<SourceSnippet[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [health, setHealth] = useState<HealthResponse | null>(null);
-  const [showWelcome, setShowWelcome] = useState<boolean | null>(null); // null = loading
+  const [showWelcome, setShowWelcome] = useState<boolean | null>(null);
+
+  // Session state
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     healthAPI()
@@ -34,6 +48,74 @@ export default function App() {
       })
       .catch(() => setShowWelcome(false));
   }, []);
+
+  // Auto-save messages to the active session (debounced)
+  const prevMsgCountRef = useRef(0);
+  useEffect(() => {
+    if (!sessionId || messages.length === 0) return;
+    // Only save if messages actually changed
+    if (messages.length === prevMsgCountRef.current) return;
+    prevMsgCountRef.current = messages.length;
+
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      // Auto-title from first user message
+      const firstUserMsg = messages.find((m) => m.role === "user");
+      const title = firstUserMsg
+        ? firstUserMsg.content.slice(0, 60) + (firstUserMsg.content.length > 60 ? "…" : "")
+        : "New Chat";
+      updateSessionAPI(sessionId, messages, title)
+        .then(() => setHistoryRefreshKey((k) => k + 1))
+        .catch(() => {});
+    }, 500);
+  }, [messages, sessionId]);
+
+  // Create a new session when user sends the first message (if no active session)
+  const ensureSession = useCallback(async (): Promise<string> => {
+    if (sessionId) return sessionId;
+    const s = await createSessionAPI("New Chat");
+    setSessionId(s.id);
+    setHistoryRefreshKey((k) => k + 1);
+    return s.id;
+  }, [sessionId]);
+
+  // Wrap setMessages to auto-create session on first message
+  const handleSetMessages: typeof setMessages = useCallback(
+    (action) => {
+      setMessages((prev) => {
+        const next = typeof action === "function" ? action(prev) : action;
+        // If going from 0 to >0 messages and no session, create one
+        if (prev.length === 0 && next.length > 0 && !sessionId) {
+          createSessionAPI("New Chat").then((s) => {
+            setSessionId(s.id);
+            setHistoryRefreshKey((k) => k + 1);
+          });
+        }
+        return next;
+      });
+    },
+    [sessionId],
+  );
+
+  async function handleSelectSession(id: string) {
+    try {
+      const s = await getSessionAPI(id);
+      setSessionId(s.id);
+      setMessages(s.messages as Message[]);
+      prevMsgCountRef.current = s.messages.length;
+      setTab("chat");
+    } catch {
+      // session may have been deleted
+    }
+  }
+
+  function handleNewChat() {
+    setSessionId(null);
+    setMessages([]);
+    prevMsgCountRef.current = 0;
+    setSources([]);
+    setTab("chat");
+  }
 
   // Show nothing while checking
   if (showWelcome === null) return null;
@@ -75,6 +157,16 @@ export default function App() {
           </button>
         ))}
       </nav>
+
+      {/* ── Chat history (visible on chat tab) ───────── */}
+      {tab === "chat" && (
+        <ChatHistory
+          activeSessionId={sessionId}
+          onSelectSession={handleSelectSession}
+          onNewChat={handleNewChat}
+          refreshKey={historyRefreshKey}
+        />
+      )}
 
       {/* ── Main content ─────────────────────────────── */}
       <div className="main-area">
@@ -118,6 +210,8 @@ export default function App() {
               mode={mode}
               selectedPath={selectedFile}
               onSources={setSources}
+              messages={messages}
+              setMessages={handleSetMessages}
             />
           )}
           {tab === "search" && <SearchPanel onSelectFile={handleSelectFile} />}

@@ -135,3 +135,51 @@ export function updateApiKeyAPI(
     model,
   });
 }
+
+/* ── Chat Sessions ────────────────────────────────────────────────────────── */
+
+export interface SessionSummary {
+  id: string;
+  title: string;
+  created_at: number;
+  updated_at: number;
+  message_count: number;
+}
+
+export interface SessionFull {
+  id: string;
+  title: string;
+  created_at: number;
+  updated_at: number;
+  messages: { role: string; content: string }[];
+}
+
+export function createSessionAPI(title: string = "New Chat"): Promise<SessionFull> {
+  return post<SessionFull>("/chat/sessions", { title });
+}
+
+export function listSessionsAPI(): Promise<SessionSummary[]> {
+  return request<SessionSummary[]>("/chat/sessions");
+}
+
+export function getSessionAPI(id: string): Promise<SessionFull> {
+  return request<SessionFull>(`/chat/sessions/${encodeURIComponent(id)}`);
+}
+
+export function updateSessionAPI(
+  id: string,
+  messages: { role: string; content: string }[],
+  title?: string,
+): Promise<SessionFull> {
+  return request<SessionFull>(`/chat/sessions/${encodeURIComponent(id)}`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ messages, title }),
+  });
+}
+
+export function deleteSessionAPI(id: string): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>(`/chat/sessions/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+}
