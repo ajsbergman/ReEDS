@@ -1710,9 +1710,9 @@ def write_to_h5(
 
 def write_input_to_h5(
     df,
-    key,
-    case,
-    comment='',
+    key:str,
+    case:str|Path,
+    comment:str='',
     gamstype='parameter',
     **kwargs,
 ):
@@ -1742,9 +1742,9 @@ def write_input_to_h5(
 
 
 def write_csv_to_h5(
-    filepath,
-    case,
-    comment='',
+    filepath:str|Path,
+    case:str|Path,
+    comment:str='',
     gamstype:Literal['set']='set',
     **kwargs,
 ):

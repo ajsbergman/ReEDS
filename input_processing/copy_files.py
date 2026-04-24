@@ -968,7 +968,7 @@ def write_non_region_file(
                 reeds.io.write_csv_to_h5(
                     filepath=row.full_filepath,
                     case=case,
-                    comment=row.comment,
+                    comment=(row.comment if isinstance(row.comment, str) else ''),
                     gamstype=row.GAMStype.lower(),
                     overwrite=True, # TEMPORARY for testing
                 )

@@ -25,9 +25,10 @@ def read_inputs(case):
         keys = list(f)
         for key in keys:
             gamstypes[key] = f[key].attrs['gamstype']
-            comments[key] = f[key].attrs['comment']
-            if isinstance(comments[key], np.float64):
-                comments[key] = ''
+            if 'comment' in f[key].attrs:
+                comments[key] = f[key].attrs['comment']
+                if isinstance(comments[key], np.float64):
+                    comments[key] = ''
             columns = [i.decode() for i in list(f[key]['columns'])]
             df = pd.DataFrame({col: f[key][col] for col in columns})
             for col in df:
@@ -52,14 +53,14 @@ def main(case, overwrite=True, verbose=1):
                     gdx_file=gdx,
                     set_name=key,
                     df=df,
-                    description=comments.get(key, ''),
+                    description=comments.get(key, None),
                 )
             elif gamstypes[key] == 'parameter':
                 gdxpds.gdx.append_parameter(
                     gdx_file=gdx,
                     param_name=key,
                     df=df,
-                    description=comments.get(key, ''),
+                    description=comments.get(key, None),
                 )
             else:
                 raise NotImplementedError(gamstypes[key])

@@ -499,7 +499,7 @@ reeds.io.write_input_to_h5(
     key='tscbin',
     case=inputs_case,
     comment='transmission upgrade supply curve bins',
-    gasmtype='set',
+    gamstype='set',
 )
 
 
