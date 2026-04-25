@@ -35,7 +35,7 @@ export default function App() {
   const [sources, setSources] = useState<SourceSnippet[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [health, setHealth] = useState<HealthResponse | null>(null);
-  const [showWelcome, setShowWelcome] = useState<boolean | null>(null);
+  const [showWelcome, setShowWelcome] = useState<boolean | null>(true);
 
   // Session state
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -46,9 +46,8 @@ export default function App() {
     healthAPI()
       .then((h) => {
         setHealth(h);
-        setShowWelcome(!h.api_key_set);
       })
-      .catch(() => setShowWelcome(false));
+      .catch(() => {});
   }, []);
 
   // Kill all local runs when the browser tab/window is closed
