@@ -215,18 +215,21 @@ def start_local_run(
         # --single expects a comma-delimited string of case names
         py_args.append(f"--single={','.join(cases)}")
 
-    # Find the conda env's Python executable so we don't need shell activation
-    conda_python = _find_conda_python(conda_env)
-
-    if conda_python:
-        # Direct invocation — no shell needed, avoids quoting issues
-        cmd = [conda_python] + py_args
-    elif os.name == "nt":
-        # Fallback: use cmd /c with conda activate
-        inner = f"conda activate {conda_env} && python " + subprocess.list2cmdline(py_args)
+    # On Windows we MUST use `conda activate` so that the environment is
+    # inherited by child cmd windows that runbatch.py opens via
+    # `os.system('start /wait cmd /k call_*.bat')`.
+    # Using the direct python.exe path only activates it for runbatch itself,
+    # not for the spawned GAMS run windows.
+    if os.name == "nt":
+        args_str = subprocess.list2cmdline(py_args)
+        inner = f"conda activate {conda_env} && python {args_str}"
         cmd = ["cmd", "/c", inner]
     else:
-        cmd = ["conda", "run", "--no-capture-output", "-n", conda_env, "python"] + py_args
+        conda_python = _find_conda_python(conda_env)
+        if conda_python:
+            cmd = [conda_python] + py_args
+        else:
+            cmd = ["conda", "run", "--no-capture-output", "-n", conda_env, "python"] + py_args
 
     # Delete existing run folders if overwrite requested
     if overwrite and cases:
@@ -236,29 +239,6 @@ def start_local_run(
             if d.is_dir():
                 log.info("Overwrite: deleting existing folder %s", d)
                 _shutil.rmtree(d)
-
-    # On Windows, force keep_run_terminal=1 so the GAMS cmd window stays open
-    # after completion (makes it easy to see errors).  We temporarily append
-    # the switch to the user's cases CSV; runbatch merges cases_<suffix>.csv
-    # with cases.csv defaults, so a row here overrides the default of 0.
-    _cases_file_backup: tuple[Path, str] | None = None
-    if os.name == "nt":
-        _suffix = cases_suffix
-        _cf = repo_root / (f"cases_{_suffix}.csv" if _suffix else "cases.csv")
-        if _cf.exists():
-            try:
-                _orig = _cf.read_text(encoding="utf-8")
-                if "keep_run_terminal" not in _orig:
-                    # Read header to determine column count
-                    first_line = _orig.split("\n", 1)[0]
-                    ncols = len(first_line.split(","))
-                    # Build row: keep_run_terminal,1,1,1,... (all cases get 1)
-                    row = "keep_run_terminal" + ",1" * (ncols - 1)
-                    _cf.write_text(_orig.rstrip("\n") + "\n" + row + "\n", encoding="utf-8")
-                    _cases_file_backup = (_cf, _orig)
-                    log.info("Injected keep_run_terminal=1 into %s", _cf.name)
-            except Exception as exc:
-                log.warning("Failed to inject keep_run_terminal: %s", exc)
 
     log.info("Launching local run %s: %s", rid, cmd)
 
@@ -351,16 +331,6 @@ def start_local_run(
                 if tail:
                     rec.log_tail = tail
                 time.sleep(5)
-
-            # Restore cases CSV after runbatch has read it
-            if _cases_file_backup is not None:
-                try:
-                    _cases_file_backup[0].write_text(
-                        _cases_file_backup[1], encoding="utf-8"
-                    )
-                    log.info("Restored %s", _cases_file_backup[0].name)
-                except Exception:
-                    pass
 
             # Phase 2: runbatch.py exited, but on Windows the actual GAMS run
             # continues in a separate cmd window launched via
