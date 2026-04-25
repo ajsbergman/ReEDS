@@ -327,36 +327,71 @@ def start_local_run(
                 repo_root / "runs" / f"{batch_name}_{c}"
                 for c in (cases or [])
             ]
+
+            # Phase 1: Wait for runbatch.py to exit
             while proc.poll() is None:
                 tail = _build_log_tail(case_dirs)
                 if tail:
                     rec.log_tail = tail
                 time.sleep(5)
 
-            # Process has exited — read final logs
+            # Phase 2: runbatch.py exited, but on Windows the actual GAMS run
+            # continues in a separate cmd window launched via
+            # `os.system('start /wait cmd /c ...')`.
+            # Keep monitoring until GAMS finishes (report.xlsx appears,
+            # or gamslog.txt stops being updated for a while).
+            if os.name == "nt" and case_dirs:
+                log.info("runbatch exited (code %s), monitoring GAMS in background...", proc.returncode)
+                stale_count = 0
+                last_sizes = {cd: 0 for cd in case_dirs}
+                while stale_count < 12:  # 12 x 10s = 2 min of no activity → done
+                    time.sleep(10)
+                    # Check if all cases have report.xlsx → done
+                    if all(_is_run_finished(cd) for cd in case_dirs):
+                        break
+                    # Check if log files are still being written to
+                    any_activity = False
+                    for cd in case_dirs:
+                        glog = cd / "gamslog.txt"
+                        if glog.exists():
+                            sz = glog.stat().st_size
+                            if sz != last_sizes.get(cd, 0):
+                                last_sizes[cd] = sz
+                                any_activity = True
+                        # Also check lstfiles
+                        lstdir = cd / "lstfiles"
+                        if lstdir.is_dir():
+                            for f in lstdir.glob("*.lst"):
+                                sz = f.stat().st_size
+                                key = f
+                                if sz != last_sizes.get(key, 0):
+                                    last_sizes[key] = sz
+                                    any_activity = True
+                    if any_activity:
+                        stale_count = 0
+                    else:
+                        stale_count += 1
+                    # Update displayed log
+                    tail = _build_log_tail(case_dirs)
+                    if tail:
+                        rec.log_tail = tail
+                    _persist_run(repo_root, rec)
+
+            # Final state
             rec.finished_at = time.time()
             rec.log_tail = _build_log_tail(case_dirs)
 
             # Determine final status using runstatus.py logic:
             # finished = report.xlsx exists for ALL cases
             all_finished = all(_is_run_finished(cd) for cd in case_dirs) if case_dirs else False
-            any_failed = any(_is_run_failed(cd) for cd in case_dirs) if case_dirs else False
 
             if all_finished:
                 rec.status = RunStatus.COMPLETED
-            elif any_failed or proc.returncode != 0:
-                rec.status = RunStatus.FAILED
-                if proc.returncode != 0:
-                    rec.error = f"Exit code {proc.returncode}"
-                else:
-                    # Identify which cases failed
-                    failed_cases = [cd.name for cd in case_dirs
-                                    if not _is_run_finished(cd)]
-                    rec.error = f"Cases did not produce report.xlsx: {', '.join(failed_cases)}"
             else:
-                # Process exited 0 but no report.xlsx yet — might be setup-only
-                rec.status = RunStatus.COMPLETED
-                rec.error = "Process finished but report.xlsx not found (may need manual check)"
+                rec.status = RunStatus.FAILED
+                failed_cases = [cd.name for cd in case_dirs
+                                if not _is_run_finished(cd)]
+                rec.error = f"Cases did not produce report.xlsx: {', '.join(failed_cases)}"
         except Exception as exc:
             rec.status = RunStatus.FAILED
             rec.error = str(exc)

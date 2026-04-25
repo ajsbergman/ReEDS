@@ -49,9 +49,17 @@ echo.
 
 :: Store the working directory
 set "COPILOT_DIR=%~dp0"
+set "BACKEND_PORT=8001"
+
+:: Kill any process already using the backend port
+echo   Cleaning up port %BACKEND_PORT%...
+for /f "tokens=5" %%p in ('netstat -ano ^| findstr "LISTENING" ^| findstr ":%BACKEND_PORT% "') do (
+    taskkill /F /T /PID %%p >nul 2>&1
+)
+timeout /t 1 /nobreak >nul
 
 :: Start backend in a minimized window
-start "ReEDS-Copilot Backend" /min cmd /k "cd /d %COPILOT_DIR% && python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --app-dir backend"
+start "ReEDS-Copilot Backend" /min cmd /k "cd /d %COPILOT_DIR% && python -m uvicorn app.main:app --host 127.0.0.1 --port %BACKEND_PORT% --app-dir backend"
 
 :: Wait for backend (max 30 seconds)
 echo   Waiting for backend...
@@ -63,7 +71,7 @@ if !TRIES! geq 30 (
 )
 timeout /t 1 /nobreak >nul
 set /a TRIES+=1
-python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')" >nul 2>&1
+python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:%BACKEND_PORT%/health')" >nul 2>&1
 if errorlevel 1 goto :wait_backend
 echo         Backend ready.
 
@@ -93,7 +101,7 @@ echo   ========================================
 echo       ReEDS-Copilot is running!
 echo.
 echo       App:  http://localhost:5173
-echo       API:  http://127.0.0.1:8000
+echo       API:  http://127.0.0.1:%BACKEND_PORT%
 echo.
 echo       Press any key to STOP and exit.
 echo   ========================================

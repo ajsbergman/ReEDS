@@ -46,17 +46,20 @@ fi
 echo "  [5/5] Starting servers..."
 echo
 
-# Kill leftover processes
-lsof -ti:8000 2>/dev/null | xargs kill -9 2>/dev/null || true
+BACKEND_PORT=8001
+
+# Kill leftover processes on the ports
+lsof -ti:$BACKEND_PORT 2>/dev/null | xargs kill -9 2>/dev/null || true
 lsof -ti:5173 2>/dev/null | xargs kill -9 2>/dev/null || true
+sleep 1
 
 # Start backend
-(cd backend && $PY -m uvicorn app.main:app --host 127.0.0.1 --port 8000) &
+(cd backend && $PY -m uvicorn app.main:app --host 127.0.0.1 --port $BACKEND_PORT) &
 BACKEND_PID=$!
 
 # Wait for backend
 echo "  Waiting for backend..."
-until curl -s http://127.0.0.1:8000/health >/dev/null 2>&1; do sleep 1; done
+until curl -s http://127.0.0.1:$BACKEND_PORT/health >/dev/null 2>&1; do sleep 1; done
 echo "        Backend ready."
 
 # Start frontend
@@ -85,7 +88,7 @@ echo "  ╔═══════════════════════
 echo "  ║       ReEDS-Copilot is running!          ║"
 echo "  ║                                          ║"
 echo "  ║   App:     http://localhost:5173          ║"
-echo "  ║   API:     http://127.0.0.1:8000         ║"
+echo "  ║   API:     http://127.0.0.1:$BACKEND_PORT         ║"
 echo "  ║                                          ║"
 echo "  ║   Press Ctrl+C to stop and exit.         ║"
 echo "  ╚══════════════════════════════════════════╝"
