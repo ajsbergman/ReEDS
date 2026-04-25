@@ -1,0 +1,272 @@
+"""ReEDS run manager – launch, monitor, and stop model runs."""
+from __future__ import annotations
+
+import json
+import logging
+import os
+import signal
+import subprocess
+import threading
+import time
+import uuid
+from dataclasses import dataclass, field, asdict
+from enum import Enum
+from pathlib import Path
+from typing import Any
+
+log = logging.getLogger(__name__)
+
+
+class RunStatus(str, Enum):
+    QUEUED = "queued"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+
+
+@dataclass
+class RunRecord:
+    id: str
+    batch_name: str
+    cases_suffix: str
+    cases: list[str]
+    simult_runs: int
+    target: str  # "local" or "hpc"
+    status: RunStatus
+    created_at: float
+    pid: int | None = None
+    log_tail: str = ""
+    finished_at: float | None = None
+    error: str | None = None
+    extra_args: dict[str, Any] = field(default_factory=dict)
+
+    def to_dict(self) -> dict:
+        d = asdict(self)
+        d["status"] = self.status.value
+        return d
+
+
+# ── In‑memory registry (one per process) ────────────────────────────────────
+_runs: dict[str, RunRecord] = {}
+_run_lock = threading.Lock()
+
+
+def _persist_run(repo_root: Path, rec: RunRecord):
+    """Save run metadata to a JSON file so the UI can reload after restart."""
+    run_dir = repo_root / "reeds_copilot" / "run_history"
+    run_dir.mkdir(parents=True, exist_ok=True)
+    (run_dir / f"{rec.id}.json").write_text(
+        json.dumps(rec.to_dict(), indent=2), encoding="utf-8"
+    )
+
+
+def _load_persisted_runs(repo_root: Path):
+    """Load previously persisted runs into memory (once on startup)."""
+    run_dir = repo_root / "reeds_copilot" / "run_history"
+    if not run_dir.exists():
+        return
+    for p in run_dir.glob("*.json"):
+        try:
+            data = json.loads(p.read_text(encoding="utf-8"))
+            rid = data["id"]
+            if rid not in _runs:
+                data["status"] = RunStatus(data["status"])
+                _runs[rid] = RunRecord(**data)
+        except Exception:
+            log.warning("Skipping corrupt run record %s", p.name)
+
+
+# ── Public API ───────────────────────────────────────────────────────────────
+
+def list_cases_files(repo_root: Path) -> list[dict]:
+    """Return available cases_*.csv files with their case names."""
+    results = []
+    for p in sorted(repo_root.glob("cases*.csv")):
+        suffix = p.stem.replace("cases_", "").replace("cases", "")
+        # Read first row to get case column names
+        try:
+            import csv
+            with open(p, newline="", encoding="utf-8") as f:
+                reader = csv.reader(f)
+                header = next(reader, [])
+            case_names = [h for h in header[1:] if h.strip()]
+        except Exception:
+            case_names = []
+        results.append({
+            "filename": p.name,
+            "suffix": suffix,
+            "cases": case_names,
+        })
+    return results
+
+
+def get_case_details(repo_root: Path, suffix: str) -> dict:
+    """Read a cases CSV and return structured switch information."""
+    fname = f"cases_{suffix}.csv" if suffix else "cases.csv"
+    p = repo_root / fname
+    if not p.exists():
+        return {"error": f"{fname} not found"}
+
+    import csv
+    with open(p, newline="", encoding="utf-8") as f:
+        reader = csv.reader(f)
+        rows = list(reader)
+
+    if not rows:
+        return {"error": "Empty file"}
+
+    header = rows[0]
+    case_names = [h for h in header[1:] if h.strip()]
+    switches: list[dict] = []
+    for row in rows[1:]:
+        if not row or not row[0].strip():
+            continue
+        name = row[0].strip()
+        values = {}
+        for i, case in enumerate(case_names):
+            val = row[i + 1].strip() if i + 1 < len(row) else ""
+            values[case] = val
+        switches.append({"switch": name, "values": values})
+
+    return {"filename": fname, "cases": case_names, "switches": switches}
+
+
+def start_local_run(
+    repo_root: Path,
+    batch_name: str,
+    cases_suffix: str,
+    cases: list[str] | None = None,
+    simult_runs: int = 1,
+    extra_args: dict[str, Any] | None = None,
+) -> RunRecord:
+    """Start a local ReEDS run via runbatch.py."""
+    rid = uuid.uuid4().hex[:12]
+    rec = RunRecord(
+        id=rid,
+        batch_name=batch_name,
+        cases_suffix=cases_suffix,
+        cases=cases or [],
+        simult_runs=simult_runs,
+        target="local",
+        status=RunStatus.QUEUED,
+        created_at=time.time(),
+        extra_args=extra_args or {},
+    )
+
+    with _run_lock:
+        _runs[rid] = rec
+
+    # Build command
+    cmd = [
+        "python", str(repo_root / "runbatch.py"),
+        f"--BatchName={batch_name}",
+        f"--simult_runs={simult_runs}",
+        "--forcelocal",
+        "--skip_checks",
+    ]
+    if cases_suffix:
+        cmd.append(f"--cases_suffix={cases_suffix}")
+    if cases:
+        cmd.append(f"--single={','.join(cases)}")
+
+    log.info("Launching local run %s: %s", rid, " ".join(cmd))
+
+    def _run_in_thread():
+        try:
+            rec.status = RunStatus.RUNNING
+            proc = subprocess.Popen(
+                cmd,
+                cwd=str(repo_root),
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1,
+                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP
+                if os.name == "nt"
+                else 0,
+            )
+            rec.pid = proc.pid
+            _persist_run(repo_root, rec)
+
+            # Stream output, keep last 200 lines
+            lines: list[str] = []
+            for line in proc.stdout:  # type: ignore[union-attr]
+                lines.append(line)
+                if len(lines) > 200:
+                    lines = lines[-200:]
+                rec.log_tail = "".join(lines[-100:])
+
+            proc.wait()
+            rec.finished_at = time.time()
+            rec.log_tail = "".join(lines[-100:])
+
+            if proc.returncode == 0:
+                rec.status = RunStatus.COMPLETED
+            else:
+                rec.status = RunStatus.FAILED
+                rec.error = f"Exit code {proc.returncode}"
+        except Exception as exc:
+            rec.status = RunStatus.FAILED
+            rec.error = str(exc)
+            rec.finished_at = time.time()
+        finally:
+            rec.pid = None
+            _persist_run(repo_root, rec)
+
+    t = threading.Thread(target=_run_in_thread, daemon=True)
+    t.start()
+    return rec
+
+
+def cancel_run(repo_root: Path, run_id: str) -> bool:
+    """Cancel a running process."""
+    rec = _runs.get(run_id)
+    if not rec or not rec.pid:
+        return False
+    try:
+        if os.name == "nt":
+            subprocess.call(
+                ["taskkill", "/F", "/T", "/PID", str(rec.pid)],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            )
+        else:
+            os.killpg(os.getpgid(rec.pid), signal.SIGTERM)
+        rec.status = RunStatus.CANCELLED
+        rec.finished_at = time.time()
+        rec.pid = None
+        _persist_run(repo_root, rec)
+        return True
+    except Exception as exc:
+        log.warning("Failed to cancel run %s: %s", run_id, exc)
+        return False
+
+
+def list_runs() -> list[dict]:
+    """Return all known runs (newest first)."""
+    with _run_lock:
+        return [r.to_dict() for r in sorted(_runs.values(), key=lambda r: r.created_at, reverse=True)]
+
+
+def get_run(run_id: str) -> dict | None:
+    rec = _runs.get(run_id)
+    return rec.to_dict() if rec else None
+
+
+def delete_run(repo_root: Path, run_id: str) -> bool:
+    """Remove a run record (only if not running)."""
+    with _run_lock:
+        rec = _runs.get(run_id)
+        if not rec:
+            return False
+        if rec.status == RunStatus.RUNNING:
+            return False
+        del _runs[run_id]
+    p = repo_root / "reeds_copilot" / "run_history" / f"{run_id}.json"
+    p.unlink(missing_ok=True)
+    return True
+
+
+def init_run_manager(repo_root: Path):
+    """Call once on app startup to reload persisted runs."""
+    _load_persisted_runs(repo_root)

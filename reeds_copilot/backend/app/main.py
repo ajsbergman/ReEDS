@@ -10,7 +10,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from .core.config import get_settings
 from .services.llm import build_llm_provider
 from .services.repo_index import RepoIndex
-from .api import chat, search, files, health, sessions
+from .services.run_manager import init_run_manager
+from .api import chat, search, files, health, sessions, runs
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s  %(name)s  %(message)s")
 log = logging.getLogger(__name__)
@@ -35,6 +36,9 @@ async def lifespan(app: FastAPI):
     api_key = key_map.get(settings.llm_provider, "")
     app.state.llm = build_llm_provider(settings.llm_provider, api_key, settings.model_name or None)
     log.info("LLM provider: %s  model: %s  key set: %s", settings.llm_provider, settings.model_name, bool(api_key))
+
+    # Load persisted run history
+    init_run_manager(settings.repo_root)
 
     yield  # app runs
 
@@ -64,6 +68,7 @@ def create_app() -> FastAPI:
     app.include_router(search.router)
     app.include_router(files.router)
     app.include_router(sessions.router)
+    app.include_router(runs.router)
 
     return app
 

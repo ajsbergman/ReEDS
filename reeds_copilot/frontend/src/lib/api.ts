@@ -183,3 +183,70 @@ export function deleteSessionAPI(id: string): Promise<{ ok: boolean }> {
     method: "DELETE",
   });
 }
+
+/* ── Runs ──────────────────────────────────────────────────────────────────── */
+
+export interface CasesFile {
+  filename: string;
+  suffix: string;
+  cases: string[];
+}
+
+export interface CasesDetail {
+  filename: string;
+  cases: string[];
+  switches: { switch: string; values: Record<string, string> }[];
+}
+
+export interface RunRecord {
+  id: string;
+  batch_name: string;
+  cases_suffix: string;
+  cases: string[];
+  simult_runs: number;
+  target: string;
+  status: string;
+  created_at: number;
+  pid: number | null;
+  log_tail: string;
+  finished_at: number | null;
+  error: string | null;
+}
+
+export function listCasesFilesAPI(): Promise<CasesFile[]> {
+  return request<CasesFile[]>("/runs/cases-files");
+}
+
+export function getCasesDetailAPI(suffix: string): Promise<CasesDetail> {
+  return request<CasesDetail>(
+    `/runs/cases-files/${encodeURIComponent(suffix || "_default")}`,
+  );
+}
+
+export function startRunAPI(body: {
+  batch_name: string;
+  cases_suffix?: string;
+  cases?: string[];
+  simult_runs?: number;
+  target?: "local" | "hpc";
+}): Promise<RunRecord> {
+  return post<RunRecord>("/runs", body);
+}
+
+export function listRunsAPI(): Promise<RunRecord[]> {
+  return request<RunRecord[]>("/runs");
+}
+
+export function getRunAPI(id: string): Promise<RunRecord> {
+  return request<RunRecord>(`/runs/${encodeURIComponent(id)}`);
+}
+
+export function cancelRunAPI(id: string): Promise<{ success: boolean }> {
+  return post<{ success: boolean }>(`/runs/${encodeURIComponent(id)}/cancel`, {});
+}
+
+export function deleteRunAPI(id: string): Promise<{ success: boolean }> {
+  return request<{ success: boolean }>(`/runs/${encodeURIComponent(id)}`, {
+    method: "DELETE",
+  });
+}

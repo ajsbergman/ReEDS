@@ -6,6 +6,7 @@ import FileBrowser from "./components/FileBrowser";
 import RightPanel from "./components/RightPanel";
 import SettingsPanel from "./components/SettingsPanel";
 import WelcomeScreen from "./components/WelcomeScreen";
+import RunPanel from "./components/RunPanel";
 import {
   healthAPI,
   createSessionAPI,
@@ -15,7 +16,7 @@ import {
   type HealthResponse,
 } from "./lib/api";
 
-type Tab = "chat" | "search" | "inputs" | "outputs" | "settings";
+type Tab = "chat" | "search" | "runs" | "inputs" | "outputs" | "settings";
 type Mode = "general" | "docs" | "code" | "inputs" | "outputs";
 
 const MODES: { value: Mode; label: string }[] = [
@@ -137,6 +138,7 @@ export default function App() {
   const sidebarItems: { key: Tab; label: string }[] = [
     { key: "chat", label: "💬  Chat" },
     { key: "search", label: "🔍  Search" },
+    { key: "runs", label: "🚀  Run ReEDS" },
     { key: "inputs", label: "📥  Inputs Explorer" },
     { key: "outputs", label: "📤  Outputs Explorer" },
     { key: "settings", label: "⚙️  Settings" },
@@ -215,6 +217,7 @@ export default function App() {
             />
           )}
           {tab === "search" && <SearchPanel onSelectFile={handleSelectFile} />}
+          {tab === "runs" && <RunPanel />}
           {tab === "inputs" && (
             <FileBrowser rootPath="inputs" onSelectFile={handleSelectFile} />
           )}
@@ -224,7 +227,7 @@ export default function App() {
           {tab === "settings" && <SettingsPanel />}
 
           {/* Right panel – always visible except on settings */}
-          {tab !== "settings" && (
+          {tab !== "settings" && tab !== "runs" && (
             <RightPanel
               selectedFile={selectedFile}
               sources={sources}
