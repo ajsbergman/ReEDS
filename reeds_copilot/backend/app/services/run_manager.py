@@ -346,8 +346,20 @@ def start_local_run(
                 log.info("runbatch exited (code %s), monitoring GAMS in background...", proc.returncode)
                 stale_count = 0
                 last_sizes = {cd: 0 for cd in case_dirs}
-                while stale_count < 12:  # 12 x 10s = 2 min of no activity → done
+                last_check_time = time.time()
+                while stale_count < 36:  # 36 x 10s = 6 min of no activity → done
                     time.sleep(10)
+
+                    # Detect system sleep: if the wall-clock jump is much larger
+                    # than 10s, the machine was asleep – reset stale counter.
+                    now = time.time()
+                    elapsed = now - last_check_time
+                    last_check_time = now
+                    if elapsed > 30:  # slept for > 30s → ignore this cycle
+                        log.info("Detected system sleep (%.0fs gap), resetting stale counter", elapsed)
+                        stale_count = 0
+                        continue
+
                     # Check if all cases have report.xlsx → done
                     if all(_is_run_finished(cd) for cd in case_dirs):
                         break

@@ -62,14 +62,10 @@ export default function App() {
       .catch(() => {});
   }, []);
 
-  // Kill all local runs when the browser tab/window is closed
-  useEffect(() => {
-    const handleUnload = () => {
-      navigator.sendBeacon("/api/runs/cleanup-local");
-    };
-    window.addEventListener("beforeunload", handleUnload);
-    return () => window.removeEventListener("beforeunload", handleUnload);
-  }, []);
+  // NOTE: We intentionally do NOT cancel runs on beforeunload.
+  // Runs should survive browser refresh, sleep, and tab close so that
+  // long-running GAMS solves are not killed unexpectedly.
+  // Users can cancel individual runs from the Run ReEDS panel.
 
   // Auto-save messages to the active session (debounced)
   const prevMsgCountRef = useRef(0);
