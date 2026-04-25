@@ -237,6 +237,29 @@ def start_local_run(
                 log.info("Overwrite: deleting existing folder %s", d)
                 _shutil.rmtree(d)
 
+    # On Windows, force keep_run_terminal=1 so the GAMS cmd window stays open
+    # after completion (makes it easy to see errors).  We temporarily append
+    # the switch to the user's cases CSV; runbatch merges cases_<suffix>.csv
+    # with cases.csv defaults, so a row here overrides the default of 0.
+    _cases_file_backup: tuple[Path, str] | None = None
+    if os.name == "nt":
+        _suffix = cases_suffix
+        _cf = repo_root / (f"cases_{_suffix}.csv" if _suffix else "cases.csv")
+        if _cf.exists():
+            try:
+                _orig = _cf.read_text(encoding="utf-8")
+                if "keep_run_terminal" not in _orig:
+                    # Read header to determine column count
+                    first_line = _orig.split("\n", 1)[0]
+                    ncols = len(first_line.split(","))
+                    # Build row: keep_run_terminal,1,1,1,... (all cases get 1)
+                    row = "keep_run_terminal" + ",1" * (ncols - 1)
+                    _cf.write_text(_orig.rstrip("\n") + "\n" + row + "\n", encoding="utf-8")
+                    _cases_file_backup = (_cf, _orig)
+                    log.info("Injected keep_run_terminal=1 into %s", _cf.name)
+            except Exception as exc:
+                log.warning("Failed to inject keep_run_terminal: %s", exc)
+
     log.info("Launching local run %s: %s", rid, cmd)
 
     def _tail_log_file(log_path: Path, n: int = 100) -> str:
@@ -302,23 +325,17 @@ def start_local_run(
             rec.status = RunStatus.RUNNING
             _persist_run(repo_root, rec)
 
-            # Run runbatch.py directly — do NOT capture stdout so that
-            # `os.system('start /wait cmd /c ...')` works normally on Windows
-            # and opens a cmd window for the actual GAMS run.
+            # Run runbatch.py with its own console window so that
+            # `os.system('start /wait cmd /c ...')` inside runbatch can
+            # properly open and wait for the GAMS cmd window.
+            # CREATE_NEW_CONSOLE gives it a real console session.
             proc = subprocess.Popen(
                 cmd,
                 cwd=str(repo_root),
-                stdin=subprocess.PIPE,
-                creationflags=subprocess.CREATE_NEW_PROCESS_GROUP
+                creationflags=subprocess.CREATE_NEW_CONSOLE
                 if os.name == "nt"
                 else 0,
             )
-            # Feed "y" answers to handle any remaining interactive prompts
-            try:
-                proc.stdin.write(b"y\n" * 10)
-                proc.stdin.close()
-            except Exception:
-                pass
             rec.pid = proc.pid
             _persist_run(repo_root, rec)
 
@@ -334,6 +351,16 @@ def start_local_run(
                 if tail:
                     rec.log_tail = tail
                 time.sleep(5)
+
+            # Restore cases CSV after runbatch has read it
+            if _cases_file_backup is not None:
+                try:
+                    _cases_file_backup[0].write_text(
+                        _cases_file_backup[1], encoding="utf-8"
+                    )
+                    log.info("Restored %s", _cases_file_backup[0].name)
+                except Exception:
+                    pass
 
             # Phase 2: runbatch.py exited, but on Windows the actual GAMS run
             # continues in a separate cmd window launched via
