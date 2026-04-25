@@ -67,6 +67,28 @@ def run_env_fix(body: FixRequest, settings: Settings = Depends(get_settings)):
         raise HTTPException(status_code=400, detail=f"No auto-fix available for '{body.check_name}'")
 
 
+class SaveGamsLicenseRequest(BaseModel):
+    content: str
+
+
+@router.post("/gams-license")
+def save_gams_license(body: SaveGamsLicenseRequest, settings: Settings = Depends(get_settings)):
+    """Save GAMS license content to gamslice.txt."""
+    return env_check.save_gamslice(settings.repo_root, body.content)
+
+
+@router.get("/gams-license")
+def get_gams_license(settings: Settings = Depends(get_settings)):
+    """Get current GAMS license content (if it exists)."""
+    p = settings.repo_root / "gamslice.txt"
+    if not p.exists():
+        return {"exists": False, "content": ""}
+    try:
+        return {"exists": True, "content": p.read_text(encoding="utf-8")}
+    except Exception:
+        return {"exists": False, "content": ""}
+
+
 @router.get("/cases-files")
 def list_cases_files(settings: Settings = Depends(get_settings)):
     """List available cases_*.csv files and their case names."""

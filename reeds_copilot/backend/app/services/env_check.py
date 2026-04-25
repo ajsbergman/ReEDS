@@ -5,9 +5,13 @@ import logging
 import os
 import shutil
 import subprocess
+import threading
 from pathlib import Path
 
 log = logging.getLogger(__name__)
+
+# Track background fix status
+_fix_status: dict[str, dict] = {}
 
 
 def _run(cmd: list[str], timeout: int = 30, **kw) -> subprocess.CompletedProcess:
@@ -84,6 +88,13 @@ def check_manifest(repo_root: Path) -> dict:
     manifest = repo_root / "Manifest.toml"
     if manifest.exists():
         return {"ok": True, "detail": "Manifest.toml found"}
+    # If a fix is running in background, show that status
+    fs = _fix_status.get("manifest", {})
+    if fs.get("running"):
+        return {
+            "ok": False,
+            "detail": "⏳ Julia instantiate running in background... re-check shortly.",
+        }
     return {
         "ok": False,
         "detail": "Manifest.toml missing. Julia packages not instantiated.",
@@ -103,6 +114,42 @@ def check_remote_files(repo_root: Path) -> dict:
     return {"ok": False, "detail": "Some remote input files may be missing"}
 
 
+def check_gams_license(repo_root: Path) -> dict:
+    """Check if gamslice.txt exists in the repo root."""
+    p = repo_root / "gamslice.txt"
+    if p.exists():
+        # Read first line to show a preview (mask most of it)
+        try:
+            lines = p.read_text(encoding="utf-8").strip().splitlines()
+            n_lines = len(lines)
+            preview = f"{n_lines} line(s)"
+            if n_lines > 0:
+                first = lines[0]
+                preview += f", starts with: {first[:20]}{'...' if len(first) > 20 else ''}"
+        except Exception:
+            preview = "file exists"
+        return {"ok": True, "detail": f"gamslice.txt found ({preview})"}
+    return {
+        "ok": False,
+        "detail": "gamslice.txt not found. A GAMS license is needed for HPC runs.",
+        "fixable": True,
+        "fix_type": "gamslice",
+    }
+
+
+def save_gamslice(repo_root: Path, content: str) -> dict:
+    """Save user-provided GAMS license content to gamslice.txt."""
+    content = content.strip()
+    if not content:
+        return {"ok": False, "detail": "License content is empty"}
+    p = repo_root / "gamslice.txt"
+    try:
+        p.write_text(content + "\n", encoding="utf-8")
+        return {"ok": True, "detail": f"gamslice.txt saved ({len(content.splitlines())} lines)"}
+    except Exception as exc:
+        return {"ok": False, "detail": f"Failed to write gamslice.txt: {exc}"}
+
+
 # ── Aggregate check ──────────────────────────────────────────────────────────
 
 def run_all_checks(repo_root: Path, env_name: str = "reeds2") -> list[dict]:
@@ -112,6 +159,8 @@ def run_all_checks(repo_root: Path, env_name: str = "reeds2") -> list[dict]:
          **check_conda_env(env_name)},
         {"name": "gams", "label": "GAMS",
          **check_gams(env_name)},
+        {"name": "gams_license", "label": "GAMS License (gamslice.txt)",
+         **check_gams_license(repo_root)},
         {"name": "julia", "label": "Julia",
          **check_julia(repo_root)},
         {"name": "manifest", "label": "Manifest.toml (PRAS/Julia packages)",
@@ -134,22 +183,40 @@ def fix_manifest(repo_root: Path) -> dict:
     if not inst_script.exists():
         return {"ok": False, "detail": "Cannot fix: instantiate.jl not found in repo"}
 
-    try:
-        r = subprocess.run(
-            ["julia", f"--project={repo_root}", str(inst_script)],
-            capture_output=True, text=True, timeout=300,
-            cwd=str(repo_root),
-        )
-        if r.returncode == 0:
-            return {"ok": True, "detail": "Julia packages instantiated successfully"}
-        return {
-            "ok": False,
-            "detail": f"Julia instantiate failed (exit {r.returncode}): {r.stderr[-500:]}",
-        }
-    except subprocess.TimeoutExpired:
-        return {"ok": False, "detail": "Julia instantiate timed out (5 min limit)"}
-    except Exception as exc:
-        return {"ok": False, "detail": f"Error: {exc}"}
+    # If already running, return current status
+    if _fix_status.get("manifest", {}).get("running"):
+        return {"ok": False, "detail": "Julia instantiate is already running... please wait."}
+
+    # Run in background thread so the HTTP request returns immediately
+    _fix_status["manifest"] = {"running": True, "detail": "Julia instantiate started..."}
+
+    def _run_julia():
+        try:
+            log.info("Starting julia instantiate...")
+            r = subprocess.run(
+                [julia_path, f"--project={repo_root}", str(inst_script)],
+                capture_output=True, text=True, timeout=600,
+                cwd=str(repo_root),
+            )
+            if r.returncode == 0:
+                _fix_status["manifest"] = {"running": False, "ok": True,
+                                           "detail": "Julia packages instantiated successfully"}
+                log.info("Julia instantiate succeeded")
+            else:
+                _fix_status["manifest"] = {
+                    "running": False, "ok": False,
+                    "detail": f"Failed (exit {r.returncode}): {r.stderr[-500:]}",
+                }
+                log.error("Julia instantiate failed: %s", r.stderr[-300:])
+        except subprocess.TimeoutExpired:
+            _fix_status["manifest"] = {"running": False, "ok": False,
+                                       "detail": "Julia instantiate timed out (10 min limit)"}
+        except Exception as exc:
+            _fix_status["manifest"] = {"running": False, "ok": False,
+                                       "detail": f"Error: {exc}"}
+
+    threading.Thread(target=_run_julia, daemon=True).start()
+    return {"ok": False, "detail": "Julia instantiate started in background. Re-check in a few minutes."}
 
 
 def fix_conda_env(env_name: str, repo_root: Path) -> dict:

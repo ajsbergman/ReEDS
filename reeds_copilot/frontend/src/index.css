@@ -965,6 +965,16 @@ body,
   color: var(--text-muted);
 }
 
+.fix-msg {
+  padding: 6px 10px;
+  margin-bottom: 6px;
+  border-radius: var(--radius);
+  background: rgba(91, 141, 239, 0.08);
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-size: 0.8rem;
+}
+
 .env-check-row {
   display: flex;
   align-items: center;
@@ -1020,4 +1030,72 @@ body,
 .env-fix-btn:disabled {
   opacity: 0.5;
   cursor: wait;
+}
+
+/* GAMS license input */
+.license-input-panel {
+  margin-top: 10px;
+  padding: 12px 14px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+}
+.license-input-panel label {
+  display: block;
+  font-size: 0.82rem;
+  color: var(--text);
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+.license-textarea {
+  width: 100%;
+  padding: 8px 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  resize: vertical;
+  line-height: 1.5;
+}
+.license-textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.license-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+.license-save-btn {
+  padding: 6px 16px;
+  border: none;
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.license-save-btn:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+.license-save-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.license-cancel-btn {
+  padding: 6px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.license-cancel-btn:hover {
+  border-color: var(--text-muted);
 }

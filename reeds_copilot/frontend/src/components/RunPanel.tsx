@@ -5,6 +5,8 @@ import {
   listRunFoldersAPI,
   envCheckAPI,
   envFixAPI,
+  getGamsLicenseAPI,
+  saveGamsLicenseAPI,
   startRunAPI,
   listRunsAPI,
   getRunAPI,
@@ -69,6 +71,12 @@ export default function RunPanel() {
   const [envChecks, setEnvChecks] = useState<EnvCheckResult[]>([]);
   const [envLoading, setEnvLoading] = useState(false);
   const [fixing, setFixing] = useState<string | null>(null);
+  const [fixMsg, setFixMsg] = useState("");
+
+  /* GAMS license */
+  const [showLicenseInput, setShowLicenseInput] = useState(false);
+  const [licenseText, setLicenseText] = useState("");
+  const [licenseSaving, setLicenseSaving] = useState(false);
 
   /* Runs list & detail */
   const [runs, setRuns] = useState<RunRecord[]>([]);
@@ -121,15 +129,40 @@ export default function RunPanel() {
   }
 
   async function handleFix(checkName: string) {
+    // For gams_license, show the license input instead of calling env-fix
+    if (checkName === "gams_license") {
+      // Load existing content if any
+      try {
+        const lic = await getGamsLicenseAPI();
+        setLicenseText(lic.content || "");
+      } catch { /* ignore */ }
+      setShowLicenseInput(true);
+      return;
+    }
     setFixing(checkName);
+    setFixMsg("");
     try {
-      await envFixAPI(checkName, selectedEnv);
-      // Re-run checks after fix
+      const res = await envFixAPI(checkName, selectedEnv);
+      setFixMsg(res.detail || (res.ok ? "Fixed!" : "Fix attempted"));
+      // Re-check after a short delay (background tasks need time)
+      setTimeout(() => runEnvChecks(selectedEnv), 2000);
+    } catch (e: any) {
+      setFixMsg(e.message || "Fix request failed");
+    } finally {
+      setFixing(null);
+    }
+  }
+
+  async function handleSaveLicense() {
+    setLicenseSaving(true);
+    try {
+      await saveGamsLicenseAPI(licenseText);
+      setShowLicenseInput(false);
       runEnvChecks(selectedEnv);
     } catch {
       // ignore
     } finally {
-      setFixing(null);
+      setLicenseSaving(false);
     }
   }
 
@@ -280,6 +313,9 @@ export default function RunPanel() {
           {envChecks.length === 0 && !envLoading && (
             <span className="env-check-empty">Click ↻ to check environment</span>
           )}
+          {fixMsg && (
+            <div className="fix-msg">{fixMsg}</div>
+          )}
           {envChecks.map((c) => (
             <div key={c.name} className={`env-check-row ${c.ok ? "pass" : "fail"}`}>
               <span className="env-check-icon">{c.ok ? "✅" : "❌"}</span>
@@ -291,11 +327,44 @@ export default function RunPanel() {
                   onClick={() => handleFix(c.name)}
                   disabled={fixing === c.name}
                 >
-                  {fixing === c.name ? "Fixing…" : "🔧 Fix"}
+                  {c.name === "gams_license"
+                    ? "📝 Enter License"
+                    : fixing === c.name
+                      ? "Fixing…"
+                      : "🔧 Fix"}
                 </button>
               )}
             </div>
           ))}
+
+          {/* GAMS license input panel */}
+          {showLicenseInput && (
+            <div className="license-input-panel">
+              <label>Paste your GAMS license (gamslice.txt content):</label>
+              <textarea
+                className="license-textarea"
+                value={licenseText}
+                onChange={(e) => setLicenseText(e.target.value)}
+                placeholder={"Paste your GAMS license lines here...\nExample:\n12345678\nYour Name\nYour Company\n..."}
+                rows={8}
+              />
+              <div className="license-actions">
+                <button
+                  className="license-save-btn"
+                  onClick={handleSaveLicense}
+                  disabled={licenseSaving || !licenseText.trim()}
+                >
+                  {licenseSaving ? "Saving…" : "💾 Save License"}
+                </button>
+                <button
+                  className="license-cancel-btn"
+                  onClick={() => setShowLicenseInput(false)}
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Batch name */}

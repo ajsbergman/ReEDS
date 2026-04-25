@@ -296,3 +296,11 @@ export function envFixAPI(checkName: string, condaEnv: string = "reeds2"): Promi
     conda_env: condaEnv,
   });
 }
+
+export function getGamsLicenseAPI(): Promise<{ exists: boolean; content: string }> {
+  return request<{ exists: boolean; content: string }>("/runs/gams-license");
+}
+
+export function saveGamsLicenseAPI(content: string): Promise<{ ok: boolean; detail: string }> {
+  return post<{ ok: boolean; detail: string }>("/runs/gams-license", { content });
+}
