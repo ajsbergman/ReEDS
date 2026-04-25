@@ -7,6 +7,7 @@ import RightPanel from "./components/RightPanel";
 import SettingsPanel from "./components/SettingsPanel";
 import WelcomeScreen from "./components/WelcomeScreen";
 import RunPanel from "./components/RunPanel";
+import OutputExplorer from "./components/OutputExplorer";
 import {
   healthAPI,
   createSessionAPI,
@@ -226,7 +227,7 @@ export default function App() {
             <FileBrowser rootPath="inputs" onSelectFile={handleSelectFile} />
           )}
           {tab === "outputs" && (
-            <FileBrowser rootPath="." onSelectFile={handleSelectFile} />
+            <OutputExplorer onSelectFile={handleSelectFile} />
           )}
           {tab === "settings" && <SettingsPanel />}
 
