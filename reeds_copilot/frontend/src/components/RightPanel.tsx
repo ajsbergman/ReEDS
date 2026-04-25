@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { previewFileAPI, type FilePreviewResponse } from "../lib/api";
+import { previewFileAPI, downloadFileURL, type FilePreviewResponse } from "../lib/api";
 import type { SourceSnippet } from "../lib/api";
 
 interface Props {
@@ -11,20 +11,25 @@ interface Props {
 export default function RightPanel({ selectedFile, sources, onSelectFile }: Props) {
   const [preview, setPreview] = useState<FilePreviewResponse | null>(null);
   const [loading, setLoading] = useState(false);
+  const [fullMode, setFullMode] = useState(false);
 
   useEffect(() => {
     if (!selectedFile) {
       setPreview(null);
+      setFullMode(false);
       return;
     }
     let cancelled = false;
     setLoading(true);
-    previewFileAPI(selectedFile)
+    previewFileAPI(selectedFile, fullMode)
       .then((res) => { if (!cancelled) setPreview(res); })
       .catch(() => { if (!cancelled) setPreview(null); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [selectedFile]);
+  }, [selectedFile, fullMode]);
+
+  // Reset full mode when switching files
+  useEffect(() => { setFullMode(false); }, [selectedFile]);
 
   return (
     <div className="right-panel">
@@ -46,19 +51,34 @@ export default function RightPanel({ selectedFile, sources, onSelectFile }: Prop
       {/* File preview */}
       {selectedFile && (
         <>
-          <h3 style={{ marginTop: sources.length > 0 ? 18 : 0 }}>
-            Preview: {selectedFile}
-          </h3>
-          {loading && <div className="loading">Loading preview…</div>}
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: sources.length > 0 ? 18 : 0 }}>
+            <h3 style={{ margin: 0, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              Preview: {selectedFile}
+            </h3>
+            <a
+              href={downloadFileURL(selectedFile)}
+              download
+              className="btn btn-outline"
+              style={{ fontSize: "0.75rem", padding: "3px 10px", whiteSpace: "nowrap", color: "#fff", borderColor: "#fff" }}
+              title="Download full file"
+            >
+              ⬇ Download
+            </a>
+          </div>
+          {loading && <div className="loading">Loading{fullMode ? " full file" : " preview"}…</div>}
           {preview && preview.columns && preview.rows ? (
-            <CsvPreview preview={preview} />
+            <CsvPreview preview={preview} fullMode={fullMode} onViewFull={() => setFullMode(true)} />
           ) : preview && preview.content ? (
             <div className="file-preview">
               <pre>{preview.content}</pre>
-              {preview.truncated && (
-                <div style={{ color: "var(--text-muted)", marginTop: 6 }}>
-                  (truncated)
-                </div>
+              {preview.truncated && !fullMode && (
+                <button
+                  className="btn btn-outline"
+                  style={{ marginTop: 8, fontSize: "0.8rem" }}
+                  onClick={() => setFullMode(true)}
+                >
+                  View Full File
+                </button>
               )}
             </div>
           ) : null}
@@ -74,13 +94,24 @@ export default function RightPanel({ selectedFile, sources, onSelectFile }: Prop
   );
 }
 
-function CsvPreview({ preview }: { preview: FilePreviewResponse }) {
+function CsvPreview({ preview, fullMode, onViewFull }: { preview: FilePreviewResponse; fullMode: boolean; onViewFull: () => void }) {
   if (!preview.columns || !preview.rows) return null;
   return (
     <div>
-      <div style={{ color: "var(--text-muted)", marginBottom: 6, fontSize: "0.8rem" }}>
-        {preview.total_rows ?? "?"} rows · {preview.columns.length} columns
-        {preview.truncated && " (showing sample)"}
+      <div style={{ color: "var(--text-muted)", marginBottom: 6, fontSize: "0.8rem", display: "flex", alignItems: "center", gap: 8 }}>
+        <span>
+          {preview.rows.length}{preview.total_rows != null && preview.total_rows > preview.rows.length ? ` / ${preview.total_rows}` : ""} rows · {preview.columns.length} columns
+          {preview.truncated && !fullMode && " (showing sample)"}
+        </span>
+        {preview.truncated && !fullMode && (
+          <button
+            className="btn btn-outline"
+            style={{ fontSize: "0.7rem", padding: "2px 8px" }}
+            onClick={onViewFull}
+          >
+            View All Rows
+          </button>
+        )}
       </div>
       <div className="csv-table-wrap">
         <table>

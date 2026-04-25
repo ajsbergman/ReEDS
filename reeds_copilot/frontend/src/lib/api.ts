@@ -109,10 +109,14 @@ export function listFilesAPI(path: string = "."): Promise<FileListResponse> {
   );
 }
 
-export function previewFileAPI(path: string): Promise<FilePreviewResponse> {
-  return request<FilePreviewResponse>(
-    `/files/preview?path=${encodeURIComponent(path)}`,
-  );
+export function previewFileAPI(path: string, full: boolean = false): Promise<FilePreviewResponse> {
+  const params = new URLSearchParams({ path });
+  if (full) params.set("full", "true");
+  return request<FilePreviewResponse>(`/files/preview?${params}`);
+}
+
+export function downloadFileURL(path: string): string {
+  return `${BASE}/files/download?path=${encodeURIComponent(path)}`;
 }
 
 export function healthAPI(): Promise<HealthResponse> {

@@ -48,7 +48,10 @@ def list_directory(repo_root: Path, rel_path: str) -> list[dict]:
     return entries
 
 
-def preview_file(repo_root: Path, rel_path: str, settings: Settings) -> dict:
+MAX_FULL_SIZE = 10 * 1024 * 1024  # 10 MB safety cap for full view
+
+
+def preview_file(repo_root: Path, rel_path: str, settings: Settings, full: bool = False) -> dict:
     target = safe_resolve(repo_root, rel_path)
     if not target.is_file():
         raise FileNotFoundError(f"Not a file: {rel_path}")
@@ -57,14 +60,22 @@ def preview_file(repo_root: Path, rel_path: str, settings: Settings) -> dict:
     result: dict = {"rel_path": rel_path, "file_type": suffix}
 
     if suffix == ".csv":
-        return _preview_csv(target, rel_path, settings)
+        return _preview_csv(target, rel_path, settings, full=full)
 
     if suffix in TEXT_SUFFIXES or suffix == "":
         text = target.read_text(encoding="utf-8", errors="replace")
         lines = text.splitlines()
-        truncated = len(lines) > settings.max_file_preview_lines
-        if truncated:
-            lines = lines[: settings.max_file_preview_lines]
+        if full:
+            # Cap at 10 MB worth of text
+            if target.stat().st_size > MAX_FULL_SIZE:
+                lines = lines[:50000]
+                truncated = True
+            else:
+                truncated = False
+        else:
+            truncated = len(lines) > settings.max_file_preview_lines
+            if truncated:
+                lines = lines[: settings.max_file_preview_lines]
         result.update({
             "content": "\n".join(lines),
             "truncated": truncated,
@@ -75,9 +86,10 @@ def preview_file(repo_root: Path, rel_path: str, settings: Settings) -> dict:
     return result
 
 
-def _preview_csv(target: Path, rel_path: str, settings: Settings) -> dict:
+def _preview_csv(target: Path, rel_path: str, settings: Settings, full: bool = False) -> dict:
+    max_rows = None if full else settings.max_csv_preview_rows
     try:
-        df = pd.read_csv(target, nrows=settings.max_csv_preview_rows, low_memory=False)
+        df = pd.read_csv(target, nrows=max_rows, low_memory=False)
     except Exception as exc:
         return {
             "rel_path": rel_path,
@@ -92,11 +104,13 @@ def _preview_csv(target: Path, rel_path: str, settings: Settings) -> dict:
     except Exception:
         total_rows = len(df)
 
+    display_rows = len(df) if full else min(len(df), settings.max_csv_preview_rows)
+
     return {
         "rel_path": rel_path,
         "file_type": ".csv",
         "columns": list(df.columns),
-        "rows": df.head(settings.max_csv_preview_rows).to_dict(orient="records"),
+        "rows": df.head(display_rows).to_dict(orient="records"),
         "total_rows": total_rows,
-        "truncated": total_rows > settings.max_csv_preview_rows,
+        "truncated": total_rows > display_rows,
     }
