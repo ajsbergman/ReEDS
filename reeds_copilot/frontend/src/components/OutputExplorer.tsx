@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
   listRunFoldersAPI,
   listFilesAPI,
@@ -6,6 +6,14 @@ import {
   type FileEntry,
   type FileListResponse,
 } from "../lib/api";
+
+type SortKey = "name" | "type" | "size" | "modified";
+type SortDir = "asc" | "desc";
+
+function getExtension(name: string): string {
+  const i = name.lastIndexOf(".");
+  return i > 0 ? name.slice(i).toLowerCase() : "";
+}
 
 interface Props {
   onSelectFile: (path: string) => void;
@@ -20,6 +28,8 @@ export default function OutputExplorer({ onSelectFile }: Props) {
   const [activePath, setActivePath] = useState<string | null>(null);
   const [browseEntries, setBrowseEntries] = useState<FileEntry[]>([]);
   const [browseLoading, setBrowseLoading] = useState(false);
+  const [sortKey, setSortKey] = useState<SortKey>("name");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
 
   function refresh() {
     setLoading(true);
@@ -85,6 +95,50 @@ export default function OutputExplorer({ onSelectFile }: Props) {
     if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
     if (size < 1024 * 1024 * 1024) return `${(size / 1024 / 1024).toFixed(1)} MB`;
     return `${(size / 1024 / 1024 / 1024).toFixed(1)} GB`;
+  }
+
+  function formatDate(ts: number): string {
+    if (!ts) return "";
+    const d = new Date(ts * 1000);
+    return d.toLocaleDateString() + " " + d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  }
+
+  const sortedBrowseEntries = useMemo(() => {
+    const dirs = browseEntries.filter((e) => e.is_dir);
+    const files = browseEntries.filter((e) => !e.is_dir);
+    const cmp = (a: FileEntry, b: FileEntry): number => {
+      let result = 0;
+      switch (sortKey) {
+        case "name":
+          result = a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+          break;
+        case "type":
+          result = getExtension(a.name).localeCompare(getExtension(b.name)) || a.name.localeCompare(b.name);
+          break;
+        case "size":
+          result = (a.size ?? 0) - (b.size ?? 0);
+          break;
+        case "modified":
+          result = (a.modified_at ?? 0) - (b.modified_at ?? 0);
+          break;
+      }
+      return sortDir === "asc" ? result : -result;
+    };
+    return [...dirs.sort(cmp), ...files.sort(cmp)];
+  }, [browseEntries, sortKey, sortDir]);
+
+  function toggleSort(key: SortKey) {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  }
+
+  function sortIndicator(key: SortKey): string {
+    if (sortKey !== key) return "";
+    return sortDir === "asc" ? " ▲" : " ▼";
   }
 
   function statusLabel(f: RunFolder) {
@@ -172,7 +226,25 @@ export default function OutputExplorer({ onSelectFile }: Props) {
 
           {browseLoading && <div className="loading">Loading…</div>}
 
-          {browseEntries.map((e) => (
+          {/* Sort header */}
+          {!browseLoading && sortedBrowseEntries.length > 0 && (
+            <div className="file-sort-bar">
+              <span className="sort-col sort-col--name" onClick={() => toggleSort("name")}>
+                Name{sortIndicator("name")}
+              </span>
+              <span className="sort-col sort-col--type" onClick={() => toggleSort("type")}>
+                Type{sortIndicator("type")}
+              </span>
+              <span className="sort-col sort-col--size" onClick={() => toggleSort("size")}>
+                Size{sortIndicator("size")}
+              </span>
+              <span className="sort-col sort-col--date" onClick={() => toggleSort("modified")}>
+                Modified{sortIndicator("modified")}
+              </span>
+            </div>
+          )}
+
+          {sortedBrowseEntries.map((e) => (
             <div
               key={e.rel_path}
               className="file-entry"
@@ -180,7 +252,9 @@ export default function OutputExplorer({ onSelectFile }: Props) {
             >
               <span className="icon">{e.is_dir ? "📁" : "📄"}</span>
               <span className="name">{e.name}</span>
+              <span className="ext">{e.is_dir ? "" : getExtension(e.name)}</span>
               <span className="size">{formatSize(e.size)}</span>
+              <span className="date">{formatDate(e.modified_at)}</span>
             </div>
           ))}
         </div>
