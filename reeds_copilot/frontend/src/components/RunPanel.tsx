@@ -81,6 +81,7 @@ export default function RunPanel() {
   const [expandedRun, setExpandedRun] = useState<string | null>(null);
   const [expandedDetail, setExpandedDetail] = useState<RunRecord | null>(null);
   const [launching, setLaunching] = useState(false);
+  const [overwrite, setOverwrite] = useState(false);
   const [error, setError] = useState("");
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -218,6 +219,7 @@ export default function RunPanel() {
         simult_runs: simultRuns,
         target,
         conda_env: selectedEnv,
+        overwrite,
       });
       refreshRuns();
     } catch (e: any) {
@@ -433,6 +435,15 @@ export default function RunPanel() {
             style={{ width: 80 }}
           />
         </div>
+
+        <label className="run-overwrite-toggle">
+          <input
+            type="checkbox"
+            checked={overwrite}
+            onChange={(e) => setOverwrite(e.target.checked)}
+          />
+          Overwrite existing run folders
+        </label>
 
         {error && <div className="run-error">{error}</div>}
 

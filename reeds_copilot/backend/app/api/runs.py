@@ -22,6 +22,7 @@ class StartRunRequest(BaseModel):
     simult_runs: int = Field(default=1, ge=1, le=32)
     target: Literal["local", "hpc"] = "local"
     conda_env: str = "reeds2"
+    overwrite: bool = False
 
 
 # ── Endpoints ────────────────────────────────────────────────────────────────
@@ -96,6 +97,14 @@ def start_run(body: StartRunRequest, settings: Settings = Depends(get_settings))
     """Start a new ReEDS run."""
     if body.target == "hpc":
         raise HTTPException(status_code=501, detail="HPC runs not yet implemented")
+
+    # If overwrite requested, delete existing run folders first
+    if body.overwrite and body.cases:
+        import shutil
+        for case in body.cases:
+            d = settings.repo_root / "runs" / f"{body.batch_name}_{case}"
+            if d.is_dir():
+                shutil.rmtree(d)
 
     rec = run_manager.start_local_run(
         repo_root=settings.repo_root,

@@ -873,6 +873,23 @@ body,
   border-color: var(--accent);
 }
 
+/* Overwrite toggle */
+.run-overwrite-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  cursor: pointer;
+  margin-top: 2px;
+}
+.run-overwrite-toggle input[type="checkbox"] {
+  accent-color: var(--accent);
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+}
+
 /* Launch button */
 .run-launch-btn {
   width: 100%;

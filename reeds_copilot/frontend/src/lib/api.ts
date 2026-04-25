@@ -239,6 +239,7 @@ export function startRunAPI(body: {
   simult_runs?: number;
   target?: "local" | "hpc";
   conda_env?: string;
+  overwrite?: boolean;
 }): Promise<RunRecord> {
   return post<RunRecord>("/runs", body);
 }
