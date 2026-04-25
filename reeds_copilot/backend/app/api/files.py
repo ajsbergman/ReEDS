@@ -30,10 +30,13 @@ def list_files(
 def preview(
     path: str = Query(..., description="Relative path inside the repo"),
     full: bool = Query(False, description="Return full file content (up to 10 MB)"),
+    gdx_symbol: str | None = Query(None, description="GDX symbol name to preview"),
     settings: Settings = Depends(get_settings),
 ):
     try:
-        result = preview_file(settings.repo_root, path, settings, full=full)
+        result = preview_file(
+            settings.repo_root, path, settings, full=full, gdx_symbol=gdx_symbol,
+        )
     except (FileNotFoundError, PermissionError) as exc:
         raise HTTPException(status_code=400, detail=str(exc))
     return FilePreviewResponse(**result)

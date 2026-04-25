@@ -59,6 +59,14 @@ export interface FileListResponse {
   entries: FileEntry[];
 }
 
+export interface GdxSymbolInfo {
+  name: string;
+  type: string;
+  dims: number;
+  records: number;
+  description: string;
+}
+
 export interface FilePreviewResponse {
   rel_path: string;
   file_type: string;
@@ -68,6 +76,9 @@ export interface FilePreviewResponse {
   total_rows?: number | null;
   truncated: boolean;
   is_image?: boolean;
+  // GDX-specific
+  gdx_symbols?: GdxSymbolInfo[] | null;
+  gdx_symbol?: string | null;
 }
 
 export interface HealthResponse {
@@ -111,9 +122,14 @@ export function listFilesAPI(path: string = "."): Promise<FileListResponse> {
   );
 }
 
-export function previewFileAPI(path: string, full: boolean = false): Promise<FilePreviewResponse> {
+export function previewFileAPI(
+  path: string,
+  full: boolean = false,
+  gdxSymbol?: string | null,
+): Promise<FilePreviewResponse> {
   const params = new URLSearchParams({ path });
   if (full) params.set("full", "true");
+  if (gdxSymbol) params.set("gdx_symbol", gdxSymbol);
   return request<FilePreviewResponse>(`/files/preview?${params}`);
 }
 

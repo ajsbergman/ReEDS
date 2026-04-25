@@ -62,6 +62,14 @@ class FileListResponse(BaseModel):
     entries: list[FileEntry]
 
 
+class GdxSymbolInfo(BaseModel):
+    name: str
+    type: str
+    dims: int
+    records: int
+    description: str = ""
+
+
 class FilePreviewResponse(BaseModel):
     rel_path: str
     file_type: str
@@ -71,6 +79,9 @@ class FilePreviewResponse(BaseModel):
     total_rows: int | None = None
     truncated: bool = False
     is_image: bool = False
+    # GDX-specific
+    gdx_symbols: list[GdxSymbolInfo] | None = None  # symbol listing
+    gdx_symbol: str | None = None                    # active symbol name
 
 
 # ── Health ────────────────────────────────────────────────────────────────────
