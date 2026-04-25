@@ -181,6 +181,7 @@ def start_local_run(
     cases: list[str] | None = None,
     simult_runs: int = 1,
     conda_env: str = "reeds2",
+    overwrite: bool = False,
     extra_args: dict[str, Any] | None = None,
 ) -> RunRecord:
     """Start a local ReEDS run via runbatch.py."""
@@ -226,6 +227,15 @@ def start_local_run(
         cmd = ["cmd", "/c", inner]
     else:
         cmd = ["conda", "run", "--no-capture-output", "-n", conda_env, "python"] + py_args
+
+    # Delete existing run folders if overwrite requested
+    if overwrite and cases:
+        import shutil as _shutil
+        for c in cases:
+            d = repo_root / "runs" / f"{batch_name}_{c}"
+            if d.is_dir():
+                log.info("Overwrite: deleting existing folder %s", d)
+                _shutil.rmtree(d)
 
     log.info("Launching local run %s: %s", rid, cmd)
 
@@ -298,10 +308,17 @@ def start_local_run(
             proc = subprocess.Popen(
                 cmd,
                 cwd=str(repo_root),
+                stdin=subprocess.PIPE,
                 creationflags=subprocess.CREATE_NEW_PROCESS_GROUP
                 if os.name == "nt"
                 else 0,
             )
+            # Feed "y" answers to handle any remaining interactive prompts
+            try:
+                proc.stdin.write(b"y\n" * 10)
+                proc.stdin.close()
+            except Exception:
+                pass
             rec.pid = proc.pid
             _persist_run(repo_root, rec)
 

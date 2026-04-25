@@ -98,14 +98,6 @@ def start_run(body: StartRunRequest, settings: Settings = Depends(get_settings))
     if body.target == "hpc":
         raise HTTPException(status_code=501, detail="HPC runs not yet implemented")
 
-    # If overwrite requested, delete existing run folders first
-    if body.overwrite and body.cases:
-        import shutil
-        for case in body.cases:
-            d = settings.repo_root / "runs" / f"{body.batch_name}_{case}"
-            if d.is_dir():
-                shutil.rmtree(d)
-
     rec = run_manager.start_local_run(
         repo_root=settings.repo_root,
         batch_name=body.batch_name,
@@ -113,6 +105,7 @@ def start_run(body: StartRunRequest, settings: Settings = Depends(get_settings))
         cases=body.cases or None,
         simult_runs=body.simult_runs,
         conda_env=body.conda_env,
+        overwrite=body.overwrite,
     )
     return rec.to_dict()
 
