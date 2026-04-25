@@ -69,6 +69,7 @@ class FilePreviewResponse(BaseModel):
     rows: list[dict[str, Any]] | None = None  # CSV sample rows
     total_rows: int | None = None
     truncated: bool = False
+    is_image: bool = False
 
 
 # ── Health ────────────────────────────────────────────────────────────────────
