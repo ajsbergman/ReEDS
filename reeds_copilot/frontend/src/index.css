@@ -468,6 +468,10 @@ body,
   background: #64748b30;
   color: #94a3b8;
 }
+.output-status-failed {
+  background: #ef444430;
+  color: #f87171;
+}
 .output-folder-meta {
   display: flex;
   align-items: center;

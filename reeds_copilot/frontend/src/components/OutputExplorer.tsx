@@ -88,10 +88,10 @@ export default function OutputExplorer({ onSelectFile }: Props) {
   }
 
   function statusLabel(f: RunFolder) {
-    if (f.has_outputs) return { text: "Completed", cls: "output-status-done" };
+    if (f.has_report) return { text: "Completed", cls: "output-status-done" };
     if (f.has_gamslog) return { text: "In Progress", cls: "output-status-running" };
     if (f.has_meta) return { text: "Setting Up", cls: "output-status-setup" };
-    return { text: "Unknown", cls: "output-status-unknown" };
+    return { text: "Failed", cls: "output-status-failed" };
   }
 
   // breadcrumb when browsing inside a run
@@ -139,6 +139,7 @@ export default function OutputExplorer({ onSelectFile }: Props) {
                     {new Date(f.modified_at * 1000).toLocaleString()}
                   </span>
                   <span className="output-folder-badges">
+                    {f.has_report && <span className="folder-badge outputs">report</span>}
                     {f.has_outputs && <span className="folder-badge outputs">outputs</span>}
                     {f.has_gamslog && <span className="folder-badge log">gamslog</span>}
                     {f.has_meta && <span className="folder-badge meta">meta</span>}

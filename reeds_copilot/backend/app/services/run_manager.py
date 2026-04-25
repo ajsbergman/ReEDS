@@ -229,16 +229,75 @@ def start_local_run(
 
     log.info("Launching local run %s: %s", rid, cmd)
 
+    def _tail_log_file(log_path: Path, n: int = 100) -> str:
+        """Read the last n lines of a log file if it exists."""
+        if not log_path.exists():
+            return ""
+        try:
+            text = log_path.read_text(encoding="utf-8", errors="replace")
+            return "\n".join(text.splitlines()[-n:])
+        except Exception:
+            return ""
+
+    def _is_run_finished(case_dir: Path) -> bool:
+        """A run is finished when report.xlsx exists (same logic as runstatus.py)."""
+        return (case_dir / "outputs" / "reeds-report" / "report.xlsx").exists()
+
+    def _is_run_failed(case_dir: Path) -> bool:
+        """A run has failed if the folder exists but there's no report.xlsx
+        and the process has exited."""
+        if not case_dir.is_dir():
+            return False
+        # Check meta.csv for an 'end' row without a completed report
+        meta = case_dir / "meta.csv"
+        if meta.exists():
+            try:
+                lines = meta.read_text(encoding="utf-8", errors="replace").splitlines()
+                for line in lines:
+                    if line.startswith("0,end,"):
+                        return True  # runbatch wrote 'end' but no report.xlsx
+            except Exception:
+                pass
+        return False
+
+    def _build_log_tail(case_dirs: list[Path]) -> str:
+        """Build a combined log tail from gamslog.txt and latest lst files."""
+        log_parts: list[str] = []
+        for cd in case_dirs:
+            if not cd.is_dir():
+                continue
+            glog = cd / "gamslog.txt"
+            if glog.exists():
+                log_parts.append(
+                    f"── {cd.name}/gamslog.txt ──\n"
+                    + _tail_log_file(glog, 50)
+                )
+            # Latest .lst file (GAMS solve progress)
+            lstdir = cd / "lstfiles"
+            if lstdir.is_dir():
+                lst_files = sorted(
+                    [f for f in lstdir.glob("*.lst")],
+                    key=lambda p: p.stat().st_mtime,
+                    reverse=True,
+                )
+                if lst_files:
+                    log_parts.append(
+                        f"── {lst_files[0].name} (latest) ──\n"
+                        + _tail_log_file(lst_files[0], 30)
+                    )
+        return "\n".join(log_parts)
+
     def _run_in_thread():
         try:
             rec.status = RunStatus.RUNNING
+            _persist_run(repo_root, rec)
+
+            # Run runbatch.py directly — do NOT capture stdout so that
+            # `os.system('start /wait cmd /c ...')` works normally on Windows
+            # and opens a cmd window for the actual GAMS run.
             proc = subprocess.Popen(
                 cmd,
                 cwd=str(repo_root),
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=True,
-                bufsize=1,
                 creationflags=subprocess.CREATE_NEW_PROCESS_GROUP
                 if os.name == "nt"
                 else 0,
@@ -246,23 +305,41 @@ def start_local_run(
             rec.pid = proc.pid
             _persist_run(repo_root, rec)
 
-            # Stream output, keep last 200 lines
-            lines: list[str] = []
-            for line in proc.stdout:  # type: ignore[union-attr]
-                lines.append(line)
-                if len(lines) > 200:
-                    lines = lines[-200:]
-                rec.log_tail = "".join(lines[-100:])
+            # Monitor progress by tailing log files from run folder
+            case_dirs = [
+                repo_root / "runs" / f"{batch_name}_{c}"
+                for c in (cases or [])
+            ]
+            while proc.poll() is None:
+                tail = _build_log_tail(case_dirs)
+                if tail:
+                    rec.log_tail = tail
+                time.sleep(5)
 
-            proc.wait()
+            # Process has exited — read final logs
             rec.finished_at = time.time()
-            rec.log_tail = "".join(lines[-100:])
+            rec.log_tail = _build_log_tail(case_dirs)
 
-            if proc.returncode == 0:
+            # Determine final status using runstatus.py logic:
+            # finished = report.xlsx exists for ALL cases
+            all_finished = all(_is_run_finished(cd) for cd in case_dirs) if case_dirs else False
+            any_failed = any(_is_run_failed(cd) for cd in case_dirs) if case_dirs else False
+
+            if all_finished:
                 rec.status = RunStatus.COMPLETED
-            else:
+            elif any_failed or proc.returncode != 0:
                 rec.status = RunStatus.FAILED
-                rec.error = f"Exit code {proc.returncode}"
+                if proc.returncode != 0:
+                    rec.error = f"Exit code {proc.returncode}"
+                else:
+                    # Identify which cases failed
+                    failed_cases = [cd.name for cd in case_dirs
+                                    if not _is_run_finished(cd)]
+                    rec.error = f"Cases did not produce report.xlsx: {', '.join(failed_cases)}"
+            else:
+                # Process exited 0 but no report.xlsx yet — might be setup-only
+                rec.status = RunStatus.COMPLETED
+                rec.error = "Process finished but report.xlsx not found (may need manual check)"
         except Exception as exc:
             rec.status = RunStatus.FAILED
             rec.error = str(exc)
@@ -338,7 +415,9 @@ def list_run_folders(repo_root: Path) -> list[dict]:
     for d in sorted(runs_dir.iterdir(), reverse=True):
         if not d.is_dir():
             continue
-        # Check for key files to infer status
+        # Check for key files to infer status (same logic as runstatus.py)
+        report = d / "outputs" / "reeds-report" / "report.xlsx"
+        has_report = report.exists()
         has_outputs = (d / "outputs").is_dir()
         has_gamslog = (d / "gamslog.txt").is_file()
         has_meta = (d / "meta.csv").is_file()
@@ -350,6 +429,7 @@ def list_run_folders(repo_root: Path) -> list[dict]:
         results.append({
             "name": d.name,
             "path": str(d),
+            "has_report": has_report,
             "has_outputs": has_outputs,
             "has_gamslog": has_gamslog,
             "has_meta": has_meta,

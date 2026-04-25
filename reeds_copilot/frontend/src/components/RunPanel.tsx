@@ -179,6 +179,10 @@ export default function RunPanel() {
 
   function refreshRuns() {
     listRunsAPI().then(setRuns).catch(() => {});
+    // Also refresh expanded run detail (log + status)
+    if (expandedRun) {
+      getRunAPI(expandedRun).then(setExpandedDetail).catch(() => {});
+    }
   }
 
   function handleSuffixChange(suffix: string) {

@@ -264,6 +264,7 @@ export function deleteRunAPI(id: string): Promise<{ success: boolean }> {
 export interface RunFolder {
   name: string;
   path: string;
+  has_report: boolean;
   has_outputs: boolean;
   has_gamslog: boolean;
   has_meta: boolean;
