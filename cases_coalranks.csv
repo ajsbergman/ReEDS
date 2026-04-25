@@ -1,0 +1,8 @@
+,Default Value,USA_defaults,USA_noCAA
+ignore,,,
+GSw_Region,country/USA,,
+endyear,2050,,
+yearset,,,
+GSw_ZoneSet,,,
+GSw_GasCurve,1,,
+GSw_Clean_Air_Act,1,,0
