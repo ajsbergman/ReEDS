@@ -50,6 +50,7 @@ export interface FileEntry {
   rel_path: string;
   is_dir: boolean;
   size: number | null;
+  modified_at: number;
   category: string;
 }
 

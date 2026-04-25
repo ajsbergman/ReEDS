@@ -1,13 +1,21 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import {
   listFilesAPI,
   type FileEntry,
   type FileListResponse,
 } from "../lib/api";
 
+type SortKey = "name" | "type" | "size" | "modified";
+type SortDir = "asc" | "desc";
+
 interface Props {
   rootPath: string;
   onSelectFile: (path: string) => void;
+}
+
+function getExtension(name: string): string {
+  const i = name.lastIndexOf(".");
+  return i > 0 ? name.slice(i).toLowerCase() : "";
 }
 
 export default function FileBrowser({ rootPath, onSelectFile }: Props) {
@@ -15,6 +23,8 @@ export default function FileBrowser({ rootPath, onSelectFile }: Props) {
   const [entries, setEntries] = useState<FileEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sortKey, setSortKey] = useState<SortKey>("name");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
 
   useEffect(() => {
     setCurrentPath(rootPath);
@@ -36,6 +46,42 @@ export default function FileBrowser({ rootPath, onSelectFile }: Props) {
       });
     return () => { cancelled = true; };
   }, [currentPath]);
+
+  const sortedEntries = useMemo(() => {
+    const dirs = entries.filter((e) => e.is_dir);
+    const files = entries.filter((e) => !e.is_dir);
+
+    const cmp = (a: FileEntry, b: FileEntry): number => {
+      let result = 0;
+      switch (sortKey) {
+        case "name":
+          result = a.name.localeCompare(b.name, undefined, { sensitivity: "base" });
+          break;
+        case "type":
+          result = getExtension(a.name).localeCompare(getExtension(b.name)) || a.name.localeCompare(b.name);
+          break;
+        case "size":
+          result = (a.size ?? 0) - (b.size ?? 0);
+          break;
+        case "modified":
+          result = (a.modified_at ?? 0) - (b.modified_at ?? 0);
+          break;
+      }
+      return sortDir === "asc" ? result : -result;
+    };
+
+    // Directories always first, then sorted files
+    return [...dirs.sort(cmp), ...files.sort(cmp)];
+  }, [entries, sortKey, sortDir]);
+
+  function toggleSort(key: SortKey) {
+    if (sortKey === key) {
+      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    } else {
+      setSortKey(key);
+      setSortDir("asc");
+    }
+  }
 
   function navigateUp() {
     const parts = currentPath.split("/").filter(Boolean);
@@ -60,7 +106,17 @@ export default function FileBrowser({ rootPath, onSelectFile }: Props) {
     return `${(size / 1024 / 1024).toFixed(1)} MB`;
   }
 
-  // breadcrumb
+  function formatDate(ts: number): string {
+    if (!ts) return "";
+    const d = new Date(ts * 1000);
+    return d.toLocaleDateString() + " " + d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  }
+
+  function sortIndicator(key: SortKey): string {
+    if (sortKey !== key) return "";
+    return sortDir === "asc" ? " ▲" : " ▼";
+  }
+
   const pathParts = currentPath === "." ? [] : currentPath.split("/");
 
   return (
@@ -83,10 +139,26 @@ export default function FileBrowser({ rootPath, onSelectFile }: Props) {
         )}
       </div>
 
+      {/* Sort header */}
+      <div className="file-sort-bar">
+        <span className="sort-col sort-col--name" onClick={() => toggleSort("name")}>
+          Name{sortIndicator("name")}
+        </span>
+        <span className="sort-col sort-col--type" onClick={() => toggleSort("type")}>
+          Type{sortIndicator("type")}
+        </span>
+        <span className="sort-col sort-col--size" onClick={() => toggleSort("size")}>
+          Size{sortIndicator("size")}
+        </span>
+        <span className="sort-col sort-col--date" onClick={() => toggleSort("modified")}>
+          Modified{sortIndicator("modified")}
+        </span>
+      </div>
+
       {error && <div className="error-banner">{error}</div>}
       {loading && <div className="loading">Loading…</div>}
 
-      {entries.map((e) => (
+      {sortedEntries.map((e) => (
         <div
           key={e.rel_path}
           className="file-entry"
@@ -94,7 +166,9 @@ export default function FileBrowser({ rootPath, onSelectFile }: Props) {
         >
           <span className="icon">{e.is_dir ? "📁" : "📄"}</span>
           <span className="name">{e.name}</span>
+          <span className="ext">{e.is_dir ? "" : getExtension(e.name)}</span>
           <span className="size">{formatSize(e.size)}</span>
+          <span className="date">{formatDate(e.modified_at)}</span>
         </div>
       ))}
     </div>

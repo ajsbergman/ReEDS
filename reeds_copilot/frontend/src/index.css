@@ -362,15 +362,65 @@ body,
   width: 18px;
   text-align: center;
   color: var(--text-muted);
+  flex-shrink: 0;
 }
 .file-entry .name {
   flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.file-entry .ext {
+  width: 55px;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  text-align: left;
+  flex-shrink: 0;
 }
 .file-entry .size {
+  width: 70px;
   color: var(--text-muted);
   font-size: 0.78rem;
   font-family: var(--font-mono);
+  text-align: right;
+  flex-shrink: 0;
 }
+.file-entry .date {
+  width: 130px;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+  text-align: right;
+  flex-shrink: 0;
+}
+
+/* ── Sort bar ─────────────────────────────────────────────────────────────── */
+.file-sort-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 4px;
+  user-select: none;
+}
+.sort-col {
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 3px;
+}
+.sort-col:hover {
+  background: var(--bg-elevated);
+  color: var(--text);
+}
+.sort-col--name { flex: 1; padding-left: 30px; }
+.sort-col--type { width: 55px; }
+.sort-col--size { width: 70px; text-align: right; }
+.sort-col--date { width: 130px; text-align: right; }
 
 /* ── Output Explorer ──────────────────────────────────────────────────────── */
 .output-explorer {

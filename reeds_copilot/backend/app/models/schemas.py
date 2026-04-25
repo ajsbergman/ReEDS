@@ -53,6 +53,7 @@ class FileEntry(BaseModel):
     rel_path: str
     is_dir: bool
     size: int | None = None
+    modified_at: float = 0
     category: str = ""
 
 

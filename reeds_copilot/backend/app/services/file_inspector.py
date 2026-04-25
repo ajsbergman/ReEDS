@@ -38,14 +38,18 @@ def list_directory(repo_root: Path, rel_path: str) -> list[dict]:
         if child.name.startswith("."):
             continue
         try:
-            size = child.stat().st_size if child.is_file() else None
+            st = child.stat()
+            size = st.st_size if child.is_file() else None
+            mtime = st.st_mtime
         except OSError:
             size = None
+            mtime = 0
         entries.append({
             "name": child.name,
             "rel_path": str(child.relative_to(repo_root)).replace("\\", "/"),
             "is_dir": child.is_dir(),
             "size": size,
+            "modified_at": mtime,
         })
     return entries
 
