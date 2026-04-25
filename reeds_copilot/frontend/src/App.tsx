@@ -148,7 +148,10 @@ export default function App() {
     <div className="app-shell">
       {/* ── Sidebar ──────────────────────────────────── */}
       <nav className="sidebar">
-        <h1>ReEDS-Copilot</h1>
+        <div className="sidebar-brand">
+          <img src="/reeds-logo.png" alt="ReEDS" className="sidebar-logo" />
+          <h1>ReEDS-Copilot</h1>
+        </div>
         {sidebarItems.map((item) => (
           <button
             key={item.key}

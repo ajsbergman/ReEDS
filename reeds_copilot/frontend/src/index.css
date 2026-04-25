@@ -14,8 +14,8 @@
   --border: #2e3140;
   --text: #e1e4ea;
   --text-muted: #8b8fa3;
-  --accent: #5b8def;
-  --accent-hover: #7aa5f5;
+  --accent: #2bbce6;
+  --accent-hover: #50cef0;
   --danger: #e05252;
   --success: #4caf50;
   --font-mono: "SF Mono", "Fira Code", "Cascadia Code", Menlo, monospace;
@@ -52,11 +52,25 @@ body,
   overflow-y: auto;
 }
 
-.sidebar h1 {
-  font-size: 1.15rem;
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   margin-bottom: 12px;
+}
+
+.sidebar-logo {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.sidebar h1 {
+  font-size: 1.05rem;
   color: var(--accent);
   letter-spacing: -0.02em;
+  margin: 0;
 }
 
 .sidebar button {
