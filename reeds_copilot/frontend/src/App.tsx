@@ -51,7 +51,7 @@ export default function App() {
     setSidebarWidth((w) => Math.max(140, Math.min(400, w + delta)));
   }, []);
   const handleRightResize = useCallback((delta: number) => {
-    setRightWidth((w) => Math.max(200, Math.min(700, w - delta)));
+    setRightWidth((w) => Math.max(200, Math.min(1200, w - delta)));
   }, []);
 
   useEffect(() => {
