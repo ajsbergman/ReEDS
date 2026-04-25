@@ -66,6 +66,7 @@ export interface FilePreviewResponse {
   rows?: Record<string, unknown>[] | null;
   total_rows?: number | null;
   truncated: boolean;
+  is_image?: boolean;
 }
 
 export interface HealthResponse {
@@ -117,6 +118,10 @@ export function previewFileAPI(path: string, full: boolean = false): Promise<Fil
 
 export function downloadFileURL(path: string): string {
   return `${BASE}/files/download?path=${encodeURIComponent(path)}`;
+}
+
+export function rawFileURL(path: string): string {
+  return `${BASE}/files/raw?path=${encodeURIComponent(path)}`;
 }
 
 export function healthAPI(): Promise<HealthResponse> {

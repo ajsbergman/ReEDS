@@ -17,6 +17,8 @@ TEXT_SUFFIXES = {
     ".html", ".xml", ".sql",
 }
 
+IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".gif", ".bmp", ".svg", ".webp"}
+
 
 def safe_resolve(repo_root: Path, rel_path: str) -> Path:
     """Resolve *rel_path* relative to *repo_root* and ensure it stays inside."""
@@ -61,6 +63,14 @@ def preview_file(repo_root: Path, rel_path: str, settings: Settings, full: bool 
 
     if suffix == ".csv":
         return _preview_csv(target, rel_path, settings, full=full)
+
+    if suffix in IMAGE_SUFFIXES:
+        result.update({
+            "content": None,
+            "is_image": True,
+            "truncated": False,
+        })
+        return result
 
     if suffix in TEXT_SUFFIXES or suffix == "":
         text = target.read_text(encoding="utf-8", errors="replace")

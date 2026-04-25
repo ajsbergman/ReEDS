@@ -56,3 +56,28 @@ def download_file(
         filename=target.name,
         media_type="application/octet-stream",
     )
+
+
+IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".gif", ".bmp", ".svg", ".webp"}
+IMAGE_MEDIA_TYPES = {
+    ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
+    ".gif": "image/gif", ".bmp": "image/bmp", ".svg": "image/svg+xml",
+    ".webp": "image/webp",
+}
+
+
+@router.get("/raw")
+def raw_file(
+    path: str = Query(..., description="Relative path inside the repo"),
+    settings: Settings = Depends(get_settings),
+):
+    """Serve a file inline (e.g. images) with correct Content-Type."""
+    try:
+        target = safe_resolve(settings.repo_root, path)
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
+    if not target.is_file():
+        raise HTTPException(status_code=404, detail=f"Not a file: {path}")
+    suffix = target.suffix.lower()
+    media = IMAGE_MEDIA_TYPES.get(suffix, "application/octet-stream")
+    return FileResponse(path=str(target), media_type=media)

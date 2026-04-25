@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { previewFileAPI, downloadFileURL, type FilePreviewResponse } from "../lib/api";
+import { previewFileAPI, downloadFileURL, rawFileURL, type FilePreviewResponse } from "../lib/api";
 import type { SourceSnippet } from "../lib/api";
 
 interface Props {
@@ -67,7 +67,15 @@ export default function RightPanel({ selectedFile, sources, onSelectFile, width 
             </a>
           </div>
           {loading && <div className="loading">Loading{fullMode ? " full file" : " preview"}…</div>}
-          {preview && preview.columns && preview.rows ? (
+          {preview && preview.is_image && selectedFile ? (
+            <div className="file-preview" style={{ textAlign: "center", padding: 12 }}>
+              <img
+                src={rawFileURL(selectedFile)}
+                alt={selectedFile}
+                style={{ maxWidth: "100%", maxHeight: "70vh", borderRadius: 6, background: "#fff" }}
+              />
+            </div>
+          ) : preview && preview.columns && preview.rows ? (
             <CsvPreview preview={preview} fullMode={fullMode} onViewFull={() => setFullMode(true)} />
           ) : preview && preview.content ? (
             <div className="file-preview">
