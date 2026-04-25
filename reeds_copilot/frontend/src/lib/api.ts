@@ -302,6 +302,37 @@ export function listRunFoldersAPI(): Promise<RunFolder[]> {
   return request<RunFolder[]>("/runs/folders/list");
 }
 
+/* ── Compare Cases ────────────────────────────────────────────────────────── */
+
+export interface CompareCommonFilesResponse {
+  files: string[];
+}
+
+export function compareCommonFilesAPI(cases: string[]): Promise<CompareCommonFilesResponse> {
+  const params = cases.map((c) => `cases=${encodeURIComponent(c)}`).join("&");
+  return request<CompareCommonFilesResponse>(`/runs/compare/common-files?${params}`);
+}
+
+export interface CompareDataResponse {
+  columns: string[];
+  rows: Record<string, unknown>[];
+  total_rows: number;
+  filename: string;
+  cases: string[];
+}
+
+export function compareDataAPI(
+  cases: string[],
+  filename: string,
+  maxRowsPerCase: number = 5000,
+): Promise<CompareDataResponse> {
+  return post<CompareDataResponse>("/runs/compare/data", {
+    cases,
+    filename,
+    max_rows_per_case: maxRowsPerCase,
+  });
+}
+
 /* ── Environment Checks ───────────────────────────────────────────────────── */
 
 export interface EnvCheckResult {

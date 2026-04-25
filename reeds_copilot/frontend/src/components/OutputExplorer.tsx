@@ -6,6 +6,7 @@ import {
   type FileEntry,
   type FileListResponse,
 } from "../lib/api";
+import ComparePanel from "./ComparePanel";
 
 type SortKey = "name" | "type" | "size" | "modified";
 type SortDir = "asc" | "desc";
@@ -23,6 +24,7 @@ export default function OutputExplorer({ onSelectFile }: Props) {
   const [folders, setFolders] = useState<RunFolder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [compareMode, setCompareMode] = useState(false);
 
   // When a folder is expanded, browse into it
   const [activePath, setActivePath] = useState<string | null>(null);
@@ -155,13 +157,27 @@ export default function OutputExplorer({ onSelectFile }: Props) {
     <div className="output-explorer">
       <div className="output-explorer-header">
         <h2>Outputs Explorer</h2>
-        <button className="refresh-btn" onClick={refresh} title="Refresh">↻</button>
+        <div style={{ display: "flex", gap: 6 }}>
+          {!compareMode && folders.length >= 2 && (
+            <button
+              className="btn btn-outline"
+              style={{ fontSize: "0.78rem", padding: "4px 10px" }}
+              onClick={() => setCompareMode(true)}
+              title="Compare outputs across cases"
+            >
+              ⚖ Compare
+            </button>
+          )}
+          <button className="refresh-btn" onClick={refresh} title="Refresh">↻</button>
+        </div>
       </div>
 
-      {error && <div className="error-banner">{error}</div>}
-      {loading && <div className="loading">Loading…</div>}
+      {compareMode && <ComparePanel onClose={() => setCompareMode(false)} />}
 
-      {!loading && folders.length === 0 && !activePath && (
+      {!compareMode && error && <div className="error-banner">{error}</div>}
+      {!compareMode && loading && <div className="loading">Loading…</div>}
+
+      {!compareMode && !loading && folders.length === 0 && !activePath && (
         <div className="output-empty">
           <div className="output-empty-icon">📂</div>
           <p>No run cases found yet.</p>
@@ -173,7 +189,7 @@ export default function OutputExplorer({ onSelectFile }: Props) {
       )}
 
       {/* ── Folder list view ─── */}
-      {!activePath && folders.length > 0 && (
+      {!compareMode && !activePath && folders.length > 0 && (
         <div className="output-folder-list">
           {folders.map((f) => {
             const st = statusLabel(f);
@@ -206,7 +222,7 @@ export default function OutputExplorer({ onSelectFile }: Props) {
       )}
 
       {/* ── Browsing inside a run folder ─── */}
-      {activePath && (
+      {!compareMode && activePath && (
         <div className="output-browse">
           <div className="breadcrumb">
             <span onClick={() => setActivePath(null)}>runs</span>

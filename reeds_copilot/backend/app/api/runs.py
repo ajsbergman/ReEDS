@@ -1,9 +1,11 @@
 """API endpoints for launching and monitoring ReEDS runs."""
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any, Literal
 
-from fastapi import APIRouter, Depends, HTTPException
+import pandas as pd
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from ..core.config import Settings, get_settings
@@ -127,6 +129,72 @@ def cleanup_local(settings: Settings = Depends(get_settings)):
     """Cancel all running local processes (called on browser close)."""
     count = run_manager.cancel_all_local(settings.repo_root)
     return {"cancelled": count}
+
+
+# ── Compare Cases ────────────────────────────────────────────────────────────
+
+@router.get("/compare/common-files")
+def compare_common_files(
+    cases: list[str] = Query(..., description="List of case folder names"),
+    settings: Settings = Depends(get_settings),
+):
+    """Return output CSV filenames common to all selected cases."""
+    runs_dir = settings.repo_root / "runs"
+    file_sets: list[set[str]] = []
+    for case in cases:
+        out_dir = (runs_dir / case / "outputs").resolve()
+        if not str(out_dir).startswith(str(runs_dir.resolve())):
+            raise HTTPException(status_code=400, detail="Invalid case name")
+        if not out_dir.is_dir():
+            raise HTTPException(status_code=404, detail=f"No outputs for case: {case}")
+        csvs = {f.name for f in out_dir.iterdir() if f.suffix.lower() == ".csv"}
+        file_sets.append(csvs)
+    common = sorted(set.intersection(*file_sets)) if file_sets else []
+    return {"files": common}
+
+
+class CompareRequest(BaseModel):
+    cases: list[str] = Field(..., min_length=2, max_length=20)
+    filename: str = Field(..., description="CSV filename in outputs/ to compare")
+    max_rows_per_case: int = Field(default=5000, ge=100, le=50000)
+
+
+@router.post("/compare/data")
+def compare_data(
+    body: CompareRequest,
+    settings: Settings = Depends(get_settings),
+):
+    """Read a CSV from each case's outputs/ and return merged data with a 'case' column."""
+    import re
+    safe_name = re.compile(r"^[a-zA-Z0-9_\-\.]+\.csv$")
+    if not safe_name.match(body.filename):
+        raise HTTPException(status_code=400, detail="Invalid filename")
+
+    runs_dir = settings.repo_root / "runs"
+    frames: list[pd.DataFrame] = []
+    for case in body.cases:
+        csv_path = (runs_dir / case / "outputs" / body.filename).resolve()
+        if not str(csv_path).startswith(str(runs_dir.resolve())):
+            raise HTTPException(status_code=400, detail="Invalid case name")
+        if not csv_path.is_file():
+            raise HTTPException(status_code=404, detail=f"{body.filename} not found in {case}")
+        try:
+            df = pd.read_csv(csv_path, nrows=body.max_rows_per_case, low_memory=False)
+            df.insert(0, "case", case)
+            frames.append(df)
+        except Exception as exc:
+            raise HTTPException(status_code=400, detail=f"Error reading {case}/{body.filename}: {exc}")
+
+    merged = pd.concat(frames, ignore_index=True)
+    columns = list(merged.columns)
+    rows = merged.to_dict(orient="records")
+    return {
+        "columns": columns,
+        "rows": rows,
+        "total_rows": len(rows),
+        "filename": body.filename,
+        "cases": body.cases,
+    }
 
 
 @router.get("/{run_id}")

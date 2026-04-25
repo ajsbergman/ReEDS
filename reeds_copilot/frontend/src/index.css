@@ -594,6 +594,82 @@ body,
   text-decoration: underline;
 }
 
+/* ── Compare Panel ────────────────────────────────────────────────────────── */
+.compare-panel {
+  padding: 0;
+}
+.compare-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.compare-steps {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  margin-bottom: 14px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+.compare-steps .step-active {
+  color: var(--accent);
+  font-weight: 600;
+}
+.compare-steps .step-arrow {
+  opacity: 0.4;
+}
+.compare-case-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+.compare-case-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: background 0.12s;
+}
+.compare-case-item:hover {
+  background: var(--bg-elevated);
+}
+.compare-case-item input[type="checkbox"] {
+  accent-color: var(--accent);
+}
+.compare-case-name {
+  flex: 1;
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  word-break: break-all;
+}
+.compare-file-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 50vh;
+  overflow-y: auto;
+}
+.compare-file-item {
+  padding: 5px 10px;
+  border-radius: var(--radius);
+  cursor: pointer;
+  font-size: 0.82rem;
+  font-family: var(--font-mono);
+  transition: background 0.12s;
+}
+.compare-file-item:hover {
+  background: var(--bg-elevated);
+  color: var(--accent);
+}
+
 /* ── File preview (right panel) ───────────────────────────────────────────── */
 .file-preview pre {
   background: var(--bg);
