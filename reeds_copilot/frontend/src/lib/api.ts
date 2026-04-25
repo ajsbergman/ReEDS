@@ -1,6 +1,6 @@
 /** Thin API client for the ReEDS-Copilot backend. */
 
-const BASE = "/api"; // proxied by Vite to http://127.0.0.1:8000
+const BASE = "/api"; // proxied by Vite to http://127.0.0.1:8001
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, init);

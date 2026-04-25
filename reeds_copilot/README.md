@@ -7,7 +7,21 @@ Browse documentation, search source code, inspect inputs/outputs, and chat with 
 
 ## Quick Start
 
-### Prerequisites
+### One-click launch (recommended)
+
+```bash
+# Windows
+reeds_copilot\launch.bat
+
+# Linux / macOS
+bash reeds_copilot/launch.sh
+```
+
+This installs dependencies, starts backend + frontend, and opens the browser automatically.
+
+### Manual setup
+
+#### Prerequisites
 
 | Tool | Version |
 |------|---------|
@@ -15,7 +29,7 @@ Browse documentation, search source code, inspect inputs/outputs, and chat with 
 | Node.js | ≥ 18 |
 | npm | ≥ 9 |
 
-### 1. Set environment variables
+#### 1. Set environment variables
 
 ```bash
 # Required for real LLM responses (mock mode works without it)
@@ -48,11 +62,11 @@ source .venv/bin/activate
 pip install -r requirements.txt
 
 # Run the server
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8001
 ```
 
-The API is now available at **http://localhost:8000**.  
-Check health: `GET http://localhost:8000/health`
+The API is now available at **http://localhost:8001**.  
+Check health: `GET http://localhost:8001/health`
 
 ### 3. Start the frontend
 
@@ -64,7 +78,7 @@ npm run dev
 
 Open **http://localhost:5173** in a browser.
 
-The Vite dev server proxies `/api/*` requests to the backend at port 8000 automatically.
+The Vite dev server proxies `/api/*` requests to the backend at port 8001 automatically.
 
 ---
 
