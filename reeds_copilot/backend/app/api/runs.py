@@ -122,6 +122,13 @@ def list_run_folders(settings: Settings = Depends(get_settings)):
     return run_manager.list_run_folders(settings.repo_root)
 
 
+@router.post("/cleanup-local")
+def cleanup_local(settings: Settings = Depends(get_settings)):
+    """Cancel all running local processes (called on browser close)."""
+    count = run_manager.cancel_all_local(settings.repo_root)
+    return {"cancelled": count}
+
+
 @router.get("/{run_id}")
 def get_run(run_id: str):
     """Get details of a specific run (including log tail)."""

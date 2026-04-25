@@ -51,6 +51,15 @@ export default function App() {
       .catch(() => setShowWelcome(false));
   }, []);
 
+  // Kill all local runs when the browser tab/window is closed
+  useEffect(() => {
+    const handleUnload = () => {
+      navigator.sendBeacon("/api/runs/cleanup-local");
+    };
+    window.addEventListener("beforeunload", handleUnload);
+    return () => window.removeEventListener("beforeunload", handleUnload);
+  }, []);
+
   // Auto-save messages to the active session (debounced)
   const prevMsgCountRef = useRef(0);
   useEffect(() => {

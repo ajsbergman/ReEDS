@@ -393,6 +393,31 @@ def cancel_run(repo_root: Path, run_id: str) -> bool:
         return False
 
 
+def cancel_all_local(repo_root: Path) -> int:
+    """Cancel all running LOCAL runs. Returns the number of runs cancelled."""
+    count = 0
+    with _run_lock:
+        for rec in _runs.values():
+            if rec.status == RunStatus.RUNNING and rec.target == "local" and rec.pid:
+                try:
+                    if os.name == "nt":
+                        subprocess.call(
+                            ["taskkill", "/F", "/T", "/PID", str(rec.pid)],
+                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                        )
+                    else:
+                        os.killpg(os.getpgid(rec.pid), signal.SIGTERM)
+                    rec.status = RunStatus.CANCELLED
+                    rec.finished_at = time.time()
+                    rec.pid = None
+                    _persist_run(repo_root, rec)
+                    count += 1
+                except Exception as exc:
+                    log.warning("Failed to cancel run %s: %s", rec.id, exc)
+    log.info("cancel_all_local: cancelled %d runs", count)
+    return count
+
+
 def list_runs() -> list[dict]:
     """Return all known runs (newest first)."""
     with _run_lock:
