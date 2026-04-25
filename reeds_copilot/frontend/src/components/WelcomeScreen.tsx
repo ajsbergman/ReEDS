@@ -1,47 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { updateApiKeyAPI, type HealthResponse } from "../lib/api";
-
-const PROVIDERS = [
-  {
-    value: "anthropic",
-    label: "Anthropic",
-    icon: "🟣",
-    desc: "Claude models",
-    placeholder: "sk-ant-api03-…",
-    models: [
-      { value: "claude-opus-4-1", label: "Claude Opus 4.1" },
-      { value: "claude-sonnet-4-1", label: "Claude Sonnet 4.1" },
-      { value: "claude-sonnet-4-0", label: "Claude Sonnet 4" },
-    ],
-    helpUrl: "https://console.anthropic.com/settings/keys",
-  },
-  {
-    value: "openai",
-    label: "OpenAI",
-    icon: "🟢",
-    desc: "GPT models",
-    placeholder: "sk-…",
-    models: [
-      { value: "gpt-4o", label: "GPT-4o" },
-      { value: "gpt-4o-mini", label: "GPT-4o Mini" },
-      { value: "o3", label: "o3" },
-    ],
-    helpUrl: "https://platform.openai.com/api-keys",
-  },
-  {
-    value: "google",
-    label: "Google",
-    icon: "🔵",
-    desc: "Gemini models",
-    placeholder: "AIza…",
-    models: [
-      { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
-      { value: "gemini-2.5-pro", label: "Gemini 2.5 Pro" },
-      { value: "gemini-3-flash-preview", label: "Gemini 3 Flash (Preview)" },
-    ],
-    helpUrl: "https://aistudio.google.com/app/apikey",
-  },
-];
+import { PROVIDERS } from "../lib/providers";
 
 interface Props {
   health: HealthResponse | null;

@@ -24,19 +24,6 @@ class StartRunRequest(BaseModel):
     conda_env: str = "reeds2"
 
 
-class RunListItem(BaseModel):
-    id: str
-    batch_name: str
-    cases_suffix: str
-    cases: list[str]
-    simult_runs: int
-    target: str
-    status: str
-    created_at: float
-    finished_at: float | None
-    error: str | None
-
-
 # ── Endpoints ────────────────────────────────────────────────────────────────
 
 @router.get("/conda-envs")

@@ -1,8 +1,6 @@
 """File inspection helpers – list, preview text, preview CSV."""
 from __future__ import annotations
 
-import csv
-import io
 import logging
 from pathlib import Path
 

@@ -1,49 +1,6 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { healthAPI, updateApiKeyAPI, type HealthResponse } from "../lib/api";
-
-const PROVIDERS: {
-  value: string;
-  label: string;
-  placeholder: string;
-  models: { value: string; label: string }[];
-}[] = [
-  {
-    value: "anthropic",
-    label: "Anthropic (Claude)",
-    placeholder: "sk-ant-api03-…",
-    models: [
-      { value: "claude-opus-4-1", label: "Claude Opus 4.1" },
-      { value: "claude-sonnet-4-1", label: "Claude Sonnet 4.1" },
-      { value: "claude-sonnet-4-0", label: "Claude Sonnet 4" },
-      { value: "claude-haiku-4", label: "Claude Haiku 4" },
-      { value: "claude-3-5-sonnet-20241022", label: "Claude 3.5 Sonnet" },
-    ],
-  },
-  {
-    value: "openai",
-    label: "OpenAI (GPT)",
-    placeholder: "sk-…",
-    models: [
-      { value: "gpt-4o", label: "GPT-4o" },
-      { value: "gpt-4o-mini", label: "GPT-4o Mini" },
-      { value: "gpt-4-turbo", label: "GPT-4 Turbo" },
-      { value: "o3", label: "o3" },
-      { value: "o4-mini", label: "o4-mini" },
-    ],
-  },
-  {
-    value: "google",
-    label: "Google (Gemini)",
-    placeholder: "AIza…",
-    models: [
-      { value: "gemini-2.5-flash", label: "Gemini 2.5 Flash" },
-      { value: "gemini-2.5-pro", label: "Gemini 2.5 Pro" },
-      { value: "gemini-3-flash-preview", label: "Gemini 3 Flash (Preview)" },
-      { value: "gemini-3-pro-preview", label: "Gemini 3 Pro (Preview)" },
-      { value: "gemini-2.5-flash-lite", label: "Gemini 2.5 Flash Lite" },
-    ],
-  },
-];
+import { PROVIDERS } from "../lib/providers";
 
 export default function SettingsPanel() {
   const [health, setHealth] = useState<HealthResponse | null>(null);

@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import {
   listCasesFilesAPI,
   listCondaEnvsAPI,
-  listRunFoldersAPI,
   envCheckAPI,
   envFixAPI,
   getGamsLicenseAPI,
@@ -15,7 +14,6 @@ import {
   type CasesFile,
   type CondaEnv,
   type RunRecord,
-  type RunFolder,
   type EnvCheckResult,
 } from "../lib/api";
 
@@ -80,7 +78,6 @@ export default function RunPanel() {
 
   /* Runs list & detail */
   const [runs, setRuns] = useState<RunRecord[]>([]);
-  const [runFolders, setRunFolders] = useState<RunFolder[]>([]);
   const [expandedRun, setExpandedRun] = useState<string | null>(null);
   const [expandedDetail, setExpandedDetail] = useState<RunRecord | null>(null);
   const [launching, setLaunching] = useState(false);
@@ -182,7 +179,6 @@ export default function RunPanel() {
 
   function refreshRuns() {
     listRunsAPI().then(setRuns).catch(() => {});
-    listRunFoldersAPI().then(setRunFolders).catch(() => {});
   }
 
   function handleSuffixChange(suffix: string) {
@@ -516,33 +512,6 @@ export default function RunPanel() {
             )}
           </div>
         ))}
-      </section>
-
-      {/* ── Run Folders (from repo/runs/) ─────────────────────────────────── */}
-      <section className="run-folders">
-        <div className="run-history-header">
-          <h2>Run Folders <span style={{ fontSize: "0.78rem", color: "var(--text-muted)", fontWeight: 400 }}>({runFolders.length} in runs/)</span></h2>
-        </div>
-
-        {runFolders.length === 0 && (
-          <p className="run-empty">No run folders found in runs/ directory.</p>
-        )}
-
-        <div className="run-folder-list">
-          {runFolders.map((f) => (
-            <div key={f.name} className="run-folder-item">
-              <div className="run-folder-name">📁 {f.name}</div>
-              <div className="run-folder-badges">
-                {f.has_outputs && <span className="folder-badge outputs">outputs</span>}
-                {f.has_gamslog && <span className="folder-badge log">gamslog</span>}
-                {f.has_meta && <span className="folder-badge meta">meta</span>}
-                <span className="run-card-time">
-                  {new Date(f.modified_at * 1000).toLocaleString()}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
       </section>
     </div>
   );
