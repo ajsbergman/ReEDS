@@ -17,56 +17,44 @@ reeds_copilot\launch.bat
 bash reeds_copilot/launch.sh
 ```
 
-This installs dependencies, starts backend + frontend, and opens the browser automatically.
+This installs dependencies, starts backend (port 8001) + frontend (port 5173), and opens the browser automatically.
+
+### Prerequisites
+
+| Tool | Version | Notes |
+|------|---------|-------|
+| Python | ≥ 3.10 | Backend runtime |
+| Node.js | ≥ 18 | Frontend dev server |
+| npm | ≥ 9 | Package management |
+
+**For running ReEDS models** (optional):
+| Tool | Notes |
+|------|-------|
+| Conda | With an environment containing ReEDS dependencies (default name: `reeds2`) |
+| GAMS | Licensed, on PATH or auto-detected |
+| Julia | Version matching `Project.toml` (managed via juliaup) |
 
 ### Manual setup
 
-#### Prerequisites
+#### 1. Set environment variables (optional)
 
-| Tool | Version |
-|------|---------|
-| Python | ≥ 3.10 |
-| Node.js | ≥ 18 |
-| npm | ≥ 9 |
-
-#### 1. Set environment variables
+API keys can also be entered in the browser UI at runtime — no env vars required.
 
 ```bash
-# Required for real LLM responses (mock mode works without it)
+# Optional: pre-set LLM key so it loads automatically
 export ANTHROPIC_API_KEY="sk-ant-..."
-
-# Optional overrides (shown with defaults)
-export REEDS_COPILOT_LLM_PROVIDER=anthropic
-export REEDS_COPILOT_MODEL=claude-opus-4-1
-export REEDS_COPILOT_MAX_RESULTS=10
-```
-
-On Windows (PowerShell):
-
-```powershell
-$env:ANTHROPIC_API_KEY = "sk-ant-..."
+# Or use OpenAI / Google
+export OPENAI_API_KEY="sk-..."
+export GOOGLE_API_KEY="AI..."
 ```
 
 ### 2. Start the backend
 
 ```bash
 cd reeds_copilot/backend
-
-# Create a virtual environment (recommended)
-python -m venv .venv
-# Linux / macOS
-source .venv/bin/activate
-# Windows
-.venv\Scripts\activate
-
 pip install -r requirements.txt
-
-# Run the server
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8001
+uvicorn app.main:app --host 127.0.0.1 --port 8001
 ```
-
-The API is now available at **http://localhost:8001**.  
-Check health: `GET http://localhost:8001/health`
 
 ### 3. Start the frontend
 
@@ -76,9 +64,8 @@ npm install
 npm run dev
 ```
 
-Open **http://localhost:5173** in a browser.
-
-The Vite dev server proxies `/api/*` requests to the backend at port 8001 automatically.
+Open **http://localhost:5173** in a browser.  
+The Vite dev server proxies `/api/*` requests to the backend at port 8001.
 
 ---
 
@@ -86,6 +73,7 @@ The Vite dev server proxies `/api/*` requests to the backend at port 8001 automa
 
 ```
 reeds_copilot/
+  launch.bat / launch.sh   # One-click launchers
   backend/
     app/
       main.py              # FastAPI app factory & lifespan
@@ -94,12 +82,17 @@ reeds_copilot/
         chat.py            # POST /chat
         search.py          # POST /search
         files.py           # GET  /files/list, /files/preview
-        health.py          # GET  /health
+        health.py          # GET  /health, POST /config/api-key, GET /config/models
+        sessions.py        # Chat session CRUD
+        runs.py            # Run ReEDS management endpoints
       services/
-        llm.py             # LLM provider abstraction (Anthropic first)
+        llm.py             # LLM provider abstraction (Anthropic, OpenAI, Google)
         retrieval.py       # Text search over the indexed repo
         repo_index.py      # In-memory file catalogue
         file_inspector.py  # File listing, preview, CSV inspection
+        chat_store.py      # Chat history persistence
+        env_check.py       # Environment health checks & auto-fixes
+        run_manager.py     # Run lifecycle management
       models/
         schemas.py         # Pydantic request/response models
     requirements.txt
@@ -108,15 +101,19 @@ reeds_copilot/
       App.tsx              # Shell layout with sidebar + tabs
       components/
         ChatPanel.tsx      # Chat thread and input
+        ChatHistory.tsx    # Saved conversations
         SearchPanel.tsx    # Search bar and results
         FileBrowser.tsx    # Directory browser
+        RunPanel.tsx       # Launch & monitor ReEDS runs
+        OutputExplorer.tsx # Browse run outputs
         RightPanel.tsx     # Sources / file preview
         SettingsPanel.tsx  # Health/status check
+        WelcomeScreen.tsx  # First-time setup
       lib/
         api.ts             # Typed API client
+        providers.ts       # LLM provider definitions
     package.json
-    vite.config.ts         # Proxy config
-  README.md
+    vite.config.ts         # Proxy config → backend:8001
 ```
 
 ### Key design decisions
@@ -133,10 +130,23 @@ reeds_copilot/
 | Method | Path | Description |
 |--------|------|-------------|
 | `GET` | `/health` | Backend status, repo root, LLM config |
-| `POST` | `/chat` | Send a message; receive an LLM answer + sources |
+| `POST` | `/config/api-key` | Set LLM provider, model, and API key |
+| `GET` | `/config/models` | List models from active provider |
+| `POST` | `/chat` | Send a message; receive LLM answer + sources |
 | `POST` | `/search` | Full-text search across the repo |
-| `GET` | `/files/list?path=inputs` | List directory contents |
-| `GET` | `/files/preview?path=inputs/scalars.csv` | Preview a text or CSV file |
+| `GET` | `/files/list?path=` | List directory contents |
+| `GET` | `/files/preview?path=` | Preview a text or CSV file |
+| `GET` | `/chat/sessions` | List saved chat sessions |
+| `POST` | `/chat/sessions` | Create a new chat session |
+| `DELETE`| `/chat/sessions/{id}` | Delete a chat session |
+| `POST` | `/runs` | Start a ReEDS run |
+| `GET` | `/runs` | List active/recent runs |
+| `GET` | `/runs/{id}` | Get run status and logs |
+| `POST` | `/runs/{id}/cancel` | Cancel a running job |
+| `GET` | `/runs/conda-envs` | List available conda environments |
+| `GET` | `/runs/env-check` | Run environment health checks |
+| `POST` | `/runs/env-fix` | Auto-fix a failing check |
+| `GET` | `/runs/folders/list` | List completed run folders |
 
 ### POST /chat
 

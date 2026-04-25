@@ -49,8 +49,13 @@ echo
 BACKEND_PORT=8001
 
 # Kill leftover processes on the ports
-lsof -ti:$BACKEND_PORT 2>/dev/null | xargs kill -9 2>/dev/null || true
-lsof -ti:5173 2>/dev/null | xargs kill -9 2>/dev/null || true
+if command -v lsof &>/dev/null; then
+    lsof -ti:$BACKEND_PORT 2>/dev/null | xargs kill -9 2>/dev/null || true
+    lsof -ti:5173 2>/dev/null | xargs kill -9 2>/dev/null || true
+elif command -v ss &>/dev/null; then
+    ss -tlnp "sport = :$BACKEND_PORT" 2>/dev/null | awk 'NR>1{split($6,a,","); gsub(/pid=/,"",a[2]); system("kill -9 "a[2])}' 2>/dev/null || true
+    ss -tlnp "sport = :5173" 2>/dev/null | awk 'NR>1{split($6,a,","); gsub(/pid=/,"",a[2]); system("kill -9 "a[2])}' 2>/dev/null || true
+fi
 sleep 1
 
 # Start backend

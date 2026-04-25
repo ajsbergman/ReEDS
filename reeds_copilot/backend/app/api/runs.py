@@ -16,7 +16,7 @@ router = APIRouter(prefix="/runs", tags=["runs"])
 # ── Request / Response models ────────────────────────────────────────────────
 
 class StartRunRequest(BaseModel):
-    batch_name: str = Field(..., min_length=1, max_length=200)
+    batch_name: str = Field(..., min_length=1, max_length=50)
     cases_suffix: str = ""
     cases: list[str] = []
     simult_runs: int = Field(default=1, ge=1, le=32)

@@ -13,6 +13,16 @@ log = logging.getLogger(__name__)
 # Track background fix status
 _fix_status: dict[str, dict] = {}
 
+import re
+_SAFE_ENV_NAME = re.compile(r'^[a-zA-Z0-9_][a-zA-Z0-9_.\\-]{0,63}$')
+
+
+def _validate_env_name(name: str) -> str:
+    """Validate conda env name to prevent command injection."""
+    if not _SAFE_ENV_NAME.match(name):
+        raise ValueError(f"Invalid conda environment name: {name!r}")
+    return name
+
 
 def _run(cmd: list[str], timeout: int = 30, **kw) -> subprocess.CompletedProcess:
     return subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, **kw)
@@ -218,6 +228,7 @@ def save_gamslice(repo_root: Path, content: str) -> dict:
 
 def run_all_checks(repo_root: Path, env_name: str = "reeds2") -> list[dict]:
     """Run all environment checks and return results."""
+    env_name = _validate_env_name(env_name)
     checks = [
         {"name": "conda_env", "label": f"Conda Environment ({env_name})",
          **check_conda_env(env_name)},

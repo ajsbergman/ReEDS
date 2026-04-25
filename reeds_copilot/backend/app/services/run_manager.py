@@ -9,12 +9,15 @@ import subprocess
 import threading
 import time
 import uuid
+import re
 from dataclasses import dataclass, field, asdict
 from enum import Enum
 from pathlib import Path
 from typing import Any
 
 log = logging.getLogger(__name__)
+
+_SAFE_ENV_NAME = re.compile(r'^[a-zA-Z0-9_][a-zA-Z0-9_.\\-]{0,63}$')
 
 
 class RunStatus(str, Enum):
@@ -185,6 +188,8 @@ def start_local_run(
     extra_args: dict[str, Any] | None = None,
 ) -> RunRecord:
     """Start a local ReEDS run via runbatch.py."""
+    if not _SAFE_ENV_NAME.match(conda_env):
+        raise ValueError(f"Invalid conda environment name: {conda_env!r}")
     rid = uuid.uuid4().hex[:12]
     rec = RunRecord(
         id=rid,

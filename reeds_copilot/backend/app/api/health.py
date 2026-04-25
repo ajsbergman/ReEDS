@@ -9,17 +9,21 @@ from ..services.llm import build_llm_provider, DEFAULT_MODELS
 
 router = APIRouter(tags=["health"])
 
-# Runtime-mutable state (not tied to the frozen Settings object)
-_active_provider_name: str = ""
-_active_model_name: str = ""
+
+def _get_active_provider(request: Request) -> str:
+    return getattr(request.app.state, "active_provider_name", "")
+
+
+def _get_active_model(request: Request) -> str:
+    return getattr(request.app.state, "active_model_name", "")
 
 
 @router.get("/health", response_model=HealthResponse)
 def health(request: Request, settings: Settings = Depends(get_settings)) -> HealthResponse:
     llm = request.app.state.llm
     has_key = bool(getattr(llm, "_api_key", None))
-    provider = _active_provider_name or settings.llm_provider
-    model = _active_model_name or getattr(llm, "_model", "") or DEFAULT_MODELS.get(provider, "")
+    provider = _get_active_provider(request) or settings.llm_provider
+    model = _get_active_model(request) or getattr(llm, "_model", "") or DEFAULT_MODELS.get(provider, "")
     return HealthResponse(
         status="ok",
         repo_root=str(settings.repo_root),
@@ -37,8 +41,6 @@ def update_api_key(
     settings: Settings = Depends(get_settings),
 ) -> UpdateApiKeyResponse:
     """Set (or replace) the LLM API key and provider at runtime."""
-    global _active_provider_name, _active_model_name
-
     key = body.api_key.strip()
     if not key:
         return UpdateApiKeyResponse(success=False, message="API key cannot be empty.")
@@ -47,11 +49,11 @@ def update_api_key(
     try:
         provider = build_llm_provider(provider_name, key, model)
         request.app.state.llm = provider
-        _active_provider_name = provider_name
-        _active_model_name = getattr(provider, "_model", DEFAULT_MODELS.get(provider_name, ""))
+        request.app.state.active_provider_name = provider_name
+        request.app.state.active_model_name = getattr(provider, "_model", DEFAULT_MODELS.get(provider_name, ""))
         return UpdateApiKeyResponse(
             success=True,
-            message=f"Switched to {provider_name} ({_active_model_name}). Chat is ready.",
+            message=f"Switched to {provider_name} ({request.app.state.active_model_name}). Chat is ready.",
         )
     except Exception as exc:
         return UpdateApiKeyResponse(success=False, message=str(exc))
@@ -61,7 +63,7 @@ def update_api_key(
 def list_available_models(request: Request):
     """List available models from the active provider (Google only for now)."""
     llm = request.app.state.llm
-    provider = _active_provider_name or "unknown"
+    provider = _get_active_provider(request) or "unknown"
     api_key = getattr(llm, "_api_key", "")
 
     if provider == "google" and api_key:

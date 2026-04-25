@@ -30,12 +30,16 @@ for /f "tokens=*" %%i in ('node --version 2^>^&1') do echo         Found Node %%
 :: ── Backend dependencies ─────────────────────
 echo   [3/5] Installing backend dependencies...
 pip install -q -r backend\requirements.txt
+if errorlevel 1 (
+    echo   ERROR: Failed to install backend dependencies.
+    goto :fail
+)
 echo         Done.
 
 :: ── Frontend dependencies ────────────────────
 echo   [4/5] Installing frontend dependencies...
 cd frontend
-if not exist "node_modules\.package-lock.json" (
+if not exist "node_modules\" (
     echo         Running npm install...
     call npm install
 ) else (

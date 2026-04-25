@@ -59,6 +59,8 @@ async def chat(body: ChatRequest, request: Request, settings: Settings = Depends
     try:
         answer = await llm.generate(user_prompt=user_prompt, context=context)
     except Exception as exc:
-        answer = f"**LLM Error:** {type(exc).__name__}: {exc}"
+        import logging
+        logging.getLogger(__name__).error("LLM generation failed: %s", exc, exc_info=True)
+        answer = "**LLM Error:** Could not generate response. Please check your API key and try again."
 
     return ChatResponse(answer=answer, sources=sources)
