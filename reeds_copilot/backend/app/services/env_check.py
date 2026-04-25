@@ -34,6 +34,30 @@ def _find_conda_python(env_name: str) -> str | None:
     return None
 
 
+def _find_julia_binary(repo_root: Path | None = None) -> str | None:
+    """Find a Julia binary, preferring a juliaup-managed version that matches Project.toml."""
+    required_ver: str | None = None
+    if repo_root:
+        project_toml = repo_root / "Project.toml"
+        if project_toml.exists():
+            import re
+            m = re.search(r'julia\s*=\s*"([^"]+)"', project_toml.read_text(encoding="utf-8"))
+            if m:
+                required_ver = m.group(1).lstrip("=").strip()
+    # Check juliaup-managed installs
+    if required_ver:
+        home = Path.home()
+        juliaup_dir = home / ".julia" / "juliaup"
+        if juliaup_dir.exists():
+            for d in juliaup_dir.iterdir():
+                if d.is_dir() and required_ver in d.name:
+                    candidate = d / "bin" / ("julia.exe" if os.name == "nt" else "julia")
+                    if candidate.exists():
+                        return str(candidate)
+    # Fallback to PATH
+    return shutil.which("julia")
+
+
 # ── Individual checks ────────────────────────────────────────────────────────
 
 def check_conda_env(env_name: str) -> dict:
@@ -71,16 +95,44 @@ def check_gams(env_name: str) -> dict:
 
 def check_julia(repo_root: Path) -> dict:
     """Check if Julia is accessible."""
-    julia_path = shutil.which("julia")
+    julia_path = _find_julia_binary(repo_root)
     if not julia_path:
         return {"ok": False, "detail": "Julia not found on PATH. Install Julia and add to PATH."}
     # Check version
     try:
-        r = _run(["julia", "--version"])
+        r = _run([julia_path, "--version"])
         ver = r.stdout.strip()
     except Exception:
         ver = "unknown version"
-    return {"ok": True, "detail": f"{ver} at {julia_path}"}
+    detail = f"{ver} at {julia_path}"
+    compat = _check_julia_compat(repo_root)
+    if compat:
+        return {"ok": False, "detail": f"{detail} — {compat}"}
+    return {"ok": True, "detail": detail}
+
+
+def _check_julia_compat(repo_root: Path) -> str:
+    """Check if installed Julia version matches Project.toml compat."""
+    project_toml = repo_root / "Project.toml"
+    if not project_toml.exists():
+        return ""
+    try:
+        content = project_toml.read_text(encoding="utf-8")
+        import re
+        m = re.search(r'julia\s*=\s*"([^"]+)"', content)
+        if not m:
+            return ""
+        required = m.group(1)
+        julia_bin = _find_julia_binary(repo_root) or "julia"
+        r = _run([julia_bin, "--version"])
+        installed = r.stdout.strip().replace("julia version ", "")
+        # Simple check: if required starts with "=" it's an exact match
+        req_ver = required.lstrip("=").strip()
+        if installed != req_ver:
+            return f"⚠️ Project.toml requires Julia {required}, but you have {installed}. Install Julia {req_ver}."
+    except Exception:
+        pass
+    return ""
 
 
 def check_manifest(repo_root: Path) -> dict:
@@ -95,9 +147,21 @@ def check_manifest(repo_root: Path) -> dict:
             "ok": False,
             "detail": "⏳ Julia instantiate running in background... re-check shortly.",
         }
+    # If a fix just completed with error, show it
+    if fs and not fs.get("running") and not fs.get("ok") and fs.get("detail"):
+        return {
+            "ok": False,
+            "detail": fs["detail"],
+            "fixable": True,
+        }
+    # Check Julia version compatibility with Project.toml
+    compat_detail = _check_julia_compat(repo_root)
+    detail = "Manifest.toml missing. Julia packages not instantiated."
+    if compat_detail:
+        detail += f" ({compat_detail})"
     return {
         "ok": False,
-        "detail": "Manifest.toml missing. Julia packages not instantiated.",
+        "detail": detail,
         "fixable": True,
     }
 
@@ -174,14 +238,10 @@ def run_all_checks(repo_root: Path, env_name: str = "reeds2") -> list[dict]:
 # ── Fix actions ──────────────────────────────────────────────────────────────
 
 def fix_manifest(repo_root: Path) -> dict:
-    """Run `julia --project=. instantiate.jl` to create Manifest.toml."""
-    julia_path = shutil.which("julia")
+    """Run Julia Pkg.instantiate() to create Manifest.toml."""
+    julia_path = _find_julia_binary(repo_root)
     if not julia_path:
         return {"ok": False, "detail": "Cannot fix: Julia not found on PATH"}
-
-    inst_script = repo_root / "instantiate.jl"
-    if not inst_script.exists():
-        return {"ok": False, "detail": "Cannot fix: instantiate.jl not found in repo"}
 
     # If already running, return current status
     if _fix_status.get("manifest", {}).get("running"):
@@ -192,22 +252,40 @@ def fix_manifest(repo_root: Path) -> dict:
 
     def _run_julia():
         try:
-            log.info("Starting julia instantiate...")
+            log.info("Starting julia instantiate for %s ...", repo_root)
+            # Step 1: Pkg.instantiate() to generate Manifest.toml
+            # We avoid running instantiate.jl directly because its
+            # Pkg.Registry.update() can fail due to SSL/permission issues.
+            # Instead, run the commands step-by-step with error handling.
+            julia_code = (
+                'ENV["JULIA_SSL_CA_ROOTS_PATH"] = ""; '
+                'import Pkg; '
+                'try; Pkg.Registry.update(); catch e; @warn "Registry update failed" e; end; '
+                'try; Pkg.Registry.add("General"); catch e; @warn "Registry add failed" e; end; '
+                'Pkg.instantiate(); '
+                'println("Manifest.toml created successfully")'
+            )
             r = subprocess.run(
-                [julia_path, f"--project={repo_root}", str(inst_script)],
+                [julia_path, f"--project={repo_root}", "-e", julia_code],
                 capture_output=True, text=True, timeout=600,
                 cwd=str(repo_root),
             )
-            if r.returncode == 0:
+            manifest = repo_root / "Manifest.toml"
+            if manifest.exists():
                 _fix_status["manifest"] = {"running": False, "ok": True,
                                            "detail": "Julia packages instantiated successfully"}
                 log.info("Julia instantiate succeeded")
+            elif r.returncode == 0:
+                # Command succeeded but maybe Manifest not created?
+                _fix_status["manifest"] = {"running": False, "ok": False,
+                                           "detail": f"Command finished but Manifest.toml still missing. stdout: {r.stdout[-300:]}"}
             else:
+                stderr_tail = (r.stderr or r.stdout or "unknown error")[-500:]
                 _fix_status["manifest"] = {
                     "running": False, "ok": False,
-                    "detail": f"Failed (exit {r.returncode}): {r.stderr[-500:]}",
+                    "detail": f"Failed (exit {r.returncode}): {stderr_tail}",
                 }
-                log.error("Julia instantiate failed: %s", r.stderr[-300:])
+                log.error("Julia instantiate failed: %s", stderr_tail)
         except subprocess.TimeoutExpired:
             _fix_status["manifest"] = {"running": False, "ok": False,
                                        "detail": "Julia instantiate timed out (10 min limit)"}
