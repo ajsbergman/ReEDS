@@ -401,6 +401,10 @@ export default function RunPanel() {
               <span className="run-field-hint">
                 {selectedCases.length}/{availableCases.length} selected
               </span>
+              <span className="case-select-btns">
+                <button onClick={() => setSelectedCases([...availableCases])}>All</button>
+                <button onClick={() => setSelectedCases([])}>None</button>
+              </span>
             </label>
             <div className="case-chips">
               {availableCases.map((c) => (

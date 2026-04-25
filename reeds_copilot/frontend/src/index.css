@@ -855,6 +855,24 @@ body,
   border-color: var(--accent);
 }
 
+.case-select-btns {
+  margin-left: 8px;
+}
+.case-select-btns button {
+  background: none;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  padding: 1px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  margin-left: 4px;
+}
+.case-select-btns button:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
 /* Launch button */
 .run-launch-btn {
   width: 100%;
