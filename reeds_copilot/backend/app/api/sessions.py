@@ -11,11 +11,8 @@ from ..services import chat_store
 
 router = APIRouter(prefix="/chat/sessions", tags=["sessions"])
 
-DATA_SUBDIR = "data"
-
-
 def _data_root(settings: Settings):
-    return settings.repo_root / "reeds_copilot" / DATA_SUBDIR
+    return settings.repo_root / "reeds_copilot"
 
 
 class CreateSessionRequest(BaseModel):

@@ -10,7 +10,7 @@ from typing import Any
 
 log = logging.getLogger(__name__)
 
-SESSIONS_DIR_NAME = "chat_sessions"
+SESSIONS_DIR_NAME = "chat_history"
 
 
 def _sessions_dir(data_root: Path) -> Path:

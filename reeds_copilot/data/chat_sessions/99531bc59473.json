@@ -1,0 +1,16 @@
+{
+  "id": "99531bc59473",
+  "title": "hi",
+  "created_at": 1777071077.5012403,
+  "updated_at": 1777071083.77738,
+  "messages": [
+    {
+      "role": "user",
+      "content": "hi"
+    },
+    {
+      "role": "assistant",
+      "content": "Hello! I am ReEDS-Copilot, an AI assistant for the Regional Energy Deployment System (ReEDS) model.\n\nHow can I help you today? I can answer questions about the ReEDS source code, inputs, outputs, and repository structure."
+    }
+  ]
+}
