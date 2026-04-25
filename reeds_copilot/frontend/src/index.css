@@ -923,3 +923,101 @@ body,
   background: rgba(255, 152, 0, 0.15);
   color: #ff9800;
 }
+
+/* ── Environment checks ───────────────────────────────────────────────────── */
+.env-checks {
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.env-checks-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.env-checks-header label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.env-recheck-btn {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  cursor: pointer;
+  padding: 2px 7px;
+  transition: color 0.15s, border-color 0.15s;
+}
+.env-recheck-btn:hover:not(:disabled) {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.env-check-empty {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.env-check-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0;
+  font-size: 0.82rem;
+  border-bottom: 1px solid rgba(46, 49, 64, 0.4);
+}
+.env-check-row:last-child {
+  border-bottom: none;
+}
+
+.env-check-icon {
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+.env-check-label {
+  color: var(--text);
+  font-weight: 600;
+  min-width: 140px;
+  flex-shrink: 0;
+}
+
+.env-check-detail {
+  color: var(--text-muted);
+  font-size: 0.76rem;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.env-check-row.fail .env-check-label {
+  color: var(--danger);
+}
+
+.env-fix-btn {
+  flex-shrink: 0;
+  padding: 3px 10px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  background: rgba(91, 141, 239, 0.08);
+  color: var(--accent);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.env-fix-btn:hover:not(:disabled) {
+  background: rgba(91, 141, 239, 0.18);
+}
+.env-fix-btn:disabled {
+  opacity: 0.5;
+  cursor: wait;
+}

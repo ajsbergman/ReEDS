@@ -273,3 +273,26 @@ export interface RunFolder {
 export function listRunFoldersAPI(): Promise<RunFolder[]> {
   return request<RunFolder[]>("/runs/folders/list");
 }
+
+/* ── Environment Checks ───────────────────────────────────────────────────── */
+
+export interface EnvCheckResult {
+  name: string;
+  label: string;
+  ok: boolean;
+  detail: string;
+  fixable?: boolean;
+}
+
+export function envCheckAPI(condaEnv: string = "reeds2"): Promise<EnvCheckResult[]> {
+  return request<EnvCheckResult[]>(
+    `/runs/env-check?conda_env=${encodeURIComponent(condaEnv)}`,
+  );
+}
+
+export function envFixAPI(checkName: string, condaEnv: string = "reeds2"): Promise<{ ok: boolean; detail: string }> {
+  return post<{ ok: boolean; detail: string }>("/runs/env-fix", {
+    check_name: checkName,
+    conda_env: condaEnv,
+  });
+}

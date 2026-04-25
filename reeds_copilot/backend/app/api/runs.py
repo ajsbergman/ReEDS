@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 
 from ..core.config import Settings, get_settings
 from ..services import run_manager
+from ..services import env_check
 
 router = APIRouter(prefix="/runs", tags=["runs"])
 
@@ -42,6 +43,28 @@ class RunListItem(BaseModel):
 def list_conda_envs():
     """List available conda environments."""
     return run_manager.list_conda_envs()
+
+
+@router.get("/env-check")
+def run_env_check(conda_env: str = "reeds2", settings: Settings = Depends(get_settings)):
+    """Run all environment health checks."""
+    return env_check.run_all_checks(settings.repo_root, conda_env)
+
+
+class FixRequest(BaseModel):
+    check_name: str
+    conda_env: str = "reeds2"
+
+
+@router.post("/env-fix")
+def run_env_fix(body: FixRequest, settings: Settings = Depends(get_settings)):
+    """Attempt to fix a failing environment check."""
+    if body.check_name == "manifest":
+        return env_check.fix_manifest(settings.repo_root)
+    elif body.check_name == "conda_env":
+        return env_check.fix_conda_env(body.conda_env, settings.repo_root)
+    else:
+        raise HTTPException(status_code=400, detail=f"No auto-fix available for '{body.check_name}'")
 
 
 @router.get("/cases-files")

@@ -3,6 +3,8 @@ import {
   listCasesFilesAPI,
   listCondaEnvsAPI,
   listRunFoldersAPI,
+  envCheckAPI,
+  envFixAPI,
   startRunAPI,
   listRunsAPI,
   getRunAPI,
@@ -12,6 +14,7 @@ import {
   type CondaEnv,
   type RunRecord,
   type RunFolder,
+  type EnvCheckResult,
 } from "../lib/api";
 
 /* ─── helpers ─────────────────────────────────────────────────────────────── */
@@ -62,6 +65,11 @@ export default function RunPanel() {
   const [condaEnvs, setCondaEnvs] = useState<CondaEnv[]>([]);
   const [selectedEnv, setSelectedEnv] = useState("reeds2");
 
+  /* Environment checks */
+  const [envChecks, setEnvChecks] = useState<EnvCheckResult[]>([]);
+  const [envLoading, setEnvLoading] = useState(false);
+  const [fixing, setFixing] = useState<string | null>(null);
+
   /* Runs list & detail */
   const [runs, setRuns] = useState<RunRecord[]>([]);
   const [runFolders, setRunFolders] = useState<RunFolder[]>([]);
@@ -100,7 +108,30 @@ export default function RunPanel() {
       })
       .catch(() => {});
     refreshRuns();
+    runEnvChecks("reeds2");
   }, []);
+
+  /* Re-run env checks when conda env changes */
+  function runEnvChecks(env: string) {
+    setEnvLoading(true);
+    envCheckAPI(env)
+      .then(setEnvChecks)
+      .catch(() => {})
+      .finally(() => setEnvLoading(false));
+  }
+
+  async function handleFix(checkName: string) {
+    setFixing(checkName);
+    try {
+      await envFixAPI(checkName, selectedEnv);
+      // Re-run checks after fix
+      runEnvChecks(selectedEnv);
+    } catch {
+      // ignore
+    } finally {
+      setFixing(null);
+    }
+  }
 
   /* Poll for running jobs */
   useEffect(() => {
@@ -220,7 +251,7 @@ export default function RunPanel() {
           <label>Conda Environment</label>
           <select
             value={selectedEnv}
-            onChange={(e) => setSelectedEnv(e.target.value)}
+            onChange={(e) => { setSelectedEnv(e.target.value); runEnvChecks(e.target.value); }}
           >
             {condaEnvs.length === 0 && (
               <option value="reeds2">reeds2 (default)</option>
@@ -231,6 +262,40 @@ export default function RunPanel() {
               </option>
             ))}
           </select>
+        </div>
+
+        {/* Environment health checks */}
+        <div className="env-checks">
+          <div className="env-checks-header">
+            <label>Environment Status</label>
+            <button
+              className="env-recheck-btn"
+              onClick={() => runEnvChecks(selectedEnv)}
+              disabled={envLoading}
+              title="Re-check"
+            >
+              {envLoading ? "⏳" : "↻"}
+            </button>
+          </div>
+          {envChecks.length === 0 && !envLoading && (
+            <span className="env-check-empty">Click ↻ to check environment</span>
+          )}
+          {envChecks.map((c) => (
+            <div key={c.name} className={`env-check-row ${c.ok ? "pass" : "fail"}`}>
+              <span className="env-check-icon">{c.ok ? "✅" : "❌"}</span>
+              <span className="env-check-label">{c.label}</span>
+              <span className="env-check-detail">{c.detail}</span>
+              {!c.ok && c.fixable && (
+                <button
+                  className="env-fix-btn"
+                  onClick={() => handleFix(c.name)}
+                  disabled={fixing === c.name}
+                >
+                  {fixing === c.name ? "Fixing…" : "🔧 Fix"}
+                </button>
+              )}
+            </div>
+          ))}
         </div>
 
         {/* Batch name */}
