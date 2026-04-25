@@ -15,6 +15,7 @@ TEXT_SUFFIXES = {
     ".md", ".rst", ".txt", ".json", ".yaml", ".yml",
     ".toml", ".cfg", ".ini", ".opt", ".csv", ".tsv",
     ".html", ".xml", ".sql",
+    ".lst", ".log", ".gdx", ".inc", ".dd", ".gpr",
 }
 
 IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".gif", ".bmp", ".svg", ".webp"}
