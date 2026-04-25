@@ -214,6 +214,7 @@ export default function App() {
               onSources={setSources}
               messages={messages}
               setMessages={handleSetMessages}
+              onNavigate={(t) => setTab(t as Tab)}
             />
           )}
           {tab === "search" && <SearchPanel onSelectFile={handleSelectFile} />}

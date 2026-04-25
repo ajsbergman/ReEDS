@@ -223,12 +223,22 @@ export function getCasesDetailAPI(suffix: string): Promise<CasesDetail> {
   );
 }
 
+export interface CondaEnv {
+  name: string;
+  path: string;
+}
+
+export function listCondaEnvsAPI(): Promise<CondaEnv[]> {
+  return request<CondaEnv[]>("/runs/conda-envs");
+}
+
 export function startRunAPI(body: {
   batch_name: string;
   cases_suffix?: string;
   cases?: string[];
   simult_runs?: number;
   target?: "local" | "hpc";
+  conda_env?: string;
 }): Promise<RunRecord> {
   return post<RunRecord>("/runs", body);
 }
@@ -249,4 +259,17 @@ export function deleteRunAPI(id: string): Promise<{ success: boolean }> {
   return request<{ success: boolean }>(`/runs/${encodeURIComponent(id)}`, {
     method: "DELETE",
   });
+}
+
+export interface RunFolder {
+  name: string;
+  path: string;
+  has_outputs: boolean;
+  has_gamslog: boolean;
+  has_meta: boolean;
+  modified_at: number;
+}
+
+export function listRunFoldersAPI(): Promise<RunFolder[]> {
+  return request<RunFolder[]>("/runs/folders/list");
 }

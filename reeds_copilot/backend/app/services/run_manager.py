@@ -79,6 +79,25 @@ def _load_persisted_runs(repo_root: Path):
 
 # ── Public API ───────────────────────────────────────────────────────────────
 
+def list_conda_envs() -> list[dict]:
+    """Return available conda environments."""
+    try:
+        result = subprocess.run(
+            ["conda", "env", "list", "--json"],
+            capture_output=True, text=True, timeout=15,
+        )
+        if result.returncode != 0:
+            return []
+        import json as _json
+        data = _json.loads(result.stdout)
+        envs = []
+        for p in data.get("envs", []):
+            name = Path(p).name
+            envs.append({"name": name, "path": p})
+        return envs
+    except Exception:
+        return []
+
 def list_cases_files(repo_root: Path) -> list[dict]:
     """Return available cases_*.csv files with their case names."""
     results = []
@@ -132,12 +151,36 @@ def get_case_details(repo_root: Path, suffix: str) -> dict:
     return {"filename": fname, "cases": case_names, "switches": switches}
 
 
+def _find_conda_python(env_name: str) -> str | None:
+    """Locate the Python executable for a conda environment (no shell activation needed)."""
+    try:
+        result = subprocess.run(
+            ["conda", "env", "list", "--json"],
+            capture_output=True, text=True, timeout=15,
+        )
+        if result.returncode != 0:
+            return None
+        data = json.loads(result.stdout)
+        for p in data.get("envs", []):
+            if Path(p).name == env_name:
+                if os.name == "nt":
+                    py = Path(p) / "python.exe"
+                else:
+                    py = Path(p) / "bin" / "python"
+                if py.exists():
+                    return str(py)
+    except Exception:
+        pass
+    return None
+
+
 def start_local_run(
     repo_root: Path,
     batch_name: str,
     cases_suffix: str,
     cases: list[str] | None = None,
     simult_runs: int = 1,
+    conda_env: str = "reeds2",
     extra_args: dict[str, Any] | None = None,
 ) -> RunRecord:
     """Start a local ReEDS run via runbatch.py."""
@@ -157,20 +200,34 @@ def start_local_run(
     with _run_lock:
         _runs[rid] = rec
 
-    # Build command
-    cmd = [
-        "python", str(repo_root / "runbatch.py"),
+    # Build the runbatch.py invocation arguments
+    py_args = [
+        str(repo_root / "runbatch.py"),
         f"--BatchName={batch_name}",
         f"--simult_runs={simult_runs}",
         "--forcelocal",
         "--skip_checks",
     ]
     if cases_suffix:
-        cmd.append(f"--cases_suffix={cases_suffix}")
+        py_args.append(f"--cases_suffix={cases_suffix}")
     if cases:
-        cmd.append(f"--single={','.join(cases)}")
+        # --single expects a comma-delimited string of case names
+        py_args.append(f"--single={','.join(cases)}")
 
-    log.info("Launching local run %s: %s", rid, " ".join(cmd))
+    # Find the conda env's Python executable so we don't need shell activation
+    conda_python = _find_conda_python(conda_env)
+
+    if conda_python:
+        # Direct invocation — no shell needed, avoids quoting issues
+        cmd = [conda_python] + py_args
+    elif os.name == "nt":
+        # Fallback: use cmd /c with conda activate
+        inner = f"conda activate {conda_env} && python " + subprocess.list2cmdline(py_args)
+        cmd = ["cmd", "/c", inner]
+    else:
+        cmd = ["conda", "run", "--no-capture-output", "-n", conda_env, "python"] + py_args
+
+    log.info("Launching local run %s: %s", rid, cmd)
 
     def _run_in_thread():
         try:
@@ -270,3 +327,32 @@ def delete_run(repo_root: Path, run_id: str) -> bool:
 def init_run_manager(repo_root: Path):
     """Call once on app startup to reload persisted runs."""
     _load_persisted_runs(repo_root)
+
+
+def list_run_folders(repo_root: Path) -> list[dict]:
+    """Scan {repo}/runs/ directory and return info about each run folder."""
+    runs_dir = repo_root / "runs"
+    if not runs_dir.is_dir():
+        return []
+    results = []
+    for d in sorted(runs_dir.iterdir(), reverse=True):
+        if not d.is_dir():
+            continue
+        # Check for key files to infer status
+        has_outputs = (d / "outputs").is_dir()
+        has_gamslog = (d / "gamslog.txt").is_file()
+        has_meta = (d / "meta.csv").is_file()
+        # Get modification time
+        try:
+            mtime = d.stat().st_mtime
+        except Exception:
+            mtime = 0
+        results.append({
+            "name": d.name,
+            "path": str(d),
+            "has_outputs": has_outputs,
+            "has_gamslog": has_gamslog,
+            "has_meta": has_meta,
+            "modified_at": mtime,
+        })
+    return results

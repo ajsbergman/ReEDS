@@ -20,6 +20,7 @@ class StartRunRequest(BaseModel):
     cases: list[str] = []
     simult_runs: int = Field(default=1, ge=1, le=32)
     target: Literal["local", "hpc"] = "local"
+    conda_env: str = "reeds2"
 
 
 class RunListItem(BaseModel):
@@ -36,6 +37,12 @@ class RunListItem(BaseModel):
 
 
 # ── Endpoints ────────────────────────────────────────────────────────────────
+
+@router.get("/conda-envs")
+def list_conda_envs():
+    """List available conda environments."""
+    return run_manager.list_conda_envs()
+
 
 @router.get("/cases-files")
 def list_cases_files(settings: Settings = Depends(get_settings)):
@@ -64,6 +71,7 @@ def start_run(body: StartRunRequest, settings: Settings = Depends(get_settings))
         cases_suffix=body.cases_suffix,
         cases=body.cases or None,
         simult_runs=body.simult_runs,
+        conda_env=body.conda_env,
     )
     return rec.to_dict()
 
@@ -72,6 +80,12 @@ def start_run(body: StartRunRequest, settings: Settings = Depends(get_settings))
 def list_runs():
     """List all runs (newest first)."""
     return run_manager.list_runs()
+
+
+@router.get("/folders/list")
+def list_run_folders(settings: Settings = Depends(get_settings)):
+    """List run folders under {repo}/runs/."""
+    return run_manager.list_run_folders(settings.repo_root)
 
 
 @router.get("/{run_id}")

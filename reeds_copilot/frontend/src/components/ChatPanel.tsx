@@ -13,9 +13,12 @@ interface Props {
   onSources: (sources: SourceSnippet[]) => void;
   messages: Message[];
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
+  onNavigate?: (tab: string) => void;
 }
 
-export default function ChatPanel({ mode, selectedPath, onSources, messages, setMessages }: Props) {
+const RUN_KEYWORDS = /\b(run reeds|launch.*run|start.*run|execute.*model|run.*model|runbatch|cases[_ ]?csv|how.*run|can i run)\b/i;
+
+export default function ChatPanel({ mode, selectedPath, onSources, messages, setMessages, onNavigate }: Props) {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,7 +65,17 @@ export default function ChatPanel({ mode, selectedPath, onSources, messages, set
         {messages.map((m, i) => (
           <div key={i} className={`chat-msg ${m.role}`}>
             {m.role === "assistant" ? (
-              <ReactMarkdown>{m.content}</ReactMarkdown>
+              <>
+                <ReactMarkdown>{m.content}</ReactMarkdown>
+                {RUN_KEYWORDS.test(m.content) && onNavigate && (
+                  <button
+                    className="chat-action-link"
+                    onClick={() => onNavigate("runs")}
+                  >
+                    🚀 Go to Run ReEDS
+                  </button>
+                )}
+              </>
             ) : (
               m.content
             )}

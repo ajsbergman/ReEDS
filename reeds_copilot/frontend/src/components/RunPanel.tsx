@@ -1,13 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 import {
   listCasesFilesAPI,
+  listCondaEnvsAPI,
+  listRunFoldersAPI,
   startRunAPI,
   listRunsAPI,
   getRunAPI,
   cancelRunAPI,
   deleteRunAPI,
   type CasesFile,
+  type CondaEnv,
   type RunRecord,
+  type RunFolder,
 } from "../lib/api";
 
 /* ─── helpers ─────────────────────────────────────────────────────────────── */
@@ -55,9 +59,12 @@ export default function RunPanel() {
     () => `v${new Date().toISOString().slice(0, 10).replace(/-/g, "")}_copilot`,
   );
   const [simultRuns, setSimultRuns] = useState(1);
+  const [condaEnvs, setCondaEnvs] = useState<CondaEnv[]>([]);
+  const [selectedEnv, setSelectedEnv] = useState("reeds2");
 
   /* Runs list & detail */
   const [runs, setRuns] = useState<RunRecord[]>([]);
+  const [runFolders, setRunFolders] = useState<RunFolder[]>([]);
   const [expandedRun, setExpandedRun] = useState<string | null>(null);
   const [expandedDetail, setExpandedDetail] = useState<RunRecord | null>(null);
   const [launching, setLaunching] = useState(false);
@@ -65,7 +72,7 @@ export default function RunPanel() {
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  /* Load cases files on mount */
+  /* Load cases files and conda envs on mount */
   useEffect(() => {
     listCasesFilesAPI()
       .then((files) => {
@@ -81,6 +88,15 @@ export default function RunPanel() {
           setAvailableCases(files[0].cases);
           setSelectedCases(files[0].cases);
         }
+      })
+      .catch(() => {});
+    listCondaEnvsAPI()
+      .then((envs) => {
+        setCondaEnvs(envs);
+        // Auto-select reeds2 if available
+        const r2 = envs.find((e) => e.name === "reeds2");
+        if (r2) setSelectedEnv(r2.name);
+        else if (envs.length > 0) setSelectedEnv(envs[0].name);
       })
       .catch(() => {});
     refreshRuns();
@@ -102,6 +118,7 @@ export default function RunPanel() {
 
   function refreshRuns() {
     listRunsAPI().then(setRuns).catch(() => {});
+    listRunFoldersAPI().then(setRunFolders).catch(() => {});
   }
 
   function handleSuffixChange(suffix: string) {
@@ -136,6 +153,7 @@ export default function RunPanel() {
         cases: selectedCases.length > 0 ? selectedCases : undefined,
         simult_runs: simultRuns,
         target,
+        conda_env: selectedEnv,
       });
       refreshRuns();
     } catch (e: any) {
@@ -195,6 +213,24 @@ export default function RunPanel() {
               <span className="coming-soon">soon</span>
             </button>
           </div>
+        </div>
+
+        {/* Conda environment */}
+        <div className="run-field">
+          <label>Conda Environment</label>
+          <select
+            value={selectedEnv}
+            onChange={(e) => setSelectedEnv(e.target.value)}
+          >
+            {condaEnvs.length === 0 && (
+              <option value="reeds2">reeds2 (default)</option>
+            )}
+            {condaEnvs.map((env) => (
+              <option key={env.name} value={env.name}>
+                {env.name}{env.name === "reeds2" ? " (recommended)" : ""}
+              </option>
+            ))}
+          </select>
         </div>
 
         {/* Batch name */}
@@ -346,6 +382,33 @@ export default function RunPanel() {
             )}
           </div>
         ))}
+      </section>
+
+      {/* ── Run Folders (from repo/runs/) ─────────────────────────────────── */}
+      <section className="run-folders">
+        <div className="run-history-header">
+          <h2>Run Folders <span style={{ fontSize: "0.78rem", color: "var(--text-muted)", fontWeight: 400 }}>({runFolders.length} in runs/)</span></h2>
+        </div>
+
+        {runFolders.length === 0 && (
+          <p className="run-empty">No run folders found in runs/ directory.</p>
+        )}
+
+        <div className="run-folder-list">
+          {runFolders.map((f) => (
+            <div key={f.name} className="run-folder-item">
+              <div className="run-folder-name">📁 {f.name}</div>
+              <div className="run-folder-badges">
+                {f.has_outputs && <span className="folder-badge outputs">outputs</span>}
+                {f.has_gamslog && <span className="folder-badge log">gamslog</span>}
+                {f.has_meta && <span className="folder-badge meta">meta</span>}
+                <span className="run-card-time">
+                  {new Date(f.modified_at * 1000).toLocaleString()}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
       </section>
     </div>
   );

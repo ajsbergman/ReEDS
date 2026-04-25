@@ -146,6 +146,23 @@ body,
   background: var(--bg-elevated);
 }
 
+.chat-action-link {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 6px 14px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  background: rgba(91, 141, 239, 0.08);
+  color: var(--accent);
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.chat-action-link:hover {
+  background: rgba(91, 141, 239, 0.18);
+}
+
 .chat-input-bar {
   display: flex;
   gap: 8px;
@@ -841,4 +858,68 @@ body,
   white-space: pre-wrap;
   word-break: break-all;
   line-height: 1.5;
+}
+
+/* ── Run Folders ──────────────────────────────────────────────────────────── */
+.run-folders {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px 24px;
+}
+
+.run-folder-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.run-folder-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  transition: background 0.12s;
+}
+.run-folder-item:hover {
+  background: var(--bg-elevated);
+}
+
+.run-folder-name {
+  color: var(--text);
+  font-size: 0.88rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 50%;
+}
+
+.run-folder-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.folder-badge {
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 0.68rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+.folder-badge.outputs {
+  background: rgba(76, 175, 80, 0.15);
+  color: #4caf50;
+}
+.folder-badge.log {
+  background: rgba(33, 150, 243, 0.15);
+  color: #2196f3;
+}
+.folder-badge.meta {
+  background: rgba(255, 152, 0, 0.15);
+  color: #ff9800;
 }
