@@ -493,8 +493,37 @@ def delete_run(repo_root: Path, run_id: str) -> bool:
 
 
 def init_run_manager(repo_root: Path):
-    """Call once on app startup to reload persisted runs."""
+    """Call once on app startup to reload persisted runs.
+    
+    Runs that were 'running' or 'queued' when the backend last exited are
+    re-evaluated: if their report.xlsx exists they are marked completed,
+    otherwise marked failed (the monitoring thread is gone).
+    """
     _load_persisted_runs(repo_root)
+    # Fix stale 'running'/'queued' records from a previous backend session
+    with _run_lock:
+        for rec in _runs.values():
+            if rec.status in (RunStatus.RUNNING, RunStatus.QUEUED):
+                # Check if the run actually finished while backend was down
+                case_dirs = [
+                    repo_root / "runs" / f"{rec.batch_name}_{c}"
+                    for c in rec.cases
+                ]
+                all_done = all(
+                    (cd / "outputs" / "reeds-report" / "report.xlsx").exists()
+                    for cd in case_dirs
+                ) if case_dirs else False
+                if all_done:
+                    rec.status = RunStatus.COMPLETED
+                    rec.finished_at = rec.finished_at or time.time()
+                    log.info("Run %s completed while backend was down", rec.id)
+                else:
+                    rec.status = RunStatus.FAILED
+                    rec.error = "Backend was restarted while this run was in progress. Check GAMS console."
+                    rec.finished_at = rec.finished_at or time.time()
+                    log.warning("Run %s marked failed (stale running state)", rec.id)
+                rec.pid = None
+                _persist_run(repo_root, rec)
 
 
 def list_run_folders(repo_root: Path) -> list[dict]:
