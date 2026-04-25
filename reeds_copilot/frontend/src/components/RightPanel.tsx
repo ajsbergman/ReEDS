@@ -6,9 +6,10 @@ interface Props {
   selectedFile: string | null;
   sources: SourceSnippet[];
   onSelectFile: (path: string) => void;
+  width?: number;
 }
 
-export default function RightPanel({ selectedFile, sources, onSelectFile }: Props) {
+export default function RightPanel({ selectedFile, sources, onSelectFile, width }: Props) {
   const [preview, setPreview] = useState<FilePreviewResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [fullMode, setFullMode] = useState(false);
@@ -32,7 +33,7 @@ export default function RightPanel({ selectedFile, sources, onSelectFile }: Prop
   useEffect(() => { setFullMode(false); }, [selectedFile]);
 
   return (
-    <div className="right-panel">
+    <div className="right-panel" style={width ? { width, minWidth: width } : undefined}>
       {/* Sources section */}
       {sources.length > 0 && (
         <>

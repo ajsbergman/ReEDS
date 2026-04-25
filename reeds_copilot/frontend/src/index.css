@@ -39,10 +39,31 @@ body,
   height: 100vh;
 }
 
+/* ── Resize handles ───────────────────────────────────────────────────────── */
+.resize-handle {
+  flex-shrink: 0;
+  background: transparent;
+  transition: background 0.15s;
+}
+.resize-handle--horizontal {
+  width: 5px;
+  cursor: col-resize;
+}
+.resize-handle--vertical {
+  height: 5px;
+  cursor: row-resize;
+}
+.resize-handle:hover,
+.resize-handle:active {
+  background: var(--accent);
+  opacity: 0.5;
+}
+
 /* ── Sidebar ──────────────────────────────────────────────────────────────── */
 .sidebar {
   width: 220px;
-  min-width: 180px;
+  min-width: 140px;
+  flex-shrink: 0;
   background: var(--bg-surface);
   border-right: 1px solid var(--border);
   display: flex;
@@ -112,7 +133,8 @@ body,
 /* ── Right panel ──────────────────────────────────────────────────────────── */
 .right-panel {
   width: 380px;
-  min-width: 260px;
+  min-width: 200px;
+  flex-shrink: 0;
   background: var(--bg-surface);
   border-left: 1px solid var(--border);
   overflow-y: auto;

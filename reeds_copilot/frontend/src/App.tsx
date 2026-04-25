@@ -4,6 +4,7 @@ import ChatHistory from "./components/ChatHistory";
 import SearchPanel from "./components/SearchPanel";
 import FileBrowser from "./components/FileBrowser";
 import RightPanel from "./components/RightPanel";
+import ResizeHandle from "./components/ResizeHandle";
 import SettingsPanel from "./components/SettingsPanel";
 import WelcomeScreen from "./components/WelcomeScreen";
 import RunPanel from "./components/RunPanel";
@@ -41,6 +42,17 @@ export default function App() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [historyRefreshKey, setHistoryRefreshKey] = useState(0);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Resizable panel widths
+  const [sidebarWidth, setSidebarWidth] = useState(220);
+  const [rightWidth, setRightWidth] = useState(380);
+
+  const handleSidebarResize = useCallback((delta: number) => {
+    setSidebarWidth((w) => Math.max(140, Math.min(400, w + delta)));
+  }, []);
+  const handleRightResize = useCallback((delta: number) => {
+    setRightWidth((w) => Math.max(200, Math.min(700, w - delta)));
+  }, []);
 
   useEffect(() => {
     healthAPI()
@@ -156,7 +168,7 @@ export default function App() {
   return (
     <div className="app-shell">
       {/* ── Sidebar ──────────────────────────────────── */}
-      <nav className="sidebar">
+      <nav className="sidebar" style={{ width: sidebarWidth, minWidth: sidebarWidth }}>
         <div className="sidebar-brand">
           <img src="/reeds-logo.png" alt="ReEDS" className="sidebar-logo" />
           <h1>ReEDS-Copilot</h1>
@@ -171,6 +183,7 @@ export default function App() {
           </button>
         ))}
       </nav>
+      <ResizeHandle direction="horizontal" onResize={handleSidebarResize} />
 
       {/* ── Chat history (visible on chat tab) ───────── */}
       {tab === "chat" && (
@@ -241,11 +254,15 @@ export default function App() {
 
           {/* Right panel – always visible except on settings */}
           {tab !== "settings" && tab !== "runs" && (
-            <RightPanel
-              selectedFile={selectedFile}
-              sources={sources}
-              onSelectFile={handleSelectFile}
-            />
+            <>
+              <ResizeHandle direction="horizontal" onResize={handleRightResize} />
+              <RightPanel
+                selectedFile={selectedFile}
+                sources={sources}
+                onSelectFile={handleSelectFile}
+                width={rightWidth}
+              />
+            </>
           )}
         </div>
       </div>
