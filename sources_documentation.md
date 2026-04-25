@@ -1580,6 +1580,11 @@
     - **Dollar year:** 2024
 ---
 
+- [coal_AEO_2025_reference_multiplier.csv](/inputs/fuelprices/coal_AEO_2025_reference_multiplier.csv)
+    - **Description:** reference case census division coal price multiplier. Values calcuated from EIA923 2010-2024
+    - **Indices:** t,cendiv
+---
+
   - [dollaryear.csv](/inputs/fuelprices/dollaryear.csv)
     - **Description:** Dollar year mapping for each fuel price scenario
 ---
