@@ -1,5 +1,6 @@
 chat_history/
 run_history/
+pp_job_history/
 node_modules/
 __pycache__/
 *.pyc
