@@ -14,29 +14,6 @@ $ifthen.unix %system.filesys% == UNIX
 $setglobal ds /
 $endif.unix
 
-*need to convert the 'unit' numhintage to some large value
-$ifthen.unithintage %numhintage%=="unit"
-$eval numhintage 300
-$endif.unithintage
-
-* Under the Clean Air Act, all coal plants are regulated individually. Therefore, we need a large value of hintages to represent these plants
-$include inputs_case%ds%max_hintage_number.txt
-
-$ifthen.unithintage %GSw_Clean_Air_Act%==1
-$eval numhintage max_hintage_number
-$endif.unithintage
-
-*need to convert the 'group' numhintage to some large value
-$ifthen.unithintage %numhintage%=="group"
-$eval numhintage 300
-$endif.unithintage
-
-* there are numeraire hintages on either sides of the outer breaks
-* when using calcmethod = 1, here adding two for safety
-* NB this will not increase model size given conditions
-* dictating valcap and valgen for initial classes
-$eval numhintage %numhintage% + 2
-
 *$ontext
 * --- print timing profile ---
 option profile = 3
