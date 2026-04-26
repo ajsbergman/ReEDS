@@ -686,6 +686,10 @@ body,
 .compare-data {
   padding: 4px 0;
 }
+/* Override highlight.js background to match our theme */
+.compare-data .hljs {
+  background: var(--bg) !important;
+}
 /* Folder group list */
 .compare-group-list {
   display: flex;
@@ -789,15 +793,18 @@ body,
   font-family: var(--font-mono);
   font-size: 0.78rem;
   overflow-x: auto;
-  max-height: 500px;
+  max-height: calc(100vh - 160px);
   overflow-y: auto;
   white-space: pre-wrap;
   word-break: break-all;
 }
+.file-preview .hljs {
+  background: var(--bg) !important;
+}
 
 .csv-table-wrap {
   overflow: auto;
-  max-height: 500px;
+  max-height: calc(100vh - 160px);
 }
 .csv-table-wrap table {
   border-collapse: collapse;

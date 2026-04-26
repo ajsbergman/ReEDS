@@ -1,4 +1,6 @@
-﻿import { useEffect, useState, useMemo, useCallback } from "react";
+﻿import { useEffect, useState, useMemo, useCallback, useRef } from "react";
+import hljs from "highlight.js";
+import "highlight.js/styles/vs2015.css";
 import {
   listRunFoldersAPI,
   compareBrowseAPI,
@@ -276,9 +278,48 @@ export default function ComparePanel({ onClose }: Props) {
   );
 }
 
+function useSyncScroll(count: number) {
+  const refs = useRef<(HTMLDivElement | null)[]>([]);
+  const isSyncing = useRef(false);
+  const setRef = useCallback((idx: number) => (el: HTMLDivElement | null) => {
+    refs.current[idx] = el;
+  }, []);
+  useEffect(() => {
+    const els = refs.current.filter(Boolean) as HTMLDivElement[];
+    const handler = (source: HTMLDivElement) => () => {
+      if (isSyncing.current) return;
+      isSyncing.current = true;
+      for (const el of els) {
+        if (el !== source) {
+          el.scrollTop = source.scrollTop;
+          el.scrollLeft = source.scrollLeft;
+        }
+      }
+      isSyncing.current = false;
+    };
+    const handlers = els.map((el) => { const h = handler(el); el.addEventListener("scroll", h); return { el, h }; });
+    return () => { handlers.forEach(({ el, h }) => el.removeEventListener("scroll", h)); };
+  }, [count]);
+  return setRef;
+}
+
+function guessLang(filename: string): string | undefined {
+  const ext = filename.split(".").pop()?.toLowerCase() ?? "";
+  const map: Record<string, string> = {
+    py: "python", gms: "gams", jl: "julia", r: "r", sh: "bash", bat: "dos",
+    json: "json", yaml: "yaml", yml: "yaml", toml: "ini", cfg: "ini", ini: "ini",
+    csv: "csv", tsv: "csv", md: "markdown", html: "xml", xml: "xml",
+    sql: "sql", js: "javascript", ts: "typescript", opt: "ini",
+    txt: "plaintext", log: "plaintext", lst: "plaintext",
+  };
+  return map[ext];
+}
+
 function TextDiffView({ data, caseColors }: { data: CompareDataResponse; caseColors: string[] }) {
   const { cases, texts, filename, subdir } = data;
+  const setRef = useSyncScroll(cases.length);
   if (!texts) return null;
+  const lang = guessLang(filename ?? "");
   return (
     <div className="compare-data">
       <div style={{ marginBottom: 8 }}>
@@ -286,28 +327,36 @@ function TextDiffView({ data, caseColors }: { data: CompareDataResponse; caseCol
       </div>
       <div style={{ display: "flex", gap: 8, overflow: "auto" }}>
         {cases.map((c, i) => {
-          const lines = (texts[c] ?? "(empty)").split("\n");
+          const raw = texts[c] ?? "(empty)";
+          let highlighted: string;
+          try {
+            highlighted = lang && lang !== "csv" && lang !== "plaintext"
+              ? hljs.highlight(raw, { language: lang }).value
+              : hljs.highlightAuto(raw).value;
+          } catch { highlighted = raw.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+          const lines = highlighted.split("\n");
           return (
             <div key={c} style={{ flex: 1, minWidth: 300 }}>
               <div style={{
                 color: caseColors[i % caseColors.length], fontWeight: 600,
                 fontSize: "0.82rem", marginBottom: 4, fontFamily: "var(--font-mono)",
               }}>{c}</div>
-              <div style={{
+              <div ref={setRef(i)} className="hljs" style={{
                 background: "var(--bg)", borderRadius: 4,
                 fontSize: "0.75rem", maxHeight: "calc(100vh - 320px)", overflow: "auto",
                 border: `1px solid ${caseColors[i % caseColors.length]}30`,
-                fontFamily: "var(--font-mono)",
+                fontFamily: "var(--font-mono)", lineHeight: 1.5,
               }}>
-                {lines.map((line, idx) => (
-                  <div key={idx} style={{ display: "flex" }}>
+                {lines.map((lineHtml, idx) => (
+                  <div key={idx} style={{ display: "flex", minHeight: "1.5em" }}>
                     <span style={{
                       display: "inline-block", width: 40, minWidth: 40, textAlign: "right",
                       paddingRight: 8, color: "var(--text-muted)", opacity: 0.5,
                       userSelect: "none", borderRight: "1px solid var(--border)",
                       marginRight: 8, flexShrink: 0,
                     }}>{idx + 1}</span>
-                    <span style={{ whiteSpace: "pre-wrap", wordBreak: "break-all" }}>{line}</span>
+                    <span style={{ whiteSpace: "pre-wrap", wordBreak: "break-all" }}
+                      dangerouslySetInnerHTML={{ __html: lineHtml || "&nbsp;" }} />
                   </div>
                 ))}
               </div>
@@ -321,6 +370,7 @@ function TextDiffView({ data, caseColors }: { data: CompareDataResponse; caseCol
 
 function CsvTableView({ data, caseColors }: { data: CompareDataResponse; caseColors: string[] }) {
   const { columns, cases, filename, subdir, case_tables, total_rows } = data;
+  const setRef = useSyncScroll(cases.length);
   if (!case_tables) return null;
   return (
     <div className="compare-data">
@@ -340,7 +390,7 @@ function CsvTableView({ data, caseColors }: { data: CompareDataResponse; caseCol
                 color, fontWeight: 600,
                 fontSize: "0.82rem", marginBottom: 4, fontFamily: "var(--font-mono)",
               }}>{c} ({rows.length} rows)</div>
-              <div className="csv-table-wrap" style={{
+              <div ref={setRef(i)} className="csv-table-wrap" style={{
                 maxHeight: "calc(100vh - 320px)",
                 border: `1px solid ${color}30`, borderRadius: 4,
               }}>

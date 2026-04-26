@@ -1,4 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
+import hljs from "highlight.js";
+import "highlight.js/styles/vs2015.css";
 import { previewFileAPI, downloadFileURL, rawFileURL, type FilePreviewResponse, type GdxSymbolInfo } from "../lib/api";
 import type { SourceSnippet } from "../lib/api";
 
@@ -84,18 +86,7 @@ export default function RightPanel({ selectedFile, sources, onSelectFile, width 
           ) : preview && preview.columns && preview.rows ? (
             <CsvPreview preview={preview} fullMode={fullMode} onViewFull={() => setFullMode(true)} />
           ) : preview && preview.content ? (
-            <div className="file-preview">
-              <pre>{preview.content}</pre>
-              {preview.truncated && !fullMode && (
-                <button
-                  className="btn btn-outline"
-                  style={{ marginTop: 8, fontSize: "0.8rem" }}
-                  onClick={() => setFullMode(true)}
-                >
-                  View Full File
-                </button>
-              )}
-            </div>
+            <HighlightedPreview content={preview.content} filename={selectedFile} truncated={preview.truncated} fullMode={fullMode} onViewFull={() => setFullMode(true)} />
           ) : null}
         </>
       )}
@@ -104,6 +95,67 @@ export default function RightPanel({ selectedFile, sources, onSelectFile, width 
         <div style={{ color: "var(--text-muted)" }}>
           Sources and file previews will appear here.
         </div>
+      )}
+    </div>
+  );
+}
+
+function guessLang(filename: string): string | undefined {
+  const ext = filename.split(".").pop()?.toLowerCase() ?? "";
+  const map: Record<string, string> = {
+    py: "python", gms: "gams", jl: "julia", r: "r", sh: "bash", bat: "dos",
+    json: "json", yaml: "yaml", yml: "yaml", toml: "ini", cfg: "ini", ini: "ini",
+    csv: "csv", tsv: "csv", md: "markdown", html: "xml", xml: "xml",
+    sql: "sql", js: "javascript", ts: "typescript", opt: "ini",
+    txt: "plaintext", log: "plaintext", lst: "plaintext",
+    inc: "gams", dd: "gams", gpr: "ini",
+  };
+  return map[ext];
+}
+
+function HighlightedPreview({ content, filename, truncated, fullMode, onViewFull }: {
+  content: string; filename: string; truncated?: boolean; fullMode: boolean; onViewFull: () => void;
+}) {
+  const lang = guessLang(filename);
+  const highlighted = useMemo(() => {
+    try {
+      if (lang && lang !== "csv" && lang !== "plaintext")
+        return hljs.highlight(content, { language: lang }).value;
+      return hljs.highlightAuto(content).value;
+    } catch {
+      return content.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+  }, [content, lang]);
+
+  const lines = highlighted.split("\n");
+  return (
+    <div className="file-preview">
+      <div className="hljs" style={{
+        background: "var(--bg)", padding: 0, borderRadius: "var(--radius)",
+        fontFamily: "var(--font-mono)", fontSize: "0.78rem",
+        overflow: "auto", maxHeight: "calc(100vh - 160px)", lineHeight: 1.5,
+      }}>
+        {lines.map((lineHtml, idx) => (
+          <div key={idx} style={{ display: "flex", minHeight: "1.5em" }}>
+            <span style={{
+              display: "inline-block", width: 40, minWidth: 40, textAlign: "right",
+              paddingRight: 8, color: "var(--text-muted)", opacity: 0.5,
+              userSelect: "none", borderRight: "1px solid var(--border)",
+              marginRight: 8, flexShrink: 0,
+            }}>{idx + 1}</span>
+            <span style={{ whiteSpace: "pre-wrap", wordBreak: "break-all" }}
+              dangerouslySetInnerHTML={{ __html: lineHtml || "&nbsp;" }} />
+          </div>
+        ))}
+      </div>
+      {truncated && !fullMode && (
+        <button
+          className="btn btn-outline"
+          style={{ marginTop: 8, fontSize: "0.8rem" }}
+          onClick={onViewFull}
+        >
+          View Full File
+        </button>
       )}
     </div>
   );
