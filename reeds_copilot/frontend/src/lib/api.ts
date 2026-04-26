@@ -304,31 +304,50 @@ export function listRunFoldersAPI(): Promise<RunFolder[]> {
 
 /* ── Compare Cases ────────────────────────────────────────────────────────── */
 
-export interface CompareCommonFilesResponse {
-  files: string[];
+export interface CompareEntry {
+  name: string;
+  is_dir: boolean;
+  size: number | null;
 }
 
-export function compareCommonFilesAPI(cases: string[]): Promise<CompareCommonFilesResponse> {
+export interface CompareBrowseResponse {
+  subdir: string;
+  entries: CompareEntry[];
+}
+
+export function compareBrowseAPI(cases: string[], subdir: string = ""): Promise<CompareBrowseResponse> {
   const params = cases.map((c) => `cases=${encodeURIComponent(c)}`).join("&");
-  return request<CompareCommonFilesResponse>(`/runs/compare/common-files?${params}`);
+  const sd = subdir ? `&subdir=${encodeURIComponent(subdir)}` : "";
+  return request<CompareBrowseResponse>(`/runs/compare/common-files?${params}${sd}`);
 }
 
 export interface CompareDataResponse {
+  mode: "side_by_side" | "text_diff" | "image_diff" | "gdx_diff" | "csv_table" | "unsupported";
   columns: string[];
   rows: Record<string, unknown>[];
   total_rows: number;
   filename: string;
+  subdir?: string;
   cases: string[];
+  index_cols: string[];
+  value_col: string | null;
+  texts?: Record<string, string>;
+  image_paths?: Record<string, string>;
+  gdx_total_symbols?: Record<string, number>;
+  gdx_common_count?: number;
+  case_tables?: Record<string, Record<string, unknown>[]>;
 }
 
 export function compareDataAPI(
   cases: string[],
   filename: string,
+  subdir: string = "",
   maxRowsPerCase: number = 5000,
 ): Promise<CompareDataResponse> {
   return post<CompareDataResponse>("/runs/compare/data", {
     cases,
     filename,
+    subdir,
     max_rows_per_case: maxRowsPerCase,
   });
 }

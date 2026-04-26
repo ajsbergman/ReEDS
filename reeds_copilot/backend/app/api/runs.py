@@ -136,27 +136,68 @@ def cleanup_local(settings: Settings = Depends(get_settings)):
 @router.get("/compare/common-files")
 def compare_common_files(
     cases: list[str] = Query(..., description="List of case folder names"),
+    subdir: str = Query(default="", description="Subdirectory to browse within each case"),
     settings: Settings = Depends(get_settings),
 ):
-    """Return output CSV filenames common to all selected cases."""
+    """Browse common entries (dirs + files) at a given level across all cases."""
+    import re
+    safe_case = re.compile(r"^[a-zA-Z0-9_\-\.]+$")
     runs_dir = settings.repo_root / "runs"
-    file_sets: list[set[str]] = []
+
     for case in cases:
-        out_dir = (runs_dir / case / "outputs").resolve()
-        if not str(out_dir).startswith(str(runs_dir.resolve())):
-            raise HTTPException(status_code=400, detail="Invalid case name")
-        if not out_dir.is_dir():
-            raise HTTPException(status_code=404, detail=f"No outputs for case: {case}")
-        csvs = {f.name for f in out_dir.iterdir() if f.suffix.lower() == ".csv"}
-        file_sets.append(csvs)
-    common = sorted(set.intersection(*file_sets)) if file_sets else []
-    return {"files": common}
+        if not safe_case.match(case):
+            raise HTTPException(status_code=400, detail=f"Invalid case name: {case}")
+
+    # List children of {runs}/{case}/{subdir} for each case
+    skip_dirs = {"__pycache__", ".git", "node_modules"}
+    per_case: list[dict[str, dict]] = []  # [{name: {is_dir, size}}]
+    for case in cases:
+        target = (runs_dir / case / subdir).resolve() if subdir else (runs_dir / case).resolve()
+        if not str(target).startswith(str(runs_dir.resolve())):
+            raise HTTPException(status_code=400, detail="Invalid path")
+        if not target.is_dir():
+            raise HTTPException(status_code=404, detail=f"Not a directory: {case}/{subdir}")
+        entries: dict[str, dict] = {}
+        for child in target.iterdir():
+            if child.name.startswith(".") or child.name in skip_dirs:
+                continue
+            if child.is_dir():
+                entries[child.name] = {"is_dir": True, "size": None}
+            else:
+                entries[child.name] = {"is_dir": False, "size": child.stat().st_size}
+        per_case.append(entries)
+
+    # Intersect: only names present in ALL cases
+    common_names = set(per_case[0].keys())
+    for pc in per_case[1:]:
+        common_names &= set(pc.keys())
+
+    # Build response entries (use first case for metadata)
+    result = []
+    for name in sorted(common_names):
+        info = per_case[0][name]
+        result.append({
+            "name": name,
+            "is_dir": info["is_dir"],
+            "size": info["size"],
+        })
+    return {"subdir": subdir, "entries": result}
 
 
 class CompareRequest(BaseModel):
     cases: list[str] = Field(..., min_length=2, max_length=20)
-    filename: str = Field(..., description="CSV filename in outputs/ to compare")
+    filename: str = Field(..., description="File name to compare")
+    subdir: str = Field(default="outputs", description="Subdirectory within run folder")
     max_rows_per_case: int = Field(default=5000, ge=100, le=50000)
+
+
+IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".gif", ".bmp", ".svg", ".webp"}
+
+TEXT_SUFFIXES = {
+    ".py", ".gms", ".jl", ".r", ".sh", ".bat", ".md", ".rst", ".txt",
+    ".json", ".yaml", ".yml", ".toml", ".cfg", ".ini", ".opt", ".csv",
+    ".tsv", ".html", ".xml", ".sql", ".lst", ".log", ".inc", ".dd", ".gpr",
+}
 
 
 @router.post("/compare/data")
@@ -164,36 +205,183 @@ def compare_data(
     body: CompareRequest,
     settings: Settings = Depends(get_settings),
 ):
-    """Read a CSV from each case's outputs/ and return merged data with a 'case' column."""
+    """Compare a file across cases. Auto-detects mode based on file type."""
     import re
-    safe_name = re.compile(r"^[a-zA-Z0-9_\-\.]+\.csv$")
+    safe_name = re.compile(r"^[a-zA-Z0-9_\-\.]+$")
     if not safe_name.match(body.filename):
         raise HTTPException(status_code=400, detail="Invalid filename")
 
     runs_dir = settings.repo_root / "runs"
-    frames: list[pd.DataFrame] = []
-    for case in body.cases:
-        csv_path = (runs_dir / case / "outputs" / body.filename).resolve()
-        if not str(csv_path).startswith(str(runs_dir.resolve())):
-            raise HTTPException(status_code=400, detail="Invalid case name")
-        if not csv_path.is_file():
-            raise HTTPException(status_code=404, detail=f"{body.filename} not found in {case}")
-        try:
-            df = pd.read_csv(csv_path, nrows=body.max_rows_per_case, low_memory=False)
-            df.insert(0, "case", case)
-            frames.append(df)
-        except Exception as exc:
-            raise HTTPException(status_code=400, detail=f"Error reading {case}/{body.filename}: {exc}")
+    suffix = Path(body.filename).suffix.lower()
 
-    merged = pd.concat(frames, ignore_index=True)
-    columns = list(merged.columns)
-    rows = merged.to_dict(orient="records")
-    return {
-        "columns": columns,
-        "rows": rows,
-        "total_rows": len(rows),
+    # Resolve paths
+    paths: dict[str, Path] = {}
+    for case in body.cases:
+        if body.subdir:
+            file_path = (runs_dir / case / body.subdir / body.filename).resolve()
+        else:
+            file_path = (runs_dir / case / body.filename).resolve()
+        if not str(file_path).startswith(str(runs_dir.resolve())):
+            raise HTTPException(status_code=400, detail="Invalid case name")
+        if not file_path.is_file():
+            raise HTTPException(status_code=404, detail=f"{body.filename} not found in {case}")
+        paths[case] = file_path
+
+    base_resp = {
         "filename": body.filename,
+        "subdir": body.subdir,
         "cases": body.cases,
+    }
+
+    # ── Image compare ──
+    if suffix in IMAGE_SUFFIXES:
+        # Return relative paths for the raw file endpoint
+        image_paths = {}
+        for case, p in paths.items():
+            rel = p.relative_to(settings.repo_root)
+            image_paths[case] = str(rel).replace("\\", "/")
+        return {
+            **base_resp,
+            "mode": "image_diff",
+            "image_paths": image_paths,
+            "columns": [], "rows": [], "total_rows": 0,
+            "index_cols": [], "value_col": None,
+        }
+
+    # ── GDX compare ──
+    if suffix == ".gdx":
+        try:
+            from ..services.file_inspector import _gdx_list_symbols
+            symbol_lists = {}
+            for case, p in paths.items():
+                symbol_lists[case] = _gdx_list_symbols(p)
+            # Find common symbols
+            name_sets = [set(s["name"] for s in syms) for syms in symbol_lists.values()]
+            common = sorted(set.intersection(*name_sets)) if name_sets else []
+            # Build comparison: for each common symbol, show records per case
+            first_syms = {s["name"]: s for s in symbol_lists[body.cases[0]]}
+            case_syms = {
+                case: {s["name"]: s for s in syms}
+                for case, syms in symbol_lists.items()
+            }
+            rows = []
+            for name in common:
+                row: dict = {"name": name, "type": first_syms[name]["type"], "dims": first_syms[name]["dims"]}
+                for case in body.cases:
+                    row[case] = case_syms[case].get(name, {}).get("records", 0)
+                rows.append(row)
+            columns = ["name", "type", "dims"] + list(body.cases)
+            return {
+                **base_resp,
+                "mode": "gdx_diff",
+                "columns": columns,
+                "rows": rows,
+                "total_rows": len(rows),
+                "index_cols": ["name", "type", "dims"],
+                "value_col": None,
+                "gdx_total_symbols": {case: len(syms) for case, syms in symbol_lists.items()},
+                "gdx_common_count": len(common),
+            }
+        except Exception as exc:
+            return {
+                **base_resp,
+                "mode": "text_diff",
+                "texts": {case: f"Error reading GDX: {exc}" for case in body.cases},
+                "columns": [], "rows": [], "total_rows": 0,
+                "index_cols": [], "value_col": None,
+            }
+
+    # ── CSV compare ──
+    if suffix == ".csv":
+        frames: dict[str, pd.DataFrame] = {}
+        for case, p in paths.items():
+            try:
+                df = pd.read_csv(p, nrows=body.max_rows_per_case, low_memory=False)
+                frames[case] = df
+            except Exception as exc:
+                raise HTTPException(status_code=400, detail=f"Error reading {case}/{body.filename}: {exc}")
+
+        sample = next(iter(frames.values()))
+        value_cols = [c for c in sample.columns if c.lower() == "value"]
+        index_cols = [c for c in sample.columns if c.lower() != "value"]
+
+        if value_cols:
+            # Side-by-side merge on index columns
+            val_col = value_cols[0]
+            case_names = list(frames.keys())
+            merged = frames[case_names[0]][index_cols].drop_duplicates()
+            for case in case_names:
+                renamed = frames[case].rename(columns={val_col: case})
+                merged = merged.merge(renamed[index_cols + [case]], on=index_cols, how="outer")
+
+            for case in case_names:
+                merged[case] = pd.to_numeric(merged[case], errors="coerce")
+
+            if len(case_names) == 2:
+                merged["diff"] = merged[case_names[0]] - merged[case_names[1]]
+                merged["pct_diff"] = (
+                    merged["diff"] / merged[case_names[1]].replace(0, float("nan")) * 100
+                ).round(2)
+            else:
+                merged["diff"] = merged[case_names].max(axis=1) - merged[case_names].min(axis=1)
+
+            try:
+                merged = merged.sort_values(index_cols).reset_index(drop=True)
+            except Exception:
+                pass
+
+            rows = merged.astype(object).where(merged.notna(), None).to_dict(orient="records")
+            return {
+                **base_resp,
+                "mode": "side_by_side",
+                "columns": list(merged.columns),
+                "rows": rows,
+                "total_rows": len(rows),
+                "index_cols": index_cols,
+                "value_col": val_col,
+            }
+        else:
+            # No Value column — show side-by-side tables per case
+            all_cols = list(sample.columns)
+            case_tables: dict[str, list[dict]] = {}
+            for case in body.cases:
+                df = frames[case].head(body.max_rows_per_case)
+                clean = df.astype(object).where(df.notna(), None)
+                case_tables[case] = clean.to_dict(orient="records")
+            return {
+                **base_resp,
+                "mode": "csv_table",
+                "columns": all_cols,
+                "rows": [],
+                "total_rows": max(len(v) for v in case_tables.values()),
+                "index_cols": all_cols,
+                "value_col": None,
+                "case_tables": case_tables,
+            }
+
+    # ── Text compare (fallback) ──
+    if suffix in TEXT_SUFFIXES or suffix == "":
+        texts = {}
+        for case, p in paths.items():
+            try:
+                texts[case] = p.read_text(encoding="utf-8", errors="replace")[:200_000]
+            except Exception:
+                texts[case] = "(could not read file)"
+        return {
+            **base_resp,
+            "mode": "text_diff",
+            "texts": texts,
+            "columns": [], "rows": [], "total_rows": 0,
+            "index_cols": [], "value_col": None,
+        }
+
+    # ── Unsupported ──
+    return {
+        **base_resp,
+        "mode": "unsupported",
+        "columns": [], "rows": [], "total_rows": 0,
+        "index_cols": [], "value_col": None,
+        "texts": {case: f"(binary file: {suffix})" for case in body.cases},
     }
 
 
