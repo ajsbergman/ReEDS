@@ -665,6 +665,12 @@ def run_bokeh_report(
     display_names = body.casenames.split(",") if body.casenames else body.cases
     if len(display_names) != len(body.cases):
         display_names = body.cases
+    # Resolve base to its display name so bokeh diff can match it
+    base_display = base
+    for orig, disp in zip(body.cases, display_names):
+        if orig == base:
+            base_display = disp
+            break
     df_scen = pd.DataFrame({
         "name": display_names,
         "color": bp_colors[:len(body.cases)],
@@ -677,7 +683,7 @@ def run_bokeh_report(
         "python", str(interface_py),
         "ReEDS 2.0", scen_csv, "all",
         "Yes" if body.diff else "No",
-        base,
+        base_display,
         str(report_py), "html,excel", "one",
         bp_outpath, "No",
     ]
