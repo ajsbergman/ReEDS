@@ -62,10 +62,14 @@ def download_file(
 
 
 IMAGE_SUFFIXES = {".png", ".jpg", ".jpeg", ".gif", ".bmp", ".svg", ".webp"}
-IMAGE_MEDIA_TYPES = {
+MEDIA_TYPES = {
     ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg",
     ".gif": "image/gif", ".bmp": "image/bmp", ".svg": "image/svg+xml",
     ".webp": "image/webp",
+    ".html": "text/html", ".htm": "text/html",
+    ".csv": "text/csv", ".json": "application/json",
+    ".txt": "text/plain", ".log": "text/plain",
+    ".xml": "text/xml", ".xlsx": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 }
 
 
@@ -82,5 +86,5 @@ def raw_file(
     if not target.is_file():
         raise HTTPException(status_code=404, detail=f"Not a file: {path}")
     suffix = target.suffix.lower()
-    media = IMAGE_MEDIA_TYPES.get(suffix, "application/octet-stream")
+    media = MEDIA_TYPES.get(suffix, "application/octet-stream")
     return FileResponse(path=str(target), media_type=media)

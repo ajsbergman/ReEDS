@@ -20,17 +20,13 @@ interface Props {
 
 const CASE_COLORS = ["#60a5fa", "#4ade80", "#fbbf24", "#f87171", "#c084fc", "#fb923c"];
 
-type Tool = "bokeh_report";
-
 export default function PostProcessPanel({ onClose, onSelectFile }: Props) {
   const [folders, setFolders] = useState<RunFolder[]>([]);
   const [reports, setReports] = useState<string[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   // Tool config
-  const [tool] = useState<Tool>("bokeh_report");
   const [bpreport, setBpreport] = useState("standard_report_reduced");
-  const [startyear, setStartyear] = useState(2010);
   const [diff, setDiff] = useState(true);
   const [basecase, setBasecase] = useState("");
 
@@ -93,7 +89,7 @@ export default function PostProcessPanel({ onClose, onSelectFile }: Props) {
     } finally {
       setSubmitting(false);
     }
-  }, [selected, tool, basecase, bpreport, diff]);
+  }, [selected, basecase, bpreport, diff]);
 
   function viewJob(job: PPJob) {
     setActiveJob(job);
@@ -260,10 +256,10 @@ export default function PostProcessPanel({ onClose, onSelectFile }: Props) {
           {jobOutputs.length > 0 && (
             <div style={{ marginBottom: 10 }}>
               <div style={{ fontSize: "0.82rem", fontWeight: 600, marginBottom: 4 }}>
-                Outputs ({jobOutputs.length} files)
+                Outputs
               </div>
               <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                {jobOutputs.map((f) => {
+                {jobOutputs.filter((f) => f.suffix === ".html").map((f) => {
                   const isHtml = f.suffix === ".html";
                   const isViewable = [".html", ".png", ".jpg", ".csv", ".xlsx"].includes(f.suffix);
                   return (
@@ -302,17 +298,21 @@ export default function PostProcessPanel({ onClose, onSelectFile }: Props) {
             </div>
           )}
 
-          {/* Log */}
-          <div style={{ fontSize: "0.82rem", fontWeight: 600, marginBottom: 4 }}>Log</div>
-          <pre style={{
-            background: "var(--bg)", padding: 8, borderRadius: "var(--radius)",
-            fontSize: "0.72rem", fontFamily: "var(--font-mono)",
-            maxHeight: "calc(100vh - 400px)", overflow: "auto",
-            whiteSpace: "pre-wrap", wordBreak: "break-all",
-            border: "1px solid var(--border)",
-          }}>
-            {activeJob.log || (activeJob.status === "running" ? "Running… (auto-refreshing)" : "(no output yet)")}
-          </pre>
+          {/* Log (collapsible) */}
+          <details style={{ marginTop: 4 }}>
+            <summary style={{ fontSize: "0.82rem", fontWeight: 600, cursor: "pointer", userSelect: "none" }}>
+              Log
+            </summary>
+            <pre style={{
+              background: "var(--bg)", padding: 8, borderRadius: "var(--radius)",
+              fontSize: "0.72rem", fontFamily: "var(--font-mono)",
+              maxHeight: "calc(100vh - 400px)", overflow: "auto",
+              whiteSpace: "pre-wrap", wordBreak: "break-all",
+              border: "1px solid var(--border)", marginTop: 4,
+            }}>
+              {activeJob.log || (activeJob.status === "running" ? "Running… (auto-refreshing)" : "(no output yet)")}
+            </pre>
+          </details>
         </div>
       )}
     </div>

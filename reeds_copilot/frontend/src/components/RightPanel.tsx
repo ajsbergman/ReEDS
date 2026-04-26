@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from "react";
 import hljs from "highlight.js";
 import "highlight.js/styles/vs2015.css";
+import { guessLang } from "../lib/highlight";
 import { previewFileAPI, downloadFileURL, rawFileURL, type FilePreviewResponse, type GdxSymbolInfo } from "../lib/api";
 import type { SourceSnippet } from "../lib/api";
 
@@ -98,19 +99,6 @@ export default function RightPanel({ selectedFile, sources, onSelectFile, width 
       )}
     </div>
   );
-}
-
-function guessLang(filename: string): string | undefined {
-  const ext = filename.split(".").pop()?.toLowerCase() ?? "";
-  const map: Record<string, string> = {
-    py: "python", gms: "gams", jl: "julia", r: "r", sh: "bash", bat: "dos",
-    json: "json", yaml: "yaml", yml: "yaml", toml: "ini", cfg: "ini", ini: "ini",
-    csv: "csv", tsv: "csv", md: "markdown", html: "xml", xml: "xml",
-    sql: "sql", js: "javascript", ts: "typescript", opt: "ini",
-    txt: "plaintext", log: "plaintext", lst: "plaintext",
-    inc: "gams", dd: "gams", gpr: "ini",
-  };
-  return map[ext];
 }
 
 function HighlightedPreview({ content, filename, truncated, fullMode, onViewFull }: {

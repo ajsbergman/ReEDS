@@ -8,6 +8,13 @@ import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
+import re
+import shutil
+import subprocess
+import threading
+import time
+import uuid
+
 from ..core.config import Settings, get_settings
 from ..services import run_manager
 from ..services import env_check
@@ -434,8 +441,6 @@ def compare_data(
 
 # ── Post-Processing Tools ────────────────────────────────────────────────────
 
-import subprocess, threading, time, uuid
-
 _pp_jobs: dict[str, dict] = {}  # job_id -> {status, type, log, cases, ...}
 
 BOKEH_REPORTS = [
@@ -510,7 +515,6 @@ def run_compare_cases(
     settings: Settings = Depends(get_settings),
 ):
     """Run compare_cases.py as a background process."""
-    import re, shutil
     safe = re.compile(r"^[a-zA-Z0-9_\-\.]+$")
     runs_dir = settings.repo_root / "runs"
 
@@ -567,7 +571,6 @@ def run_bokeh_report(
     settings: Settings = Depends(get_settings),
 ):
     """Run a bokehpivot report as a background process."""
-    import re, shutil
     safe = re.compile(r"^[a-zA-Z0-9_\-\.]+$")
     runs_dir = settings.repo_root / "runs"
 
@@ -592,10 +595,9 @@ def run_bokeh_report(
     output_dir.mkdir(parents=True, exist_ok=True)
     bp_outpath = str(output_dir / f"{body.report}-{'diff' if body.diff else 'nodiff'}-multicase")
 
-    import pandas as _pd
     bp_colors = ["#1f77b4","#ff7f0e","#2ca02c","#d62728","#9467bd","#8c564b","#e377c2","#7f7f7f","#bcbd22","#17becf"] * 20
     base = body.basecase or body.cases[0]
-    df_scen = _pd.DataFrame({
+    df_scen = pd.DataFrame({
         "name": body.cases,
         "color": bp_colors[:len(body.cases)],
         "path": case_paths,

@@ -1,6 +1,7 @@
 ﻿import { useEffect, useState, useMemo, useCallback, useRef } from "react";
 import hljs from "highlight.js";
 import "highlight.js/styles/vs2015.css";
+import { guessLang } from "../lib/highlight";
 import {
   listRunFoldersAPI,
   compareBrowseAPI,
@@ -492,18 +493,6 @@ function useSyncScroll(count: number) {
     return () => { handlers.forEach(({ el, h }) => el.removeEventListener("scroll", h)); };
   }, [count]);
   return setRef;
-}
-
-function guessLang(filename: string): string | undefined {
-  const ext = filename.split(".").pop()?.toLowerCase() ?? "";
-  const map: Record<string, string> = {
-    py: "python", gms: "gams", jl: "julia", r: "r", sh: "bash", bat: "dos",
-    json: "json", yaml: "yaml", yml: "yaml", toml: "ini", cfg: "ini", ini: "ini",
-    csv: "csv", tsv: "csv", md: "markdown", html: "xml", xml: "xml",
-    sql: "sql", js: "javascript", ts: "typescript", opt: "ini",
-    txt: "plaintext", log: "plaintext", lst: "plaintext",
-  };
-  return map[ext];
 }
 
 function TextDiffView({ data, caseColors }: { data: CompareDataResponse; caseColors: string[] }) {

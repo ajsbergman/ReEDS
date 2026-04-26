@@ -390,19 +390,6 @@ export function ppListReportsAPI(): Promise<{ reports: string[] }> {
   return request<{ reports: string[] }>("/runs/postprocess/reports");
 }
 
-export function ppRunCompareCasesAPI(body: {
-  cases: string[];
-  casenames?: string;
-  basecase?: string;
-  startyear?: number;
-  skip_bokehpivot?: boolean;
-  bpreport?: string;
-  detailed?: boolean;
-  conda_env?: string;
-}): Promise<{ job_id: string; status: string }> {
-  return post<{ job_id: string; status: string }>("/runs/postprocess/compare-cases", body);
-}
-
 export function ppRunBokehReportAPI(body: {
   cases: string[];
   report?: string;
