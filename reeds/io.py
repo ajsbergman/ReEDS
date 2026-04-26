@@ -478,6 +478,13 @@ def read_input(
     If {case}/inputs_case/inputs.h5 exists, the named parameter is read from there;
     otherwise, it is read from {case}/inputs_case/{name}.csv;
     if that doesn't exist, an error is raised.
+
+    Args:
+        case (str or Path): Absolute path to a ReEDS case
+        name (str): Name of the ReEDS parameter or {case}/inputs_case/{name}.csv
+
+    Returns:
+        pd.DataFrame
     """
     key = Path(name).stem
     h5path = Path(reeds.io.standardize_case(case), 'inputs_case', 'inputs.h5')
@@ -1742,8 +1749,6 @@ def write_input_to_h5(
     ## should contain the data as floats; all the other columns are treated as indices
     if gamstype == 'parameter':
         dfwrite.columns = dfwrite.columns.tolist()[:-1] + ['Value']
-        # if dfwrite.columns[0].startswith('*'):
-        #     dfwrite.columns = [dfwrite.columns[0].lstrip('*')] + dfwrite.columns[1:]
     ### Write record to h5 file
     attrs = {'gamstype': gamstype.lower()}
     if len(comment):

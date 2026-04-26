@@ -83,12 +83,6 @@ $onlisting
 $offempty
 
 * Written by h5_to_gdx.py
-* $declareAndLoad inputs_case%ds%inputs_0.gdx
-* sets
-*   eall
-*   e(eall)
-*   i
-* ;
 $include b_declare_sets.gms
 $include b_declare_parameters.gms
 $gdxin inputs_case%ds%inputs_0.gdx
