@@ -1334,6 +1334,25 @@ def write_miscellaneous_files(
         index_col='i',
     )[sw['GSw_H2LeakageScen']].rename_axis('*i').round(5).to_csv(
         os.path.join(inputs_case,'h2_leakage_rate.csv'))
+    
+    # Add coal emission rate multiplier by FIPS
+    # First, filter the counties that are in chosen GSw_Region
+    val_county = pd.read_csv(os.path.join(inputs_case,'val_county.csv'),names=['r'])
+
+    emitrate_coal_mult = pd.read_csv(
+        os.path.join(reeds_path,'inputs','emission_constraints','emitrate_coal_mult.csv'))
+    # Filter the counties that are in chosen GSw_Region
+    emitrate_coal_mult = emitrate_coal_mult[emitrate_coal_mult['r'].isin(val_county['r'])]
+
+    # Aggregate based on spatial resolution
+    if (agglevel_variables["lvl"] != 'county') and ('county' not in agglevel_variables['agglevel']):
+        emitrate_coal_mult = emitrate_coal_mult.rename(columns={'r':'county'})
+        emitrate_coal_mult = pd.merge(emitrate_coal_mult, regions_and_agglevel["r_county"], on='county', how='left').dropna()
+        emitrate_coal_mult = emitrate_coal_mult.drop('county', axis=1)
+
+    emitrate_coal_mult = emitrate_coal_mult.groupby(['i','r','etype'], as_index=False).mean()
+    emitrate_coal_mult.to_csv(os.path.join(inputs_case,'emitrate_coal_mult.csv'), index=False)
+
 
     # Add this_year to years_until_endogenous to generate the tech-specific firstyear.csv file
     scalars = reeds.io.get_scalars(full=True)
@@ -1386,9 +1405,6 @@ def write_miscellaneous_files(
         os.path.join(
             reeds_path,'inputs','emission_constraints','county_co2_share_egrid_2022.csv'),
         index_col=0)
-
-    # Filter the counties that are in chosen GSw_Region
-    val_county = pd.read_csv(os.path.join(inputs_case,'val_county.csv'),names=['r'])
 
     # Merge emission share by county with the counties in GSw_Region and calculate emission share of GSw_Region
     region_em_share = val_county.merge(em_share, on='r', how='left').fillna(0)
@@ -1521,6 +1537,7 @@ def write_miscellaneous_files(
 
     cap_queue = cap_queue.groupby(['tg','r'],as_index=False).sum()
     cap_queue.to_csv(os.path.join(inputs_case,'cap_limit.csv'), index=False)
+
     # ----  Miscelanous files in non_region_files or region_files (in this case we are overwriting them)
     # Expand i (technologies) set if modeling water use. Overwrite originals.
     if int(sw['GSw_WaterMain']):

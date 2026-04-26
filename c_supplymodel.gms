@@ -2389,9 +2389,10 @@ eq_emit_accounting(etype,e,r,t)$[emit_modeled(e,r,t)$tmodel(t)]..
     =e=
 
     sum{(i,v,h)$[valgen(i,v,r,t)$h_rep(h)],
-        hours(h) * emit_rate(etype,e,i,v,r,t)
+        hours(h) * emit_rate(etype,e,i,v,r,t) 
+        * emit_rate_coal_mult(i,r,etype,e)$coal(i)
         * (GEN(i,v,r,h,t)
-           + CCSFLEX_POW(i,v,r,h,t)$[ccsflex(i)$(Sw_CCSFLEX_BYP OR Sw_CCSFLEX_STO OR Sw_CCSFLEX_DAC)])
+        + CCSFLEX_POW(i,v,r,h,t)$[ccsflex(i)$(Sw_CCSFLEX_BYP OR Sw_CCSFLEX_STO OR Sw_CCSFLEX_DAC)])
        }
 
 * Plus emissions produced via production activities (SMR, SMR-CCS, DAC)
@@ -2466,7 +2467,10 @@ eq_CSAPR_Budget(csapr_group,t)$[Sw_CSAPR$tmodel(t)$(yeart(t)>=csapr_startyr)]..
 *must exceed the summed-over-state hourly-weighted nox emissions by csapr group
     sum{st$csapr_group_st(csapr_group,st),
       sum{(i,v,h,r)$[r_st(r,st)$valgen(i,v,r,t)$h_rep(h)],
-         h_weight_csapr(h) * hours(h) * emit_rate("process","NOX",i,v,r,t) * GEN(i,v,r,h,t)
+           h_weight_csapr(h) * hours(h) 
+           * emit_rate("process","NOX",i,v,r,t) 
+           * emit_rate_coal_mult(i,r,"process","NOX")$coal(i)
+           * GEN(i,v,r,h,t)
        }
       }
 ;
@@ -2485,7 +2489,10 @@ eq_CSAPR_Assurance(st,t)$[stfeas(st)$(yeart(t)>=csapr_startyr)
 
 *must exceed the csapr-hourly-weighted nox emissions by state
     sum{(i,v,h,r)$[r_st(r,st)$valgen(i,v,r,t)$h_rep(h)],
-      h_weight_csapr(h) * hours(h) * emit_rate("process","NOX",i,v,r,t) * GEN(i,v,r,h,t)
+        h_weight_csapr(h) * hours(h) 
+        * emit_rate("process","NOX",i,v,r,t) 
+        * emit_rate_coal_mult(i,r,"process","NOX")$coal(i)
+        * GEN(i,v,r,h,t)
     }
 ;
 
@@ -2541,10 +2548,16 @@ eq_cdr_cap(t)
 *** GHG emissions from fossil CCS...
 * CO2 emissions from fossil CCS...
     + sum{(i,v,r,h)$[valgen(i,v,r,t)$ccs(i)$(not beccs(i))$h_rep(h)$(Sw_AnnualCap<2)],
-            hours(h) * GEN(i,v,r,h,t) * (emit_rate("process","CO2",i,v,r,t) + emit_rate("upstream","CO2",i,v,r,t)$Sw_Upstream) }
+            hours(h) * GEN(i,v,r,h,t) 
+            * (emit_rate("process","CO2",i,v,r,t) 
+            * emit_rate_coal_mult(i,r,"process","CO2")$coal(i)
+            + emit_rate("upstream","CO2",i,v,r,t)$Sw_Upstream) }
 * GHG emissions * global warming potential
     + sum{(i,v,r,h)$[valgen(i,v,r,t)$ccs(i)$(not beccs(i))$h_rep(h)$(Sw_AnnualCap>=2)],
-        hours(h) * GEN(i,v,r,h,t) * sum{e, (emit_rate("process",e,i,v,r,t) + emit_rate("upstream",e,i,v,r,t)$Sw_Upstream) * gwp(e) } }      
+        hours(h) * GEN(i,v,r,h,t) 
+        * sum{e, (emit_rate("process",e,i,v,r,t) 
+        * emit_rate_coal_mult(i,r,"process",e)$coal(i)
+        + emit_rate("upstream",e,i,v,r,t)$Sw_Upstream) * gwp(e) } }      
     =g=
 
 *** ...must be greater than emissions offset by CDR (negative emissions so negative signs here)
@@ -2596,7 +2609,7 @@ eq_caa_rate_standard(st,t)$[tmodel(t)
 
 *coal emissions in that state [metric tons CO2]
     sum{(i,v,r,h)$[valgen(i,v,r,t)$coal(i)$(not cofire(i))$r_st(r,st)], 
-         GEN(i,v,r,h,t) * emit_rate("process","CO2",i,v,r,t)}
+         GEN(i,v,r,h,t) * emit_rate("process","CO2",i,v,r,t) * emit_rate_coal_mult(i,r,"process","CO2")}
 ;
 
 *==========================

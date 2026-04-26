@@ -1367,6 +1367,11 @@
     - **Indices:** i,e
 ---
 
+- [emitrate_coal_mult.csv](/inputs/emission_constraints/emitrate_coal_mult.csv)
+    - **Description:** Emission rate multipliers by FIPS for coal generators. Values processed based on eGrid 2023 https://www.epa.gov/system/files/documents/2025-06/egrid2023_data_rev2.xlsx 
+    - **Indices:** i,r,etype,e
+---
+
   - [gwp.csv](/inputs/emission_constraints/gwp.csv)
 ---
 

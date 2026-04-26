@@ -5141,6 +5141,15 @@ $offdelim
 $onlisting
 ;
 
+* Emission rate multiplier of coal technology by region
+table emit_rate_coal_mult(i,r,etype,e)  "--unitless-- emissions rate multiplier of coal technology by region"
+$offlisting
+$ondelim
+$include inputs_case%ds%emitrate_coal_mult.csv
+$offdelim
+$onlisting
+;
+
 * this table links CCS techs with their uncontrolled tech counterpart (where such a tech exists)
 set ccs_link(i,ii)    "links CCS techs with their uncontrolled tech counterpart (where such a tech exists)"
 /
@@ -5153,6 +5162,13 @@ $endif.ctech
 $offdelim
 $onlisting
 / ;
+
+* Assign the same emission rate multiplier for coal-ccs
+emit_rate_coal_mult(i,r,"process",e)$[coal(i)$ccs(i)] = sum{ii$ccs_link(i,ii), emit_rate_coal_mult(ii,r,"process",e) } ; 
+* Assign the same emission rate multiplier for coal-ccs-flex
+emit_rate_coal_mult(i,r,"process",e)$[coal(i)$ccsflex(i)] = sum{ii$ccs_link(i,ii), emit_rate_coal_mult(ii,r,"process",e) } ;
+* Assign the same emission rate multiplier for coal upgrades
+emit_rate_coal_mult(i,r,"process",e)$[coal(i)$upgrade(i)$(not ccs(i))] = sum{ii$upgrade_to(i,ii), emit_rate_coal_mult(ii,r,"process",e) } ;
 
 parameter capture_rate_input(i,e) "--fraction-- fraction of emissions that are captured" ;
 
@@ -5174,7 +5190,7 @@ RPSTechMult(RPSCat,i,st)$[ccs(i)$(sameas(RPSCat,"CES") or sameas(RPSCat,"CES_Bun
 
 * calculate process emit rate for CCS techs (except beccs techs, which are defined directly in emitrate.csv)
 emit_rate_fuel(i,"process",e)$[ccs(i)$(not beccs(i))] =
-  (1 - capture_rate_input(i,e)) * sum{ii$ccs_link(i,ii), emit_rate_fuel(ii,"process",e) } ;
+  (1 - capture_rate_input(i,e)) * sum{ii$ccs_link(i,ii), emit_rate_fuel(ii,"process",e) } ; 
 
 * calculate upstream emit rate for CCS techs (except beccs techs, which are defined directly in emitrate.csv)
 emit_rate_fuel(i,"upstream",e)$[ccs(i)$(not beccs(i))] = sum{ii$ccs_link(i,ii), emit_rate_fuel(ii,"upstream",e) } ;
