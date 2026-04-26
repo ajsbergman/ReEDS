@@ -36,6 +36,7 @@ export default function PostProcessPanel({ onClose, onSelectFile }: Props) {
   const [diff, setDiff] = useState(true);
   const [detailed, setDetailed] = useState(false);
   const [basecase, setBasecase] = useState("");
+  const [aliases, setAliases] = useState<Record<string, string>>({});
 
   // Jobs
   const [jobs, setJobs] = useState<PPJob[]>([]);
@@ -80,10 +81,15 @@ export default function PostProcessPanel({ onClose, onSelectFile }: Props) {
     setError(null);
     try {
       const cases = Array.from(selected);
+      // Build casenames string: comma-separated display names (only if any alias is set)
+      const names = cases.map((c) => aliases[c]?.trim() || c);
+      const hasAliases = cases.some((c) => aliases[c]?.trim() && aliases[c].trim() !== c);
+      const casenames = hasAliases ? names.join(",") : "";
       let res: { job_id: string };
       if (tool === "compare_cases") {
         res = await ppRunCompareCasesAPI({
           cases,
+          casenames,
           basecase: basecase || cases[0],
           startyear,
           skip_bokehpivot: true,
@@ -92,6 +98,7 @@ export default function PostProcessPanel({ onClose, onSelectFile }: Props) {
       } else {
         res = await ppRunBokehReportAPI({
           cases,
+          casenames,
           report: bpreport,
           diff,
           basecase: basecase || cases[0],
@@ -106,7 +113,7 @@ export default function PostProcessPanel({ onClose, onSelectFile }: Props) {
     } finally {
       setSubmitting(false);
     }
-  }, [selected, tool, basecase, bpreport, diff, startyear, detailed]);
+  }, [selected, tool, basecase, bpreport, diff, startyear, detailed, aliases]);
 
   function viewJob(job: PPJob) {
     setActiveJob(job);
@@ -197,9 +204,9 @@ export default function PostProcessPanel({ onClose, onSelectFile }: Props) {
             ))}
           </div>
 
-          {/* Base case */}
+          {/* Base case + display names */}
           {selected.size >= 1 && (
-            <div style={{ marginTop: 8 }}>
+            <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 6 }}>
               <label style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>
                 Base case:
                 <select value={basecase || selectedArr[0]}
@@ -212,6 +219,27 @@ export default function PostProcessPanel({ onClose, onSelectFile }: Props) {
                   {selectedArr.map((c) => <option key={c} value={c}>{c}</option>)}
                 </select>
               </label>
+
+              <div style={{ fontSize: "0.78rem", color: "var(--text-muted)", marginTop: 2 }}>Display names (optional):</div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                {selectedArr.map((c) => (
+                  <div key={c} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: "0.75rem" }}>
+                    <span style={{ minWidth: 60, color: "var(--text-muted)", fontFamily: "var(--font-mono)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 140 }} title={c}>{c}</span>
+                    <span style={{ color: "var(--text-muted)" }}>→</span>
+                    <input
+                      type="text"
+                      placeholder={c}
+                      value={aliases[c] || ""}
+                      onChange={(e) => setAliases((prev) => ({ ...prev, [c]: e.target.value }))}
+                      style={{
+                        flex: 1, fontSize: "0.75rem", padding: "2px 6px",
+                        background: "var(--bg-input, #23272e)", color: "var(--text-primary)",
+                        border: "1px solid var(--border)", borderRadius: 4,
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 

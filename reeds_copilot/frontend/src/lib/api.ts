@@ -405,6 +405,7 @@ export function ppRunCompareCasesAPI(body: {
 
 export function ppRunBokehReportAPI(body: {
   cases: string[];
+  casenames?: string;
   report?: string;
   diff?: boolean;
   basecase?: string;

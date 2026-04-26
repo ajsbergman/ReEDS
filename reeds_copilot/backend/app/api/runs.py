@@ -513,6 +513,7 @@ class PPCompareCasesRequest(BaseModel):
 
 class PPBokehReportRequest(BaseModel):
     cases: list[str] = Field(..., min_length=1, max_length=20)
+    casenames: str = ""
     report: str = "standard_report_reduced"
     diff: bool = True
     basecase: str = ""
@@ -660,8 +661,12 @@ def run_bokeh_report(
 
     bp_colors = ["#1f77b4","#ff7f0e","#2ca02c","#d62728","#9467bd","#8c564b","#e377c2","#7f7f7f","#bcbd22","#17becf"] * 20
     base = body.basecase or body.cases[0]
+    # Use display names if provided, otherwise use case folder names
+    display_names = body.casenames.split(",") if body.casenames else body.cases
+    if len(display_names) != len(body.cases):
+        display_names = body.cases
     df_scen = pd.DataFrame({
-        "name": body.cases,
+        "name": display_names,
         "color": bp_colors[:len(body.cases)],
         "path": case_paths,
     })
