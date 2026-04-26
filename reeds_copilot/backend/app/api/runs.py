@@ -8,6 +8,7 @@ import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
+import json
 import os
 import re
 import shutil
@@ -440,7 +441,50 @@ def compare_data(
 # ── Post-Processing Tools ────────────────────────────────────────────────────
 
 _pp_jobs: dict[str, dict] = {}  # job_id -> {status, type, log, cases, ...}
+_pp_jobs_loaded = False
 _MAX_PP_JOBS = 50  # Keep last N jobs to avoid memory leak
+_PP_JOBS_DIR = "pp_job_history"
+
+
+def _pp_jobs_dir(repo_root: Path) -> Path:
+    d = repo_root / "reeds_copilot" / _PP_JOBS_DIR
+    d.mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def _persist_pp_job(repo_root: Path, job: dict):
+    """Save a PP job record to disk."""
+    # Don't persist the full log to disk — it can be huge
+    data = {k: v for k, v in job.items() if k != "log"}
+    data["log_tail"] = (job.get("log") or "")[-2000:]
+    path = _pp_jobs_dir(repo_root) / f"{job['id']}.json"
+    path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def _load_pp_jobs(repo_root: Path):
+    """Load previously persisted PP jobs into memory (once on startup)."""
+    global _pp_jobs_loaded
+    if _pp_jobs_loaded:
+        return
+    _pp_jobs_loaded = True
+    d = repo_root / "reeds_copilot" / _PP_JOBS_DIR
+    if not d.exists():
+        return
+    for p in d.glob("*.json"):
+        try:
+            data = json.loads(p.read_text(encoding="utf-8"))
+            jid = data.get("id", p.stem)
+            if jid in _pp_jobs:
+                continue  # already in memory (running)
+            # Restore log from log_tail
+            data["log"] = data.pop("log_tail", "")
+            # Mark incomplete jobs as failed (server restarted)
+            if data.get("status") in ("queued", "running"):
+                data["status"] = "failed"
+                data["log"] += "\n[server restarted — job was interrupted]"
+            _pp_jobs[jid] = data
+        except Exception:
+            pass
 
 BOKEH_REPORTS = [
     "standard_report_reduced",
@@ -475,11 +519,14 @@ class PPBokehReportRequest(BaseModel):
     conda_env: str = "reeds2"
 
 
-def _run_pp_job(job_id: str, cmd: "list[str] | str", cwd: str, env: dict | None = None):
+def _run_pp_job(job_id: str, cmd: "list[str] | str", cwd: str,
+                env: dict | None = None, repo_root: Path | None = None):
     """Run a post-processing command in background, capturing output."""
     job = _pp_jobs[job_id]
     job["status"] = "running"
     job["started_at"] = time.time()
+    if repo_root:
+        _persist_pp_job(repo_root, job)
     try:
         use_shell = isinstance(cmd, str)
         proc = subprocess.Popen(
@@ -500,6 +547,8 @@ def _run_pp_job(job_id: str, cmd: "list[str] | str", cwd: str, env: dict | None 
         job["log"] = str(exc)
         job["status"] = "failed"
     job["finished_at"] = time.time()
+    if repo_root:
+        _persist_pp_job(repo_root, job)
 
 
 def _trim_pp_jobs():
@@ -573,7 +622,7 @@ def run_compare_cases(
     t = threading.Thread(
         target=_run_pp_job,
         args=(job_id, shell_cmd if activate_cmd else cmd, str(settings.repo_root)),
-        kwargs={"env": no_open_env},
+        kwargs={"env": no_open_env, "repo_root": settings.repo_root},
         daemon=True,
     )
     t.start()
@@ -648,6 +697,7 @@ def run_bokeh_report(
     t = threading.Thread(
         target=_run_pp_job,
         args=(job_id, final_cmd, str(settings.repo_root)),
+        kwargs={"repo_root": settings.repo_root},
         daemon=True,
     )
     t.start()
@@ -655,18 +705,36 @@ def run_bokeh_report(
 
 
 @router.get("/postprocess/jobs")
-def list_pp_jobs():
+def list_pp_jobs(settings: Settings = Depends(get_settings)):
     """List all post-processing jobs."""
+    _load_pp_jobs(settings.repo_root)
     return {"jobs": list(_pp_jobs.values())}
 
 
 @router.get("/postprocess/jobs/{job_id}")
-def get_pp_job(job_id: str):
+def get_pp_job(job_id: str, settings: Settings = Depends(get_settings)):
     """Get status/log of a post-processing job."""
+    _load_pp_jobs(settings.repo_root)
     job = _pp_jobs.get(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
     return job
+
+
+@router.delete("/postprocess/jobs/{job_id}")
+def delete_pp_job(job_id: str, settings: Settings = Depends(get_settings)):
+    """Delete a post-processing job record."""
+    _load_pp_jobs(settings.repo_root)
+    job = _pp_jobs.get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    if job.get("status") in ("queued", "running"):
+        raise HTTPException(status_code=400, detail="Cannot delete a running job")
+    del _pp_jobs[job_id]
+    fp = _pp_jobs_dir(settings.repo_root) / f"{job_id}.json"
+    if fp.exists():
+        fp.unlink()
+    return {"ok": True}
 
 
 @router.get("/postprocess/jobs/{job_id}/outputs")

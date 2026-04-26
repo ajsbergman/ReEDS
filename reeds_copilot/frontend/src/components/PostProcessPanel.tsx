@@ -6,6 +6,7 @@ import {
   ppRunBokehReportAPI,
   ppListJobsAPI,
   ppGetJobAPI,
+  ppDeleteJobAPI,
   ppListOutputsAPI,
   rawFileURL,
   downloadFileURL,
@@ -114,6 +115,19 @@ export default function PostProcessPanel({ onClose, onSelectFile }: Props) {
     } else {
       setJobOutputs([]);
     }
+  }
+
+  function deleteJob(e: React.MouseEvent, job: PPJob) {
+    e.stopPropagation();
+    ppDeleteJobAPI(job.id)
+      .then(() => {
+        setJobs((prev) => prev.filter((j) => j.id !== job.id));
+        if (activeJob?.id === job.id) {
+          setActiveJob(null);
+          setJobOutputs([]);
+        }
+      })
+      .catch(() => {});
   }
 
   const selectedArr = Array.from(selected);
@@ -272,12 +286,24 @@ export default function PostProcessPanel({ onClose, onSelectFile }: Props) {
                         : j.status === "running" ? "#fbbf24"
                         : "var(--text-muted)",
                     }} />
-                    <span style={{ flex: 1, fontFamily: "var(--font-mono)" }}>
+                    <span style={{ flex: 1, fontFamily: "var(--font-mono)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                       {j.type === "compare_cases" ? "Compare" : "Bokeh"} · {j.cases.join(", ")}
                     </span>
-                    <span style={{ color: "var(--text-muted)", fontSize: "0.72rem" }}>
+                    <span style={{ color: "var(--text-muted)", fontSize: "0.72rem", flexShrink: 0 }}>
                       {j.status}
                     </span>
+                    {j.status !== "queued" && j.status !== "running" && (
+                      <button
+                        title="Delete job"
+                        onClick={(e) => deleteJob(e, j)}
+                        style={{
+                          background: "none", border: "none", cursor: "pointer",
+                          color: "var(--text-muted)", fontSize: "0.82rem", padding: "0 2px",
+                          lineHeight: 1, flexShrink: 0,
+                        }}>
+                        ✕
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>

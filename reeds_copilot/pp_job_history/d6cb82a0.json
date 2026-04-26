@@ -1,0 +1,16 @@
+{
+  "id": "d6cb82a0",
+  "type": "bokeh_report",
+  "status": "completed",
+  "cases": [
+    "test_copilot0_Pacific_CC",
+    "test_copilot0_Pacific"
+  ],
+  "report": "standard_report_reduced",
+  "output_dir": "C:\\ReEDS\\ReEDS\\runs\\test_copilot0_Pacific_CC\\outputs\\comparisons\\standard_report_reduced-diff-multicase",
+  "started_at": 1777183744.5769694,
+  "pid": 21364,
+  "returncode": 0,
+  "finished_at": 1777183764.2177358,
+  "log_tail": "tional (metric tons) - difference from test_copilot0_Pacific_CC...\n2026-04-26 00:09:14,659 - ***Filtering, Scaling, Aggregating, Adv Operations, Sorting...\n2026-04-26 00:09:14,701 - ***Done Filtering, Scaling, Aggregating, Adv Operations, Sorting: 0:00:00.041966\n2026-04-26 00:09:14,701 - ***Building Figures...\n2026-04-26 00:09:14,750 - ***Done Building Figures.\n\n2026-04-26 00:09:14,761 - ***Building report section: Runtime (hours)...\n2026-04-26 00:09:14,761 - ***Fetching Runtime for selected scenarios...\n2026-04-26 00:09:14,766 - ***Done fetching Runtime for test_copilot0_Pacific_CC.\n2026-04-26 00:09:14,770 - ***Done fetching Runtime for test_copilot0_Pacific.\n2026-04-26 00:09:14,770 - ***Done fetching Runtime: 0:00:00.008370\n2026-04-26 00:09:14,770 - ***Apply joins, maps, ordering to ReEDS data...\n2026-04-26 00:09:14,772 - ***Done with joins, maps, ordering: 0:00:00.001007\n2026-04-26 00:09:14,773 - ***Build main widgets...\n2026-04-26 00:09:14,795 - ***Done with main widgets.\n2026-04-26 00:09:14,796 - ***Filtering, Scaling, Aggregating, Adv Operations, Sorting...\n2026-04-26 00:09:14,808 - ***Done Filtering, Scaling, Aggregating, Adv Operations, Sorting: 0:00:00.012004\n2026-04-26 00:09:14,809 - ***Building Figures...\n2026-04-26 00:09:14,892 - ***Done Building Figures.\n\n2026-04-26 00:09:14,917 - ***Building report section: Runtime (hours) - difference from test_copilot0_Pacific_CC...\n2026-04-26 00:09:14,920 - ***Filtering, Scaling, Aggregating, Adv Operations, Sorting...\n2026-04-26 00:09:14,948 - ***Done Filtering, Scaling, Aggregating, Adv Operations, Sorting: 0:00:00.027048\n2026-04-26 00:09:14,948 - ***Building Figures...\n2026-04-26 00:09:15,037 - ***Done Building Figures.\n\n2026-04-26 00:09:23,509 - Starting new HTTPS connection (1): raw.githubusercontent.com:443\n2026-04-26 00:09:23,698 - https://raw.githubusercontent.com:443 \"GET /mmowers/vizit/7011d363e40386264bedb3155629729b225fd22e/index.html HTTP/1.1\" 200 22764\n2026-04-26 00:09:23,737 - ***Done building report\n"
+}

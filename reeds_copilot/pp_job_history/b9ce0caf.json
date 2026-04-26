@@ -1,0 +1,15 @@
+{
+  "id": "b9ce0caf",
+  "type": "compare_cases",
+  "status": "completed",
+  "cases": [
+    "test_copilot0_Pacific_CC",
+    "test_copilot0_Pacific"
+  ],
+  "output_dir": "C:\\ReEDS\\ReEDS\\runs\\test_copilot0_Pacific_CC\\outputs\\comparisons",
+  "started_at": 1777183547.9314826,
+  "pid": 9272,
+  "returncode": 0,
+  "finished_at": 1777183735.6686676,
+  "log_tail": "/base = 0.0000;  comp–base = -0.04\nRuntime (hours), final year: base = 0.54;  comp = 0.43;  comp/base = 0.8037;  comp–base = -0.11\nRuntime by year (hours), final year: base = 0.09;  comp = 0.08;  comp/base = 0.9353;  comp–base = -0.01\nCapacity Stacks\nCapacity, Generation, Transmission, NPV\nNone\nNPV of System, Climate, Health costs\nNone\nNPV of System, Climate, Health Costs\nCost, Reliability\nResource Adequacy\ntest_copilot0_Pacific_CC | 2024–2032: 0.42 GT CO2; 0.42 GT CO2e; 208 lives\ntest_copilot0_Pacific    | 2024–2032: 0.41 GT CO2; 0.41 GT CO2e; 206 lives\nEmissions\nGeneration Share\nTransmission (all types)\nInterzonal Transmission\noptimize_label_positions is infeasible; try a smaller mindistance\noptimize_label_positions is infeasible; try a smaller mindistance\nTransmission at Different Resolutions\nInterregional Transmission / Peak Demand\nMax Net Stress Imports / Peak Demand\nTransmission (2032)\ntest_copilot0_Pacific_CC\ntest_copilot0_Pacific\nNo outputs/figures/plot_stressperiod_evolution-sum-transgrp.png for test_copilot0_Pacific_CC\ntest_copilot0_Pacific\ntest_copilot0_Pacific_CC\ntest_copilot0_Pacific\nNo outputs/figures/plot_techmix-transreg-2032-GW-c,r_mean,s_mean,s_top5_l,s_top5_nl,s_bottom5_vg,s_max_l,s_max_p.png for test_copilot0_Pacific_CC\ntest_copilot0_Pacific\nNo outputs/figures/plot_techmix-transreg-2032-percent-c,r_mean,s_mean,s_top5_l,s_top5_nl,s_bottom5_vg,s_max_l,s_max_p.png for test_copilot0_Pacific_CC\ntest_copilot0_Pacific\nBiopower Capacity 2032 [GW]\nCoal Capacity 2032 [GW]\nCoal-CCS Capacity 2032 [GW]\nDR Capacity 2032 [GW]\nGas Capacity 2032 [GW]\nGas-CCS Capacity 2032 [GW]\nGeothermal Capacity 2032 [GW]\nHydrogen Combustion Capacity 2032 [GW]\nHydropower Capacity 2032 [GW]\nNuclear Capacity 2032 [GW]\nRemove Capacity 2032 [GW]\nSolar Capacity 2032 [GW]\nStorage Capacity 2032 [GW]\nWind Capacity 2032 [GW]\n\ncompare_casegroup.py results saved to:\nC:\\ReEDS\\ReEDS\\runs\\test_copilot0_Pacific_CC\\outputs\\comparisons\\results-test_copilot0_Pacific_CC,test_copilot0_Pacific.pptx\n"
+}

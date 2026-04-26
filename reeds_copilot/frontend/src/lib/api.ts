@@ -421,6 +421,10 @@ export function ppGetJobAPI(jobId: string): Promise<PPJob> {
   return request<PPJob>(`/runs/postprocess/jobs/${jobId}`);
 }
 
+export function ppDeleteJobAPI(jobId: string): Promise<{ ok: boolean }> {
+  return request<{ ok: boolean }>(`/runs/postprocess/jobs/${jobId}`, { method: "DELETE" });
+}
+
 export function ppListOutputsAPI(jobId: string): Promise<{ files: PPOutputFile[] }> {
   return request<{ files: PPOutputFile[] }>(`/runs/postprocess/jobs/${jobId}/outputs`);
 }
