@@ -1,13 +1,6 @@
 """API endpoints for launching and monitoring ReEDS runs."""
 from __future__ import annotations
 
-from pathlib import Path
-from typing import Any, Literal
-
-import pandas as pd
-from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, Field
-
 import json
 import os
 import re
@@ -16,6 +9,12 @@ import subprocess
 import threading
 import time
 import uuid
+from pathlib import Path
+from typing import Literal
+
+import pandas as pd
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, Field
 
 from ..core.config import Settings, get_settings
 from ..services import run_manager
@@ -552,7 +551,7 @@ def _run_pp_job(job_id: str, cmd: "list[str] | str", cwd: str,
         _persist_pp_job(repo_root, job)
 
 
-def _trim_pp_jobs():
+def _trim_pp_jobs(repo_root: Path | None = None):
     """Remove oldest finished jobs when exceeding _MAX_PP_JOBS."""
     if len(_pp_jobs) <= _MAX_PP_JOBS:
         return
@@ -563,6 +562,10 @@ def _trim_pp_jobs():
     to_remove = len(_pp_jobs) - _MAX_PP_JOBS
     for k, _ in finished[:to_remove]:
         del _pp_jobs[k]
+        if repo_root:
+            fp = _pp_jobs_dir(repo_root) / f"{k}.json"
+            if fp.exists():
+                fp.unlink()
 
 
 @router.get("/postprocess/reports")
@@ -607,7 +610,7 @@ def run_compare_cases(
     activate_cmd = f"conda activate {body.conda_env} && " if conda_prefix else ""
 
     job_id = str(uuid.uuid4())[:8]
-    _trim_pp_jobs()
+    _trim_pp_jobs(settings.repo_root)
     _pp_jobs[job_id] = {
         "id": job_id,
         "type": "compare_cases",
@@ -692,7 +695,7 @@ def run_bokeh_report(
     activate_cmd = f"conda activate {body.conda_env} && " if conda_prefix else ""
 
     job_id = str(uuid.uuid4())[:8]
-    _trim_pp_jobs()
+    _trim_pp_jobs(settings.repo_root)
     _pp_jobs[job_id] = {
         "id": job_id,
         "type": "bokeh_report",
@@ -751,6 +754,7 @@ def delete_pp_job(job_id: str, settings: Settings = Depends(get_settings)):
 @router.get("/postprocess/jobs/{job_id}/outputs")
 def list_pp_outputs(job_id: str, settings: Settings = Depends(get_settings)):
     """List output files from a completed PP job."""
+    _load_pp_jobs(settings.repo_root)
     job = _pp_jobs.get(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
