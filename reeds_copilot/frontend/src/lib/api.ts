@@ -321,6 +321,17 @@ export function compareBrowseAPI(cases: string[], subdir: string = ""): Promise<
   return request<CompareBrowseResponse>(`/runs/compare/common-files?${params}${sd}`);
 }
 
+export interface CaseFilesResponse {
+  case: string;
+  subdir: string;
+  entries: CompareEntry[];
+}
+
+export function compareCaseFilesAPI(caseName: string, subdir: string = ""): Promise<CaseFilesResponse> {
+  const sd = subdir ? `&subdir=${encodeURIComponent(subdir)}` : "";
+  return request<CaseFilesResponse>(`/runs/compare/case-files?case=${encodeURIComponent(caseName)}${sd}`);
+}
+
 export interface CompareDataResponse {
   mode: "side_by_side" | "text_diff" | "image_diff" | "gdx_diff" | "csv_table" | "unsupported";
   columns: string[];
@@ -343,12 +354,14 @@ export function compareDataAPI(
   filename: string,
   subdir: string = "",
   maxRowsPerCase: number = 5000,
+  filenames?: Record<string, string>,
 ): Promise<CompareDataResponse> {
   return post<CompareDataResponse>("/runs/compare/data", {
     cases,
     filename,
     subdir,
     max_rows_per_case: maxRowsPerCase,
+    ...(filenames ? { filenames } : {}),
   });
 }
 

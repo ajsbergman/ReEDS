@@ -184,9 +184,41 @@ def compare_common_files(
     return {"subdir": subdir, "entries": result}
 
 
+@router.get("/compare/case-files")
+def compare_case_files(
+    case: str = Query(..., description="Case folder name"),
+    subdir: str = Query(default="", description="Subdirectory to browse"),
+    settings: Settings = Depends(get_settings),
+):
+    """List files for a single case at a given subdirectory level."""
+    import re
+    safe_case = re.compile(r"^[a-zA-Z0-9_\-\.]+$")
+    if not safe_case.match(case):
+        raise HTTPException(status_code=400, detail=f"Invalid case name: {case}")
+
+    runs_dir = settings.repo_root / "runs"
+    target = (runs_dir / case / subdir).resolve() if subdir else (runs_dir / case).resolve()
+    if not str(target).startswith(str(runs_dir.resolve())):
+        raise HTTPException(status_code=400, detail="Invalid path")
+    if not target.is_dir():
+        raise HTTPException(status_code=404, detail=f"Not a directory: {case}/{subdir}")
+
+    skip_dirs = {"__pycache__", ".git", "node_modules"}
+    result = []
+    for child in sorted(target.iterdir(), key=lambda c: c.name.lower()):
+        if child.name.startswith(".") or child.name in skip_dirs:
+            continue
+        if child.is_dir():
+            result.append({"name": child.name, "is_dir": True, "size": None})
+        else:
+            result.append({"name": child.name, "is_dir": False, "size": child.stat().st_size})
+    return {"case": case, "subdir": subdir, "entries": result}
+
+
 class CompareRequest(BaseModel):
     cases: list[str] = Field(..., min_length=2, max_length=20)
-    filename: str = Field(..., description="File name to compare")
+    filename: str = Field(default="", description="File name (same for all cases)")
+    filenames: dict[str, str] | None = Field(default=None, description="Per-case file names {case: filename}")
     subdir: str = Field(default="outputs", description="Subdirectory within run folder")
     max_rows_per_case: int = Field(default=5000, ge=100, le=50000)
 
@@ -208,27 +240,42 @@ def compare_data(
     """Compare a file across cases. Auto-detects mode based on file type."""
     import re
     safe_name = re.compile(r"^[a-zA-Z0-9_\-\.]+$")
-    if not safe_name.match(body.filename):
-        raise HTTPException(status_code=400, detail="Invalid filename")
+
+    # Resolve per-case filenames
+    case_filenames: dict[str, str] = {}
+    if body.filenames:
+        for case in body.cases:
+            fn = body.filenames.get(case)
+            if not fn or not safe_name.match(fn):
+                raise HTTPException(status_code=400, detail=f"Invalid filename for {case}")
+            case_filenames[case] = fn
+    else:
+        if not body.filename or not safe_name.match(body.filename):
+            raise HTTPException(status_code=400, detail="Invalid filename")
+        for case in body.cases:
+            case_filenames[case] = body.filename
 
     runs_dir = settings.repo_root / "runs"
-    suffix = Path(body.filename).suffix.lower()
+    # Use first case's filename for suffix detection and display
+    display_filename = case_filenames[body.cases[0]]
+    suffix = Path(display_filename).suffix.lower()
 
     # Resolve paths
     paths: dict[str, Path] = {}
     for case in body.cases:
+        fn = case_filenames[case]
         if body.subdir:
-            file_path = (runs_dir / case / body.subdir / body.filename).resolve()
+            file_path = (runs_dir / case / body.subdir / fn).resolve()
         else:
-            file_path = (runs_dir / case / body.filename).resolve()
+            file_path = (runs_dir / case / fn).resolve()
         if not str(file_path).startswith(str(runs_dir.resolve())):
             raise HTTPException(status_code=400, detail="Invalid case name")
         if not file_path.is_file():
-            raise HTTPException(status_code=404, detail=f"{body.filename} not found in {case}")
+            raise HTTPException(status_code=404, detail=f"{fn} not found in {case}")
         paths[case] = file_path
 
     base_resp = {
-        "filename": body.filename,
+        "filename": display_filename,
         "subdir": body.subdir,
         "cases": body.cases,
     }

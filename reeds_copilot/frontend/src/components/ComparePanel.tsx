@@ -4,6 +4,7 @@ import "highlight.js/styles/vs2015.css";
 import {
   listRunFoldersAPI,
   compareBrowseAPI,
+  compareCaseFilesAPI,
   compareDataAPI,
   rawFileURL,
   type RunFolder,
@@ -41,22 +42,49 @@ export default function ComparePanel({ onClose }: Props) {
   const [fileSortDir, setFileSortDir] = useState<FileSortDir>("asc");
   const [fileFilter, setFileFilter] = useState("");
 
+  // Custom pick mode (per-case file selection)
+  const [customPick, setCustomPick] = useState(false);
+  const [customSubdir, setCustomSubdir] = useState("");
+  const [customEntries, setCustomEntries] = useState<Record<string, CompareEntry[]>>({});
+  const [customSelected, setCustomSelected] = useState<Record<string, string>>({});
+  const [customFilter, setCustomFilter] = useState<Record<string, string>>({});
+  const [customLoading, setCustomLoading] = useState(false);
+
   const step = data ? 3 : confirmed ? 2 : 1;
 
   useEffect(() => {
     listRunFoldersAPI().then(setFolders).catch(() => {});
   }, []);
 
-  // Browse common entries when subdir changes
+  // Browse common entries when subdir changes (standard mode)
   useEffect(() => {
-    if (!confirmed) return;
+    if (!confirmed || customPick) return;
     setBrowseLoading(true);
     setError(null);
     compareBrowseAPI(Array.from(selected), browseSubdir)
       .then((res) => setBrowseEntries(res.entries))
       .catch((e) => setError(e instanceof Error ? e.message : String(e)))
       .finally(() => setBrowseLoading(false));
-  }, [confirmed, browseSubdir, selected]);
+  }, [confirmed, browseSubdir, selected, customPick]);
+
+  // Browse per-case entries when in custom pick mode
+  useEffect(() => {
+    if (!confirmed || !customPick) return;
+    setCustomLoading(true);
+    setError(null);
+    Promise.all(
+      Array.from(selected).map((c) =>
+        compareCaseFilesAPI(c, customSubdir).then((res) => ({ case: c, entries: res.entries }))
+      )
+    )
+      .then((results) => {
+        const map: Record<string, CompareEntry[]> = {};
+        for (const r of results) map[r.case] = r.entries;
+        setCustomEntries(map);
+      })
+      .catch((e) => setError(e instanceof Error ? e.message : String(e)))
+      .finally(() => setCustomLoading(false));
+  }, [confirmed, customPick, customSubdir, selected]);
 
   function toggleCase(name: string) {
     setSelected((prev) => {
@@ -71,6 +99,11 @@ export default function ComparePanel({ onClose }: Props) {
     if (selected.size < 2) return;
     setConfirmed(true);
     setBrowseSubdir("");
+    setCustomPick(false);
+    setCustomSubdir("");
+    setCustomSelected({});
+    setCustomFilter({});
+    setCustomEntries({});
   }
 
   function handleBrowseClick(entry: CompareEntry) {
@@ -97,6 +130,40 @@ export default function ComparePanel({ onClose }: Props) {
     setFileFilter("");
   }
 
+  function customNavigateUp() {
+    if (!customSubdir) return;
+    const parts = customSubdir.split("/");
+    parts.pop();
+    setCustomSubdir(parts.join("/"));
+    setCustomFilter({});
+  }
+
+  function handleCustomDirClick(dirName: string) {
+    const newPath = customSubdir ? `${customSubdir}/${dirName}` : dirName;
+    setCustomSubdir(newPath);
+    setCustomSelected({});
+    setCustomFilter({});
+  }
+
+  function handleCustomFileSelect(caseName: string, fileName: string) {
+    setCustomSelected((prev) => ({ ...prev, [caseName]: fileName }));
+  }
+
+  function customCompare() {
+    const cases = Array.from(selected);
+    const allSelected = cases.every((c) => customSelected[c]);
+    if (!allSelected) return;
+    setLoading(true);
+    setError(null);
+    setDiffOnly(false);
+    compareDataAPI(cases, "", customSubdir, 5000, customSelected)
+      .then(setData)
+      .catch((e) => setError(e instanceof Error ? e.message : String(e)))
+      .finally(() => setLoading(false));
+  }
+
+  const allCustomSelected = Array.from(selected).every((c) => customSelected[c]);
+
   function goBack() {
     if (data) {
       setData(null);
@@ -106,6 +173,11 @@ export default function ComparePanel({ onClose }: Props) {
       setBrowseEntries([]);
       setBrowseSubdir("");
       setFileFilter("");
+      setCustomPick(false);
+      setCustomSubdir("");
+      setCustomSelected({});
+      setCustomFilter({});
+      setCustomEntries({});
     }
   }
 
@@ -202,65 +274,184 @@ export default function ComparePanel({ onClose }: Props) {
       {/* Step 2: Browse & pick file */}
       {step === 2 && (
         <div className="compare-file-select">
-          <div style={{ display: "flex", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
+          {/* Case badges */}
+          <div style={{ display: "flex", gap: 6, marginBottom: 8, flexWrap: "wrap", alignItems: "center" }}>
             {selectedArr.map((c, i) => (
               <span key={c} className="compare-case-badge" style={{
                 background: CASE_COLORS[i % CASE_COLORS.length] + "20",
                 color: CASE_COLORS[i % CASE_COLORS.length],
               }}>{c}</span>
             ))}
+            <label style={{
+              marginLeft: "auto", fontSize: "0.75rem", display: "flex", alignItems: "center", gap: 4,
+              cursor: "pointer", color: "var(--text-muted)",
+            }}>
+              <input type="checkbox" checked={customPick} onChange={() => {
+                setCustomPick((v) => !v);
+                setCustomSubdir(browseSubdir);
+                setCustomSelected({});
+                setCustomFilter({});
+              }} style={{ accentColor: "var(--accent)" }} />
+              Custom Pick
+            </label>
           </div>
 
-          <div className="compare-breadcrumb">
-            <span onClick={() => setBrowseSubdir("")}>📁 root</span>
-            {breadcrumbParts.map((part, i) => {
-              const path = breadcrumbParts.slice(0, i + 1).join("/");
-              return (
-                <span key={path}>
-                  {" / "}
-                  <span onClick={() => setBrowseSubdir(path)}>{part}</span>
-                </span>
-              );
-            })}
-            {browseSubdir && (
-              <span onClick={navigateUp} style={{ marginLeft: 10, cursor: "pointer", opacity: 0.7 }}>⬆ up</span>
-            )}
-          </div>
-
-          {browseLoading && <div className="loading">Loading…</div>}
-
-          {!browseLoading && sortedEntries.length > 0 && (
+          {/* ── Standard mode (common files) ── */}
+          {!customPick && (
             <>
-              <input
-                type="text" placeholder="Filter…" value={fileFilter}
-                onChange={(e) => setFileFilter(e.target.value)}
-                className="compare-filter-input"
-              />
-              <div className="compare-file-sort-bar">
-                <span className="compare-sort-col compare-sort-col--name" onClick={() => toggleFileSort("name")}>
-                  Name{sortIndicator("name")}
-                </span>
-                <span className="compare-sort-col compare-sort-col--size" onClick={() => toggleFileSort("size")}>
-                  Size{sortIndicator("size")}
-                </span>
+              <div className="compare-breadcrumb">
+                <span onClick={() => setBrowseSubdir("")}>📁 root</span>
+                {breadcrumbParts.map((part, i) => {
+                  const path = breadcrumbParts.slice(0, i + 1).join("/");
+                  return (
+                    <span key={path}>
+                      {" / "}
+                      <span onClick={() => setBrowseSubdir(path)}>{part}</span>
+                    </span>
+                  );
+                })}
+                {browseSubdir && (
+                  <span onClick={navigateUp} style={{ marginLeft: 10, cursor: "pointer", opacity: 0.7 }}>⬆ up</span>
+                )}
+              </div>
+
+              {browseLoading && <div className="loading">Loading…</div>}
+
+              {!browseLoading && sortedEntries.length > 0 && (
+                <>
+                  <input
+                    type="text" placeholder="Filter…" value={fileFilter}
+                    onChange={(e) => setFileFilter(e.target.value)}
+                    className="compare-filter-input"
+                  />
+                  <div className="compare-file-sort-bar">
+                    <span className="compare-sort-col compare-sort-col--name" onClick={() => toggleFileSort("name")}>
+                      Name{sortIndicator("name")}
+                    </span>
+                    <span className="compare-sort-col compare-sort-col--size" onClick={() => toggleFileSort("size")}>
+                      Size{sortIndicator("size")}
+                    </span>
+                  </div>
+                </>
+              )}
+
+              <div className="compare-file-list">
+                {sortedEntries.map((e) => (
+                  <div key={e.name} className="compare-file-item" onClick={() => handleBrowseClick(e)}>
+                    <span className="compare-file-icon">{e.is_dir ? "📁" : "📄"}</span>
+                    <span className="compare-file-name">{e.name}</span>
+                    <span className="compare-file-size">{formatSize(e.size)}</span>
+                  </div>
+                ))}
+                {!browseLoading && sortedEntries.length === 0 && (
+                  <p style={{ color: "var(--text-muted)", fontSize: "0.82rem", padding: "8px 0" }}>
+                    {fileFilter ? "No matches." : "No common entries at this level."}
+                  </p>
+                )}
               </div>
             </>
           )}
 
-          <div className="compare-file-list">
-            {sortedEntries.map((e) => (
-              <div key={e.name} className="compare-file-item" onClick={() => handleBrowseClick(e)}>
-                <span className="compare-file-icon">{e.is_dir ? "📁" : "📄"}</span>
-                <span className="compare-file-name">{e.name}</span>
-                <span className="compare-file-size">{formatSize(e.size)}</span>
+          {/* ── Custom pick mode (per-case file selection) ── */}
+          {customPick && (
+            <>
+              <div className="compare-breadcrumb">
+                <span onClick={() => { setCustomSubdir(""); setCustomSelected({}); setCustomFilter({}); }}>📁 root</span>
+                {(customSubdir ? customSubdir.split("/") : []).map((part, i, arr) => {
+                  const path = arr.slice(0, i + 1).join("/");
+                  return (
+                    <span key={path}>
+                      {" / "}
+                      <span onClick={() => { setCustomSubdir(path); setCustomSelected({}); setCustomFilter({}); }}>{part}</span>
+                    </span>
+                  );
+                })}
+                {customSubdir && (
+                  <span onClick={customNavigateUp} style={{ marginLeft: 10, cursor: "pointer", opacity: 0.7 }}>⬆ up</span>
+                )}
               </div>
-            ))}
-            {!browseLoading && sortedEntries.length === 0 && (
-              <p style={{ color: "var(--text-muted)", fontSize: "0.82rem", padding: "8px 0" }}>
-                {fileFilter ? "No matches." : "No common entries at this level."}
+
+              <p style={{ color: "var(--text-muted)", fontSize: "0.78rem", margin: "4px 0 8px" }}>
+                Pick one file from each case (names can differ). Navigate folders first.
               </p>
-            )}
-          </div>
+
+              {customLoading && <div className="loading">Loading…</div>}
+
+              {/* Shared folder navigation — dirs common across all cases */}
+              {!customLoading && (() => {
+                const dirSets = selectedArr.map((c) =>
+                  new Set((customEntries[c] ?? []).filter((e) => e.is_dir).map((e) => e.name))
+                );
+                const commonDirs = [...(dirSets[0] ?? [])].filter((d) => dirSets.every((s) => s.has(d))).sort();
+                if (commonDirs.length === 0) return null;
+                return (
+                  <div style={{ marginBottom: 8 }}>
+                    <div style={{ fontSize: "0.72rem", color: "var(--text-muted)", marginBottom: 2 }}>📁 Common folders:</div>
+                    <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                      {commonDirs.map((d) => (
+                        <button key={d} className="btn btn-outline"
+                          style={{ fontSize: "0.75rem", padding: "2px 8px" }}
+                          onClick={() => handleCustomDirClick(d)}>
+                          {d}/
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {/* Per-case file lists */}
+              {!customLoading && (
+                <div style={{ display: "flex", gap: 8, overflow: "auto" }}>
+                  {selectedArr.map((c, idx) => {
+                    const entries = (customEntries[c] ?? []).filter((e) => !e.is_dir);
+                    const filter = customFilter[c] ?? "";
+                    const filtered = filter
+                      ? entries.filter((e) => e.name.toLowerCase().includes(filter.toLowerCase()))
+                      : entries;
+                    const color = CASE_COLORS[idx % CASE_COLORS.length];
+                    const sel = customSelected[c];
+                    return (
+                      <div key={c} style={{ flex: 1, minWidth: 200 }}>
+                        <div style={{ color, fontWeight: 600, fontSize: "0.8rem", marginBottom: 4, fontFamily: "var(--font-mono)" }}>
+                          {c}
+                          {sel && <span style={{ fontWeight: 400, opacity: 0.7 }}> → {sel}</span>}
+                        </div>
+                        <input type="text" placeholder="Filter…"
+                          value={filter}
+                          onChange={(e) => setCustomFilter((prev) => ({ ...prev, [c]: e.target.value }))}
+                          className="compare-filter-input" style={{ marginBottom: 4 }}
+                        />
+                        <div className="compare-file-list" style={{ maxHeight: "40vh" }}>
+                          {filtered.map((e) => (
+                            <div key={e.name}
+                              className="compare-file-item"
+                              onClick={() => handleCustomFileSelect(c, e.name)}
+                              style={{
+                                background: sel === e.name ? `${color}20` : undefined,
+                                borderLeft: sel === e.name ? `3px solid ${color}` : "3px solid transparent",
+                              }}>
+                              <span className="compare-file-icon">📄</span>
+                              <span className="compare-file-name">{e.name}</span>
+                              <span className="compare-file-size">{formatSize(e.size)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Compare button */}
+              {allCustomSelected && (
+                <button className="btn" style={{ marginTop: 10, width: "100%", padding: "8px", fontSize: "0.88rem" }}
+                  onClick={customCompare} disabled={loading}>
+                  {loading ? "Comparing…" : "Compare Selected Files →"}
+                </button>
+              )}
+            </>
+          )}
         </div>
       )}
 
