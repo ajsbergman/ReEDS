@@ -432,6 +432,246 @@ def compare_data(
     }
 
 
+# ── Post-Processing Tools ────────────────────────────────────────────────────
+
+import subprocess, threading, time, uuid
+
+_pp_jobs: dict[str, dict] = {}  # job_id -> {status, type, log, cases, ...}
+
+BOKEH_REPORTS = [
+    "standard_report_reduced",
+    "standard_report",
+    "standard_report_expanded",
+    "standard_report_combined",
+    "standard_report_CCS",
+    "standard_report_RE100",
+    "gen_only_report",
+    "opres_report",
+    "state_report",
+    "value_factor_report",
+]
+
+
+class PPCompareCasesRequest(BaseModel):
+    cases: list[str] = Field(..., min_length=2, max_length=20)
+    casenames: str = ""
+    basecase: str = ""
+    startyear: int = 2020
+    skip_bokehpivot: bool = False
+    bpreport: str = "standard_report_reduced"
+    detailed: bool = False
+    conda_env: str = "reeds2"
+
+
+class PPBokehReportRequest(BaseModel):
+    cases: list[str] = Field(..., min_length=1, max_length=20)
+    report: str = "standard_report_reduced"
+    diff: bool = True
+    basecase: str = ""
+    conda_env: str = "reeds2"
+
+
+def _run_pp_job(job_id: str, cmd: list[str], cwd: str, env: dict | None = None):
+    """Run a post-processing command in background, capturing output."""
+    job = _pp_jobs[job_id]
+    job["status"] = "running"
+    job["started_at"] = time.time()
+    try:
+        proc = subprocess.Popen(
+            cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
+            text=True, env=env,
+        )
+        job["pid"] = proc.pid
+        lines: list[str] = []
+        for line in proc.stdout:  # type: ignore[union-attr]
+            lines.append(line)
+            if len(lines) > 5000:
+                lines = lines[-3000:]
+        proc.wait()
+        job["log"] = "".join(lines[-2000:])
+        job["returncode"] = proc.returncode
+        job["status"] = "completed" if proc.returncode == 0 else "failed"
+    except Exception as exc:
+        job["log"] = str(exc)
+        job["status"] = "failed"
+    job["finished_at"] = time.time()
+
+
+@router.get("/postprocess/reports")
+def list_bokeh_reports():
+    """List available bokehpivot report templates."""
+    return {"reports": BOKEH_REPORTS}
+
+
+@router.post("/postprocess/compare-cases")
+def run_compare_cases(
+    body: PPCompareCasesRequest,
+    settings: Settings = Depends(get_settings),
+):
+    """Run compare_cases.py as a background process."""
+    import re, shutil
+    safe = re.compile(r"^[a-zA-Z0-9_\-\.]+$")
+    runs_dir = settings.repo_root / "runs"
+
+    case_paths = []
+    for case in body.cases:
+        if not safe.match(case):
+            raise HTTPException(status_code=400, detail=f"Invalid case name: {case}")
+        p = runs_dir / case
+        if not p.is_dir():
+            raise HTTPException(status_code=404, detail=f"Case not found: {case}")
+        case_paths.append(str(p))
+
+    script = str(settings.repo_root / "postprocessing" / "compare_cases.py")
+    cmd = ["python", script] + case_paths
+    if body.casenames:
+        cmd += ["--casenames", body.casenames]
+    if body.basecase:
+        cmd += ["--basecase", body.basecase]
+    cmd += ["--startyear", str(body.startyear)]
+    if body.skip_bokehpivot:
+        cmd += ["--skipbp"]
+    else:
+        cmd += ["--bpreport", body.bpreport]
+    if body.detailed:
+        cmd += ["--detailed"]
+
+    # Activate conda env
+    conda_prefix = shutil.which("conda")
+    activate_cmd = f"conda activate {body.conda_env} && " if conda_prefix else ""
+
+    job_id = str(uuid.uuid4())[:8]
+    _pp_jobs[job_id] = {
+        "id": job_id,
+        "type": "compare_cases",
+        "status": "queued",
+        "cases": body.cases,
+        "log": "",
+        "output_dir": str(runs_dir / body.cases[0] / "outputs" / "comparisons"),
+    }
+
+    shell_cmd = f"{activate_cmd}{' '.join(cmd)}"
+    t = threading.Thread(
+        target=_run_pp_job,
+        args=(job_id, ["cmd", "/c", shell_cmd] if activate_cmd else cmd, str(settings.repo_root)),
+        daemon=True,
+    )
+    t.start()
+    return {"job_id": job_id, "status": "queued"}
+
+
+@router.post("/postprocess/bokeh-report")
+def run_bokeh_report(
+    body: PPBokehReportRequest,
+    settings: Settings = Depends(get_settings),
+):
+    """Run a bokehpivot report as a background process."""
+    import re, shutil
+    safe = re.compile(r"^[a-zA-Z0-9_\-\.]+$")
+    runs_dir = settings.repo_root / "runs"
+
+    case_paths = []
+    for case in body.cases:
+        if not safe.match(case):
+            raise HTTPException(status_code=400, detail=f"Invalid case name: {case}")
+        p = runs_dir / case
+        if not p.is_dir():
+            raise HTTPException(status_code=404, detail=f"Case not found: {case}")
+        case_paths.append(str(p))
+
+    if body.report not in BOKEH_REPORTS:
+        raise HTTPException(status_code=400, detail=f"Unknown report: {body.report}")
+
+    bp_path = settings.repo_root / "postprocessing" / "bokehpivot"
+    report_py = bp_path / "reports" / "templates" / "reeds2" / f"{body.report}.py"
+    interface_py = bp_path / "reports" / "interface_report_model.py"
+
+    # Build scenarios CSV
+    output_dir = runs_dir / body.cases[0] / "outputs" / "comparisons"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    bp_outpath = str(output_dir / f"{body.report}-{'diff' if body.diff else 'nodiff'}-multicase")
+
+    import pandas as _pd
+    bp_colors = ["#1f77b4","#ff7f0e","#2ca02c","#d62728","#9467bd","#8c564b","#e377c2","#7f7f7f","#bcbd22","#17becf"] * 20
+    base = body.basecase or body.cases[0]
+    df_scen = _pd.DataFrame({
+        "name": body.cases,
+        "color": bp_colors[:len(body.cases)],
+        "path": case_paths,
+    })
+    scen_csv = str(output_dir / "scenarios.csv")
+    df_scen.to_csv(scen_csv, index=False)
+
+    cmd = [
+        "python", str(interface_py),
+        "ReEDS 2.0", scen_csv, "all",
+        "Yes" if body.diff else "No",
+        base,
+        str(report_py), "html,excel", "one",
+        bp_outpath, "No",
+    ]
+
+    conda_prefix = shutil.which("conda")
+    activate_cmd = f"conda activate {body.conda_env} && " if conda_prefix else ""
+
+    job_id = str(uuid.uuid4())[:8]
+    _pp_jobs[job_id] = {
+        "id": job_id,
+        "type": "bokeh_report",
+        "status": "queued",
+        "cases": body.cases,
+        "report": body.report,
+        "log": "",
+        "output_dir": bp_outpath,
+    }
+
+    shell_cmd = f"{activate_cmd}{' '.join(cmd)}"
+    t = threading.Thread(
+        target=_run_pp_job,
+        args=(job_id, ["cmd", "/c", shell_cmd] if activate_cmd else cmd, str(settings.repo_root)),
+        daemon=True,
+    )
+    t.start()
+    return {"job_id": job_id, "status": "queued"}
+
+
+@router.get("/postprocess/jobs")
+def list_pp_jobs():
+    """List all post-processing jobs."""
+    return {"jobs": list(_pp_jobs.values())}
+
+
+@router.get("/postprocess/jobs/{job_id}")
+def get_pp_job(job_id: str):
+    """Get status/log of a post-processing job."""
+    job = _pp_jobs.get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return job
+
+
+@router.get("/postprocess/jobs/{job_id}/outputs")
+def list_pp_outputs(job_id: str, settings: Settings = Depends(get_settings)):
+    """List output files from a completed PP job."""
+    job = _pp_jobs.get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    out_dir = Path(job["output_dir"])
+    if not out_dir.is_dir():
+        return {"files": []}
+    files = []
+    for f in sorted(out_dir.rglob("*")):
+        if f.is_file():
+            rel = str(f.relative_to(settings.repo_root)).replace("\\", "/")
+            files.append({
+                "name": f.name,
+                "rel_path": rel,
+                "size": f.stat().st_size,
+                "suffix": f.suffix.lower(),
+            })
+    return {"files": files}
+
+
 @router.get("/{run_id}")
 def get_run(run_id: str):
     """Get details of a specific run (including log tail)."""

@@ -7,6 +7,7 @@ import {
   type FileListResponse,
 } from "../lib/api";
 import ComparePanel from "./ComparePanel";
+import PostProcessPanel from "./PostProcessPanel";
 
 type SortKey = "name" | "type" | "size" | "modified";
 type SortDir = "asc" | "desc";
@@ -25,6 +26,7 @@ export default function OutputExplorer({ onSelectFile }: Props) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [compareMode, setCompareMode] = useState(false);
+  const [ppMode, setPpMode] = useState(false);
 
   // When a folder is expanded, browse into it
   const [activePath, setActivePath] = useState<string | null>(null);
@@ -158,26 +160,37 @@ export default function OutputExplorer({ onSelectFile }: Props) {
       <div className="output-explorer-header">
         <h2>Outputs Explorer</h2>
         <div style={{ display: "flex", gap: 6 }}>
-          {!compareMode && folders.length >= 2 && (
-            <button
-              className="btn btn-outline"
-              style={{ fontSize: "0.78rem", padding: "4px 10px" }}
-              onClick={() => setCompareMode(true)}
-              title="Compare outputs across cases"
-            >
-              ⚖ Compare
-            </button>
+          {!compareMode && !ppMode && folders.length >= 2 && (
+            <>
+              <button
+                className="btn btn-outline"
+                style={{ fontSize: "0.78rem", padding: "4px 10px" }}
+                onClick={() => setCompareMode(true)}
+                title="Compare outputs across cases"
+              >
+                ⚖ Compare
+              </button>
+              <button
+                className="btn btn-outline"
+                style={{ fontSize: "0.78rem", padding: "4px 10px" }}
+                onClick={() => setPpMode(true)}
+                title="Run post-processing tools (compare_cases.py, bokehpivot)"
+              >
+                📊 Post-Process
+              </button>
+            </>
           )}
           <button className="refresh-btn" onClick={refresh} title="Refresh">↻</button>
         </div>
       </div>
 
       {compareMode && <ComparePanel onClose={() => setCompareMode(false)} />}
+      {ppMode && <PostProcessPanel onClose={() => setPpMode(false)} onSelectFile={onSelectFile} />}
 
-      {!compareMode && error && <div className="error-banner">{error}</div>}
-      {!compareMode && loading && <div className="loading">Loading…</div>}
+      {!compareMode && !ppMode && error && <div className="error-banner">{error}</div>}
+      {!compareMode && !ppMode && loading && <div className="loading">Loading…</div>}
 
-      {!compareMode && !loading && folders.length === 0 && !activePath && (
+      {!compareMode && !ppMode && !loading && folders.length === 0 && !activePath && (
         <div className="output-empty">
           <div className="output-empty-icon">📂</div>
           <p>No run cases found yet.</p>
@@ -189,7 +202,7 @@ export default function OutputExplorer({ onSelectFile }: Props) {
       )}
 
       {/* ── Folder list view ─── */}
-      {!compareMode && !activePath && folders.length > 0 && (
+      {!compareMode && !ppMode && !activePath && folders.length > 0 && (
         <div className="output-folder-list">
           {folders.map((f) => {
             const st = statusLabel(f);
@@ -222,7 +235,7 @@ export default function OutputExplorer({ onSelectFile }: Props) {
       )}
 
       {/* ── Browsing inside a run folder ─── */}
-      {!compareMode && activePath && (
+      {!compareMode && !ppMode && activePath && (
         <div className="output-browse">
           <div className="breadcrumb">
             <span onClick={() => setActivePath(null)}>runs</span>

@@ -365,6 +365,66 @@ export function compareDataAPI(
   });
 }
 
+/* ── Post-Processing Tools ────────────────────────────────────────────────── */
+
+export interface PPJob {
+  id: string;
+  type: string;
+  status: "queued" | "running" | "completed" | "failed";
+  cases: string[];
+  report?: string;
+  log: string;
+  output_dir: string;
+  started_at?: number;
+  finished_at?: number;
+}
+
+export interface PPOutputFile {
+  name: string;
+  rel_path: string;
+  size: number;
+  suffix: string;
+}
+
+export function ppListReportsAPI(): Promise<{ reports: string[] }> {
+  return request<{ reports: string[] }>("/runs/postprocess/reports");
+}
+
+export function ppRunCompareCasesAPI(body: {
+  cases: string[];
+  casenames?: string;
+  basecase?: string;
+  startyear?: number;
+  skip_bokehpivot?: boolean;
+  bpreport?: string;
+  detailed?: boolean;
+  conda_env?: string;
+}): Promise<{ job_id: string; status: string }> {
+  return post<{ job_id: string; status: string }>("/runs/postprocess/compare-cases", body);
+}
+
+export function ppRunBokehReportAPI(body: {
+  cases: string[];
+  report?: string;
+  diff?: boolean;
+  basecase?: string;
+  conda_env?: string;
+}): Promise<{ job_id: string; status: string }> {
+  return post<{ job_id: string; status: string }>("/runs/postprocess/bokeh-report", body);
+}
+
+export function ppListJobsAPI(): Promise<{ jobs: PPJob[] }> {
+  return request<{ jobs: PPJob[] }>("/runs/postprocess/jobs");
+}
+
+export function ppGetJobAPI(jobId: string): Promise<PPJob> {
+  return request<PPJob>(`/runs/postprocess/jobs/${jobId}`);
+}
+
+export function ppListOutputsAPI(jobId: string): Promise<{ files: PPOutputFile[] }> {
+  return request<{ files: PPOutputFile[] }>(`/runs/postprocess/jobs/${jobId}/outputs`);
+}
+
 /* ── Environment Checks ───────────────────────────────────────────────────── */
 
 export interface EnvCheckResult {
