@@ -8,6 +8,7 @@ import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel, Field
 
+import os
 import re
 import shutil
 import subprocess
@@ -20,6 +21,9 @@ from ..services import run_manager
 from ..services import env_check
 
 router = APIRouter(prefix="/runs", tags=["runs"])
+
+# Shared regex for validating case/file names
+SAFE_NAME_RE = re.compile(r"^[a-zA-Z0-9_\-\.]+$")
 
 
 # ── Request / Response models ────────────────────────────────────────────────
@@ -147,12 +151,10 @@ def compare_common_files(
     settings: Settings = Depends(get_settings),
 ):
     """Browse common entries (dirs + files) at a given level across all cases."""
-    import re
-    safe_case = re.compile(r"^[a-zA-Z0-9_\-\.]+$")
     runs_dir = settings.repo_root / "runs"
 
     for case in cases:
-        if not safe_case.match(case):
+        if not SAFE_NAME_RE.match(case):
             raise HTTPException(status_code=400, detail=f"Invalid case name: {case}")
 
     # List children of {runs}/{case}/{subdir} for each case
@@ -198,9 +200,7 @@ def compare_case_files(
     settings: Settings = Depends(get_settings),
 ):
     """List files for a single case at a given subdirectory level."""
-    import re
-    safe_case = re.compile(r"^[a-zA-Z0-9_\-\.]+$")
-    if not safe_case.match(case):
+    if not SAFE_NAME_RE.match(case):
         raise HTTPException(status_code=400, detail=f"Invalid case name: {case}")
 
     runs_dir = settings.repo_root / "runs"
@@ -245,19 +245,17 @@ def compare_data(
     settings: Settings = Depends(get_settings),
 ):
     """Compare a file across cases. Auto-detects mode based on file type."""
-    import re
-    safe_name = re.compile(r"^[a-zA-Z0-9_\-\.]+$")
 
     # Resolve per-case filenames
     case_filenames: dict[str, str] = {}
     if body.filenames:
         for case in body.cases:
             fn = body.filenames.get(case)
-            if not fn or not safe_name.match(fn):
+            if not fn or not SAFE_NAME_RE.match(fn):
                 raise HTTPException(status_code=400, detail=f"Invalid filename for {case}")
             case_filenames[case] = fn
     else:
-        if not body.filename or not safe_name.match(body.filename):
+        if not body.filename or not SAFE_NAME_RE.match(body.filename):
             raise HTTPException(status_code=400, detail="Invalid filename")
         for case in body.cases:
             case_filenames[case] = body.filename
@@ -442,6 +440,7 @@ def compare_data(
 # ── Post-Processing Tools ────────────────────────────────────────────────────
 
 _pp_jobs: dict[str, dict] = {}  # job_id -> {status, type, log, cases, ...}
+_MAX_PP_JOBS = 50  # Keep last N jobs to avoid memory leak
 
 BOKEH_REPORTS = [
     "standard_report_reduced",
@@ -461,8 +460,8 @@ class PPCompareCasesRequest(BaseModel):
     cases: list[str] = Field(..., min_length=2, max_length=20)
     casenames: str = ""
     basecase: str = ""
-    startyear: int = 2020
-    skip_bokehpivot: bool = False
+    startyear: int = 2010
+    skip_bokehpivot: bool = True
     bpreport: str = "standard_report_reduced"
     detailed: bool = False
     conda_env: str = "reeds2"
@@ -503,6 +502,19 @@ def _run_pp_job(job_id: str, cmd: "list[str] | str", cwd: str, env: dict | None 
     job["finished_at"] = time.time()
 
 
+def _trim_pp_jobs():
+    """Remove oldest finished jobs when exceeding _MAX_PP_JOBS."""
+    if len(_pp_jobs) <= _MAX_PP_JOBS:
+        return
+    finished = sorted(
+        ((k, v) for k, v in _pp_jobs.items() if v["status"] in ("completed", "failed")),
+        key=lambda kv: kv[1].get("finished_at", 0),
+    )
+    to_remove = len(_pp_jobs) - _MAX_PP_JOBS
+    for k, _ in finished[:to_remove]:
+        del _pp_jobs[k]
+
+
 @router.get("/postprocess/reports")
 def list_bokeh_reports():
     """List available bokehpivot report templates."""
@@ -515,12 +527,11 @@ def run_compare_cases(
     settings: Settings = Depends(get_settings),
 ):
     """Run compare_cases.py as a background process."""
-    safe = re.compile(r"^[a-zA-Z0-9_\-\.]+$")
     runs_dir = settings.repo_root / "runs"
 
     case_paths = []
     for case in body.cases:
-        if not safe.match(case):
+        if not SAFE_NAME_RE.match(case):
             raise HTTPException(status_code=400, detail=f"Invalid case name: {case}")
         p = runs_dir / case
         if not p.is_dir():
@@ -546,6 +557,7 @@ def run_compare_cases(
     activate_cmd = f"conda activate {body.conda_env} && " if conda_prefix else ""
 
     job_id = str(uuid.uuid4())[:8]
+    _trim_pp_jobs()
     _pp_jobs[job_id] = {
         "id": job_id,
         "type": "compare_cases",
@@ -556,9 +568,12 @@ def run_compare_cases(
     }
 
     shell_cmd = f"{activate_cmd}{subprocess.list2cmdline(cmd)}"
+    # Suppress auto-open of generated files (e.g. PPTX) when running headlessly
+    no_open_env = {**os.environ, "REEDS_NO_AUTOOPEN": "1"}
     t = threading.Thread(
         target=_run_pp_job,
         args=(job_id, shell_cmd if activate_cmd else cmd, str(settings.repo_root)),
+        kwargs={"env": no_open_env},
         daemon=True,
     )
     t.start()
@@ -571,12 +586,11 @@ def run_bokeh_report(
     settings: Settings = Depends(get_settings),
 ):
     """Run a bokehpivot report as a background process."""
-    safe = re.compile(r"^[a-zA-Z0-9_\-\.]+$")
     runs_dir = settings.repo_root / "runs"
 
     case_paths = []
     for case in body.cases:
-        if not safe.match(case):
+        if not SAFE_NAME_RE.match(case):
             raise HTTPException(status_code=400, detail=f"Invalid case name: {case}")
         p = runs_dir / case
         if not p.is_dir():
@@ -618,6 +632,7 @@ def run_bokeh_report(
     activate_cmd = f"conda activate {body.conda_env} && " if conda_prefix else ""
 
     job_id = str(uuid.uuid4())[:8]
+    _trim_pp_jobs()
     _pp_jobs[job_id] = {
         "id": job_id,
         "type": "bokeh_report",
@@ -663,16 +678,29 @@ def list_pp_outputs(job_id: str, settings: Settings = Depends(get_settings)):
     out_dir = Path(job["output_dir"])
     if not out_dir.is_dir():
         return {"files": []}
+    job_started = job.get("started_at", 0)
+    job_type = job.get("type", "")
+    # Only show file types relevant to each job type
+    type_suffixes = {
+        "compare_cases": {".pptx"},
+        "bokeh_report": {".html"},
+    }
+    allowed = type_suffixes.get(job_type)
     files = []
     for f in sorted(out_dir.rglob("*")):
-        if f.is_file():
-            rel = str(f.relative_to(settings.repo_root)).replace("\\", "/")
-            files.append({
-                "name": f.name,
-                "rel_path": rel,
-                "size": f.stat().st_size,
-                "suffix": f.suffix.lower(),
-            })
+        if not f.is_file():
+            continue
+        if f.stat().st_mtime < job_started:
+            continue
+        if allowed and f.suffix.lower() not in allowed:
+            continue
+        rel = str(f.relative_to(settings.repo_root)).replace("\\", "/")
+        files.append({
+            "name": f.name,
+            "rel_path": rel,
+            "size": f.stat().st_size,
+            "suffix": f.suffix.lower(),
+        })
     return {"files": files}
 
 
