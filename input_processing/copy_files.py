@@ -1412,11 +1412,13 @@ def write_miscellaneous_files(
         os.path.join(inputs_case,'gen_mandate_trajectory.csv')
     )
 
-    pd.read_csv(
-        os.path.join(reeds_path,'inputs','national_generation','gen_mandate_tech_list.csv'),
+    nat_gen_tech_frac = pd.read_csv(
+        os.path.join(reeds_path,'inputs','national_generation','nat_gen_tech_frac.csv'),
         index_col='*i',
-    )[sw['GSw_GenMandateList']].to_csv(
-        os.path.join(inputs_case,'gen_mandate_tech_list.csv')
+    )[sw['GSw_GenMandateList']].rename_axis('i')
+    reeds.io.write_input_to_h5(
+        nat_gen_tech_frac, 'nat_gen_tech_frac', inputs_case, gamstype='parameter',
+        comment='--fraction-- fraction of each tech generation that may be counted toward eq_national_gen',
     )
 
     pd.read_csv(
