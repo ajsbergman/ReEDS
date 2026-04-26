@@ -2,7 +2,6 @@ import { useEffect, useState, useCallback } from "react";
 import {
   listRunFoldersAPI,
   ppListReportsAPI,
-  ppRunCompareCasesAPI,
   ppRunBokehReportAPI,
   ppListJobsAPI,
   ppGetJobAPI,
@@ -21,7 +20,7 @@ interface Props {
 
 const CASE_COLORS = ["#60a5fa", "#4ade80", "#fbbf24", "#f87171", "#c084fc", "#fb923c"];
 
-type Tool = "compare_cases" | "bokeh_report";
+type Tool = "bokeh_report";
 
 export default function PostProcessPanel({ onClose, onSelectFile }: Props) {
   const [folders, setFolders] = useState<RunFolder[]>([]);
@@ -29,11 +28,9 @@ export default function PostProcessPanel({ onClose, onSelectFile }: Props) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
   // Tool config
-  const [tool, setTool] = useState<Tool>("compare_cases");
+  const [tool] = useState<Tool>("bokeh_report");
   const [bpreport, setBpreport] = useState("standard_report_reduced");
-  const [startyear, setStartyear] = useState(2020);
-  const [skipBp, setSkipBp] = useState(false);
-  const [detailed, setDetailed] = useState(false);
+  const [startyear, setStartyear] = useState(2010);
   const [diff, setDiff] = useState(true);
   const [basecase, setBasecase] = useState("");
 
@@ -75,29 +72,18 @@ export default function PostProcessPanel({ onClose, onSelectFile }: Props) {
   }
 
   const submit = useCallback(async () => {
-    if (selected.size < 2) return;
+    if (selected.size < 1) return;
     setSubmitting(true);
     setError(null);
     try {
       const cases = Array.from(selected);
       let res: { job_id: string };
-      if (tool === "compare_cases") {
-        res = await ppRunCompareCasesAPI({
-          cases,
-          basecase: basecase || cases[0],
-          startyear,
-          skip_bokehpivot: skipBp,
-          bpreport,
-          detailed,
-        });
-      } else {
-        res = await ppRunBokehReportAPI({
-          cases,
-          report: bpreport,
-          diff,
-          basecase: basecase || cases[0],
-        });
-      }
+      res = await ppRunBokehReportAPI({
+        cases,
+        report: bpreport,
+        diff,
+        basecase: basecase || cases[0],
+      });
       const job = await ppGetJobAPI(res.job_id);
       setActiveJob(job);
       setJobs((prev) => [job, ...prev]);
@@ -107,7 +93,7 @@ export default function PostProcessPanel({ onClose, onSelectFile }: Props) {
     } finally {
       setSubmitting(false);
     }
-  }, [selected, tool, basecase, startyear, skipBp, bpreport, detailed, diff]);
+  }, [selected, tool, basecase, bpreport, diff]);
 
   function viewJob(job: PPJob) {
     setActiveJob(job);
@@ -142,24 +128,9 @@ export default function PostProcessPanel({ onClose, onSelectFile }: Props) {
       {/* ── Config + Submit ── */}
       {showConfig && (
         <>
-          {/* Tool selector */}
-          <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
-            <button className={`btn ${tool === "compare_cases" ? "" : "btn-outline"}`}
-              style={{ flex: 1, fontSize: "0.8rem", padding: "6px" }}
-              onClick={() => setTool("compare_cases")}>
-              📊 Compare Cases
-            </button>
-            <button className={`btn ${tool === "bokeh_report" ? "" : "btn-outline"}`}
-              style={{ flex: 1, fontSize: "0.8rem", padding: "6px" }}
-              onClick={() => setTool("bokeh_report")}>
-              📈 Bokeh Report
-            </button>
-          </div>
-
+          {/* Tool description */}
           <p style={{ color: "var(--text-muted)", fontSize: "0.78rem", margin: "0 0 8px" }}>
-            {tool === "compare_cases"
-              ? "Runs compare_cases.py — generates PPTX comparison slides + optional bokehpivot HTML report."
-              : "Runs a bokehpivot report template — generates interactive HTML + Excel."}
+            Runs a bokehpivot report template — generates interactive HTML + Excel.
           </p>
 
           {/* Case selection */}
@@ -176,7 +147,7 @@ export default function PostProcessPanel({ onClose, onSelectFile }: Props) {
           </div>
 
           {/* Base case */}
-          {selected.size >= 2 && (
+          {selected.size >= 1 && (
             <div style={{ marginTop: 8 }}>
               <label style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>
                 Base case:
@@ -207,45 +178,19 @@ export default function PostProcessPanel({ onClose, onSelectFile }: Props) {
               </select>
             </label>
 
-            {tool === "compare_cases" && (
-              <>
-                <label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer", color: "var(--text-muted)" }}>
-                  <input type="number" value={startyear} onChange={(e) => setStartyear(Number(e.target.value))}
-                    style={{
-                      width: 60, fontSize: "0.78rem", padding: "2px 4px",
-                      background: "var(--bg-input, #23272e)", color: "var(--text-primary)",
-                      border: "1px solid var(--border)", borderRadius: 4,
-                    }} />
-                  Start year
-                </label>
-                <label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer", color: "var(--text-muted)" }}>
-                  <input type="checkbox" checked={detailed} onChange={() => setDetailed((v) => !v)}
-                    style={{ accentColor: "var(--accent)" }} />
-                  Detailed plots
-                </label>
-                <label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer", color: "var(--text-muted)" }}>
-                  <input type="checkbox" checked={!skipBp} onChange={() => setSkipBp((v) => !v)}
-                    style={{ accentColor: "var(--accent)" }} />
-                  Generate bokehpivot report
-                </label>
-              </>
-            )}
-
-            {tool === "bokeh_report" && (
-              <label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer", color: "var(--text-muted)" }}>
-                <input type="checkbox" checked={diff} onChange={() => setDiff((v) => !v)}
-                  style={{ accentColor: "var(--accent)" }} />
-                Include diff plots
-              </label>
-            )}
+            <label style={{ display: "flex", alignItems: "center", gap: 4, cursor: "pointer", color: "var(--text-muted)" }}>
+              <input type="checkbox" checked={diff} onChange={() => setDiff((v) => !v)}
+                style={{ accentColor: "var(--accent)" }} />
+              Include diff plots
+            </label>
           </div>
 
           {/* Submit */}
-          {selected.size >= 2 && (
+          {selected.size >= 1 && (
             <button className="btn" disabled={submitting}
               style={{ marginTop: 12, width: "100%", padding: "8px", fontSize: "0.88rem" }}
               onClick={submit}>
-              {submitting ? "Submitting…" : `Run ${tool === "compare_cases" ? "Compare Cases" : "Bokeh Report"} →`}
+              {submitting ? "Submitting…" : "Run Bokeh Report →"}
             </button>
           )}
 
@@ -334,7 +279,7 @@ export default function PostProcessPanel({ onClose, onSelectFile }: Props) {
                       {isHtml && (
                         <a href={rawFileURL(f.rel_path)} target="_blank" rel="noopener noreferrer"
                           className="btn btn-outline"
-                          style={{ fontSize: "0.7rem", padding: "2px 6px", whiteSpace: "nowrap" }}>
+                          style={{ fontSize: "0.7rem", padding: "2px 6px", whiteSpace: "nowrap", color: "#fff" }}>
                           Open ↗
                         </a>
                       )}

@@ -471,15 +471,16 @@ class PPBokehReportRequest(BaseModel):
     conda_env: str = "reeds2"
 
 
-def _run_pp_job(job_id: str, cmd: list[str], cwd: str, env: dict | None = None):
+def _run_pp_job(job_id: str, cmd: "list[str] | str", cwd: str, env: dict | None = None):
     """Run a post-processing command in background, capturing output."""
     job = _pp_jobs[job_id]
     job["status"] = "running"
     job["started_at"] = time.time()
     try:
+        use_shell = isinstance(cmd, str)
         proc = subprocess.Popen(
             cmd, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-            text=True, env=env,
+            text=True, env=env, shell=use_shell,
         )
         job["pid"] = proc.pid
         lines: list[str] = []
@@ -550,10 +551,10 @@ def run_compare_cases(
         "output_dir": str(runs_dir / body.cases[0] / "outputs" / "comparisons"),
     }
 
-    shell_cmd = f"{activate_cmd}{' '.join(cmd)}"
+    shell_cmd = f"{activate_cmd}{subprocess.list2cmdline(cmd)}"
     t = threading.Thread(
         target=_run_pp_job,
-        args=(job_id, ["cmd", "/c", shell_cmd] if activate_cmd else cmd, str(settings.repo_root)),
+        args=(job_id, shell_cmd if activate_cmd else cmd, str(settings.repo_root)),
         daemon=True,
     )
     t.start()
@@ -625,10 +626,11 @@ def run_bokeh_report(
         "output_dir": bp_outpath,
     }
 
-    shell_cmd = f"{activate_cmd}{' '.join(cmd)}"
+    shell_cmd = f"{activate_cmd}{subprocess.list2cmdline(cmd)}"
+    final_cmd = shell_cmd if activate_cmd else cmd
     t = threading.Thread(
         target=_run_pp_job,
-        args=(job_id, ["cmd", "/c", shell_cmd] if activate_cmd else cmd, str(settings.repo_root)),
+        args=(job_id, final_cmd, str(settings.repo_root)),
         daemon=True,
     )
     t.start()
