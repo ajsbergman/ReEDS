@@ -34,165 +34,49 @@ This installs dependencies, starts backend (port 8001) + frontend (port 5173), a
 | GAMS | Licensed, on PATH or auto-detected |
 | Julia | Version matching `Project.toml` (managed via juliaup) |
 
-### Manual setup
+### LLM API Key (required for AI chat)
 
-#### 1. Set environment variables (optional)
+ReEDS-Copilot uses commercial LLM APIs for its chat functionality. You need an API key from **at least one** of the providers below. Personal API usage is very affordable — typical interactive use costs **less than $1/month**.
 
-API keys can also be entered in the browser UI at runtime — no env vars required.
+> **Note:** An API key is different from a regular ChatGPT, Claude, or Gemini chat account. API keys are obtained from the provider's **developer console** (links below) and are billed separately on a pay-per-use basis.
 
-```bash
-# Optional: pre-set LLM key so it loads automatically
-export ANTHROPIC_API_KEY="sk-ant-..."
-# Or use OpenAI / Google
-export OPENAI_API_KEY="sk-..."
-export GOOGLE_API_KEY="AI..."
-```
+| Provider | Sign Up | Pricing (approximate) | Notes |
+|----------|---------|----------------------|-------|
+| **Google Gemini** | [aistudio.google.com](https://aistudio.google.com/apikey) | Free tier available; paid starts at ~$0.15/million input tokens | Generous free tier, fast |
+| **Anthropic** | [console.anthropic.com](https://console.anthropic.com/) | ~$3–15/million input tokens depending on model | Best tool-use quality |
+| **OpenAI** | [platform.openai.com](https://platform.openai.com/api-keys) | ~$2.50–10/million input tokens depending on model | Widely used, good all-around |
 
-### 2. Start the backend
+**How to get started:**
+1. Create an account at one of the links above
+2. Generate an API key from the provider's dashboard
+3. Either set it as an environment variable (see below) or enter it directly in the ReEDS-Copilot **Settings** panel in the browser
 
-```bash
-cd reeds_copilot/backend
-pip install -r requirements.txt
-uvicorn app.main:app --host 127.0.0.1 --port 8001
-```
-
-### 3. Start the frontend
-
-```bash
-cd reeds_copilot/frontend
-npm install
-npm run dev
-```
-
-Open **http://localhost:5173** in a browser.  
-The Vite dev server proxies `/api/*` requests to the backend at port 8001.
+> **Cost note:** A typical chat message uses roughly 2,000–5,000 input tokens. At Google Gemini's free tier or paid rate, you could send hundreds of messages per day for pennies. Even with Anthropic's most capable model, a full day of heavy usage rarely exceeds $1.
 
 ---
 
-## Architecture
+## What Can It Do?
 
-```
-reeds_copilot/
-  launch.bat / launch.sh   # One-click launchers
-  backend/
-    app/
-      main.py              # FastAPI app factory & lifespan
-      core/config.py       # Pydantic settings from env vars
-      api/
-        chat.py            # POST /chat
-        search.py          # POST /search
-        files.py           # GET  /files/list, /files/preview
-        health.py          # GET  /health, POST /config/api-key, GET /config/models
-        sessions.py        # Chat session CRUD
-        runs.py            # Run ReEDS management endpoints
-      services/
-        llm.py             # LLM provider abstraction (Anthropic, OpenAI, Google)
-        retrieval.py       # Text search over the indexed repo
-        repo_index.py      # In-memory file catalogue
-        file_inspector.py  # File listing, preview, CSV inspection
-        chat_store.py      # Chat history persistence
-        env_check.py       # Environment health checks & auto-fixes
-        run_manager.py     # Run lifecycle management
-      models/
-        schemas.py         # Pydantic request/response models
-    requirements.txt
-  frontend/
-    src/
-      App.tsx              # Shell layout with sidebar + tabs
-      components/
-        ChatPanel.tsx      # Chat thread and input
-        ChatHistory.tsx    # Saved conversations
-        SearchPanel.tsx    # Search bar and results
-        FileBrowser.tsx    # Directory browser
-        RunPanel.tsx       # Launch & monitor ReEDS runs
-        OutputExplorer.tsx # Browse run outputs
-        RightPanel.tsx     # Sources / file preview
-        SettingsPanel.tsx  # Health/status check
-        WelcomeScreen.tsx  # First-time setup
-      lib/
-        api.ts             # Typed API client
-        providers.ts       # LLM provider definitions
-    package.json
-    vite.config.ts         # Proxy config → backend:8001
-```
-
-### Key design decisions
-
-- **No vector DB required** – the first-pass retrieval uses filename matching and brute-force text search. The code is modular so embeddings can be added later.
-- **Mock mode** – if no `ANTHROPIC_API_KEY` is set, the chat endpoint returns a placeholder response so the UI can still be developed and tested.
-- **Pluggable LLM** – `services/llm.py` defines an abstract `LLMProvider`; add new providers by subclassing.
-- **Path safety** – file inspection endpoints resolve paths relative to the repo root and reject path traversal attempts.
+- **AI Chat** — Ask questions about ReEDS in plain English. The AI reads the actual repo files and gives grounded answers with source citations.
+- **Search** — Full-text search across all ReEDS code, documentation, and input files.
+- **Browse Files** — Explore the repository structure, preview CSVs and text files directly in the browser.
+- **Run ReEDS** — Configure and launch ReEDS runs, monitor progress, and cancel jobs — all from the UI.
+- **Explore Inputs** — Browse and inspect model input files (load, fuel prices, plant costs, etc.).
+- **Explore Outputs** — View output figures, tables, and data from completed runs. Ask the AI to show you plots or summarize results.
+- **Post-Processing** — Generate Bokeh reports and run Compare Cases with a few clicks.
 
 ---
 
-## API Reference
+## Future Development
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/health` | Backend status, repo root, LLM config |
-| `POST` | `/config/api-key` | Set LLM provider, model, and API key |
-| `GET` | `/config/models` | List models from active provider |
-| `POST` | `/chat` | Send a message; receive LLM answer + sources |
-| `POST` | `/search` | Full-text search across the repo |
-| `GET` | `/files/list?path=` | List directory contents |
-| `GET` | `/files/preview?path=` | Preview a text or CSV file |
-| `GET` | `/chat/sessions` | List saved chat sessions |
-| `POST` | `/chat/sessions` | Create a new chat session |
-| `DELETE`| `/chat/sessions/{id}` | Delete a chat session |
-| `POST` | `/runs` | Start a ReEDS run |
-| `GET` | `/runs` | List active/recent runs |
-| `GET` | `/runs/{id}` | Get run status and logs |
-| `POST` | `/runs/{id}/cancel` | Cancel a running job |
-| `GET` | `/runs/conda-envs` | List available conda environments |
-| `GET` | `/runs/env-check` | Run environment health checks |
-| `POST` | `/runs/env-fix` | Auto-fix a failing check |
-| `GET` | `/runs/folders/list` | List completed run folders |
-
-### POST /chat
-
-```json
-{
-  "message": "What switches control the capacity credit calculation?",
-  "mode": "code",
-  "selected_path": null
-}
-```
-
-### POST /search
-
-```json
-{
-  "query": "capacity credit",
-  "category": "code",
-  "max_results": 10
-}
-```
-
----
-
-## Environment Variables
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `ANTHROPIC_API_KEY` | *(empty)* | Anthropic API key. Without it the app runs in mock mode. |
-| `REEDS_COPILOT_LLM_PROVIDER` | `anthropic` | LLM provider name. |
-| `REEDS_COPILOT_MODEL` | `claude-opus-4-1` | Model identifier. |
-| `REEDS_COPILOT_MAX_RESULTS` | `10` | Max retrieval results per query. |
-| `OPENAI_API_KEY` | *(empty)* | Reserved for future OpenAI support. |
-
----
-
-## Extending
-
-- **Add a new LLM provider**: subclass `LLMProvider` in `services/llm.py` and register it in `build_llm_provider`.
-- **Add embedding-based retrieval**: extend `services/retrieval.py` with a vector search path.
-- **Custom file categories**: adjust `_classify()` in `services/repo_index.py`.
+Feature requests and roadmap ideas are tracked in the
+[shared development list](https://nrel-my.sharepoint.com/:x:/g/personal/ychen10_nrel_gov/IQAA7I3lW2KZRaiSCwFNPS1hAUozwyOPW-kRIx6XzVh53n8) (accessible to NLR staff).
 
 ---
 
 ## Acknowledgments
 
-Initially created by **Yunzhi Chen** (yunzhi.chen@nlr.gov).
+Initially created by Yunzhi Chen (yunzhi.chen@nlr.gov) from the ReEDS team.
 
 ---
 
