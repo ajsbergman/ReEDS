@@ -2097,7 +2097,7 @@ employment_transmission_fom(r,rr,t) = sum{trtype
                                           CAPTRAN_ENERGY.l(r,rr,trtype,t) 
                                           * employment_factor_inter_transmission("fom") } ;
 * Transmission FO&M job-years by region and solveyear
-employment_transmission("fom",r,t) = sum{rr,(employment_transmission_r_rr("fom",r,rr,t)) / 2} ;
+employment_transmission("fom",r,t) = sum{rr,(employment_transmission_fom(r,rr,t)) / 2} ;
 * Transmission construction job-years
 parameter employment_transmission_construction(r,rr,t) "Transmission construction job-years by line and solveyear" ;
 employment_transmission_construction(r,rr,t) = 
