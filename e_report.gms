@@ -2082,12 +2082,8 @@ employment_generator(i,"fom",r,t) = sum{v, CAP.l(i,v,r,t)$valcap(i,v,r,t)
 employment_generator(i,"vom",r,t) = sum{(v,h), GEN.l(i,v,r,h,t)$valgen(i,v,r,t) 
                                                * hours(h)* employment_factor_plant(i,"vom")} ;
 * Generator construction job-years
-parameter employment_generator_construction_inv(i,r,t) "Annual generator construction job-years" ;
-employment_generator_construction_inv(i,r,t) = sum{v, INV.l(i,v,r,t)$valinv(i,v,r,t)  
-                                                      * employment_factor_plant(i,"construction")} ;
-* Cumulative generator construction job-years
-employment_generator(i,"construction",r,t) = employment_generator_construction_inv(i,r,t) 
-                                             + sum{tt$tprev(t,tt),employment_generator_construction_inv(i,r,tt)} ;
+employment_generator(i,"construction",r,t) = sum{v, INV.l(i,v,r,t)$valinv(i,v,r,t)  
+                                                    * employment_factor_plant(i,"construction")} ;
 
 * Employment from transmission (job-years)
 * Transmission O&M job-years
