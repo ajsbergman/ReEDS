@@ -1,11 +1,18 @@
 """Chat endpoint."""
 from __future__ import annotations
 
+import logging
+
 from fastapi import APIRouter, Depends, Request
 
 from ..core.config import Settings, get_settings
 from ..models.schemas import ChatRequest, ChatResponse, SourceSnippet
 from ..services.retrieval import text_search
+from ..services.tools import registry  # noqa: F401 – import registers all tools
+from ..services.tool_registry import registry as tool_registry
+from ..services.llm import TOOL_SYSTEM_PROMPT
+
+log = logging.getLogger(__name__)
 
 router = APIRouter(tags=["chat"])
 
@@ -25,6 +32,16 @@ def _build_context(sources: list[SourceSnippet], selected_content: str | None) -
     for src in sources:
         parts.append(f"--- {src.file_path} ---\n{src.snippet}")
     return "\n\n".join(parts)
+
+
+def _is_run_output(file_path: str) -> bool:
+    """Check if a file path is from a run's outputs directory."""
+    parts = file_path.replace("\\", "/").split("/")
+    # Match patterns like runs/<name>/outputs/...
+    for i, p in enumerate(parts):
+        if p == "runs" and i + 2 < len(parts) and parts[i + 2] == "outputs":
+            return True
+    return False
 
 
 @router.post("/chat", response_model=ChatResponse)
@@ -56,11 +73,29 @@ async def chat(body: ChatRequest, request: Request, settings: Settings = Depends
     mode_hint = f"The user is in '{body.mode}' mode."
     user_prompt = f"{mode_hint}\n\nUser question: {body.message}"
 
-    try:
-        answer = await llm.generate(user_prompt=user_prompt, context=context)
-    except Exception as exc:
-        import logging
-        logging.getLogger(__name__).error("LLM generation failed: %s", exc, exc_info=True)
-        answer = "**LLM Error:** Could not generate response. Please check your API key and try again."
+    # Build tool executor bound to this repo
+    def _exec(tool_name: str, tool_input: dict) -> tuple[str, list[dict]]:
+        return tool_registry.execute(settings.repo_root, tool_name, tool_input)
 
-    return ChatResponse(answer=answer, sources=sources)
+    try:
+        if llm.supports_tools:
+            # When tools are available, strip run output data from context
+            # so the LLM is forced to use tools for run-specific queries.
+            tool_sources = [s for s in sources if not _is_run_output(s.file_path)]
+            tool_context = _build_context(tool_sources, selected_content)
+            answer, attachments = await llm.generate_with_tools(
+                user_prompt=user_prompt,
+                context=tool_context,
+                system_prompt=TOOL_SYSTEM_PROMPT,
+                tools=tool_registry.to_anthropic(),
+                execute_tool_fn=_exec,
+            )
+        else:
+            answer = await llm.generate(user_prompt=user_prompt, context=context)
+            attachments = []
+    except Exception as exc:
+        log.error("LLM generation failed: %s", exc, exc_info=True)
+        answer = "**LLM Error:** Could not generate response. Please check your API key and try again."
+        attachments = []
+
+    return ChatResponse(answer=answer, sources=sources, attachments=attachments)

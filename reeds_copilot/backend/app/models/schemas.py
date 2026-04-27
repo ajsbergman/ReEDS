@@ -24,6 +24,7 @@ class SourceSnippet(BaseModel):
 class ChatResponse(BaseModel):
     answer: str
     sources: list[SourceSnippet] = []
+    attachments: list[dict] = []
 
 
 # ── Search ────────────────────────────────────────────────────────────────────

@@ -28,9 +28,27 @@ export interface SourceSnippet {
   score: number;
 }
 
+export interface ChatAttachment {
+  type: "image" | "csv_table" | "file_list" | "run_card";
+  // image
+  path?: string;
+  caption?: string;
+  // csv_table
+  headers?: string[];
+  rows?: unknown[][];
+  title?: string;
+  // file_list
+  files?: { name: string; path: string; size: number; suffix: string }[];
+  // run_card
+  run_name?: string;
+  status?: string;
+  detail?: string;
+}
+
 export interface ChatResponse {
   answer: string;
   sources: SourceSnippet[];
+  attachments: ChatAttachment[];
 }
 
 export interface SearchResult {
