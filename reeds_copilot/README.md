@@ -190,6 +190,12 @@ reeds_copilot/
 
 ---
 
+## Acknowledgments
+
+Initially created by **Yunzhi Chen** (yunzhi.chen@nlr.gov).
+
+---
+
 ## License
 
 This tool is part of the ReEDS repository and follows the same license terms.
