@@ -2077,24 +2077,29 @@ h2_usage(r,h,t)$tmodel_new(t) =
 *=========================
 * Employment from generators (job-years)
 * Generator O&M job-years
-employment_generator(i,"fom",r,t) = sum{v, CAP.l(i,v,r,t)$valcap(i,v,r,t) * employment_factor_plant(i,"fom")} ;
-employment_generator(i,"vom",r,t) = sum{(v,h), GEN.l(i,v,r,h,t)$valgen(i,v,r,t) * hours(h)* employment_factor_plant(i,"vom")} ;
+employment_generator(i,"fom",r,t) = sum{v, CAP.l(i,v,r,t)$valcap(i,v,r,t) 
+                                           * employment_factor_plant(i,"fom")} ;
+employment_generator(i,"vom",r,t) = sum{(v,h), GEN.l(i,v,r,h,t)$valgen(i,v,r,t) 
+                                               * hours(h)* employment_factor_plant(i,"vom")} ;
 * Generator construction job-years
-parameter employment_generator_construction_inv(i,r,t) "Annual generator construction employment" ;
-employment_generator_construction_inv(i,r,t) = sum{v, INV.l(i,v,r,t)$valinv(i,v,r,t)  * employment_factor_plant(i,"construction")} ;
-employment_generator(i,"construction",r,t) = employment_generator_construction_inv(i,r,t) + sum{tt$tprev(t,tt),employment_generator_construction_inv(i,r,tt)} ;
+parameter employment_generator_construction_inv(i,r,t) "Annual generator construction job-years" ;
+employment_generator_construction_inv(i,r,t) = sum{v, INV.l(i,v,r,t)$valinv(i,v,r,t)  
+                                                      * employment_factor_plant(i,"construction")} ;
+* Cumulative generator construction job-years
+employment_generator(i,"construction",r,t) = employment_generator_construction_inv(i,r,t) 
+                                             + sum{tt$tprev(t,tt),employment_generator_construction_inv(i,r,tt)} ;
 
 * Employment from transmission (job-years)
 * Transmission O&M job-years
-parameter employment_transmission_fom(r,rr,t) "Transmission FO&M employment by line" ;
+parameter employment_transmission_fom(r,rr,t) "Transmission FO&M job-years by line and solveyear" ;
 employment_transmission_fom(r,rr,t) = sum{trtype
                                           $[routes(r,rr,trtype,t)],
                                           CAPTRAN_ENERGY.l(r,rr,trtype,t) 
                                           * employment_factor_inter_transmission("fom") } ;
-* Transmission FO&M employment by region and solveyear
+* Transmission FO&M job-years by region and solveyear
 employment_transmission("fom",r,t) = sum{rr,(employment_transmission_r_rr("fom",r,rr,t)) / 2} ;
 * Transmission construction job-years
-parameter employment_transmission_construction(r,rr,t) "Transmission construction employment by line" ;
+parameter employment_transmission_construction(r,rr,t) "Transmission construction job-years by line and solveyear" ;
 employment_transmission_construction(r,rr,t) = 
 * AC lines
 sum{tscbin
@@ -2111,8 +2116,10 @@ sum{tscbin
       * transmission_cost_nonac(r,rr,trtype)
       * INVTRAN.l(r,rr,trtype,t)
       * employment_factor_inter_transmission("construction") / 2 } ;
+* Transmission construction job-years by region and solveyear
 employment_transmission("construction",r,t) = sum{rr,(employment_transmission_construction(r,rr,t)) / 2} ;
-* Total employment (generator + transmission)
+
+* Total employment (generator + transmission) by region and solveyear
 employment_tot(r,t) = sum{(i,jtype), employment_generator(i,jtype,r,t) } 
                       + sum{jtype, employment_transmission(jtype,r,t) } ;
 
