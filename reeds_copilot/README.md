@@ -24,8 +24,7 @@ This installs dependencies, starts backend (port 8001) + frontend (port 5173), a
 | Tool | Version | Notes |
 |------|---------|-------|
 | Python | ≥ 3.10 | Backend runtime |
-| Node.js | ≥ 18 | Frontend dev server |
-| npm | ≥ 9 | Package management |
+| Node.js | ≥ 18 | Frontend dev server (includes npm) |
 
 **For running ReEDS models** (optional):
 | Tool | Notes |
