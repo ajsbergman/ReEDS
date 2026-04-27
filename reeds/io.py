@@ -494,7 +494,11 @@ def read_input(
             df = read_h5(h5path, key)
         ## Fall back to csv if the requested dataset is not yet in inputs.h5
         except KeyError:
-            df = pd.read_csv(csvpath, **kwargs)
+            try:
+                df = pd.read_csv(csvpath, **kwargs)
+            except FileNotFoundError:
+                err = f"{h5path} has no '{name}' key and {csvpath} does not exist"
+                raise FileNotFoundError(err)
     elif csvpath.is_file():
         df = pd.read_csv(csvpath, **kwargs)
     else:

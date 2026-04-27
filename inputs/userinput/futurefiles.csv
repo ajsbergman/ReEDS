@@ -233,6 +233,7 @@ i.csv,.csv,1,None,9999,None,9999,0,constant,None,None,new,
 incentives.csv,.csv,0,None,t_start_construction,"i,country",1,0,constant,None,None,[CHECK] do we need to forecast within calc_financial_inputs?; new,
 inflation.csv,.csv,0,None,t,None,0,0,constant,None,None,done,constant
 inputs.gdx,.gdx,1,None,9999,None,9999,0,constant,None,None,done (wouldn't exist yet in normal run),constant
+inputs.h5,.h5,1,None,9999,None,9999,0,constant,None,None,new,
 interconnection_queues.csv,.csv,1,None,9999,None,9999,0,constant,None,None,new,
 itc_energy_comm_bonus.csv,.csv,1,None,9999,None,9999,0,constant,None,None,new,
 itc_frac_monetized.csv,.csv,1,None,9999,None,9999,0,constant,None,None,new; handled in calc_financial_inputs.py,
@@ -486,7 +487,7 @@ upgradelink_water.csv,.csv,1,None,9999,None,9999,0,constant,None,None,done,const
 uranium_price.csv,.csv,0,None,year,None,0,0,linear_5,0,None,new,
 va_ng_crf_penalty.csv,.csv,0,None,0,None,0,None,constant,None,None,done,constant
 val_ba.csv,.csv,1,None,9999,None,9999,0,constant,None,None,new,
-val_county.csv,.csv,1,None,9999,None,9999,0,constant,None,None,new,
+county.csv,.csv,1,None,9999,None,9999,0,constant,None,None,new,
 val_cs.csv,.csv,1,None,9999,None,9999,0,constant,None,None,new,
 val_r_all.csv,.csv,1,None,9999,None,9999,0,constant,None,None,new,
 var_map.csv,.csv,1,None,9999,None,9999,0,constant,None,None,done,constant

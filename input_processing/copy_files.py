@@ -308,7 +308,7 @@ def get_regions_and_agglevel(
 
         # Write out val_county and val_ba before collapsing to unique regions
         hier_sub['county'].dropna().to_csv(
-            os.path.join(inputs_case, 'val_county.csv'), header=False, index=False)
+            os.path.join(inputs_case, 'county.csv'), header=False, index=False)
         hier_sub['ba'].drop_duplicates().to_csv(
             os.path.join(inputs_case, 'val_ba.csv'), header=False, index=False)
 
@@ -1402,7 +1402,7 @@ def write_miscellaneous_files(
         index_col=0)
 
     # Filter the counties that are in chosen GSw_Region
-    val_county = pd.read_csv(os.path.join(inputs_case,'val_county.csv'),names=['r'])
+    val_county = pd.read_csv(os.path.join(inputs_case,'county.csv'),names=['r'])
 
     # Merge emission share by county with the counties in GSw_Region and calculate emission share of GSw_Region
     region_em_share = val_county.merge(em_share, on='r', how='left').fillna(0)
