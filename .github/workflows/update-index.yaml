@@ -1,0 +1,127 @@
+# Rebuild the FAISS vector index used by ReEDS-GPT whenever code changes land
+# on main.  Incremental builds re-embed only changed files (~$0.10 vs $10).
+# Monthly cron does a full rebuild to catch drift.
+#
+# Required GitHub Secrets:
+#   GCP_SA_KEY      – Service-account JSON with roles:
+#                       storage.objectAdmin  (gs://reeds-agent-index)
+#                       run.services.update  (Cloud Run restart)
+#   GOOGLE_API_KEY  – Gemini API key for embedding
+
+name: Update ReEDS-GPT Index
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - "docs/**"
+      - "*.md"
+      - "LICENSE"
+      - ".gitignore"
+      - "reeds_copilot/**"
+
+  schedule:
+    # Full rebuild on the 1st of every month at 06:00 UTC
+    - cron: "0 6 1 * *"
+
+  workflow_dispatch:
+    inputs:
+      full_rebuild:
+        description: "Force a full (non-incremental) rebuild"
+        type: boolean
+        default: false
+
+concurrency:
+  group: update-index
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  GCS_BUCKET: reeds-agent-index
+  GCP_PROJECT: reeds-agent-api
+  CLOUD_RUN_SERVICE: reeds-agent
+  CLOUD_RUN_REGION: us-central1
+
+jobs:
+  build-and-upload:
+    runs-on: ubuntu-latest
+    steps:
+      # ── Checkout ──────────────────────────────────────────────────
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0          # full history needed by git-restore-mtime
+
+      # ── Python ────────────────────────────────────────────────────
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install --quiet \
+            langchain-core \
+            langchain-text-splitters \
+            langchain-community \
+            langchain-google-genai \
+            faiss-cpu \
+            tqdm \
+            git-restore-mtime
+
+      # ── Restore file timestamps for incremental skip logic ───────
+      - name: Restore file modification times from git
+        run: git restore-mtime
+
+      # ── GCP Auth ──────────────────────────────────────────────────
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up gcloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+
+      # ── Download previous index (incremental only) ───────────────
+      - name: Download existing index from GCS
+        if: >-
+          github.event_name != 'schedule'
+          && github.event.inputs.full_rebuild != 'true'
+        run: |
+          mkdir -p reeds_index
+          gsutil -m cp \
+            "gs://$GCS_BUCKET/index.faiss" \
+            "gs://$GCS_BUCKET/index.pkl" \
+            "gs://$GCS_BUCKET/manifest.json" \
+            reeds_index/ \
+          || echo "::warning::No existing index in GCS – will build from scratch"
+
+      # ── Build index ──────────────────────────────────────────────
+      - name: Build FAISS index
+        env:
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          REEDS_REPO: ${{ github.workspace }}
+          REEDS_INDEX_DIR: ${{ github.workspace }}/reeds_index
+          REEDS_EMBED_MODEL: "gemini:gemini-embedding-001"
+          REEDS_INCREMENTAL: >-
+            ${{ (github.event_name == 'schedule' || github.event.inputs.full_rebuild == 'true') && '0' || '1' }}
+          REEDS_SKIP_UNCHANGED: >-
+            ${{ (github.event_name == 'schedule' || github.event.inputs.full_rebuild == 'true') && '0' || '1' }}
+        run: python .github/scripts/build_reeds_index.py
+
+      # ── Upload to GCS ────────────────────────────────────────────
+      - name: Upload index to GCS
+        run: |
+          gsutil -m cp \
+            reeds_index/index.faiss \
+            reeds_index/index.pkl \
+            reeds_index/manifest.json \
+            "gs://$GCS_BUCKET/"
+
+      # ── Restart Cloud Run so it loads the fresh index ────────────
+      - name: Restart Cloud Run service
+        run: |
+          gcloud run services update "$CLOUD_RUN_SERVICE" \
+            --region "$CLOUD_RUN_REGION" \
+            --project "$GCP_PROJECT" \
+            --update-env-vars "INDEX_UPDATED=$(date -u +%Y%m%dT%H%M%SZ)"
