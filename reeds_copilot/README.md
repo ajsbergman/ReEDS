@@ -75,7 +75,7 @@ Feature requests and roadmap ideas are tracked in the
 
 ## Acknowledgments
 
-Initially created by Yunzhi Chen (yunzhi.chen@nlr.gov) from the ReEDS team.
+ReEDS-Copilot was initially prototyped by Yunzhi Chen as part of the ReEDS team. Future development is expected to involve contributions from the broader ReEDS developer and user community.
 
 ---
 
