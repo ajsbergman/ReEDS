@@ -79,7 +79,7 @@ def get_solve_times(path=''):
         'start': {},
         'stop': {},
     }
-    with open(os.path.join(path, 'gamslog.txt'), 'r', encoding="ISO-8859-1") as f:
+    with open(os.path.join(path, 'gamslog.txt'), 'r') as f:    
         for _line in f:
             line = _line.strip()
             ## Get the year/iteration
