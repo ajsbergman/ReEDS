@@ -148,7 +148,7 @@ def read_runfiles(reeds_path, inputs_case, sw, agglevel_variables):
     return runfiles, non_region_files, region_files
 
 
-def get_source_deflator_map(reeds_path):
+def get_source_deflator_map(reeds_path,sw):
     """
     Get the deflator for each input file
     """
@@ -157,9 +157,38 @@ def get_source_deflator_map(reeds_path):
         os.path.join(reeds_path,'sources.csv'),
         usecols=["RelativeFilePath", "DollarYear"]
     )
-    deflator = pd.read_csv(
-        os.path.join(reeds_path,'inputs','financials','deflator.csv'),
-        header=0, names=['Dollar.Year','Deflator'], index_col='Dollar.Year').squeeze(1)
+    
+    ### Deflator Calculation
+    # The deflator values are calculated relative to the base year, so the base year deflator is set to 1.0, and the deflator values for other years 
+    # are calculated based on the inflation rates relative to the base year.
+    # Define the base year and current year for the deflator calculation.
+    inflation_df = pd.read_csv(
+        os.path.join(reeds_path,'inputs','financials','inflation_default.csv')
+    )
+
+    scalars = reeds.io.get_scalars(full=True)
+    # years list from the dollar year to the current financial year (inclusive)
+    years = [y for y in inflation_df.t if y >= int(sw.dollar_year) and y <= int(scalars.loc['current_financial_year', 'value'])]
+
+    # Set the initial deflator value for the base year to 1.0
+    deflator_values: dict[int, float] = {int(sw.dollar_year): 1.0}
+
+    # Calculate the deflator values for each year, relative to the base year, using the inflation rates
+    for y in years[1:]:
+        rate = inflation_df.loc[inflation_df['t'] == y, 'inflation_rate'].values[0]
+        deflator_values[y] = deflator_values[y - 1] / rate
+
+    deflator = pd.DataFrame(
+        {
+            "*Dollar.Year": list(deflator_values.keys()),
+            "Deflator":     [round(v, 9) for v in deflator_values.values()],
+        }
+    ).sort_values("*Dollar.Year").reset_index(drop=True)
+
+    deflator.to_csv(os.path.join(inputs_case, 'deflator.csv'), index=False)
+
+    deflator.rename(columns={'*Dollar.Year': 'Dollar.Year'}, inplace=True)
+
     # Create a mapping between inputs' relative filepaths and their deflation
     # multipliers based on the dollar years their monetary values are in
     sources_dollaryear = (
@@ -1612,7 +1641,7 @@ def main(reeds_path, inputs_case):
     # (gswitches.csv is first written at runbatch.py)
     scalar_csv_to_txt(os.path.join(inputs_case,'gswitches.csv'))
     
-    source_deflator_map = get_source_deflator_map(reeds_path)
+    source_deflator_map = get_source_deflator_map(reeds_path,sw)
 
     # Copy non-region files
     write_non_region_files(non_region_files, sw, inputs_case, regions_and_agglevel, source_deflator_map)
