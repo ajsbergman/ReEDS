@@ -203,7 +203,7 @@ out.index = pd.MultiIndex.from_arrays(
     names=['year', 'datetime'],
 )
 out = out.sort_index()
-reeds.io.write_profile_to_h5(out, 'gasprice_price_region_day.h5', inputs_case)
+reeds.io.write_profile_to_h5(out, 'natgas_price_diffs.h5', inputs_case)
 
 
 #%%#################################### 

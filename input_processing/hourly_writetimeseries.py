@@ -225,6 +225,70 @@ def get_yearly_demand(sw, hmap_myr, hmap_allyrs, inputs_case, periodtype='rep'):
 
     return load_in, load_out
 
+
+def get_natgas_price_diffs(sw, hmap_myr, hmap_allyrs, inputs_case, periodtype='rep'):
+        """
+        This function takes the inputs_case/natgas_price_diffs.h5 and turns it into a
+        GAMS-compatible file. The h5 contains daily multiplicative natural gas price
+        factors indexed by (year [model year t], datetime) with model region columns. Repeat daily value across
+        hours
+        """
+        ### Load daily natgas price diffs from fuelcostprep.py
+        ngdiffs = reeds.io.read_file(
+            os.path.join(inputs_case, 'natgas_price_diffs.h5'), parse_timestamps=True)
+
+        ### Extract model year (t) and (month, day) from the MultiIndex
+        ngdiffs = ngdiffs.reset_index()
+        ngdiffs_dt = pd.to_datetime(ngdiffs['datetime'])
+        ngdiffs['month'] = ngdiffs_dt.dt.month
+        ngdiffs['day'] = ngdiffs_dt.dt.day
+        ngdiffs = ngdiffs.rename(columns={'year': 't'}).drop(columns=['datetime'])
+        regions = [c for c in ngdiffs.columns if c not in ['t', 'month', 'day']]
+
+        ### Get (month, day) for each hour in hmap_allyrs using local time
+        hmap_ts = pd.to_datetime(hmap_allyrs['timestamp'])
+        if hmap_ts.dt.tz is not None:
+            hmap_local = hmap_ts.dt.tz_convert('Etc/GMT+6')
+        else:
+            hmap_local = hmap_ts
+
+        h_md = pd.DataFrame({
+            'actual_h': hmap_allyrs['actual_h'].values,
+            'month': hmap_local.dt.month.values,
+            'day': hmap_local.dt.day.values,
+        }).drop_duplicates(subset=['actual_h'])
+
+        ### Broadcast daily values to hourly by merging on (month, day),
+        ### which creates one row per (actual_h, t) combination
+        ngdiffs_hourly = h_md.merge(ngdiffs, on=['month', 'day'], how='left')
+        ngdiffs_hourly = ngdiffs_hourly.drop(columns=['month', 'day']).rename(
+            columns={'actual_h': 'h'})
+
+        ### Filter to modeled periods
+        if (sw.GSw_HourlyType == 'year') and (periodtype == 'rep'):
+            keep_h = hmap_allyrs.loc[
+                hmap_allyrs.year.isin(sw['GSw_HourlyWeatherYears']), 'actual_h'
+            ].unique()
+            ngdiffs_hourly = ngdiffs_hourly.loc[
+                ngdiffs_hourly.h.isin(keep_h)].copy()
+        else:
+            ngdiffs_hourly = ngdiffs_hourly.loc[
+                ngdiffs_hourly.h.isin(hmap_myr.h.unique())].copy()
+
+        ### Reshape for ReEDS: stack regions to get (r, h, t) index
+        ngdiffs_out = ngdiffs_hourly.set_index(['h', 't'])[regions]
+        ngdiffs_out.columns.name = 'r'
+        ngdiffs_out = (
+            ngdiffs_out.stack('r')
+            .rename('multiplier')
+            .reorder_levels(['r', 'h', 't'])
+            .sort_index()
+        )
+        
+
+        return ngdiffs_out
+
+    
 def format_climate_inputs(filename, inputs_case, szn_month_weights):
         """
         This function converts climate data from monthly to repperiod resolution using the
