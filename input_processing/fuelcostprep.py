@@ -163,13 +163,13 @@ def get_degree_days(case, base_temp_c=18.3333333333, hourly_formula=False):
         dtype=int,
     )
 
-    # annual gasreg totals
+    # annual gasreg totals (read from inputs_case to pick up forecasted values)
     ddh = pd.read_csv(
-        os.path.join(reeds_path, 'inputs', 'fuelprices', 'gasreg_hdd.csv'),
+        os.path.join(inputs_case, 'gasreg_hdd.csv'),
         index_col=0,
     )
     ddc = pd.read_csv(
-        os.path.join(reeds_path, 'inputs', 'fuelprices', 'gasreg_cdd.csv'),
+        os.path.join(inputs_case, 'gasreg_cdd.csv'),
         index_col=0,
     )
     ddh.index = ddh.index.astype(int)
