@@ -18,6 +18,7 @@ import os
 import sys
 import argparse
 import datetime
+import h5py
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import reeds
 # Time the operation of this script
@@ -142,11 +143,234 @@ fuel = fuel.sort_values(['t','r'])
 #%%#################################### 
 ### Natural Gas Price Diffs ###
 
+def get_degree_days(case, base_temp_c=18.3333333333, hourly_formula=False):
+    """
+    Return daily HDD/CDD by gasreg for the modeled years in this case,
+    using temperature shapes from GSw_HourlyWeatherYears and annual totals
+    from gasreg_hdd.csv / gasreg_cdd.csv.
+    """
+    case = reeds.io.standardize_case(case)
+    inputs_case = os.path.join(case, 'inputs_case')
+    sw = reeds.io.get_switches(case)
+
+    # modeled years for outputs
+    model_years = reeds.io.get_years(case)
+    model_years = np.array([y for y in model_years if y <= int(sw.endyear)], dtype=int)
+
+    # weather years for temperature shapes
+    weather_years = np.array(
+        [int(y) for y in str(sw.GSw_HourlyWeatherYears).split('_') if str(y).strip()],
+        dtype=int,
+    )
+
+    # annual gasreg totals
+    ddh = pd.read_csv(
+        os.path.join(reeds_path, 'inputs', 'fuelprices', 'gasreg_hdd.csv'),
+        index_col=0,
+    )
+    ddc = pd.read_csv(
+        os.path.join(reeds_path, 'inputs', 'fuelprices', 'gasreg_cdd.csv'),
+        index_col=0,
+    )
+    ddh.index = ddh.index.astype(int)
+    ddc.index = ddc.index.astype(int)
+
+    ddh = ddh.loc[ddh.index.intersection(model_years)].copy()
+    ddc = ddc.loc[ddc.index.intersection(model_years)].copy()
+
+    # state -> gasreg mapping
+    state_groups = pd.read_csv(
+        os.path.join(reeds_path, 'inputs', 'zones', 'state_groups.csv')
+    )
+    st2gasreg = state_groups.set_index('st')['gasreg']
+
+    # valid states in this case
+    val_st = (
+        pd.read_csv(os.path.join(inputs_case, 'val_st.csv'), header=None)
+        .squeeze(1)
+        .astype(str)
+        .values
+    )
+    valid_states = [s for s in val_st if s in st2gasreg.index]
+
+    # state population
+    pop = pd.read_csv(
+        os.path.join(reeds_path, 'inputs', 'disaggregation', 'county_population.csv'),
+        dtype={'FIPS': str},
+    ).rename(columns={'value': 'population'})
+
+    county_state = pd.read_csv(
+        os.path.join(reeds_path, 'inputs', 'zones', 'county_state.csv'),
+        dtype={'FIPS': str, 'state': str},
+    )
+    county_state['FIPS'] = 'p' + county_state['FIPS'].str.zfill(5)
+
+    pop_state = (
+        pop.merge(county_state[['FIPS', 'state']], on='FIPS', how='left')
+        .rename(columns={'state': 'st'})
+        .dropna(subset=['st'])
+        .groupby('st', as_index=True)['population']
+        .sum()
+        .rename_axis('st')
+        .rename('population')
+        .to_frame()
+    )
+
+    pop_state = pop_state.loc[pop_state.index.intersection(valid_states)].copy()
+    pop_state['gasreg'] = pop_state.index.map(st2gasreg)
+
+    active_gasregs = sorted(pop_state['gasreg'].dropna().unique())
+
+    pop_state['weight'] = (
+        pop_state['population']
+        / pop_state.groupby('gasreg')['population'].transform('sum')
+    )
+
+    # read temperature file using one extra year on each side
+    h5path = os.path.join(
+        reeds.io.reeds_path, 'inputs', 'profiles_temperature', 'temperature_state.h5'
+    )
+
+    read_years = range(weather_years.min() - 1, weather_years.max() + 2)
+
+    temp_dict = {}
+    with h5py.File(h5path, 'r') as f:
+        cols = pd.Series(f['columns']).map(lambda x: x.decode()).tolist()
+
+        for year in read_years:
+            if str(year) not in f:
+                continue
+
+            timeindex = pd.to_datetime(
+                pd.Series(f[f'index_{year}'][:]).str.decode('utf-8')
+            )
+
+            temp_dict[year] = pd.DataFrame(
+                index=timeindex,
+                columns=cols,
+                data=f[str(year)][:]
+            )
+
+    temp = (
+        pd.concat(temp_dict, names=['weather_year', 'timestamp'])
+        .rename_axis(columns='st')
+        .round(0)
+        .astype(float)
+        .reset_index('weather_year', drop=True)
+        .tz_localize('UTC')
+        .tz_convert('Etc/GMT+6')
+    )
+
+    # subset to selected weather years after timezone conversion
+    temp = temp.loc[temp.index.year.isin(weather_years)].copy()
+
+
+    # keep valid states only
+    temp = temp[[c for c in temp.columns if c in valid_states]].copy()
+
+    if hourly_formula:
+        hdd = (base_temp_c - temp).clip(lower=0)
+        cdd = (temp - base_temp_c).clip(lower=0)
+
+        hdd_daily_st = hdd.resample('D').sum()
+        cdd_daily_st = cdd.resample('D').sum()
+    else:
+        temp_daily_st = temp.resample('D').agg(['min', 'max'])
+
+        tavg_daily_st = (
+            temp_daily_st.xs('min', axis=1, level=1)
+            + temp_daily_st.xs('max', axis=1, level=1)
+        ) / 2
+
+        hdd_daily_st = (base_temp_c - tavg_daily_st).clip(lower=0)
+        cdd_daily_st = (tavg_daily_st - base_temp_c).clip(lower=0)
+
+    # weighted aggregation to gasreg
+    state_weights = pop_state['weight'].to_dict()
+    state_gasreg = pop_state['gasreg'].to_dict()
+
+    hdd_daily_reg = pd.concat(
+        {
+            st: hdd_daily_st[st] * state_weights[st]
+            for st in hdd_daily_st.columns
+            if st in state_weights
+        },
+        axis=1,
+    )
+    hdd_daily_reg.columns = [state_gasreg[st] for st in hdd_daily_reg.columns]
+    hdd_daily_reg = hdd_daily_reg.groupby(level=0, axis=1).sum()
+    hdd_daily_reg = hdd_daily_reg[[c for c in hdd_daily_reg.columns if c in active_gasregs]]
+
+    cdd_daily_reg = pd.concat(
+        {
+            st: cdd_daily_st[st] * state_weights[st]
+            for st in cdd_daily_st.columns
+            if st in state_weights
+        },
+        axis=1,
+    )
+    cdd_daily_reg.columns = [state_gasreg[st] for st in cdd_daily_reg.columns]
+    cdd_daily_reg = cdd_daily_reg.groupby(level=0, axis=1).sum()
+    cdd_daily_reg = cdd_daily_reg[[c for c in cdd_daily_reg.columns if c in active_gasregs]]
+
+    # normalize daily shapes within each weather year
+    hdd_shape = hdd_daily_reg.div(
+        hdd_daily_reg.groupby(hdd_daily_reg.index.year).transform('sum')
+    )
+    cdd_shape = cdd_daily_reg.div(
+        cdd_daily_reg.groupby(cdd_daily_reg.index.year).transform('sum')
+    )
+
+    hdd_shape['month'] = hdd_shape.index.month
+    hdd_shape['day'] = hdd_shape.index.day
+    cdd_shape['month'] = cdd_shape.index.month
+    cdd_shape['day'] = cdd_shape.index.day
+
+    hdd_md = hdd_shape.groupby(['month', 'day'])[active_gasregs].mean()
+    cdd_md = cdd_shape.groupby(['month', 'day'])[active_gasregs].mean()
+
+    # expand to model years and scale to annual gasreg totals
+    out = []
+
+    for t in model_years:
+        idx = pd.date_range(f'{t}-01-01', f'{t}-12-31', freq='D')
+
+        # only needed if model year is leap year, exclude dec 31st and keep Feb 29th
+        if len(idx) > 365:
+            idx = idx[~((idx.month == 12) & (idx.day == 31))]
+        # 365-day calendar excludes Feb 29
+        else:
+            #Make sure to exclude Feb 29 even if we don't expect it to be present
+            idx = idx[~((idx.month == 2) & (idx.day == 29))]
+
+
+        hdd_t = pd.DataFrame(index=idx, columns=active_gasregs, dtype=float)
+        cdd_t = pd.DataFrame(index=idx, columns=active_gasregs, dtype=float)
+
+        for dt in idx:
+            key = (dt.month, dt.day)
+            hdd_t.loc[dt] = hdd_md.loc[key].values
+            cdd_t.loc[dt] = cdd_md.loc[key].values
+
+        hdd_t = hdd_t.mul(ddh.loc[t, active_gasregs], axis=1)
+        cdd_t = cdd_t.mul(ddc.loc[t, active_gasregs], axis=1)
+
+        hdd_t['t'] = t
+        cdd_t['t'] = t
+        hdd_t['ddtype'] = 'hdd'
+        cdd_t['ddtype'] = 'cdd'
+
+        out.append(hdd_t.reset_index().rename(columns={'index': 'date'}))
+        out.append(cdd_t.reset_index().rename(columns={'index': 'date'}))
+
+    daily_dds = pd.concat(out, ignore_index=True)
+    return daily_dds
+
 # Regression parameters for calculating natural gas price differences across regions based on degree days
 params = pd.read_csv(os.path.join(reeds_path,'inputs', 'fuelprices', 'temperature_price_regression_parameters.csv'), index_col='param')
 
 # Daily degree days by price region
-daily_dd = reeds.io.get_degree_days(inputs_case, hourly_formula=False)
+daily_dd = get_degree_days(inputs_case, hourly_formula=False)
 
 #apply the regional regression params to get daily multiplicative price differences from the annual price 
 daily_dd['date'] = pd.to_datetime(daily_dd['date'])
