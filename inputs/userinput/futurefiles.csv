@@ -268,8 +268,8 @@ national_gen_frac_allScen.csv,.csv,0,None,Unnamed: 0,None,1,0,linear_5,0,1,proje
 national_rps_frac_allScen.csv,.csv,0,None,t,None,1,0,constant,0,1,done,constant
 net_firm_transfers_nerc.csv,.csv,1,None,9999,None,9999,0,constant,None,None,new,
 net_gen_existing_hydro.csv,.csv,1,None,9999,None,9999,0,constant,None,None,done,constant
-gasreg_cdd.csv,.csv,1,None,t,None,1,0,linear_5,None,None,new,
-gasreg_cdd.csv,.csv,1,None,t,None,1,0,linear_5,None,None,new,
+gasreg_cdd.csv,.csv,0,None,t,None,1,0,linear_5,None,None,new,linear_5
+gasreg_hdd.csv,.csv,0,None,t,None,1,0,linear_5,None,None,new,linear_5
 ng_crf_penalty_st.csv,.csv,1,None,9999,None,9999,0,constant,None,None,new,
 ng_crf_penalty.csv,.csv,0,None,*t,None,0,0,constant,None,None,done,constant
 ng_demand_elec.csv,.csv,0,None,wide,Unnamed: 0,1,0,constant,0,None,done,linear_5
