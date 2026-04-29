@@ -8,6 +8,13 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     const body = await res.text();
     throw new Error(`API ${res.status}: ${body}`);
   }
+  // Guard: if we got HTML back, the Vite proxy isn't forwarding to the backend
+  const ct = res.headers.get("content-type") || "";
+  if (ct.includes("text/html")) {
+    throw new Error(
+      "Proxy error: received HTML instead of JSON. Restart the Vite dev server (Ctrl+C then npm run dev).",
+    );
+  }
   return res.json() as Promise<T>;
 }
 

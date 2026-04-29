@@ -54,10 +54,17 @@ echo.
 :: Store the working directory
 set "COPILOT_DIR=%~dp0"
 set "BACKEND_PORT=8001"
+set "FRONTEND_PORT=5173"
 
 :: Kill any process already using the backend port
 echo   Cleaning up port %BACKEND_PORT%...
 for /f "tokens=5" %%p in ('netstat -ano ^| findstr "LISTENING" ^| findstr ":%BACKEND_PORT% "') do (
+    taskkill /F /T /PID %%p >nul 2>&1
+)
+
+:: Kill any process already using the frontend port
+echo   Cleaning up port %FRONTEND_PORT%...
+for /f "tokens=5" %%p in ('netstat -ano ^| findstr "LISTENING" ^| findstr ":%FRONTEND_PORT% "') do (
     taskkill /F /T /PID %%p >nul 2>&1
 )
 timeout /t 1 /nobreak >nul
