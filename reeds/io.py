@@ -1909,4 +1909,3 @@ def get_folder_size(casedir):
     # convert to GB
     total_size /= 1e9
     return total_size
-
