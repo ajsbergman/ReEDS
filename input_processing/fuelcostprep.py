@@ -332,7 +332,7 @@ def get_degree_days(case, base_temp_c=18.3333333333, hourly_formula=False):
     # expand to model years and scale to annual gasreg totals
     out = []
 
-    for t in model_years:
+    for t in ddh.index:
         idx = pd.date_range(f'{t}-01-01', f'{t}-12-31', freq='D')
 
         # only needed if model year is leap year, exclude dec 31st and keep Feb 29th
