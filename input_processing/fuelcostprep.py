@@ -175,22 +175,6 @@ def get_degree_days(case, base_temp_c=18.3333333333, hourly_formula=False):
     ddh.index = ddh.index.astype(int)
     ddc.index = ddc.index.astype(int)
 
-    # Extrapolate to cover model years beyond the source data using linear_5 fit
-    # (mirrors forecast.py behavior since fuelcostprep runs before forecast.py, no way to have forecasted values available yet)
-    for dd in [ddh, ddc]:
-        lastdatayear = dd.index.max()
-        addyears = [y for y in model_years if y > lastdatayear]
-        if addyears:
-            fitlength = 5
-            fityears = [y for y in range(lastdatayear - fitlength, lastdatayear + 1)
-                        if y in dd.index]
-            x = np.vstack([fityears, np.ones(len(fityears))]).T
-            y = dd.loc[fityears].values
-            coefs, _, _, _ = np.linalg.lstsq(x, y, rcond=None)
-            for addyear in addyears:
-                dd.loc[addyear] = coefs[0] * addyear + coefs[1]
-            dd.sort_index(inplace=True)
-
     ddh = ddh.loc[ddh.index.intersection(model_years)].copy()
     ddc = ddc.loc[ddc.index.intersection(model_years)].copy()
 

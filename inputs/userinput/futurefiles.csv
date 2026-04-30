@@ -264,6 +264,7 @@ month2quarter.csv,.csv,1,None,9999,None,9999,0,constant,None,None,new,
 mttr.csv,.csv,1,None,9999,None,9999,0,constant,None,None,new,
 nat_gen_tech_frac.csv,.csv,1,None,9999,None,9999,0,constant,None,None,done,constant
 natgas_price_cendiv.csv,.csv,0,None,year,None,1,0,constant,None,None,new,
+natgas_price_diffs.h5,.h5,0,None,year,datetime,1,keepindex,linear_5,None,None,done,linear_5
 national_gen_frac_allScen.csv,.csv,0,None,Unnamed: 0,None,1,0,linear_5,0,1,projection?,constant
 national_rps_frac_allScen.csv,.csv,0,None,t,None,1,0,constant,0,1,done,constant
 net_firm_transfers_nerc.csv,.csv,1,None,9999,None,9999,0,constant,None,None,new,
