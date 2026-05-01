@@ -1,9 +1,9 @@
-﻿case,Description,Default Value,Reference,HOG,LOG,AdvREST,ConREST,low_demand_dc,high_demand_dc,No_VRE,No_VRE_HOG,No_VRE_LOG,Worst,Best
-ignore,"0=run this case, 1=ignore this case",0,,,,,,,,,,,,
+﻿case,Description,Default Value,Reference,HOG,LOG,AdvREST,ConREST,low_demand_dc,high_demand_dc,No_VRE_noRPS,No_VRE_HOG_noRPS,No_VRE_LOG_noRPS,Worst,Best
+ignore,"0=run this case, 1=ignore this case",1,,,,,,,,,,,,
 GSw_gopt,Select opt file to be used,1,,,,,,,,,,,,
 yearset, years to run,2010_2015_2020..2050..3,,,,,,,,,,,,
-GSw_RegionResolution,Specify the spatial resolution of modeled regions;  use default with ba hierarchy,aggreg,,,,,,,,,,,,
-GSw_HierarchyFile,Indicate the version of the hierarchy file to use (default=hierarchy.csv with 132 zones),agg54,,,,,,,,,,,,
+GSw_ZoneSet,Set of geospatial zones to use as balancing areas (described in inputs/zones/README.md),z132,,,,,,,,,,,,
+endyear,Last year to be modeled,2041,,,,,,,,,,,,
 ngscen,Natural gas price scenario,AEO_2025_reference,,AEO_2025_HOG,AEO_2025_LOG,,,,,,AEO_2025_HOG,AEO_2025_LOG,AEO_2023_LOG,AEO_2023_HOG
 distpvscen,Setting for distpv scenario,stscen2023_mid_case,,,,stscen2023_lowre,stscen2023_highre,,,stscen2023_mid_case_no_new_distpv,stscen2023_mid_case_no_new_distpv,stscen2023_mid_case_no_new_distpv,stscen2023_lowre,stscen2023_highre
 plantchar_battery,Battery cost and performance characteristics,battery_ATB_2024_moderate,,,,battery_ATB_2024_advanced,battery_ATB_2024_conservative,,,,,,battery_ATB_2024_advanced,battery_ATB_2024_conservative
@@ -37,7 +37,7 @@ incentives_suffix,File suffix for incentive definition,obbba,,,,,,,,,,,,
 GSw_NewValCapShrink,Switch to shrink valcap and related conditioning sets post-solve,1,,,,,,,,,,,,
 GSw_OfsWindForceScen,Scenario for state offshore mandates. Select {suffix} from state_policies/offshore_req_{suffix}.csv. Only active if GSw_StateRPS is on,default,,,,,,,,none,none,none,,
 GSw_StateRPS,Turn on/off state RPS requirements (CES would still be on),1,,,,,,,,0,0,0,,
-GSw_StateRPS_CES,Turn on/off state RPS and CES requirements,1,,,,,,,,1,1,1,,
+GSw_StateRPS_CES,Turn on/off state RPS and CES requirements,1,,,,,,,,0,0,0,,
 GSw_PRM_StressIterateMax,Max number of times to iterate on a given solve year to achieve GSw_PRM_StressThreshold when using stress periods (0 means don't iterate; 1 means 1 extra ReEDS run; etc),0,,,,,,,,2,2,2,,
 GSw_YearsUntilFile,Select which years_until_endogenous.csv file to use,default,,,,,,,,no_vre,no_vre,no_vre,,
 GSw_mat_restrict,Switch to enable material production restriction by default including only USA,0,,,,,,,,,,,,

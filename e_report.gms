@@ -26,6 +26,7 @@ sys_costs /
   inv_transmission_interzone_ac_investment
   inv_transmission_interzone_dc_investment
   inv_transmission_intrazone_investment
+  materials_adjustment
   op_acp_compliance_costs
   op_co2_incentive_negative
   op_co2_network_fom_pipe
@@ -73,6 +74,7 @@ sys_costs_inv(sys_costs) /
   inv_transmission_interzone_ac_investment
   inv_transmission_interzone_dc_investment
   inv_transmission_intrazone_investment
+  materials_adjustment
 /,
 
 sys_costs_op(sys_costs) /
@@ -1472,6 +1474,16 @@ systemcost_techba('op_h2_ptc_payments_negative','electrolyzer',r,t)$[tmodel_new(
 systemcost_techba('op_startcost',i,r,t)$[tmodel_new(t)$Sw_StartCost$startcost(i)] =
     sum{(h,hh)$[numhours_nexth(h,hh)$valgen_irt(i,r,t)],
         startcost(i) * numhours_nexth(h,hh) * RAMPUP.l(i,r,h,hh,t) }
+;
+
+* --- materials costs --- 
+systemcost_techba("materials_adjustment",i,r,t)$[tmodel_new(t)$sum{mat,i_theta(i,mat,t)}] =
+* subtract off share of capital costs attributable to materials to avoid double counting 
+              -  sum{(v,mat)$[valinv(i,v,r,t)$i_theta(i,mat,t)], i_theta(i,mat,t) * 
+                        cost_cap_fin_mult_out(i,r,t) * cost_cap(i,t) * INV.l(i,v,r,t)
+                      }
+               + sum{(v,mat)$[valinv(i,v,r,t)$i_int(i,mat)], 
+                     cost_cap_fin_mult_out(i,r,t) * matprice_multiplier(mat) * i_int(i,mat) * mat_price(mat) * INV.l(i,v,r,t)} 
 ;
 
 
