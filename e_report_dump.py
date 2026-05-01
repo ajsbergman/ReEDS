@@ -7,12 +7,14 @@ import datetime
 import os
 import traceback
 import sys
+from pathlib import Path
 
 # Third-party packages
 import pandas as pd
 import gdxpds
 
 import reeds
+import e_report_calcs
 
 
 #%% Generic functions
@@ -271,9 +273,10 @@ if __name__ == '__main__' and not hasattr(sys, 'ps1'):
     # %%### Write results for each gdx file
     ### outputs gdx
     print("Loading outputs gdx")
-    dict_out = gdxpds.to_dataframes(
-        os.path.join(outputs_path, f"rep_{os.path.basename(case)}.gdx")
-    )
+    dict_out = {
+        **gdxpds.to_dataframes(Path(outputs_path, f"rep_{os.path.basename(case)}.gdx")),
+        **e_report_calcs.main(case),
+    }
     print("Finished loading outputs gdx")
 
     write_dfdict(

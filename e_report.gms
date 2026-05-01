@@ -122,18 +122,10 @@ $include e_report_params.gms
 h(h)$[not h_rep(h)] = no ;
 szn(szn)$[not szn_rep(szn)] = no ;
 
-*=================================================
-* -- CAPACITY ABOVE INTERCONNECTION QUEUE LIMIT --
-*=================================================
-
-cap_above_limit(tg,r,t)$tmodel_new(t) = CAP_ABOVE_LIM.l(tg,r,t) ;
-
 *=====================
 * -- CO2 Reporting --
 *=====================
 
-CO2_CAPTURED_out(r,h,t)$tmodel_new(t) = CO2_CAPTURED.l(r,h,t) ;
-CO2_CAPTURED_out_ann(r,t)$tmodel_new(t) = sum(h,hours(h) * CO2_CAPTURED.l(r,h,t) );
 CO2_STORED_out(r,cs,h,t)$[tmodel_new(t)$csfeas(cs)] = CO2_STORED.l(r,cs,h,t) ;
 CO2_STORED_out_ann(r,cs,t)$[tmodel_new(t)$csfeas(cs)] = sum(h,hours(h) * CO2_STORED.l(r,cs,h,t) );
 CO2_TRANSPORT_INV_out(r,rr,t)$tmodel_new(t) = CO2_TRANSPORT_INV.l(r,rr,t) ;
@@ -2083,6 +2075,10 @@ $endif.powerfrac
 *========================================
 * Dump results
 *========================================
+
+execute_unload "outputs%ds%results.gdx"
+$include e_report_data.csv
+;
 
 * The parameter list in the following file is read from e_report_params.csv
 * and parsed in copy_files.py
