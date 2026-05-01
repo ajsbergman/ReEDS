@@ -18,65 +18,64 @@ workdir = os.path.dirname(os.path.abspath(__file__))
 # Import Data
 #-------------------------------------------------------------------
 
-df = pd.read_csv(os.path.join(workdir, 'cmm_global_mat_prod_raw.csv'))
+prod_df = pd.read_csv(os.path.join(workdir, 'cmm_global_mat_prod_raw.csv'))
 price_df = pd.read_csv(os.path.join(workdir, 'cmm_global_mat_price_raw.csv'))
 deflator_df = pd.read_csv(os.path.join(workdir, 'inputs', 'financials', 'deflator.csv'))
+byproduct_df = pd.read_csv(os.path.join(workdir, 'cmm_byproduct_raw.csv'))
 
-
-# PRODUCTION DATA
+### PRODUCTION AND RESERVE DATA ####
 # keep relevant columns
-
-df = df.iloc[:, 0:5]
+prod_df = prod_df.iloc[:, 0:5]
 new_cols = ['* mat','mat_ctry','value','type','sc_pt']
-df.columns = new_cols
+prod_df.columns = new_cols
 
 # trim whitespace and clean up values
-df['* mat'] = df['* mat'].str.strip()
-df['mat_ctry'] = df['mat_ctry'].str.strip()
-df['type'] = df['type'].str.strip()
-df['sc_pt'] = df['sc_pt'].str.strip()
-
-# filter to production data for now, and keep only relevant columns
-df = df[df['type'] == 'Production']
-new_cols = ['* mat','mat_ctry','production','type','sc_pt']
-df.columns = new_cols
+prod_df['* mat'] = prod_df['* mat'].str.strip()
+prod_df['mat_ctry'] = prod_df['mat_ctry'].str.strip()
+prod_df['type'] = prod_df['type'].str.strip()
+prod_df['sc_pt'] = prod_df['sc_pt'].str.strip()
 
 # clean up value column
-df['production'].unique() 
-df['production'] = pd.to_numeric(df['production'], errors='coerce').fillna(0)
+prod_df['value'] = pd.to_numeric(prod_df['value'], errors='coerce').fillna(0)
 
 # clean up country names
-df['mat_ctry'].unique()
-df['mat_ctry'] = df['mat_ctry'].replace('Other countries','Other') 
-df['mat_ctry'] = df['mat_ctry'].replace('United States','USA') 
-df['mat_ctry'] = df['mat_ctry'].replace('Republic of Korea','South_Korea') 
-df['mat_ctry'] = df['mat_ctry'].replace('Côte d’Ivoire','Cote_d_Ivoire') 
-df['mat_ctry'] = df['mat_ctry'].replace('Congo(Kinshasa)','Congo') 
-df['mat_ctry'] = df['mat_ctry'].replace('United Arab Emirates','UAE') 
-df['mat_ctry'] = df['mat_ctry'].replace('China and Burma','China') 
-df['mat_ctry'] = df['mat_ctry'].str.replace(r'\s+', '_', regex=True)
+prod_df['mat_ctry'].unique()
+prod_df['mat_ctry'] = prod_df['mat_ctry'].replace('Other countries','Other') 
+prod_df['mat_ctry'] = prod_df['mat_ctry'].replace('United States','USA') 
+prod_df['mat_ctry'] = prod_df['mat_ctry'].replace('Republic of Korea','South_Korea') 
+prod_df['mat_ctry'] = prod_df['mat_ctry'].replace('Côte d’Ivoire','Cote_d_Ivoire') 
+prod_df['mat_ctry'] = prod_df['mat_ctry'].replace('Congo(Kinshasa)','Congo') 
+prod_df['mat_ctry'] = prod_df['mat_ctry'].replace('United Arab Emirates','UAE') 
+prod_df['mat_ctry'] = prod_df['mat_ctry'].replace('China and Burma','China') 
+prod_df['mat_ctry'] = prod_df['mat_ctry'].str.replace(r'\s+', '_', regex=True)
 
 # ensure not double counting production at multiple points in supply chain  
-df['* mat'].unique()
+prod_df['* mat'].unique()
 # Magnesium compound production is magnesite at mine site. 
-df['* mat'] = df['* mat'].replace('Magnesium Compounds','Magnesium')
-df = df[df['* mat'] != 'Magnesium Metal']
+prod_df['* mat'] = prod_df['* mat'].replace('Magnesium Compounds','Magnesium')
+prod_df = prod_df[prod_df['* mat'] != 'Magnesium Metal']
 # filter out rare earths
-df = df[df['* mat'] != 'Rare Earths']
+prod_df = prod_df[prod_df['* mat'] != 'Rare Earths']
 # Titanium concentrates are ilmenite and Rutile at mine site. Titanium dioxide is at refinery stage. 
-df['* mat'] = df['* mat'].replace('Titanium Mineral Concentrates','Titanium')
-df = df[df['* mat'] != 'Titanium and Titanium Dioxide']
+prod_df['* mat'] = prod_df['* mat'].replace('Titanium Mineral Concentrates','Titanium')
+prod_df = prod_df[prod_df['* mat'] != 'Titanium and Titanium Dioxide']
 # Copper and Hafnium keep only mine production
-df = df[~((df['* mat'] == 'Copper') & (df['sc_pt'] == 'Refinery'))]
-df = df[~((df['* mat'] == 'Hafnium') & (df['sc_pt'] == 'Refinery'))]
+prod_df = prod_df[~((prod_df['* mat'] == 'Copper') & (prod_df['sc_pt'] == 'Refinery'))]
+prod_df = prod_df[~((prod_df['* mat'] == 'Hafnium') & (prod_df['sc_pt'] == 'Refinery'))]
 
-# removing duplicate production values
-dup_cols = ['* mat','mat_ctry']
+# split data into production and reserve data
+reserve_df = prod_df[prod_df['type'] == 'Reserves']
+prod_df = prod_df[prod_df['type'] == 'Production']
+
+# double check reserve data for duplicates (none); filter to US and select columns
+reserve_duplicate = reserve_df.duplicated(subset=['* mat','mat_ctry'], keep=False)
+reserve_df = reserve_df[reserve_df['mat_ctry'] == 'USA']
+reserve_df = reserve_df[['* mat','value']]
 
 # identify duplicates and separate from non-duplicates
-is_duplicate = df.duplicated(subset=dup_cols, keep=False)
-df_no_duplicates = df[~is_duplicate]
-df_duplicates = df[is_duplicate]
+prod_duplicate = prod_df.duplicated(subset=['* mat','mat_ctry'], keep=False)
+prod_df_no_duplicates = prod_df[~prod_duplicate]
+prod_df_duplicates = prod_df[prod_duplicate]
 
 # create function for processing duplicate data
 def process_duplicates(group):
@@ -86,9 +85,9 @@ def process_duplicates(group):
     # Rule 1: If the material is 'Silicon', sum the values
     # because the two types of silicon are separate products
     if material_name == 'Silicon':
-        total_production = round(group['production'].sum(), 2)
+        total_production = round(group['value'].sum(), 2)
         result_row = group.iloc[[0]].copy()
-        result_row['production'] = total_production
+        result_row['value'] = total_production
         result_row['sc_pt'] = 'Aggregated Silicon'
         return result_row
 
@@ -98,18 +97,21 @@ def process_duplicates(group):
         return None # Or handle as needed if no 'Mine' row exists
 
 # run function and combine non-duplicate and processed duplicate data
-processed_duplicates = df_duplicates.groupby(dup_cols).apply(process_duplicates)
+processed_duplicates = prod_df_duplicates.groupby(['* mat','mat_ctry']).apply(process_duplicates)
 processed_duplicates = processed_duplicates.reset_index(drop=True)
-df = pd.concat([df_no_duplicates, processed_duplicates], ignore_index=True)
+prod_df = pd.concat([prod_df_no_duplicates, processed_duplicates], ignore_index=True)
 # double check no more duplicates
-is_duplicate = df.duplicated(subset=dup_cols, keep=False)
+prod_duplicate = prod_df.duplicated(subset=['* mat','mat_ctry'], keep=False)
 # select only relevant columns for model
-df = df.iloc[:, 0:3]
+prod_df = prod_df[['* mat','mat_ctry','value']]
 
-df.to_csv(os.path.join(workdir, 'cmm_global_mat_prod.csv'), index=False)
+prod_df.to_csv(os.path.join(workdir, 'cmm_global_mat_prod.csv'), index=False)
+reserve_df.to_csv(os.path.join(workdir, 'cmm_us_reserves.csv'), index=False)
 
+
+### LIST OF PRODUCING COUNTRIES AND ALLIES ###
 # make set of countries for which we have production data
-countries_array = df['mat_ctry'].unique()
+countries_array = prod_df['mat_ctry'].unique()
 countries = pd.DataFrame(countries_array, columns=['* mat_ctry'])
 caption = "* set of countries for which we have materials production data"
 caption_df = pd.DataFrame([caption], columns=['* mat_ctry'])
@@ -118,10 +120,18 @@ countries = pd.concat([caption_df, countries], ignore_index=True)
 countries.to_csv(os.path.join(workdir, 'cmm_countries.csv'), index=False)
 
 
-# deprecated - remove once confirmed not needed for analysis
 # make set of countries for analysis domestic + allied analysis 
 # list of free trade countries from here: https://ustr.gov/trade-agreements/free-trade-agreements
-free_trade = np.array(['Australia','Bahrain','Canada','Chile','Colombia','Costa_Rica','Dominican_Republic','El_Salvador','Guatemala','Honduras','Israel','Japan','Jordan','South_Korea','Mexico','Morocco','Nicaragua','Oman','Panama','Peru','Singapore'])
+free_trade = np.array(['Australia','Bahrain','Canada','Chile','Colombia','Costa_Rica','Dominican_Republic','El_Salvador',
+                        'Guatemala','Honduras','Israel','Japan','Jordan','South_Korea','Mexico','Morocco','Nicaragua','Oman',
+                        'Panama','Peru','Singapore'])
+ptaap_rta = np.array(['Argentina','Bangladesh','Cambodia','Ecuador','El_Salvador','Guatemala','Indonesia','Malaysia','Taiwan'])
+ptaap_framework = np.array(['Austria','Belgium','Bulgaria','Croatia','Cyprus','Czech Republic','Denmark','Estonia','Finland',
+                        'France','Germany','Greece','Hungary','India','Ireland','Italy','Japan','Latvia','Liechtenstein',
+                        'Lithuania','Luxembourg','Malta','Netherlands','North Macedonia','Poland','Portugal','Romania',
+                        'Slovakia','Slovenia','South Korea','Spain','Sweden','Switzerland','Thailand','United Kingdom','Vietnam'])
+
+agreements = np.unique(np.concatenate([free_trade, ptaap_rta, ptaap_framework]))
 allies = np.intersect1d(countries_array, free_trade)
 allies = pd.DataFrame(allies,columns=['* allies'])
 caption = "* allied countries with material inputs for power"
@@ -130,6 +140,19 @@ allies = pd.concat([caption_df, allies], ignore_index=True)
 
 allies.to_csv(os.path.join(workdir, 'cmm_allies.csv'), index=False)
 
+### BYPRODUCT DATA ###  
+byproduct_df['byproduct_mT'] = byproduct_df['Ktons_recovery'] * 1000
+power_materials =np.array(['Alumina', 'Aluminum', 'Bauxite', 'Boron', 'Cadmium', 'Chromium', 'Cobalt', 'Copper', 'Dysprosium', 
+                        'Gallium', 'Gold', 'Hafnium', 'Indium', 'Iron_ore', 'Lead', 'Lithium', 'Magnesium', 'Manganese', 
+                        'Molybdenum', 'Neodymium', 'Nickel', 'Niobium', 'Praseodymium', 'Phosphate_rock', 'Selenium', 'Silicon', 
+                        'Silver', 'Steel', 'Tantalum', 'Tellurium', 'Terbium', 'Tin', 'Titanium', 'Tungsten', 
+                        'Vanadium', 'Yttrium', 'Zinc', 'Zirconium'])
+
+byproduct_df = byproduct_df[byproduct_df["Element_name"].isin(power_materials)]
+byproduct_df = byproduct_df[['Element_name','byproduct_mT']]
+new_cols = ['* mat','value']
+byproduct_df.columns = new_cols
+byproduct_df.to_csv(os.path.join(workdir, 'cmm_us_byproduct.csv'), index=False)
 
 # PRICE DATA
 
