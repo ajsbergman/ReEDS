@@ -71,7 +71,7 @@ def main(rev_file):
                                         f"{tech}_supply_curve_raw.csv" ))
 
         # Select relevant columns and convert longitude to negative if needed
-        df['longitude'] = df['longitude'] * -1  # Convert longitude to negative if needed
+        df['longitude'] = df['longitude'].abs() * -1  # Convert longitude to negative if needed
         # resource temp to geothermal supply curves in ReEDS
         if tech == 'geohydro':
             geo_sc = df[['sc_point_gid','class','capacity','capital_adder_per_mw','mean_cf','mean_resource_temp']].copy()
