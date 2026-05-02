@@ -57,7 +57,7 @@ def main(rev_file):
             all_supply_curve_dfs.append(supply_curve_df)
         df = pd.concat(all_supply_curve_dfs, ignore_index=True)
 
-        df.to_csv(os.path.join(reeds_path,'inputs','capacity_exogenous',tech+'_classification.csv'),index=False)
+        df.to_csv(os.path.join(reeds_path,'inputs','capacity_exogenous','classification_'+tech+'.csv'),index=False)
 
     ## One-off modification to supplycurve_egs/geohydro-reference.csv to add resource temp column
     # Can remove the next time running hourlize
@@ -83,6 +83,9 @@ def main(rev_file):
             geo_sc = geo_sc.merge(df_sc, on='sc_point_gid', how='left', indicator=True)
             geo_sc = geo_sc.rename(columns={'class_x':'class','cf_x':'cf','capacity_x':'capacity','capital_adder_per_mw_x':'capital_adder_per_mw'})
             geo_sc = geo_sc[df_sc.columns.to_list()]
+        
+        # Round mean resource temp to 0 decimal (as int)
+        geo_sc['mean_resource_temp'] = round(geo_sc['mean_resource_temp'])
         geo_sc.to_csv(os.path.join(reeds_path,'inputs', 'supply_curve','supplycurve_'+tech+'-reference.csv'),index=False)
 
 #%% ===========================================================================
@@ -121,7 +124,8 @@ def prep_supply_curve(tech, access_type, subtech):
     summary_df = summary_df.sort_values(by=['class',f'min_{class_def_name}'])
     for c in summary_df['class'].unique().tolist():
         if c > min(summary_df['class'].unique().tolist()):
-            summary_df.loc[summary_df['class']==c,f'min_{class_def_name}'] = summary_df.loc[summary_df['class']==c-1][f'max_{class_def_name}'].iloc[0]
+            summary_df.loc[summary_df['class']==c,
+                           f'min_{class_def_name}'] = summary_df.loc[summary_df['class']==c-1][f'max_{class_def_name}'].iloc[0]
 
     # Round values to 4 decimal places
     summary_df[f'min_{class_def_name}'] = summary_df[f'min_{class_def_name}'].round(4)

@@ -45,6 +45,10 @@ cd_beta0.csv,.csv,1,None,9999,None,9999,0,constant,None,None,done,constant
 cendivweights.csv,.csv,1,None,9999,None,9999,0,constant,None,None,done,constant
 ces_fraction.csv,.csv,0,None,*t,st,0,0,linear_5,0,1,done,linear_5
 cf_vre.csv,.csv,1,None,9999,None,9999,0,constant,None,None,done,constant
+classification_geothermal.csv,.csv,1,None,9999,None,9999,0,constant,None,None,done,
+classification_upv.csv,.csv,1,None,9999,None,9999,0,constant,None,None,done,
+classification_wind-ofs.csv,.csv,1,None,9999,None,9999,0,constant,None,None,done,
+classification_wind-ons.csv,.csv,1,None,9999,None,9999,0,constant,None,None,done,
 climate_heuristics_finalyear.csv,.csv,1,None,9999,None,9999,0,constant,None,None,new,
 climate_heuristics_yearfrac.csv,.csv,0,None,*t,None,0,0,constant,None,None,new,
 climate_hydadjann.csv,.csv,0,None,wide,r,1,0,constant,0,None,done,constant
@@ -511,10 +515,6 @@ wat_access_cap_cost.csv,.csv,1,None,9999,None,9999,0,constant,None,None,done,con
 water_req_psh_10h_1_51.csv,.csv,1,None,9999,None,9999,0,constant,None,None,new,
 water_with_cons_rate.csv,.csv,1,None,9999,None,9999,0,constant,None,None,done,constant
 wind_retirements.csv,.csv,1,None,9999,None,9999,0,constant,None,None,done,constant
-wind-ofs_classification.csv,.csv,1,None,9999,None,9999,0,constant,None,None,done,
-wind-ons_classification.csv,.csv,1,None,9999,None,9999,0,constant,None,None,done,
-upv_classification.csv,.csv,1,None,9999,None,9999,0,constant,None,None,done,
-geothermal_classification.csv,.csv,1,None,9999,None,9999,0,constant,None,None,done,
 windcfmult.csv,.csv,0,None,t,None,1,0,constant,None,None,constant or saturate?,constant
 windows_2100.csv,.csv,1,None,9999,None,9999,0,constant,None,None,done,constant
 windows_default.csv,.csv,1,None,9999,None,9999,0,constant,None,None,done,constant

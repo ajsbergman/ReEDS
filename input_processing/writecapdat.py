@@ -59,10 +59,10 @@ def create_exog_rsc(inputs_case,gendb,TECH,COLNAMES,sw,startyear):
     # Mappings to resource class are based on the resource quality of the technology as it comes from reV
     # Reading resource classification inputs for technologies (UPV, wind-ons, wind-ofs, and geohydro)
     rsc_class = {}
-    rsc_class["upv"] = pd.read_csv(os.path.join(inputs_case,'upv_classification.csv')).query(f"access_case == '{sw.GSw_SitingUPV}'")
-    rsc_class["wind-ons"]  = pd.read_csv(os.path.join(inputs_case,'wind-ons_classification.csv')).query(f"access_case == '{sw.GSw_SitingWindOns}'")
-    rsc_class["wind-ofs"]  = pd.read_csv(os.path.join(inputs_case,'wind-ofs_classification.csv')).query(f"access_case == '{sw.GSw_SitingWindOfs}'")
-    rsc_class["geohydro_allkm"]  = pd.read_csv(os.path.join(inputs_case,'geothermal_classification.csv')).query(f"access_case == '{sw.GSw_SitingGeo}'")
+    rsc_class["upv"] = pd.read_csv(os.path.join(inputs_case,'classification_upv.csv')).query(f"access_case == '{sw.GSw_SitingUPV}'")
+    rsc_class["wind-ons"]  = pd.read_csv(os.path.join(inputs_case,'classification_wind-ons.csv')).query(f"access_case == '{sw.GSw_SitingWindOns}'")
+    rsc_class["wind-ofs"]  = pd.read_csv(os.path.join(inputs_case,'classification_wind-ofs.csv')).query(f"access_case == '{sw.GSw_SitingWindOfs}'")
+    rsc_class["geohydro_allkm"]  = pd.read_csv(os.path.join(inputs_case,'classification_geothermal.csv')).query(f"access_case == '{sw.GSw_SitingGeo}'")
     
     cap_exog = {}
     for tech in TECH['rsc_wsc']:
@@ -573,10 +573,10 @@ def main(reeds_path, inputs_case, agglevel, regions):
 
     print('Gathering RSC Prescribed Capacity...')
     rsc_class = {}
-    rsc_class["upv"] = pd.read_csv(os.path.join(inputs_case,'upv_classification.csv')).query(f"access_case == '{sw.GSw_SitingUPV}'")
-    rsc_class["wind-ons"]  = pd.read_csv(os.path.join(inputs_case, 'wind-ons_classification.csv')).query(f"access_case == '{sw.GSw_SitingWindOns}'")
-    rsc_class["wind-ofs"]  = pd.read_csv(os.path.join(inputs_case,'wind-ofs_classification.csv')).query(f"access_case == '{sw.GSw_SitingWindOfs}'")
-    rsc_class["geohydro_allkm"]  = pd.read_csv(os.path.join(inputs_case,'geothermal_classification.csv')).query(f"access_case == '{sw.GSw_SitingGeo}'")
+    rsc_class["upv"] = pd.read_csv(os.path.join(inputs_case,'classification_upv.csv')).query(f"access_case == '{sw.GSw_SitingUPV}'")
+    rsc_class["wind-ons"]  = pd.read_csv(os.path.join(inputs_case, 'classification_wind-ons.csv')).query(f"access_case == '{sw.GSw_SitingWindOns}'")
+    rsc_class["wind-ofs"]  = pd.read_csv(os.path.join(inputs_case,'classification_wind-ofs.csv')).query(f"access_case == '{sw.GSw_SitingWindOfs}'")
+    rsc_class["geohydro_allkm"]  = pd.read_csv(os.path.join(inputs_case,'classification_geothermal.csv')).query(f"access_case == '{sw.GSw_SitingGeo}'")
 
     cap_pres = {}
     for tech in TECH['rsc_wsc']:
