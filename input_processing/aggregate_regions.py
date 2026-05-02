@@ -1018,7 +1018,14 @@ if 'aggreg' in agglevel:
     gendb.loc[gendb['tech'].isin(["upv", "pvb_pv", "dupv", "csp-ns"]), 'summer_power_capacity_MW'] *= scalars['ilr_utility']
     startyear = int(sw.startyear)
     rsc_wsc = writecapdat.create_rsc_wsc(gendb, TECH=writecapdat.TECH,startyear=startyear)
-    exog_rsc = writecapdat.create_exog_rsc(inputs_case,gendb,TECH=writecapdat.TECH,COLNAMES=writecapdat.COLNAMES_define(sw.retscen, 'StartYear'),sw=sw,startyear=startyear)
+    exog_rsc = writecapdat.create_exog_rsc(
+        inputs_case,
+        gendb,
+        TECH=writecapdat.TECH,
+        COLNAMES=writecapdat.COLNAMES_define(sw.retscen, 'StartYear'),
+        sw=sw,
+        startyear=startyear,
+    )
     import writesupplycurves
     rscweight = writesupplycurves.main(
         reeds_path, inputs_case, AggregateRegions=0, rsc_wsc_dat=rsc_wsc, exog_rsc_dat=exog_rsc, write=False)
