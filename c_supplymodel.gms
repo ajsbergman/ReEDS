@@ -2137,7 +2137,7 @@ eq_CAPTRAN_ITL(itlgrp,itlgrpp,t)
           $[(yeart(tt) <= yeart(t))
           $(tmodel(tt) or tfix(tt))
           $routes_inv(r,rr,"AC",tt)
-                   $routes_itlgrp(itlgrp,itlgrpp,r,rr)],
+          $routes_itlgrp(itlgrp,itlgrpp,r,rr)],
           INVTRAN(r,rr,"AC",tt)
     }
 ;
