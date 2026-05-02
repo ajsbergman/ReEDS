@@ -1381,7 +1381,7 @@ def get_available_capacity_weighted_cf(case, level='country'):
     return dfout
 
 
-def get_sitemap(offshore=False, geo=True):
+def get_sitemap(offshore=False, geo=True, crs=None):
     """
     Get mapping from sc_point_gid to geographic points and counties.
     """

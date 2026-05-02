@@ -20,19 +20,6 @@ from copy_files import get_regions_and_agglevel
 #%% ===========================================================================
 ### --- General Read Functions---
 ### ===========================================================================
-def prepare_data_for_mapping(crs, filepath):
-    df = reeds.io.read_h5_groups(filepath)
-    df['sc_point_gid'] = df.index
-    df = df[['sc_point_gid','latitude','longitude']]
-
-    gdf = reeds.plots.df2gdf(
-        df,
-        lat='latitude',
-        lon='longitude',
-        crs=crs)
-    
-    return gdf
-
 # Function to merge NEMS unitdata with interconnection_land/offshore data by 
 # mapping each unit in NEMS by lon/lat to its closest sc_point_gid
 def assign_gids_to_unitdata(df, gdf, offland_gdf, land_gdf):
@@ -130,12 +117,8 @@ def main(reeds_path, casepath, inputs_case):
     gdf['temp_id'] = gdf.index
 
     # Assign sc_point_gids to units based on distance
-    # Using interconnection_land.h5 for sc_point_gids - lon/lat mapping for pv, land-based wind, and geothermal
-    ilpath = os.path.join(reeds_path,'inputs','supply_curve','interconnection_land.h5')
-    land_gdf = prepare_data_for_mapping(crs,ilpath)
-    # Using interconnection_offshore.h5 for sc_point_gids - lon/lat mapping for offshore wind
-    iopath = os.path.join(reeds_path,'inputs','supply_curve','interconnection_offshore.h5')
-    offland_gdf = prepare_data_for_mapping(crs,iopath)
+    land_gdf = reeds.io.get_sitemap(crs=crs)
+    offland_gdf = reeds.io.get_sitemap(offshore=True, crs=crs)
     
     # Merge NEMS unitdata with interconnection_land/offshore data by 
     # mapping each unit in NEMS by lon/lat to its closest sc_point_gid  
@@ -157,7 +140,7 @@ def main(reeds_path, casepath, inputs_case):
     
     # Save processed unitdata
     unitdata.to_csv(os.path.join(inputs_case,'unitdata.csv'),index=False)
-    
+
 if __name__ == '__main__':
     ### Time the operation of this script
     tic = datetime.datetime.now()
