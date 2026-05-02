@@ -1736,7 +1736,7 @@ prescribedrsc(i,v,r,tt)$[sum{ii,missing_class_resource(ii,i,r)}] =
 prescribedrsc(i,v,r,tt)$[sum{ii,missing_class_resource(i,ii,r)}]=0;
 
 prescribedretirements(ii,v,r,tt,ttt,captype)$[sum{i,missing_class_resource(i,ii,r)}] =
-                                                  sum{i$[missing_class_resource(ii,i,r)],prescribedretirements(i,v,r,tt,ttt,captype)} ;
+    sum{i$missing_class_resource(ii,i,r), prescribedretirements(i,v,r,tt,ttt,captype)} ;
 prescribedretirements(i,v,r,tt,ttt,captype)$[sum{ii,missing_class_resource(i,ii,r)}]=0;
 
 
