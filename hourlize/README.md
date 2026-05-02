@@ -72,12 +72,12 @@ Follow setup details in the [Running hourlize](#running-hourlize) section.
 
 Hourlize relies on a set of columns being in the reV supply curve. In some cases hourlize can fill in missing columns hourlize in a pre-processing step, but in others these missing columns can cause hourlize to fall. A list of required columns can be found in `hourlize/inputs/resource/rev_sc_columns.csv`
 
-
 ### 4. Synchronize shared directories
 
 By default hourlize will copy the required files in your ReEDS repository (`copy_to_reeds=True`). You can also copy the hourlize outputs back to the shared repository by setting `copy_to_shared=True`.
 
 Note that hourlize copies to only one of the shared locations (either the HPC or nrelnas01, depending on where you are running it), so even with `copy_to_shared=True` you'll want to sync up the two shared folders. When starting from the HPC, be sure to open up permissions to the supply curve outputs you've just created (e.g., `chmod -R 777 UPV/2023_06_06_Update`). Then, from your local computer, use WinSCP or rsync to copy the files from Kestrel to nrelnas01:
+
 
 ```bash
 rsync -aPu [username]@kestrel.nlr.gov://projects/shared-projects-reeds/reeds/Supply_Curve_Data/UPV/2023_11_02_LandCover /Volumes/ReEDS/Supply_Curve_Data/UPV
@@ -115,6 +115,9 @@ After setting up the run, if specified `run_hourlize.py` will launch the .sh or 
 ```bash
 python resource.py --config /path/to/hourlize/[casename]/inputs/config.json
 ```
+
+### define_tech_classes.py
+Run this scrip after `run_hourlize.py` to generate classification of UPV and wind technologies (`classification_upv.csv`, `classification_wind-ofs.csv`, and `classification_wind-ons.csv`)
 
 ### Config jsons
 
@@ -168,9 +171,8 @@ The main inputs to hourlize are reV outputs for a given reV scenario:
 By default, the outputs will be dumped to a subdirectory named `results` within `hourlize/out/[casename]`. In addition, with `copy_to_reeds` set to true (as is default), we'll copy the results to the ReEDS repo containing this hourlize directory, and with`copy_to_shared` set to true (not default), we'll copy to the shared drive (see Shared Drive Locations below).
 
 * `supplycurve_{tech}.csv`: A supply curve with rows for each site and columns for region, class, available capacity, and costs. E.g. see `inputs/supply_curve/wind-ons_supply_curve-reference_ba.csv` (within ReEDS repo)
-* `exog_cap_{tech}.csv`: Exogenous (built pre-2010) capacity with columns for region, site and year. This is not capacity builds in each year, but rather cumulative capacity of each existing site over time. E.g. see `inputs/capacity_exogenous/wind-ons_exog_cap_reference_ba.csv` (within ReEDS repo)
-* `{tech}_prescribed_builds.csv`: Capacity prescribed builds (2010 - present) with columns for region, year, capacity. This is the installed capacity in each year rather than cumulative capacity over time. E.g. see `inputs/capacity_exogenous/wind-ons_prescribed_builds_reference_ba.csv` (within ReEDS repo)
 * `{tech}_.h5`: Hourly capacity factor profiles for each region/class. See `inputs/profiles_cf/cf_wind-ons_reference_ba.h5` within the ReEDS repository as an example. These files include datasets with column names (class|region) and an index with datetime and timezone information.
+* `classification_{tech}.csv`: Tech classes based on capacity factors.
 
 ### Shared Drive Locations
 
