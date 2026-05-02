@@ -1137,8 +1137,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
     reeds_path = args.reeds_path
     inputs_case = args.inputs_case
-    #reeds_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    #inputs_case = os.path.join(reeds_path,'runs','test_Ref','inputs_case')
 
     #%% Set up logger
     log = reeds.log.makelog(
