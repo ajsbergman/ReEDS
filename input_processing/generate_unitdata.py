@@ -18,6 +18,74 @@ from copy_files import get_regions_and_agglevel
 
 
 #%% ===========================================================================
+### --- General Read Functions---
+### ===========================================================================
+def prepare_data_for_mapping(crs, filepath):
+    df = reeds.io.read_h5_groups(filepath)
+    df['sc_point_gid'] = df.index
+    df = df[['sc_point_gid','latitude','longitude']]
+
+    gdf = reeds.plots.df2gdf(
+        df,
+        lat='latitude',
+        lon='longitude',
+        crs=crs)
+    
+    return gdf
+
+# Function to merge NEMS unitdata with interconnection_land/offshore data by 
+# mapping each unit in NEMS by lon/lat to its closest sc_point_gid
+def assign_gids_to_unitdata(df, gdf, offland_gdf, land_gdf):
+    # Technologies to map - pv, wind, and geothermal
+    tech_match = {'upv': ['upv','dupv','pvb_pv','csp-wp','csp-ns'],
+                  'wind-ons': ["wind-ons"], 
+                  'wind-ofs': ["wind-ofs"],
+                  'geohydro': ['geohydro_allkm', 'geothermal'],
+                  'egs':['egs']}
+    
+    df_rev_list = []
+    for tech in ['upv','wind-ons','wind-ofs','geohydro']:
+        print(f'Assigning {tech} classes')
+    
+        # Read supply curves
+        if (tech == 'geohydro') or (tech == 'egs'):
+            geo_tech = 'egs'
+            supply_curve = pd.read_csv(os.path.join(reeds_path,'inputs','supply_curve',
+                                                    'supplycurve_'+geo_tech+'-'+'reference'+'.csv'))
+        else:
+            supply_curve = pd.read_csv(os.path.join(reeds_path,'inputs','supply_curve',
+                                                    'supplycurve_'+tech+'-'+'open'+'.csv'))    
+        
+        # Only consider the sc_point_pids that are in supply curves:
+        # (to avoid unmatched units later)
+        if tech == 'wind-ofs':
+            sc_point_pid_pdf = offland_gdf[offland_gdf['sc_point_gid'].isin(supply_curve['sc_point_gid'].to_list())]
+        else:
+            sc_point_pid_pdf = land_gdf[land_gdf['sc_point_gid'].isin(supply_curve['sc_point_gid'].to_list())]
+        gdf_joined = gpd.sjoin_nearest(gdf, sc_point_pid_pdf, distance_col='distance', how='left')
+
+        # Merge unit database with VRE supply curves to assign AC capacity factors to VRE units
+        # and mean resource temp for geothermal units
+        gdf_joined = gdf_joined[['sc_point_gid'] + df.columns.to_list() + ['temp_id']]
+
+        tech_sub = tech_match[tech]
+        df_rev = gdf_joined[gdf_joined.tech.isin(tech_sub)]
+        if len(df_rev) > 0:
+            df_rev.loc[:, ['sc_point_gid']] = df_rev.loc[:, ['sc_point_gid']].fillna(0).astype(np.int64)
+            if (tech == 'geohydro') or (tech == 'egs'):
+                df_rev = df_rev.merge(supply_curve[['sc_point_gid','mean_resource_temp']],
+                                        on='sc_point_gid',
+                                        how='left').rename(columns={'mean_resource_temp':'reV_mean_resource_temp'})
+            else:
+                df_rev = df_rev.merge(supply_curve[['sc_point_gid','cf']],
+                                        on='sc_point_gid',
+                                        how='left').rename(columns={'cf':'reV_capacity_factor_ac'})
+            df_rev_list = df_rev_list + [df_rev]
+
+    df_rev = pd.concat(df_rev_list, ignore_index=False, sort=False)
+    return df_rev
+
+#%% ===========================================================================
 ### --- PROCEDURE ---
 ### ===========================================================================
 def main(reeds_path, casepath, inputs_case):
@@ -89,76 +157,7 @@ def main(reeds_path, casepath, inputs_case):
     
     # Save processed unitdata
     unitdata.to_csv(os.path.join(inputs_case,'unitdata.csv'),index=False)
-
-#%% ===========================================================================
-### --- General Read Functions---
-### ===========================================================================
-def prepare_data_for_mapping(crs, filepath):
-    df = reeds.io.read_h5_groups(filepath)
-    df['sc_point_gid'] = df.index
-    df = df[['sc_point_gid','latitude','longitude']]
-
-    gdf = reeds.plots.df2gdf(
-        df,
-        lat='latitude',
-        lon='longitude',
-        crs=crs)
     
-    return gdf
-
-# Function to merge NEMS unitdata with interconnection_land/offshore data by 
-# mapping each unit in NEMS by lon/lat to its closest sc_point_gid
-def assign_gids_to_unitdata(df, gdf, offland_gdf, land_gdf):
-    # Technologies to map - pv, wind, and geothermal
-    tech_match = {'upv': ['upv','dupv','pvb_pv','csp-wp','csp-ns'],
-                  'wind-ons': ["wind-ons"], 
-                  'wind-ofs': ["wind-ofs"],
-                  'geohydro': ['geohydro_allkm', 'geothermal'],
-                  'egs':['egs']}
-    
-    df_rev_list = []
-    for tech in ['upv','wind-ons','wind-ofs','geohydro']:
-        print(f'Assigning {tech} classes')
-    
-        # Read supply curves
-        if (tech == 'geohydro') or (tech == 'egs'):
-            geo_tech = 'egs'
-            supply_curve = pd.read_csv(os.path.join(reeds_path,'inputs','supply_curve',
-                                                    'supplycurve_'+geo_tech+'-'+'reference'+'.csv'))
-        else:
-            supply_curve = pd.read_csv(os.path.join(reeds_path,'inputs','supply_curve',
-                                                    'supplycurve_'+tech+'-'+'open'+'.csv'))    
-        
-        # Only consider the sc_point_pids that are in supply curves:
-        # (to avoid unmatched units later)
-        if tech == 'wind-ofs':
-            sc_point_pid_pdf = offland_gdf[offland_gdf['sc_point_gid'].isin(supply_curve['sc_point_gid'].to_list())]
-        else:
-            sc_point_pid_pdf = land_gdf[land_gdf['sc_point_gid'].isin(supply_curve['sc_point_gid'].to_list())]
-        gdf_joined = gpd.sjoin_nearest(gdf, sc_point_pid_pdf, distance_col='distance', how='left')
-
-        # Merge unit database with VRE supply curves to assign AC capacity factors to VRE units
-        # and mean resource temp for geothermal units
-        gdf_joined = gdf_joined[['sc_point_gid'] + df.columns.to_list() + ['temp_id']]
-
-        tech_sub = tech_match[tech]
-        df_rev = gdf_joined[gdf_joined.tech.isin(tech_sub)]
-        if len(df_rev) > 0:
-            df_rev.loc[:, ['sc_point_gid']] = df_rev.loc[:, ['sc_point_gid']].fillna(0).astype(np.int64)
-            if (tech == 'geohydro') or (tech == 'egs'):
-                df_rev = df_rev.merge(supply_curve[['sc_point_gid','mean_resource_temp']],
-                                        on='sc_point_gid',
-                                        how='left').rename(columns={'mean_resource_temp':'reV_mean_resource_temp'})
-            else:
-                df_rev = df_rev.merge(supply_curve[['sc_point_gid','cf']],
-                                        on='sc_point_gid',
-                                        how='left').rename(columns={'cf':'reV_capacity_factor_ac'})
-            df_rev_list = df_rev_list + [df_rev]
-
-    df_rev = pd.concat(df_rev_list, ignore_index=False, sort=False)
-    return df_rev
-
-
 if __name__ == '__main__':
     ### Time the operation of this script
     tic = datetime.datetime.now()
