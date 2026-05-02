@@ -1731,7 +1731,7 @@ $offempty
 
 
 prescribedrsc(i,v,r,tt)$[sum{ii,missing_class_resource(ii,i,r)}] =
-                                                  sum{ii$[missing_class_resource(ii,i,r)],prescribedrsc(ii,v,r,tt)} ;
+    sum{ii$missing_class_resource(ii,i,r), prescribedrsc(ii,v,r,tt)} ;
                                           
 prescribedrsc(i,v,r,tt)$[sum{ii,missing_class_resource(i,ii,r)}]=0;
 

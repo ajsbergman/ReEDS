@@ -530,8 +530,7 @@ def main(reeds_path, inputs_case):
     recf = pd.concat([recf, csp_system_cf], axis=1)
     resources = pd.concat([resources, csp_resources], axis=0)
 
-    ### Assign existing and prescribed generator technology classes if it is not exist in resouces. 
-    #%%
+    #%% Assign existing and prescribed generator technology classes if it is not exist in resouces. 
     ### Collect all existing and prescribed generator technology classes - region combinations
     upv_exog_cap = pd.read_csv(os.path.join(inputs_case,'exog_cap_upv.csv'))
     wind_ons_exog_cap = pd.read_csv(os.path.join(inputs_case,'exog_cap_wind-ons.csv'))
