@@ -2135,7 +2135,7 @@ eq_CAPTRAN_ITL(itlgrp,itlgrpp,t)
 * [plus] capacity additions up to and including the present year
     + sum{(r,rr,tt)
           $[(yeart(tt) <= yeart(t))
-                   $(tmodel(tt) or tfix(tt))
+          $(tmodel(tt) or tfix(tt))
           $routes_inv(r,rr,"AC",tt)
                    $routes_itlgrp(itlgrp,itlgrpp,r,rr)],
           INVTRAN(r,rr,"AC",tt)
