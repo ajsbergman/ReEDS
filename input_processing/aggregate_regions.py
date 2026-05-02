@@ -590,10 +590,12 @@ def agg_disagg(filepath, r2aggreg_glob, r_ba_glob, runfiles_row):
                 if region_col != 'wide':
                     if two_col :
                         df_agg_in = dfin[dfin[region_col[0]].isin(
-                                            agglevel_variables['ba_regions'] + agglevel_variables['ba_transgrp'])]
-                        df_agg_in =  df_agg_in[ df_agg_in[region_col[1]].isin(agglevel_variables['ba_regions'])]
+                            agglevel_variables['ba_regions'] + agglevel_variables['ba_transgrp'])]
+                        df_agg_in =  df_agg_in[ df_agg_in[region_col[1]].isin(
+                            agglevel_variables['ba_regions'])]
                     else:
-                        df_agg_in = dfin[dfin[region_col].isin(agglevel_variables['ba_regions'])]
+                        df_agg_in = dfin[dfin[region_col].isin(
+                            agglevel_variables['ba_regions'])]
                 else:
                     col_list = row.fix_cols + agglevel_variables['ba_regions']
                     # Check if data exists for all BAs in agglevel_variables['ba_regions'] list
@@ -618,8 +620,9 @@ def agg_disagg(filepath, r2aggreg_glob, r_ba_glob, runfiles_row):
                 if region_col != 'wide':
                     if two_col :
                         df_agg_in = dfin[dfin[region_col[0]].isin(
-                                            agglevel_variables['ba_regions'] + agglevel_variables['ba_transgrp'])]
-                        df_agg_in =  df_agg_in[ df_agg_in[region_col[1]].isin(agglevel_variables['ba_regions'])]
+                            agglevel_variables['ba_regions'] + agglevel_variables['ba_transgrp'])]
+                        df_agg_in =  df_agg_in[ df_agg_in[region_col[1]].isin(
+                            agglevel_variables['ba_regions'])]
                     else:
                         df_agg_in = dfin[dfin[region_col].isin(agglevel_variables['ba_regions'])]
 
@@ -657,12 +660,18 @@ def agg_disagg(filepath, r2aggreg_glob, r_ba_glob, runfiles_row):
                     # are dropped but county-county and county-BA interfaces are kept
                     df_disagg_list = []
                     for idx, tx_row in dfin.iterrows():
-                        cond1 = ((tx_row[region_col[0]] in agglevel_variables['ba_regions']+agglevel_variables['ba_transgrp'])
-                                    and (tx_row[region_col[1]] in agglevel_variables['county_regions']+agglevel_variables['county_transgrp']))
-                        cond2 = ((tx_row[region_col[1]] in agglevel_variables['ba_regions']+ agglevel_variables['ba_transgrp'])
-                                    and (tx_row[region_col[0]] in agglevel_variables['county_regions']+agglevel_variables['county_transgrp']))
-                        cond3 = ((tx_row[region_col[0]] in agglevel_variables['county_regions']+agglevel_variables['county_transgrp'])
-                                    and (tx_row[region_col[1]] in agglevel_variables['county_regions']+agglevel_variables['county_transgrp']))
+                        cond1 = ((tx_row[region_col[0]] in agglevel_variables['ba_regions']
+                                  + agglevel_variables['ba_transgrp']) and 
+                                 (tx_row[region_col[1]] in agglevel_variables['county_regions']
+                                  + agglevel_variables['county_transgrp']))
+                        cond2 = ((tx_row[region_col[1]] in agglevel_variables['ba_regions']
+                                  + agglevel_variables['ba_transgrp']) and 
+                                 (tx_row[region_col[0]] in agglevel_variables['county_regions']
+                                  + agglevel_variables['county_transgrp']))
+                        cond3 = ((tx_row[region_col[0]] in agglevel_variables['county_regions']
+                                  + agglevel_variables['county_transgrp']) and 
+                                 (tx_row[region_col[1]] in agglevel_variables['county_regions']
+                                  + agglevel_variables['county_transgrp']))
 
                         if cond1 or cond2 or cond3:
                             df_disagg_list.append(tx_row)
@@ -1015,7 +1024,8 @@ if 'aggreg' in agglevel:
     # Create the 'r_col' column
     gendb = gendb.assign(r=gendb.reeds_ba.map(r_ba))
     # Multiply all PV capacities by ILR
-    gendb.loc[gendb['tech'].isin(["upv", "pvb_pv", "dupv", "csp-ns"]), 'summer_power_capacity_MW'] *= scalars['ilr_utility']
+    gendb.loc[gendb['tech'].isin(["upv", "pvb_pv", "dupv", "csp-ns"]), 
+              'summer_power_capacity_MW'] *= scalars['ilr_utility']
     startyear = int(sw.startyear)
     rsc_wsc = writecapdat.create_rsc_wsc(gendb, TECH=writecapdat.TECH,startyear=startyear)
     exog_rsc = writecapdat.create_exog_rsc(
