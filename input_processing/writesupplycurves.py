@@ -197,13 +197,13 @@ def main(
     #%% Load the existing RSC capacity (PV plants, wind, and CSP) if not provided in main function call
     if exog_rsc_dat is None:
         # writesupplycurves.py is being run as a main input processing script
-        dfwindonsexog = pd.read_csv(os.path.join(inputs_case, "wind-ons_exog_cap.csv")).rename(
+        dfwindonsexog = pd.read_csv(os.path.join(inputs_case, "exog_cap_wind-ons.csv")).rename(
                                     columns={"capacity": "MW"})
-        dfwindofsexog = pd.read_csv(os.path.join(inputs_case, "wind-ofs_exog_cap.csv")).rename(
+        dfwindofsexog = pd.read_csv(os.path.join(inputs_case, "exog_cap_wind-ofs.csv")).rename(
                                     columns={"capacity": "MW"})
-        dfupvexog = pd.read_csv(os.path.join(inputs_case, "upv_exog_cap.csv")).rename(
+        dfupvexog = pd.read_csv(os.path.join(inputs_case, "exog_cap_upv.csv")).rename(
                                     columns={"capacity": "MW"})
-        dfgeohydroexog = pd.read_csv(os.path.join(inputs_case, "geohydro_exog_cap.csv")).rename(
+        dfgeohydroexog = pd.read_csv(os.path.join(inputs_case, "exog_cap_geohydro.csv")).rename(
                                     columns={"capacity": "MW"})
 
     else:

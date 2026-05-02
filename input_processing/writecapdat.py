@@ -978,10 +978,10 @@ def main(reeds_path, inputs_case, agglevel, regions):
                 'can_imports_capacity' : can_imports_capacity,
                 'geoexist' : geoexist,
                 'h2_ba_share': h2_ba_share_out,
-                'upv_exog_cap':cap_exog['upv'],
-                'wind-ons_exog_cap':cap_exog['wind-ons'],
-                'wind-ofs_exog_cap':cap_exog['wind-ofs'],
-                'geohydro_exog_cap':cap_exog['geohydro_allkm']
+                'exog_cap_upv':cap_exog['upv'],
+                'exog_cap_wind-ons':cap_exog['wind-ons'],
+                'exog_cap_wind-ofs':cap_exog['wind-ofs'],
+                'exog_cap_geohydro':cap_exog['geohydro_allkm']
                 }
 
     return files_out 

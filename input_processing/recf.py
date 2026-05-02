@@ -533,9 +533,9 @@ def main(reeds_path, inputs_case):
     ### Assign existing and prescribed generator technology classes if it is not exist in resouces. 
     #%%
     ### Collect all existing and prescribed generator technology classes - region combinations
-    upv_exog_cap = pd.read_csv(os.path.join(inputs_case,'upv_exog_cap.csv'))
-    wind_ons_exog_cap = pd.read_csv(os.path.join(inputs_case,'wind-ons_exog_cap.csv'))
-    wind_ofs_exog_cap = pd.read_csv(os.path.join(inputs_case,'wind-ofs_exog_cap.csv'))
+    upv_exog_cap = pd.read_csv(os.path.join(inputs_case,'exog_cap_upv.csv'))
+    wind_ons_exog_cap = pd.read_csv(os.path.join(inputs_case,'exog_cap_wind-ons.csv'))
+    wind_ofs_exog_cap = pd.read_csv(os.path.join(inputs_case,'exog_cap_wind-ofs.csv'))
     existing_exog_techs = pd.concat(
         [upv_exog_cap, wind_ons_exog_cap, wind_ofs_exog_cap],
         axis=0, ignore_index=True
