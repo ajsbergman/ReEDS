@@ -22,7 +22,10 @@ from copy_files import get_regions_and_agglevel
 ### ===========================================================================
 # Function to merge NEMS unitdata with interconnection_land/offshore data by 
 # mapping each unit in NEMS by lon/lat to its closest sc_point_gid
-def assign_gids_to_unitdata(df, gdf, offland_gdf, land_gdf):
+def assign_gids_to_unitdata(df, offland_gdf, land_gdf):
+    
+    df = df.drop(columns=['geometry'])
+
     # Technologies to map - pv, wind, and geothermal
     tech_match = {'upv': ['upv','dupv','pvb_pv','csp-wp','csp-ns'],
                   'wind-ons': ["wind-ons"], 
@@ -49,7 +52,7 @@ def assign_gids_to_unitdata(df, gdf, offland_gdf, land_gdf):
             sc_point_pid_pdf = offland_gdf[offland_gdf['sc_point_gid'].isin(supply_curve['sc_point_gid'].to_list())]
         else:
             sc_point_pid_pdf = land_gdf[land_gdf['sc_point_gid'].isin(supply_curve['sc_point_gid'].to_list())]
-        gdf_joined = gpd.sjoin_nearest(gdf, sc_point_pid_pdf, distance_col='distance', how='left')
+        gdf_joined = gpd.sjoin_nearest(df, sc_point_pid_pdf, distance_col='distance', how='left')
 
         # Merge unit database with VRE supply curves to assign AC capacity factors to VRE units
         # and mean resource temp for geothermal units
@@ -109,12 +112,13 @@ def main(reeds_path, casepath, inputs_case):
     # Using 'EPSG:5070' projection for nearest distance calculation
     crs = 'EPSG:5070'
     # Convert NEMS data base to geopandas dataframe by lon/lat
-    gdf = reeds.plots.df2gdf(
+    unitdata = reeds.plots.df2gdf(
         unitdata,
         lat='T_LAT',
         lon='T_LONG',
         crs=crs)
-    gdf['temp_id'] = gdf.index
+    
+    unitdata['temp_id'] = unitdata.index
 
     # Assign sc_point_gids to units based on distance
     land_gdf = reeds.io.get_sitemap(crs=crs)
@@ -122,15 +126,15 @@ def main(reeds_path, casepath, inputs_case):
     
     # Merge NEMS unitdata with interconnection_land/offshore data by 
     # mapping each unit in NEMS by lon/lat to its closest sc_point_gid  
-    df_rev = assign_gids_to_unitdata(unitdata, gdf, offland_gdf, land_gdf)
+    df_rev = assign_gids_to_unitdata(unitdata, offland_gdf, land_gdf)
         
     # Clean up merged data    
     if 'reV_mean_resource_temp' in df_rev.columns:
-        unitdata = gdf.merge(df_rev[['sc_point_gid','temp_id',
+        unitdata = unitdata.merge(df_rev[['sc_point_gid','temp_id',
                                'reV_capacity_factor_ac','reV_mean_resource_temp']],
                                on = 'temp_id',how = 'left') 
     else:
-        unitdata = gdf.merge(df_rev[['sc_point_gid','temp_id',
+        unitdata = unitdata.merge(df_rev[['sc_point_gid','temp_id',
                                'reV_capacity_factor_ac']],
                                on = 'temp_id',how = 'left') 
     
