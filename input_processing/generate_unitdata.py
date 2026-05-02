@@ -75,11 +75,13 @@ def main(reeds_path, casepath, inputs_case):
         
     # Clean up merged data    
     if 'reV_mean_resource_temp' in df_rev.columns:
-        df = gdf.merge(df_rev[['sc_point_gid','temp_id','reV_capacity_factor_ac','reV_mean_resource_temp']],
-                       on = 'temp_id',how = 'left') 
+        df = gdf.merge(df_rev[['sc_point_gid','temp_id',
+                               'reV_capacity_factor_ac','reV_mean_resource_temp']],
+                               on = 'temp_id',how = 'left') 
     else:
-        df = gdf.merge(df_rev[['sc_point_gid','temp_id','reV_capacity_factor_ac']],
-                       on = 'temp_id',how = 'left') 
+        df = gdf.merge(df_rev[['sc_point_gid','temp_id',
+                               'reV_capacity_factor_ac']],
+                               on = 'temp_id',how = 'left') 
     
     # Rearrange column orders
     cols = df_rev.columns.to_list()
@@ -121,9 +123,11 @@ def assign_gids_to_unitdata(df, gdf, offland_gdf, land_gdf):
         # Read supply curves
         if (tech == 'geohydro') or (tech == 'egs'):
             geo_tech = 'egs'
-            supply_curve = pd.read_csv(os.path.join(reeds_path,'inputs','supply_curve','supplycurve_'+geo_tech+'-'+'reference'+'.csv'))
+            supply_curve = pd.read_csv(os.path.join(reeds_path,'inputs','supply_curve',
+                                                    'supplycurve_'+geo_tech+'-'+'reference'+'.csv'))
         else:
-            supply_curve = pd.read_csv(os.path.join(reeds_path,'inputs','supply_curve','supplycurve_'+tech+'-'+'open'+'.csv'))    
+            supply_curve = pd.read_csv(os.path.join(reeds_path,'inputs','supply_curve',
+                                                    'supplycurve_'+tech+'-'+'open'+'.csv'))    
         
         # Only consider the sc_point_pids that are in supply curves:
         # (to avoid unmatched units later)
