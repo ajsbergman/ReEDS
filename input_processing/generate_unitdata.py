@@ -26,25 +26,25 @@ def main(reeds_path, casepath, inputs_case):
     sw = reeds.io.get_switches(casepath)
 
     # Read raw NEMS database
-    df = pd.read_csv(
+    unitdata = pd.read_csv(
         os.path.join(
             reeds_path, 'inputs', 'capacity_exogenous',
             f'ReEDS_generator_database_final_{sw.unitdata}.csv'
-        ),
-        low_memory=False,
-    )
+            ),
+            low_memory=False
+            )
     
     # Filter and process raw NEMS database to defined model resolution
     regions_and_agglevel = get_regions_and_agglevel(reeds_path, inputs_case)
 
     fips_ba_map = regions_and_agglevel['ba_county'].dropna().set_index('county')['ba']
-    df['reeds_ba'] = df['FIPS'].map(fips_ba_map)
-    df = df.dropna(subset=["reeds_ba"])
+    unitdata['reeds_ba'] = unitdata['FIPS'].map(fips_ba_map)
+    unitdata = unitdata.dropna(subset=["reeds_ba"])
 
     ## If using offshore zones, map offshore wind units from land to offshore zones
     if int(sw.GSw_OffshoreZones):
-        df = reeds.spatial.assign_to_offshore_zones(df)
-    num_units_missing_bas = len(df.loc[df.reeds_ba.isna()])
+        unitdata = reeds.spatial.assign_to_offshore_zones(unitdata)
+    num_units_missing_bas = len(unitdata.loc[unitdata.reeds_ba.isna()])
     if num_units_missing_bas > 0:
         raise ValueError(
             f"{num_units_missing_bas} units were not mapped to any BAs."
@@ -55,7 +55,7 @@ def main(reeds_path, casepath, inputs_case):
     crs = 'EPSG:5070'
     # Convert NEMS data base to geopandas dataframe by lon/lat
     gdf = reeds.plots.df2gdf(
-        df,
+        unitdata,
         lat='T_LAT',
         lon='T_LONG',
         crs=crs)
@@ -71,24 +71,24 @@ def main(reeds_path, casepath, inputs_case):
     
     # Merge NEMS unitdata with interconnection_land/offshore data by 
     # mapping each unit in NEMS by lon/lat to its closest sc_point_gid  
-    df_rev = assign_gids_to_unitdata(df, gdf, offland_gdf, land_gdf)
+    df_rev = assign_gids_to_unitdata(unitdata, gdf, offland_gdf, land_gdf)
         
     # Clean up merged data    
     if 'reV_mean_resource_temp' in df_rev.columns:
-        df = gdf.merge(df_rev[['sc_point_gid','temp_id',
+        unitdata = gdf.merge(df_rev[['sc_point_gid','temp_id',
                                'reV_capacity_factor_ac','reV_mean_resource_temp']],
                                on = 'temp_id',how = 'left') 
     else:
-        df = gdf.merge(df_rev[['sc_point_gid','temp_id',
+        unitdata = gdf.merge(df_rev[['sc_point_gid','temp_id',
                                'reV_capacity_factor_ac']],
                                on = 'temp_id',how = 'left') 
     
     # Rearrange column orders
     cols = df_rev.columns.to_list()
-    df = df[cols].drop(columns=['temp_id'])
+    unitdata = unitdata[cols].drop(columns=['temp_id'])
     
     # Save processed unitdata
-    df.to_csv(os.path.join(inputs_case,'unitdata.csv'),index=False)
+    unitdata.to_csv(os.path.join(inputs_case,'unitdata.csv'),index=False)
 
 #%% ===========================================================================
 ### --- General Read Functions---
