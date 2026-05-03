@@ -23,7 +23,11 @@ from copy_files import get_regions_and_agglevel
 # Function to merge NEMS unitdata with interconnection_land/offshore data by 
 # mapping each unit in NEMS by lon/lat to its closest sc_point_gid
 def assign_gids_to_unitdata(df, offland_gdf, land_gdf):
-    
+    offland_gdf['sc_point_gid'] = offland_gdf.index
+    offland_gdf = offland_gdf[['sc_point_gid','latitude','longitude']]
+
+    land_gdf['sc_point_gid'] = land_gdf.index
+    land_gdf = land_gdf[['sc_point_gid','latitude','longitude']]
     df = df.drop(columns=['geometry'])
 
     # Technologies to map - pv, wind, and geothermal
@@ -159,8 +163,8 @@ if __name__ == '__main__':
     inputs_case = args.inputs_case
     
     # for testing
-    #reeds_path = os.path.expanduser('~/Documents/GitHub/ReEDS/public_ReEDS/ReEDS')
-    #inputs_case = os.path.join(reeds_path,'runs','test_Pacific','inputs_case')
+    # reeds_path = os.path.expanduser('~/Documents/GitHub/ReEDS/public_ReEDS/ReEDS')
+    # inputs_case = os.path.join(reeds_path,'runs','test_Pacific','inputs_case')
 
     casepath = os.path.dirname(inputs_case)
 
