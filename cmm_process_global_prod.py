@@ -70,7 +70,7 @@ prod_df = prod_df[prod_df['type'] == 'Production']
 # double check reserve data for duplicates (none); filter to US and select columns
 reserve_duplicate = reserve_df.duplicated(subset=['* mat','mat_ctry'], keep=False)
 reserve_df = reserve_df[reserve_df['mat_ctry'] == 'USA']
-reserve_df = reserve_df[['* mat','value']]
+reserve_df = reserve_df[['* mat','mat_ctry','value']]
 
 # identify duplicates and separate from non-duplicates
 prod_duplicate = prod_df.duplicated(subset=['* mat','mat_ctry'], keep=False)
@@ -150,7 +150,8 @@ power_materials =np.array(['Alumina', 'Aluminum', 'Bauxite', 'Boron', 'Cadmium',
 
 byproduct_df = byproduct_df[byproduct_df["Element_name"].isin(power_materials)]
 byproduct_df = byproduct_df[['Element_name','byproduct_mT']]
-new_cols = ['* mat','value']
+byproduct_df['mat_ctry'] == 'USA'
+new_cols = ['* mat','mat_ctry','value']
 byproduct_df.columns = new_cols
 byproduct_df.to_csv(os.path.join(workdir, 'cmm_us_byproduct.csv'), index=False)
 
