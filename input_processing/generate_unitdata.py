@@ -24,11 +24,10 @@ from copy_files import get_regions_and_agglevel
 # mapping each unit in NEMS by lon/lat to its closest sc_point_gid
 def assign_gids_to_unitdata(df, offland_gdf, land_gdf):
     offland_gdf['sc_point_gid'] = offland_gdf.index
-    offland_gdf = offland_gdf[['sc_point_gid','latitude','longitude']]
+    #offland_gdf = offland_gdf[['sc_point_gid','latitude','longitude']]
 
     land_gdf['sc_point_gid'] = land_gdf.index
-    land_gdf = land_gdf[['sc_point_gid','latitude','longitude']]
-    df = df.drop(columns=['geometry'])
+    #land_gdf = land_gdf[['sc_point_gid','latitude','longitude']]
 
     # Technologies to map - pv, wind, and geothermal
     tech_match = {'upv': ['upv','dupv','pvb_pv','csp-wp','csp-ns'],
@@ -56,11 +55,14 @@ def assign_gids_to_unitdata(df, offland_gdf, land_gdf):
             sc_point_pid_pdf = offland_gdf[offland_gdf['sc_point_gid'].isin(supply_curve['sc_point_gid'].to_list())]
         else:
             sc_point_pid_pdf = land_gdf[land_gdf['sc_point_gid'].isin(supply_curve['sc_point_gid'].to_list())]
+        
+        sc_point_pid_pdf = sc_point_pid_pdf.rename(columns={'FIPS':'FIPS_nearest'})
+        
         gdf_joined = gpd.sjoin_nearest(df, sc_point_pid_pdf, distance_col='distance', how='left')
 
         # Merge unit database with VRE supply curves to assign AC capacity factors to VRE units
         # and mean resource temp for geothermal units
-        gdf_joined = gdf_joined[['sc_point_gid'] + df.columns.to_list() + ['temp_id']]
+        gdf_joined = gdf_joined[['sc_point_gid'] + df.drop(columns=['geometry']).columns.to_list()]
 
         tech_sub = tech_match[tech]
         df_rev = gdf_joined[gdf_joined.tech.isin(tech_sub)]

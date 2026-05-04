@@ -1032,7 +1032,7 @@ if 'aggreg' in agglevel:
         inputs_case,
         gendb,
         TECH=writecapdat.TECH,
-        COLNAMES=writecapdat.COLNAMES_define(sw.retscen, 'StartYear'),
+        COLNAMES=writecapdat.COLNAMES_define(sw.retscen),
         sw=sw,
         startyear=startyear,
     )
