@@ -132,7 +132,7 @@ ptaap_framework = np.array(['Austria','Belgium','Bulgaria','Croatia','Cyprus','C
                         'Slovakia','Slovenia','South Korea','Spain','Sweden','Switzerland','Thailand','United Kingdom','Vietnam'])
 
 agreements = np.unique(np.concatenate([free_trade, ptaap_rta, ptaap_framework]))
-allies = np.intersect1d(countries_array, free_trade)
+allies = np.intersect1d(countries_array, agreements)
 allies = pd.DataFrame(allies,columns=['* allies'])
 caption = "* allied countries with material inputs for power"
 caption_df = pd.DataFrame([caption],columns=['* allies'])
