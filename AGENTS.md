@@ -30,7 +30,7 @@ electricity system. It is:
 - **Mixed-language.** GAMS (`*.gms`) defines the optimization model and
   requires a commercial license (CPLEX or compatible); Python 3.11 drives
   preprocessing, orchestration, and postprocessing; Julia 1.12.1
-  (`reeds2pras/`) handles resource-adequacy stress-period analysis.
+  (`reeds/resource_adequacy/reeds2pras/`) handles resource-adequacy stress-period analysis.
 - **Production research software.** Results are used in published studies and
   by external stakeholders. Silent changes to defaults or to widely-used
   switches can invalidate analyses.
@@ -51,9 +51,8 @@ for confirmation when uncertain.
   did not need to touch.
 - Prefer the smallest patch that correctly accomplishes the request.
 - Don't introduce new dependencies (Python, Julia, or otherwise) without
-  explicit approval. Changes to [`environment.yml`](environment.yml),
-  [`Project.toml`](Project.toml), or [`requirements_dev.txt`](requirements_dev.txt)
-  must be called out.
+  explicit approval. Changes to [`environment.yml`](environment.yml) or
+  [`Project.toml`](Project.toml) must be called out.
 
 ### 2.2 Keep documentation in sync with code
 The repo treats documentation as part of the change, not an afterthought. When
@@ -81,7 +80,7 @@ relevant file(s) under [`docs/source/`](docs/source):
 
 If you add or rename a switch, update both `cases.csv` (description column)
 **and** `user_guide.md`. If you add or rename an input file, update
-[`runfiles.csv`](runfiles.csv) and the relevant input-folder README.
+[`reeds/input_processing/runfiles.csv`](reeds/input_processing/runfiles.csv) and the relevant input-folder README.
 
 Citations live in [`docs/source/references.bib`](docs/source/references.bib)
 (Better BibTeX format, managed via the ReEDS Zotero library — see
@@ -101,19 +100,19 @@ silently affect:
 
 - Other scenarios in [`cases.csv`](cases.csv),
   [`cases_test.csv`](cases_test.csv), [`cases_standardscenarios.csv`](cases_standardscenarios.csv), etc.
-- Files declared in [`runfiles.csv`](runfiles.csv) (governs which inputs are
+- Files declared in [`reeds/input_processing/runfiles.csv`](reeds/input_processing/runfiles.csv) (governs which inputs are
   copied into a run's `inputs_case/` directory and how they are aggregated /
   disaggregated).
-- The objective function (`c_supplyobjective.gms`) — inputs used here should
+- The objective function (`reeds/core/setup/d_objective.gms`) — inputs used here should
   also appear in [`tests/objective_function_params.yaml`](tests/objective_function_params.yaml)
-  so [`input_processing/check_inputs.py`](input_processing/check_inputs.py) can
+  so [`reeds/input_processing/check_inputs.py`](reeds/input_processing/check_inputs.py) can
   validate them.
-- Reported outputs declared in [`e_report_params.csv`](e_report_params.csv)
-  and assembled in [`e_report.gms`](e_report.gms). Adding, removing, or
+- Reported outputs declared in [`reeds/core/terminus/report_params.csv`](reeds/core/terminus/report_params.csv)
+  and assembled in [`reeds/core/terminus/report.gms`](reeds/core/terminus/report.gms). Adding, removing, or
   renaming a reported parameter touches both files plus any downstream
   postprocessing (`postprocessing/`, `compare_cases.py`, BokehPivot, R2X)
   that reads it.
-- Augur (`Augur.py` + [`ReEDS_Augur/`](ReEDS_Augur)) — runs **between** solve
+- The resource adequacy module (`reeds/resource_adequacy/`) — runs **between** solve
   years to compute capacity credit and curtailment that feed back into the
   next solve. It is not a postprocessing step; changes here can change
   results.
@@ -133,8 +132,8 @@ actually) check:
    code that only runs when an off-by-default switch is turned on), say so
    explicitly so the reviewer knows that the comparison report should show
    no differences.
-3. **`runfiles.csv` consistency.** If you add, remove, or rename a CSV file
-   that is read by GAMS, update `runfiles.csv`. Pay attention to
+3. **`reeds/input_processing/runfiles.csv` consistency.** If you add, remove, or rename a CSV file
+   that is read by GAMS, update `reeds/input_processing/runfiles.csv`. Pay attention to
    `aggfunc`/`disaggfunc`, `region_col`, `fix_cols`, `i_col`, `wide`,
    `header`, `key`, `post_copy`, `GAMStype`, `GAMSname`, and `required_if`
    columns. A wrong `required_if` expression silently breaks switch-gated
@@ -143,7 +142,7 @@ actually) check:
    [`inputs/scalars.csv`](inputs/scalars.csv); add new scalars there rather
    than hard-coding values. New files that get copied to `inputs_case/`
    also need an entry in [`inputs/userinput/futurefiles.csv`](inputs/userinput/futurefiles.csv),
-   which tells [`input_processing/forecast.py`](input_processing/forecast.py)
+   which tells [`reeds/input_processing/forecast.py`](reeds/input_processing/forecast.py)
    how to project the file forward in time — forecast.py will print a
    loud warning if a file is missing from it.
 4. **Units and dollar year.** Costs read into `b_inputs.gms` must already be
@@ -157,9 +156,8 @@ actually) check:
    - [`.github/workflows/python-app.yaml`](.github/workflows/python-app.yaml)
      (pytest + a small case),
    - [`.github/workflows/build-docs.yaml`](.github/workflows/build-docs.yaml),
-   - [`.github/workflows/cache.yaml`](.github/workflows/cache.yaml),
-   - the [`.github/actions/r2x-check`](.github/actions/r2x-check) action that
-     translates outputs to R2X.
+   - [`.github/workflows/workflow-quality.yaml`](.github/workflows/workflow-quality.yaml)
+     (lints GitHub Actions files with `zizmor`).
    PRs need all of these to pass.
 
 The map of change → recommended testing comes straight from
@@ -214,29 +212,33 @@ an open-ended question.
 
 | Path | Purpose |
 | --- | --- |
-| [`runbatch.py`](runbatch.py) | Top-level launcher. **Interactive by default** — prompts for a batch name and cases suffix when run with no arguments. AI agents must pass `-b <batch>` and `-c <suffix>` (and typically `-s <case>` and/or `-f`) to avoid hanging. Reads `cases_{suffix}.csv` and creates a `runs/{batch}_{case}/` directory per case. |
+| [`runreeds.py`](runreeds.py) | Top-level launcher. **Interactive by default** — prompts for a batch name and cases suffix when run with no arguments. AI agents must pass `-b <batch>` and `-c <suffix>` (and typically `-s <case>` and/or `-f`) to avoid hanging. Reads `cases_{suffix}.csv` and creates a `runs/{batch}_{case}/` directory per case. |
 | [`cases.csv`](cases.csv), `cases_*.csv` | Switch definitions and scenario specifications. The first columns describe each switch; remaining columns are scenarios. |
-| [`runfiles.csv`](runfiles.csv) | Declares every input/output CSV the run pipeline knows about, including how to aggregate/disaggregate spatially and how it maps to GAMS. |
+| [`reeds/input_processing/runfiles.csv`](reeds/input_processing/runfiles.csv) | Declares every input/output CSV the run pipeline knows about, including how to aggregate/disaggregate spatially and how it maps to GAMS. |
 | [`inputs/scalars.csv`](inputs/scalars.csv) | Central registry of GAMS scalar parameters and their default values. |
-| [`b_inputs.gms`](b_inputs.gms) | Loads inputs from `inputs_case/` into GAMS sets/parameters. |
-| [`c_supplymodel.gms`](c_supplymodel.gms), [`c_supplyobjective.gms`](c_supplyobjective.gms) | Variables, equations, and objective of the optimization model. |
-| `d_*.gms`, [`d_solve_iterate.py`](d_solve_iterate.py) | Sequential / intertemporal / window solve loop. |
-| [`d_solvepcm.gms`](d_solvepcm.gms), [`run_pcm.py`](run_pcm.py) | Production-cost (PCM) dispatch mode — a separate workflow on top of a solved capacity-expansion run. |
-| [`Augur.py`](Augur.py), [`ReEDS_Augur/`](ReEDS_Augur) | Inter-iteration capacity-credit and curtailment calculations that run **between** solve years and feed back into the next solve. |
-| [`e_report.gms`](e_report.gms), [`e_report_dump.py`](e_report_dump.py), [`e_report_params.csv`](e_report_params.csv) | Build reporting outputs from solved model. `e_report_params.csv` controls which parameters get exported. |
-| [`input_processing/`](input_processing) | Python preprocessing — load, hourly clustering, supply curves, financials, copying input files into `inputs_case/`, etc. |
+| [`reeds/core/`](reeds/core) | All GAMS model code, organized into `setup/`, `solve/`, `solve_pcm/`, and `terminus/` subdirectories. |
+| [`reeds/core/setup/b_inputs.gms`](reeds/core/setup/b_inputs.gms) | Loads inputs from `inputs_case/` into GAMS sets/parameters. |
+| [`reeds/core/setup/a_createmodel.gms`](reeds/core/setup/a_createmodel.gms) | Entry point that `$include`s `b_inputs.gms`, `c_model.gms`, `d_objective.gms`, and `e_solveprep.gms` to compile the model. Re-run this line from `call_*` to surface compilation errors quickly without doing a solve. |
+| [`reeds/core/setup/c_model.gms`](reeds/core/setup/c_model.gms), [`reeds/core/setup/d_objective.gms`](reeds/core/setup/d_objective.gms) | Variables, equations, and objective of the optimization model. |
+| [`reeds/core/setup/e_solveprep.gms`](reeds/core/setup/e_solveprep.gms) | Pre-solve data preparation; also `$include`d by `a_createmodel.gms`. |
+| [`reeds/core/solve/`](reeds/core/solve) | Sequential / intertemporal / window solve loop (`solve.py`, `3_solve_oneyear.gms`, `3_solve_allyears.gms`, `3_solve_window.gms`, `2_financials.gms`, `2_temporal_params.gms`, `4_post_solve_adjustments.gms`, `5_varfix.gms`, `6_data_dump.gms`, `1_tc_phaseout.py`). |
+| [`reeds/core/solve_pcm/`](reeds/core/solve_pcm) | Production-cost (PCM) dispatch mode — `solve_pcm.gms` and `unfix_op.gms`. Launched by [`postprocessing/run_pcm.py`](postprocessing/run_pcm.py). |
+| [`reeds/core/terminus/`](reeds/core/terminus) | Reporting: `report.gms`, `report_dump.py`, `report_params.csv`, `powfrac_calc.gms`, `dump_alldata.gms`. `report_params.csv` controls which parameters get exported; adding/renaming a parameter also requires updating any downstream postprocessing that reads it. |
+| [`reeds/resource_adequacy/`](reeds/resource_adequacy) | Capacity-credit and curtailment calculations (`ra_calcs.py`, `capacity_credit.py`, `stress_periods.py`, etc.) that run **between** solve years and feed back into the next solve. Not a postprocessing step — changes here affect results. Includes `reeds2pras/` (Julia, pinned to 1.12.1). |
+| [`reeds/input_processing/`](reeds/input_processing) | Python preprocessing — load, hourly clustering, supply curves, financials, copying input files into `inputs_case/`, etc. |
 | [`hourlize/`](hourlize) | Hourly load/resource preprocessing pipeline (often run upstream and committed as data). |
-| [`reeds2pras/`](reeds2pras) | Julia code that translates ReEDS results into PRAS for resource-adequacy / stress-period analysis. Pinned to Julia 1.12.1. |
 | [`postprocessing/`](postprocessing) | Reports, plots, comparison tools (`compare_cases.py`, `compare_dispatch.py`, BokehPivot, Tableau, retail-rate module, reValue, R2X runner, etc.). |
 | [`preprocessing/`](preprocessing) | Helpers for preparing scenario sets, transmission cases, Zenodo prep, etc. |
+| [`helpers/`](helpers) | Convenience scripts (`runstatus.py`, `restart_runs.py`, `interim_report.py`, etc.) for monitoring and managing runs. |
+| [`scripts/`](scripts) | Standalone utility scripts (e.g., `run_r2x.py`). |
 | [`inputs/`](inputs) | All input data, organized by topic. Some subfolders have their own `README.md`. |
 | [`docs/source/`](docs/source) | Sphinx + MyST-Markdown documentation source. Built by `make html` from `docs/`. |
-| [`tests/`](tests) | Lightweight `pytest` suite (input checks, h5 read sanity); see [`tests/conftest.py`](tests/conftest.py) and [`tests/test_outputs.py`](tests/test_outputs.py). Not a model-correctness suite. |
-| [`.github/`](.github) | CI workflows (`python-app.yaml`, `build-docs.yaml`, `cache.yaml`), the `r2x-check` action, PR template, issue templates. |
-| [`reeds/`](reeds) | Importable Python package of shared utilities (`financials`, `inputs`, `io`, `log`, `plots`, `ra`, `spatial`, `techs`, `timeseries`, `units`, `remote`, etc.). New shared helpers belong here, not duplicated across scripts. |
-| [`pyproject.toml`](pyproject.toml) | Configures `ruff` and `pytest`. |
-| [`environment.yml`](environment.yml), [`Project.toml`](Project.toml), [`requirements_dev.txt`](requirements_dev.txt) | Conda env, Julia env, and dev dependencies. |
-| [`srun_template.sh`](srun_template.sh), [`aws_setup.sh`](aws_setup.sh) | HPC (SLURM) and AWS launch templates. HPC vs local execution paths can differ; verify behavior on the target environment. |
+| [`tests/`](tests) | Lightweight `pytest` suite (input checks, h5 read sanity); see [`tests/conftest.py`](tests/conftest.py), [`tests/test_outputs.py`](tests/test_outputs.py), and [`tests/test_read_h5_files.py`](tests/test_read_h5_files.py). Not a model-correctness suite. |
+| [`.github/`](.github) | CI workflows (`python-app.yaml`, `build-docs.yaml`, `workflow-quality.yaml`), the `setup-reeds-env` action, PR template, issue templates. |
+| [`reeds/`](reeds) | Importable Python package of shared utilities (`financials`, `inputs`, `io`, `log`, `plots`, `ra`, `spatial`, `techs`, `timeseries`, `units`, `remote`, etc.) plus all core model code. New shared helpers belong here, not duplicated across scripts. |
+| [`reeds/hpc/`](reeds/hpc) | HPC (SLURM) and AWS launch templates (`srun_template.sh`, `aws_setup.sh`). HPC vs local execution paths can differ; verify behavior on the target environment. |
+| [`reeds/solver/`](reeds/solver) | Solver option files (`cplex.opt`, `cplex.op2`, `gurobi.opt`, `cbc.opt`). |
+| [`environment.yml`](environment.yml), [`Project.toml`](Project.toml) | Conda env and Julia project file. Changes to these must be called out explicitly. |
 
 A typical run produces `runs/{batch}_{case}/` containing `inputs_case/`,
 `g00files/` (GAMS work files), `lstfiles/`, `gdxfiles/`, and `outputs/`.
@@ -255,8 +257,11 @@ A typical run produces `runs/{batch}_{case}/` containing `inputs_case/`,
   `i`, `h`, `t`, `v`).
 
 ### GAMS
-- File prefix convention: `letter_number_name.gms` (e.g.,
-  [`d1_financials.gms`](d1_financials.gms)).
+- File prefix convention: numeric prefix then descriptive name (e.g.,
+  [`reeds/core/solve/2_financials.gms`](reeds/core/solve/2_financials.gms),
+  [`reeds/core/solve/3_solve_oneyear.gms`](reeds/core/solve/3_solve_oneyear.gms)).
+  Files in `reeds/core/setup/` use a letter prefix
+  (e.g., `a_createmodel.gms`, `b_inputs.gms`).
 - Parameters: lowercase with underscores, noun first, units in declaration
   comment between `--…--` (e.g., `cap_out(i,r,t) "--MW-- capacity by region"`).
 - Variables: ALL_CAPS, noun first.
@@ -274,12 +279,12 @@ A typical run produces `runs/{batch}_{case}/` containing `inputs_case/`,
 - Input CSVs read by `b_inputs.gms` should have the **same name** as the GAMS
   parameter that reads them.
 - New CSVs written into `inputs_case/` must be registered in
-  [`runfiles.csv`](runfiles.csv) **and** in
+  [`reeds/input_processing/runfiles.csv`](reeds/input_processing/runfiles.csv) **and** in
   [`inputs/userinput/futurefiles.csv`](inputs/userinput/futurefiles.csv)
   (which controls how the file is projected forward in time by
-  `input_processing/forecast.py`).
+  `reeds/input_processing/forecast.py`).
 - Costs land in `b_inputs.gms` already in 2004$.
-- Add a comment in `b_inputs.gms` noting the upstream script when a file is
+- Add a comment in `reeds/core/setup/b_inputs.gms` noting the upstream script when a file is
   generated by preprocessing (e.g., `* Written by writecapdat.py`).
 - Add unit suffixes to data column names (e.g., `capcost_usd.per.kw`).
 
@@ -296,7 +301,7 @@ A short checklist to apply to every non-trivial change:
 3. **Search for switch interactions.** Grep for any `GSw_*` or `Sw_*` name
    that appears in the file you're editing. Note any switch-gated branches in
    the PR description.
-4. **Update `runfiles.csv` and docs in the same change**, not as a follow-up.
+4. **Update `reeds/input_processing/runfiles.csv` and docs in the same change**, not as a follow-up.
 5. **Summarize impact.** In the PR text or response to the user, list:
    - Files changed and why.
    - Switches/scenarios that could be affected.
@@ -325,8 +330,8 @@ A completed run directory (e.g., `runs/p1_Pacific/`) contains a
 `call_{case}` script (`.bat` on Windows, `.sh` on macOS/Linux) with every
 step of the pipeline as a standalone, fully-parameterized command — each
 preprocessing script, the
-GAMS `createmodel.gms` invocation, every solve year, Augur, the report
-dump, etc. You can re-run any individual step in isolation against the
+GAMS `a_createmodel.gms` invocation, every solve year, resource adequacy,
+the report, etc. You can re-run any individual step in isolation against the
 inputs/outputs the prior steps already wrote into the run folder. This is
 much faster than a full rerun and is often the right first check while
 iterating on a single file.
@@ -339,27 +344,29 @@ iterating on a single file.
 - Examples:
   - Edited a preprocessing script (`writecapdat.py`, `calc_financial_inputs.py`,
     …) → re-run that script's line, diff its outputs in `inputs_case/`.
-  - Edited [`b_inputs.gms`](b_inputs.gms) or another file `$include`d by
-    [`createmodel.gms`](createmodel.gms) → re-run the `gams createmodel.gms`
-    line; this surfaces compilation errors and parameter-load errors
-    quickly without doing a solve.
-  - Edited [`e_report.gms`](e_report.gms) or [`e_report_dump.py`](e_report_dump.py)
+  - Edited [`reeds/core/setup/b_inputs.gms`](reeds/core/setup/b_inputs.gms) or
+    another file `$include`d by `a_createmodel.gms` → re-run the
+    `gams reeds/core/setup/a_createmodel.gms` line; this surfaces compilation
+    errors and parameter-load errors quickly without doing a solve.
+  - Edited [`reeds/core/terminus/report.gms`](reeds/core/terminus/report.gms)
+    or [`reeds/core/terminus/report_dump.py`](reeds/core/terminus/report_dump.py)
     → re-run those lines to check that reported outputs change as expected.
   - Edited a postprocessing script → re-run that script against the existing
     `outputs/` to check formatting/plots without re-solving.
-  - Edited a solve file → re-run a single year (e.g., `d_solveoneyear.gms`).
+  - Edited a solve file → re-run a single year (e.g., `reeds/core/solve/3_solve_oneyear.gms`).
 
 ### When *not* to use it
 
 - The change spans **multiple pipeline stages** (e.g., a new CSV written by
-  `writecapdat.py`, registered in [`runfiles.csv`](runfiles.csv), and loaded
-  in `b_inputs.gms`). Running one step in isolation tests one half of the
-  dependency; the other half still uses stale state. You can chain steps
-  manually, but at that point a full Pacific rerun is safer and not much
-  slower.
-- The change interacts with feedback loops, e.g., Augur outputs feeding the
-  next solve year. Per-step testing tells you almost nothing about
-  end-to-end behavior.
+  `writecapdat.py`, registered in
+  [`reeds/input_processing/runfiles.csv`](reeds/input_processing/runfiles.csv),
+  and loaded in `b_inputs.gms`). Running one step in isolation tests one
+  half of the dependency; the other half still uses stale state. You can
+  chain steps manually, but at that point a full Pacific rerun is safer
+  and not much slower.
+- The change interacts with feedback loops, e.g., resource adequacy outputs
+  feeding the next solve year. Per-step testing tells you almost nothing
+  about end-to-end behavior.
 - The change is gated by a switch that the existing run did not exercise.
   Pick (or rerun) a case that does.
 - Pure code-organization or comment-only changes — there's nothing to diff.
@@ -370,7 +377,7 @@ iterating on a single file.
 | --- | --- |
 | Single file, no new cross-step dependencies | Re-run that step from `call_*`, diff its outputs |
 | Multiple files in the same pipeline stage | Re-run those steps in order, diff |
-| Crosses pipeline stages (preprocessing ↔ GAMS, GAMS ↔ Augur, GAMS ↔ report) | Full Pacific rerun + `compare_cases.py` |
+| Crosses pipeline stages (preprocessing ↔ GAMS, GAMS ↔ resource adequacy, GAMS ↔ report) | Full Pacific rerun + `compare_cases.py` |
 | Interacts with switches not exercised by the existing run | Full rerun of a case that does exercise them |
 
 The fast inner loop **complements** the testing tiers in §2.3 — it does not
@@ -388,27 +395,29 @@ full-case tier before opening a PR.
    from different branches, scenarios, or vintages. Each run's
    `meta.csv` records the branch and commit it was built from — use that to
    confirm with the user, do not guess.
-3. **Watch out for the frozen-copy gotcha.** When `runbatch.py` sets up a
-   run, it copies the relevant Python and GAMS source files into the run
-   folder. The `call_*` script invokes those copies, e.g.:
+3. **Watch out for the frozen-copy gotcha.** When `runreeds.py` sets up a
+   run, it copies the `reeds/` source tree into the run folder. The
+   `call_*` script invokes those copies, e.g.:
    ```
    python <repo>/runs/p1_Pacific/reeds/input_processing/writecapdat.py ...
    ```
    If you edited the source file in the repo (e.g.,
-   `input_processing/writecapdat.py`), the rerun will silently use the
-   stale frozen copy and show **no diff**. Either:
+   `reeds/input_processing/writecapdat.py`), the rerun will silently use
+   the stale frozen copy and show **no diff**. Either:
    - Copy your edited source file into the run folder before invoking, or
    - Invoke the source path explicitly with the same arguments.
-   The same applies to GAMS files (`b_inputs.gms`, `createmodel.gms`,
-   `e_report.gms`, etc.).
+   The same applies to GAMS files (`reeds/core/setup/b_inputs.gms`,
+   `reeds/core/setup/a_createmodel.gms`,
+   `reeds/core/terminus/report.gms`, etc.).
 
 ### Diffing outputs
 
 - For Python preprocessing steps, snapshot the relevant `inputs_case/`
   files before re-running, then diff the new versions with pandas
   (row counts, summary stats, max abs/relative differences, regions or
-  techs where values changed). Use [`runfiles.csv`](runfiles.csv) to
-  identify which files a given script writes.
+  techs where values changed). Use
+  [`reeds/input_processing/runfiles.csv`](reeds/input_processing/runfiles.csv)
+  to identify which files a given script writes.
 - For GAMS steps, the standard pattern for inspecting intermediate state
   is to add
   ```gams
@@ -447,12 +456,12 @@ ruff check
 # Build docs locally
 cd docs && make html   # output at docs/build/html/index.html
 
-# Run a test case. runbatch.py is INTERACTIVE by default; pass -b and -c
+# Run a test case. runreeds.py is INTERACTIVE by default; pass -b and -c
 # (and optionally -s and -f) for non-interactive use.
-python runbatch.py                              # interactive prompts
-python runbatch.py -b v20260101_dev -c test     # non-interactive, all cases in cases_test.csv
-python runbatch.py -b v20260101_dev -c test -s Pacific   # single case
-python runbatch.py -h                           # full flag list
+python runreeds.py                              # interactive prompts
+python runreeds.py -b v20260101_dev -c test     # non-interactive, all cases in cases_test.csv
+python runreeds.py -b v20260101_dev -c test -s Pacific   # single case
+python runreeds.py -h                           # full flag list
 
 # Download remote input files up front (optional)
 python reeds/remote.py
