@@ -495,6 +495,7 @@ Please follow these guidelines when planning and opening a pull request (PR):
   - `inputs/{subfolder}/README.md` files: Description of individual input folders
   - `faq.md`: Limitations, caveats, and known issues
   - `postprocessing_tools.md`: Description of scripts in postprocessing folder
+  - `AGENTS.md`: Update if the change affects repo structure, workflow conventions, or anything AI tools should know about
 
 - Only open pull requests when they are ready for both review and merge
   - **Exception for collaboration**: If you need early feedback or collaboration before completion, open the PR in draft mode and indicate what work remains

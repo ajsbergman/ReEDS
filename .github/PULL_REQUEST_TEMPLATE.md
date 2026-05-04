@@ -49,6 +49,7 @@ Include additional illustrative plots describing input data, methods, testing, a
   - faq.md: Limitations, caveats, and known issues
   - postprocessing_tools.md: User/developer-facing description of scripts in postprocessing folder
   - README.md files: User/developer facing description of individual input folders
+  - AGENTS.md: Update if repo structure, workflow, or conventions changed in a way AI tools should know about
   -->
 - If input data added/modified:
   - [ ] Dollar year recorded and converted to 2004$ for GAMS
