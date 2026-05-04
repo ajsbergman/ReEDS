@@ -8,31 +8,31 @@ import reeds
 
 
 ### Functions
-def get_pras_eue(case, t, iteration=0):
+def get_pras_stress_metric(case, t, iteration=0, stress_metric='EUE'):
     """
     """
     ### Get PRAS outputs
     dfpras = reeds.io.read_pras_results(
         os.path.join(case, 'ReEDS_Augur', 'PRAS', f"PRAS_{t}i{iteration}.h5")
     )
+    dfpras.to_csv('pras_results.csv')
     ### Create the time index
     sw = reeds.io.get_switches(case)
     dfpras.index = reeds.timeseries.get_timeindex(sw['resource_adequacy_years'])
 
-    ### Keep the EUE columns by zone
-    eue_tail = '_EUE'
-    dfeue = dfpras[[
+    ### Keep the metric columns by zone
+    metric_tail = '_' + stress_metric.upper()
+    dfmetric = dfpras[[
         c for c in dfpras
-        if (c.endswith(eue_tail) and not c.startswith('USA'))
+        if (c.endswith(metric_tail) and not c.startswith('USA'))
     ]].copy()
     ## Drop the tailing _EUE
-    dfeue = dfeue.rename(
-        columns=dict(zip(dfeue.columns, [c[:-len(eue_tail)] for c in dfeue])))
+    dfmetric = dfmetric.rename(
+        columns=dict(zip(dfmetric.columns, [c[:-len(metric_tail)] for c in dfmetric])))
 
-    return dfeue
+    return dfmetric
 
-
-def get_eue_periods(
+def get_stress_metric_periods(
         case, t, iteration=0,
         hierarchy_level='transgrp',
         stress_metric='EUE',
@@ -60,21 +60,21 @@ def get_eue_periods(
     ### Get the region aggregator
     rmap = reeds.io.get_rmap(case=case, hierarchy_level=hierarchy_level)
 
-    ### Get EUE from PRAS
-    dfeue = get_pras_eue(case=case, t=t, iteration=iteration)
+    ### Get stress metric from PRAS
+    dfmetric = get_pras_stress_metric(case=case, t=t, iteration=iteration, stress_metric=stress_metric)
     ## Aggregate to hierarchy_level
-    dfeue = (
-        dfeue
+    dfmetric = (
+        dfmetric
         .rename_axis('r', axis=1).rename_axis('h', axis=0)
         .rename(columns=rmap).groupby(axis=1, level=0).sum()
     )
 
     ###### Calculate the stress metric by period
-    if stress_metric.upper() == 'EUE':
+    if stress_metric.upper() in ['EUE', 'LOLE']:
         ### Aggregate according to period_agg_method
         dfmetric_period = (
-            dfeue
-            .groupby([dfeue.index.year, dfeue.index.month, dfeue.index.day])
+            dfmetric
+            .groupby([dfmetric.index.year, dfmetric.index.month, dfmetric.index.day])
             .agg(period_agg_method)
             .rename_axis(['y','m','d'])
         )
@@ -84,13 +84,13 @@ def get_eue_periods(
             os.path.join(
                 case,'ReEDS_Augur','augur_data',f'pras_load_{t}.h5')
         ).rename(columns=rmap).groupby(level=0, axis=1).sum()
-        dfload.index = dfeue.index
+        dfload.index = dfmetric.index
 
         ### Recalculate NEUE [ppm] and aggregate appropriately
         if period_agg_method == 'sum':
             dfmetric_period = (
-                dfeue
-                .groupby([dfeue.index.year, dfeue.index.month, dfeue.index.day])
+                dfmetric
+                .groupby([dfmetric.index.year, dfmetric.index.month, dfmetric.index.day])
                 .agg(period_agg_method)
                 .rename_axis(['y','m','d'])
             ) / (
@@ -101,8 +101,8 @@ def get_eue_periods(
             ) * 1e6
         elif period_agg_method == 'max':
             dfmetric_period = (
-                (dfeue / dfload)
-                .groupby([dfeue.index.year, dfeue.index.month, dfeue.index.day])
+                (dfmetric / dfload)
+                .groupby([dfmetric.index.year, dfmetric.index.month, dfmetric.index.day])
                 .agg(period_agg_method)
                 .rename_axis(['y','m','d'])
             ) * 1e6

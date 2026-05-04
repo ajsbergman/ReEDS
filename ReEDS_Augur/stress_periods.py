@@ -24,10 +24,10 @@ import reeds
 
 
 #%%### Functions
-def plot_eue_diagnostics(sw, t, iteration, high_eue_periods):
+def plot_stress_diagnostics(sw, t, iteration, high_stress_periods, stress_metric='EUE'):
     try:
         dates = (
-            pd.concat(high_eue_periods)
+            pd.concat(high_stress_periods)
             .reset_index().actual_period.map(reeds.timeseries.h2timestamp)
             .dt.strftime('%Y-%m-%d')
             .tolist()
@@ -89,40 +89,47 @@ def get_and_write_neue(sw, write=True):
         eue.to_csv(os.path.join(sw['casedir'],'outputs','eue.csv'))
     return neue
 
-
-def get_annual_neue(case, t, iteration=0):
+def get_annual_stress_metric(case, t, stress_metric, iteration=0):
     """
     """
-    ### Get EUE from PRAS
-    dfeue = reeds.ra.get_pras_eue(case=case, t=t, iteration=iteration)
+    ### Get values from PRAS
+    dfmetric = reeds.ra.get_pras_stress_metric(case=case, t=t, iteration=iteration, stress_metric=stress_metric)
 
     ### Get load (for calculating NEUE)
-    dfload = reeds.io.read_h5py_file(
-        os.path.join(
-            case,'ReEDS_Augur','augur_data',f'pras_load_{t}.h5')
-    )
-    dfload.index = dfeue.index
+    if stress_metric.upper() == 'NEUE':
+        dfload = reeds.io.read_h5py_file(
+            os.path.join(
+                case,'ReEDS_Augur','augur_data',f'pras_load_{t}.h5')
+        )
+        dfload.index = dfmetric.index
 
     levels = ['country','interconnect','nercr','transreg','transgrp','st','r']
-    _neue = {}
+    _metric = {}
     for hierarchy_level in levels:
         ### Get the region aggregator
         rmap = reeds.io.get_rmap(case=case, hierarchy_level=hierarchy_level)
-        ### Get NEUE summed over year
-        _neue[hierarchy_level,'sum'] = (
-            dfeue.rename(columns=rmap).groupby(axis=1, level=0).sum().sum()
+
+        ### Get stress metric summed over year
+        _metric[hierarchy_level,'sum'] = dfmetric.rename(columns=rmap).groupby(axis=1, level=0).sum().sum()
+
+        ### Get max stress metric hour
+        _metric[hierarchy_level,'max'] = dfmetric.rename(columns=rmap).groupby(axis=1, level=0).sum().max()
+
+        if stress_metric.upper() == 'NEUE':
+            _metric[hierarchy_level,'sum'] = (
+            dfmetric.rename(columns=rmap).groupby(axis=1, level=0).sum().sum()
             / dfload.rename(columns=rmap).groupby(axis=1, level=0).sum().sum()
-        ) * 1e6
-        ### Get max NEUE hour
-        _neue[hierarchy_level,'max'] = (
-            dfeue.rename(columns=rmap).groupby(axis=1, level=0).sum()
+            ) * 1e6
+            ### Get max NEUE hour
+            _metric[hierarchy_level,'max'] = (
+            dfmetric.rename(columns=rmap).groupby(axis=1, level=0).sum()
             / dfload.rename(columns=rmap).groupby(axis=1, level=0).sum()
-        ).max() * 1e6
+            ).max() * 1e6
 
     ### Combine it
-    neue = pd.concat(_neue, names=['level','metric','region']).rename('NEUE_ppm')
+    metric = pd.concat(_metric, names=['level','metric','region']).rename(f'{stress_metric}')
 
-    return neue
+    return metric
 
 
 def get_shoulder_periods(sw, criterion, dfenergy_r, high_eue_periods):
@@ -145,7 +152,7 @@ def get_shoulder_periods(sw, criterion, dfenergy_r, high_eue_periods):
     timeindex = reeds.timeseries.get_timeindex(sw['resource_adequacy_years'])
     cutofftype, cutoff = sw.GSw_PRM_StressStorageCutoff.lower().split('_')
     periodhours = {'day':24, 'wek':24*5, 'year':24}[sw.GSw_HourlyType]
-    (hierarchy_level, ppm, stress_metric, period_agg_method) = criterion.split('_')
+    (hierarchy_level, stress_level, stress_metric, period_agg_method) = criterion.split('_')
 
     ## Aggregate storage energy to hierarchy_level
     dfenergy_agg = (
@@ -159,6 +166,7 @@ def get_shoulder_periods(sw, criterion, dfenergy_r, high_eue_periods):
     for i, row in high_eue_periods[criterion, f'high_{stress_metric}'].iterrows():
         if row.r not in dfheadspace_MWh:
             continue
+        print(f"Evaluating shoulder periods for {row.name} ({row.r}) with {stress_metric} = {row[stress_metric]:.2f}")
 
         day = pd.Timestamp('-'.join(row[['y','m','d']].astype(str).tolist()))
 
@@ -201,7 +209,7 @@ def get_shoulder_periods(sw, criterion, dfenergy_r, high_eue_periods):
     return shoulder_periods
 
 
-def get_eue_sorted_periods(sw, t, iteration):
+def get_stress_metrics_sorted_periods(sw, t, iteration):
     ### Get storage state of charge (SOC) to use in selection of "shoulder" stress periods
     dfenergy = reeds.io.read_pras_results(
         os.path.join(sw['casedir'], 'ReEDS_Augur', 'PRAS', f"PRAS_{t}i{iteration}-energy.h5")
@@ -215,12 +223,6 @@ def get_eue_sorted_periods(sw, t, iteration):
         .groupby(axis=1, level=0).sum()
     )
 
-    ### Get NEUE
-    neue = pd.read_csv(
-        os.path.join(sw.casedir, 'outputs', f'neue_{t}i{iteration}.csv'),
-        index_col=['level', 'metric', 'region'],
-    ).squeeze(1)
-
     ### Load this year's stress periods so we don't duplicate
     stressperiods_this_iteration = pd.read_csv(
         os.path.join(
@@ -228,78 +230,98 @@ def get_eue_sorted_periods(sw, t, iteration):
     )
 
     ### Check all stress criteria; for regions that fail, add new stress periods
-    _eue_sorted_periods = {}
+    # _eue_sorted_periods = {}
+    _stress_sorted_periods = {}
     failed = {}
-    high_eue_periods = {}
+    high_stress_periods = {}
     shoulder_periods = {}
-    for criterion in sw.GSw_PRM_StressThreshold.split('/'):
-        ## Example: criterion = 'transgrp_10_EUE_sum'
-        (hierarchy_level, ppm, stress_metric, period_agg_method) = criterion.split('_')
 
-        eue_periods = reeds.ra.get_eue_periods(
-            case=sw.casedir, t=t, iteration=iteration,
-            hierarchy_level=hierarchy_level,
-            stress_metric=stress_metric,
-            period_agg_method=period_agg_method,
-        )
+    # stress periods column names for writing outputs
+    stress_metrics_units_mapping = {'EUE':'MWh', 'NEUE':'ppm', 'LOLE':'events'}
+    stress_metrics_col_names = {m:f'{m}_{mapping}' for m,mapping
+                                in zip(sw.GSw_PRM_StressThresholdMetrics.split('/'),
+                                    stress_metrics_units_mapping.values())}
 
-        ### Sort in descending stress_metric order
-        _eue_sorted_periods[criterion] = (
-            eue_periods
-            .sort_values(stress_metric, ascending=False)
-            .reset_index().set_index('actual_period')
-        )
+    for metric in sw.GSw_PRM_StressThresholdMetrics.split('/'):
+        for criterion in sw[f'GSw_PRM_StressThreshold{metric}'].split('/'): 
+            print(f"Evaluating GSw_PRM_StressThreshold {metric} with criterion: {criterion}")
+            ## Example: criterion = 'transgrp_10_EUE_sum'
+            (hierarchy_level, stress_level, stress_metric, period_agg_method) = criterion.split('_')
 
-        ### Get the threshold(s) and see if any of them failed
-        this_test = neue[hierarchy_level][period_agg_method]
+            ### Get stored stress metric
+            stress_vals = pd.read_csv(
+                os.path.join(sw.casedir, 'outputs', f'{stress_metric}_{t}i{iteration}.csv'),
+                index_col=['level', 'metric', 'region'],
+            ).squeeze(1)
 
-        if (this_test > float(ppm)).any():
-            failed[criterion] = this_test.loc[this_test > float(ppm)]
-            print(f"GSw_PRM_StressThreshold = {criterion} failed for:")
-            print(failed[criterion])
-            ###### Add GSw_PRM_StressIncrement periods to the list for the next iteration
-            high_eue_periods[criterion, f'high_{stress_metric}'] = (
-                _eue_sorted_periods[criterion].loc[
-                    ## Only include new stress periods for the region(s) that failed
-                    _eue_sorted_periods[criterion].r.isin(failed[criterion].index)
-                    ## Don't repeat existing stress periods
-                    & ~(_eue_sorted_periods[criterion].index.isin(
-                        stressperiods_this_iteration.actual_period))
-                ]
-                ## Don't add dates more than once
-                .drop_duplicates(subset=['y','m','d'])
-                ## Keep the GSw_PRM_StressIncrement worst periods for each region.
-                ## If you instead want to keep the GSw_PRM_StressIncrement worst periods
-                ## overall, use .nlargest(int(sw.GSw_PRM_StressIncrement), stress_metric)
-                .groupby('r').head(int(sw.GSw_PRM_StressIncrement))
+            stress_periods = reeds.ra.get_stress_metric_periods(
+                case=sw.casedir, t=t, iteration=iteration,
+                hierarchy_level=hierarchy_level,
+                stress_metric=stress_metric,
+                period_agg_method=period_agg_method,
             )
-            for period, row in high_eue_periods[criterion, f'high_{stress_metric}'].iterrows():
-                print(
-                    f"Added {period} "
-                    f"({reeds.timeseries.h2timestamp(period).strftime('%Y-%m-%d')}) "
-                    f"as stress period for {row.r} "
-                    f"({stress_metric} = {row[stress_metric]})"
+
+            ### Sort in descending stress_metric order
+            _stress_sorted_periods[criterion] = (
+                stress_periods
+                .sort_values(stress_metric, ascending=False)
+                .reset_index().set_index('actual_period')
+            )
+
+            ### Get the threshold(s) and see if any of them failed
+            this_test = stress_vals[hierarchy_level][period_agg_method]
+
+            if (this_test > float(stress_level)).any():
+                failed[criterion] = this_test.loc[this_test > float(stress_level)]
+                print(f"GSw_PRM_StressThreshold = {criterion} failed for:")
+                print(failed[criterion])
+                ###### Add GSw_PRM_StressIncrement periods to the list for the next iteration
+                high_stress_periods[criterion, f'high_{stress_metric}'] = (
+                    _stress_sorted_periods[criterion].loc[
+                        ## Only include new stress periods for the region(s) that failed
+                        _stress_sorted_periods[criterion].r.isin(failed[criterion].index)
+                        ## Don't repeat existing stress periods
+                        & ~(_stress_sorted_periods[criterion].index.isin(
+                            stressperiods_this_iteration.actual_period))
+                    ]
+                    ## Don't add dates more than once
+                    .drop_duplicates(subset=['y','m','d'])
+                    ## Keep the GSw_PRM_StressIncrement worst periods for each region.
+                    ## If you instead want to keep the GSw_PRM_StressIncrement worst periods
+                    ## overall, use .nlargest(int(sw.GSw_PRM_StressIncrement), stress_metric)
+                    .groupby('r').head(int(sw.GSw_PRM_StressIncrement))
                 )
+                for period, row in high_stress_periods[criterion, f'high_{stress_metric}'].iterrows():
+                    print(
+                        f"Added {period} "
+                        f"({reeds.timeseries.h2timestamp(period).strftime('%Y-%m-%d')}) "
+                        f"as stress period for {row.r} "
+                        f"({stress_metric} = {row[stress_metric]})"
+                    )
 
-            ### Include "shoulder periods" before or after each period
-            ### if the storage state of charge is low
-            shoulder_periods = {
-                **shoulder_periods,
-                **get_shoulder_periods(sw, criterion, dfenergy_r, high_eue_periods)
-            }
+                ### Include "shoulder periods" before or after each period
+                ### if the storage state of charge is low
+                ### Check only if stress metric is EUE
+                if stress_metric.upper() == 'EUE':
+                    shoulder_periods = {
+                        **shoulder_periods,
+                        **get_shoulder_periods(sw, criterion, dfenergy_r, high_stress_periods)
+                    }
 
-            ### Dealing with earlier criteria may also address later criteria, so stop here
-            break
+                ### Dealing with earlier criteria may also address later criteria, so stop here
+                break
 
-        else:
-            print(f"GSw_PRM_StressThreshold = {criterion} passed")
+            else:
+                print(f"GSw_PRM_StressThreshold = {criterion} passed")
 
-    eue_sorted_periods = pd.concat(_eue_sorted_periods, names=['criterion'])
+    stress_sorted_periods = pd.concat(_stress_sorted_periods, names=['criterion'])
 
     ### Get lists of stress periods: new (added this iteration) and all
+    ##TODO: What if same high stress period is added for multiple criteria?
+    # Currently the duplicates are dropped. 
     if len(failed):
         new_stress_periods = pd.concat(
-            {**high_eue_periods, **shoulder_periods}, names=['criterion','periodtype'],
+            {**high_stress_periods, **shoulder_periods}, names=['criterion','periodtype'],
         ).reset_index().drop_duplicates(subset='actual_period', keep='first')
     else:
         return failed, None, None
@@ -334,14 +356,14 @@ def get_eue_sorted_periods(sw, t, iteration):
         combined_periods_write.to_csv(outpath, index=False)
 
     ### Tables and plots for debugging
-    eue_sorted_periods.round(2).rename(columns={'EUE':'EUE_MWh','NEUE':'NEUE_ppm'}).to_csv(
-        os.path.join(sw.casedir, 'inputs_case', newstresspath, 'eue_sorted_periods.csv')
+    stress_sorted_periods.round(2).rename(columns=stress_metrics_col_names).to_csv(
+        os.path.join(sw.casedir, 'inputs_case', newstresspath, f'{stress_metric}_sorted_periods.csv')
     )
-    new_stress_periods.round(2).rename(columns={'EUE':'EUE_MWh','NEUE':'NEUE_ppm'}).to_csv(
+    new_stress_periods.round(2).rename(columns=stress_metrics_col_names).to_csv(
         os.path.join(sw.casedir, 'inputs_case', newstresspath, 'new_stress_periods.csv'),
         index=False,
     )
-    plot_eue_diagnostics(sw, t, iteration, high_eue_periods)
+    plot_stress_diagnostics(sw, t, iteration, high_stress_periods, stress_metric=stress_metric)
 
     return failed, new_stressperiods_write, combined_periods_write
 
@@ -468,7 +490,7 @@ def prm_increment_pras(sw, t, iteration, combined_periods_write, failed_regions)
     return prm_increment
 
 
-def update_prm(sw, t, iteration, failed, combined_periods_write):
+def update_prm(sw, t, iteration, failed, combined_periods_write, metric):
     """Update the energy reserve margin by region r for stress periods, either using a
     static increment (GSw_PRM_UpdateMethod=1) or based on the estimated surplus needed by PRAS
     to recover the desired reliabiliaty criteria (GSw_PRM_UpdateMethod>1).
@@ -479,7 +501,8 @@ def update_prm(sw, t, iteration, failed, combined_periods_write):
         iteration (int): ReEDS-PRAS iteration
         failed (dict): Dictionary of regions with unserved energy at the hierarchy_level
                        and their criterion evaluations
-        stress_hours (pd.DataFrame): data frame of stress periods
+        combined_periods_write (pd.DataFrame): Data frame of combined stress periods
+        metric (str): Stress metric for this update
 
     Returns:
         pd.DataFrame: Table of prm levels for the next PRAS iteration
@@ -541,12 +564,15 @@ def main(sw, t, iteration=0, logging=True):
     import hourly_writetimeseries
     newstresspath = f'stress{t}i{iteration+1}'
 
-    #%% Write consolidated NEUE so far
+    #%% Write consolidated stress metrics so far
     try:
-        _neue_simple = get_and_write_neue(sw, write=True)
-        neue = get_annual_neue(sw.casedir, t, iteration=iteration)
-        neue.round(2).to_csv(
-            os.path.join(sw.casedir, 'outputs', f"neue_{t}i{iteration}.csv")
+        ## TODO: Check whether to keep _neue_simple or not.
+        # _neue_simple = get_and_write_neue(sw, write=True)
+        for stress_metric in sw.GSw_PRM_StressThresholdMetrics.split('/'):
+            print(f"Calculating and writing annual {stress_metric} for iteration {iteration}")
+            dfmetric = get_annual_stress_metric(sw.casedir, t, stress_metric, iteration=iteration)
+            dfmetric.round(2).to_csv(
+                os.path.join(sw.casedir, 'outputs', f"{stress_metric}_{t}i{iteration}.csv")
         )
 
     except Exception as err:
@@ -560,7 +586,7 @@ def main(sw, t, iteration=0, logging=True):
         return
 
     #%% Identify and write new stress periods
-    failed, new_stressperiods_write, combined_periods_write = get_eue_sorted_periods(
+    failed, new_stressperiods_write, combined_periods_write = get_stress_metrics_sorted_periods(
         sw=sw, t=t, iteration=iteration,
     )
 
@@ -613,3 +639,14 @@ def main(sw, t, iteration=0, logging=True):
 #     sw['GSw_PRM_UpdateMethod'] = 2
 #     #%%###
 #     main(sw, t, iteration, logging=False)
+
+    #%%###  option to run script directly for debugging
+    casedir =  "/Users/aayad/Work/repos/ReEDS/runs/v20260419_224354_Pacific"
+    t = 2020 # previous solve year
+    iteration = 0
+    # load switches
+    sw = reeds.io.get_switches(casedir)
+    sw['t'] = t
+    sw['GSw_PRM_UpdateMethod'] = 2
+    #%%###
+    main(sw, t, iteration, logging=False)
