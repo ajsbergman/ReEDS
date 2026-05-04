@@ -6932,4 +6932,4 @@ i_theta(i,mat,t)$[i_int(i,mat)$cost_cap(i,t)] = i_int(i,mat) * mat_price(mat) / 
 
 * set price multiplier for materials
 matprice_multiplier(mat) = 1;
-matprice_multiplier(mat)$[(sameas(mat,'%GSw_specmat%'))] = %GSw_matprice_multiplier% ;
+matprice_multiplier(mat)$[(sameas(mat,'%GSw_specmat_price%'))] = %GSw_matprice_multiplier% ;
