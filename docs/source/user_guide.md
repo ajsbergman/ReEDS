@@ -71,38 +71,6 @@ Here is partial list of remotely hosted files used by ReEDS:
 
 
 
-## Hourly Resolution
-
-The model can be run at hourly resolution using the following switch settings:
-
-- `GSw_Hourly = 1`
-  - Turn on hourly resolution
-- `GSw_Canada = 2`
-  - Turn on hourly resolution for Canadian imports/exports
-- `GSw_AugurCurtailment = 0`
-  - Turn off the Augur calculation of curtailment
-- `GSw_StorageArbitrageMult = 0`
-  - Turn off the Augur calculation of storage arbitrage value
-- `GSw_Storage_in_Min = 0`
-  - Turn off the Augur calculation of storage charging
-- `capcredit_szn_hours = 3`
-  - The current default hourly representation is 18 representative 5-day weeks. Each representative period is treated as a 'season' and is thus active in the planning-reserve margin constraint. In h17 ReEDS we set `capcredit_szn_hours = 10`, giving 40 total hours considered for planning reserves (the top 10 hours in each of the 4 quarterly seasons). 18 'seasons' with 10 hours each would give 180 hours, so we switch to 3 hours per 'season' (for 54 hours total).
-
-To further reduce solve time, you can make the following changes:
-
-- `yearset = 2010_2015_2020_2025_2030_2035_2040_2045_2050`
-  - Solve in 5-year steps
-- `GSw_OpRes = 0`
-  - Turn off operating reserves
-- `GSw_MinLoading = 0`
-  - Turn off the sliding-window representation of minimum-generation limits
-- `GSw_PVB = 0`
-  - Turn off PV-battery hybrids
-- `GSw_calc_powfrac = 0`
-  - Turn off a post-processing calculation of power flows
-
-
-
 ## Electricity Demand Profiles
 
 ### Switch options for GSw_LoadProfiles
@@ -600,7 +568,7 @@ Options are `capacity`, `transmission`, `rasharing`, and `co2`.
 - `GSw_MGA_SubObjective` (default `fossil`): Technology subset to minimize or maximize the capacity of (only used for `GSw_MGA_Objective = capacity`).
 Options are the column names in the `inputs/tech-subset-table.csv` file.
 
-Users familiar with GAMS can add alternative objective functions to the `c_mga.gms` file and associated options to the `GSw_MGA_Objective` switch in `cases.csv`.
+Users familiar with GAMS can add alternative objective functions to the `d_mga.gms` file and associated options to the `GSw_MGA_Objective` switch in `cases.csv`.
 
 
 
@@ -717,7 +685,6 @@ This section provides guidance on identifying and resolving common issues encoun
   - What to look for:
     - `1_inputs.lst`: errors will be preceded by `****`
     - `{batch_prefix}_{case}_{year}i0.lst`: there should be one file for each year of the model run
-    - `Augur_errors_{year}`: this file will appear in the event that there is an augur-related issue
 
 - GAMS Workfiles
   - Path: `/runs/{batch_prefix}_{case}/g00files/`
@@ -733,10 +700,10 @@ This section provides guidance on identifying and resolving common issues encoun
       - these files should contain data, an error message "GDX file not found" indicates an issue with the reporting script at the end of the model
     - `reeds-report/` and `reeds-report-reduced/`: if these folders are not present, it can indicate a problem with the post-processing scripts
 
-- Augur Data
-  - Path: `/runs/{batch_prefix}_{case}/ReEDS_Augur/augur_data/`
+- Resource adequacy data
+  - Path: `/runs/{batch_prefix}_{case}/handoff/reeds_data/`
   - What to look for:
-    - `ReEDS_Augur_{year}.gdx`: there should be a file for each year of the model run =
+    - `ccdata_{year}.gdx`: there should be a file for each year of the model run =
     - `reeds_data_{year}.gdx`: there should be a file for each year of the model run
 
 - Case Inputs

@@ -194,7 +194,7 @@ jobs:
       - name: Run ReEDS model
         env:
           SCENARIO: ${{ matrix.scenario }}
-        run: python runbatch.py -b "$batch" -c test -s "$SCENARIO"
+        run: python runreeds.py -b "$batch" -c test -s "$SCENARIO"
 
       - name: Print GAMS log
         if: runner.debug == '1'
