@@ -6887,6 +6887,22 @@ $include ../../cmm_global_mat_prod.csv
 $offdelim
 $onlisting
 /
+mat_reserve(mat,mat_ctry)  "--metric tons-- material reserves for US"
+/
+$offlisting
+$ondelim
+$include ../../cmm_us_reserves.csv
+$offdelim
+$onlisting
+/
+mat_byproduct(mat,mat_ctry)  "--metric tons-- material byproduct recovery for US"
+/
+$offlisting
+$ondelim
+$include ../../cmm_us_byproduct.csv
+$offdelim
+$onlisting
+/
 mat_price(mat)           "-- 2004$ / metric ton -- price per metric ton of material used"
 /
 $offlisting
