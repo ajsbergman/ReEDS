@@ -235,6 +235,7 @@ def get_stress_metrics_sorted_periods(sw, t, iteration):
     high_stress_periods = {}
     shoulder_periods = {}
 
+    stress_metric_switches = sw.GSw_PRM_StressThresholdMetrics.split('/')
     # Validation check: Display any GSw_PRM_StressThreshold{metric}
     # that is not specified in GSw_PRM_StressThresholdMetrics
     stressThresholdMetrics = [s.split('GSw_PRM_StressThreshold')[1] 
@@ -242,17 +243,16 @@ def get_stress_metrics_sorted_periods(sw, t, iteration):
                              and not s.endswith('Metrics') and s.split('GSw_PRM_StressThreshold')[1] != "" 
                              ]
     for s in stressThresholdMetrics:
-        if s not in sw.GSw_PRM_StressThresholdMetrics.split('/'):
+        if s not in stress_metric_switches:
             print(f"Warning: {s} is not included in GSw_PRM_StressThresholdMetrics, so it will not be evaluated")
 
     # stress periods column names for writing outputs
-    stress_metrics_units_mapping = {'EUE':'MWh', 'NEUE':'ppm', 'LOLE':'events'}
-    stress_metrics_col_names = {m:f'{m}_{mapping}' for m,mapping
-                                in zip(sw.GSw_PRM_StressThresholdMetrics.split('/'),
-                                    stress_metrics_units_mapping.values())}
+    stress_metrics_units = {'EUE':'MWh', 'NEUE':'ppm', 'LOLE':'days'}
+    stress_metrics_col_names = {m:f'{m}_{stress_metrics_units[m]}' for m in 
+                                stress_metric_switches}
 
-    for metric in sw.GSw_PRM_StressThresholdMetrics.split('/'):
-        if sw[f'GSw_PRM_StressThreshold{metric.upper()}'] not in sw.keys():
+    for metric in stress_metric_switches:
+        if f'GSw_PRM_StressThreshold{metric.upper()}' not in sw:
             raise NotImplementedError(
                 f"GSw_PRM_StressThreshold{metric.upper()} not found in switches"
             )
