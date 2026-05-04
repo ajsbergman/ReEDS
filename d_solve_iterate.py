@@ -7,6 +7,8 @@ import subprocess
 from glob import glob
 import reeds
 import Augur
+import time
+import tracemalloc
 
 
 #%% Main function
@@ -81,7 +83,15 @@ def run_reeds(casepath, t, onlygams=False, iteration=0):
 
     #%%### Run Augur
     if (not onlygams) and (tnext[t] > int(sw.GSw_SkipAugurYear)):
+        resource_stats = os.path.join(casepath, 'resource_stats.log')
+        tracemalloc.start()
+        t0 = time.time()
         Augur.main(t=t, tnext=tnext[t], casedir=casepath, iteration=iteration)
+        elapsed = time.strftime('%H:%M:%S', time.gmtime(time.time() - t0))
+        _, peak_kb = tracemalloc.get_traced_memory()
+        tracemalloc.stop()
+        with open(resource_stats, 'a') as f:
+            f.write(f"script=Augur_pras_{t}i{iteration} memory_KB={peak_kb//1024} runtime={elapsed}\n")
 
 
 #%% Driver function

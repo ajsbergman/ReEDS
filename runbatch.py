@@ -1343,6 +1343,7 @@ def write_batch_script(
 
         #%% Write the input_processing script calls
         big_comment('Input processing', OPATH)
+        resource_stats = os.path.join(casedir, 'resource_stats.log')
         for s in [
             'copy_files',
             'mcs_sampler',
@@ -1367,8 +1368,12 @@ def write_batch_script(
             OPATH.writelines(f"echo {'-'*12+'-'*len(s)}\n")
             OPATH.writelines(f"echo 'starting {s}.py'\n")
             OPATH.writelines(f"echo {'-'*12+'-'*len(s)}\n")
+            py_cmd = f"python {os.path.join(casedir,'input_processing',s)}.py {reeds_path} {inputs_case}"
             OPATH.writelines(
-                f"python {os.path.join(casedir,'input_processing',s)}.py {reeds_path} {inputs_case}\n")
+                f"/usr/bin/time -a -o {resource_stats} "
+                f"-f 'script={s} memory_KB=%M runtime=%E' "
+                f"{py_cmd}\n"
+            )
             OPATH.writelines(writescripterrorcheck(s)+'\n')
 
         OPATH.writelines(
