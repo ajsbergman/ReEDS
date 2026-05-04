@@ -157,10 +157,12 @@ def get_county2zone(
 
     if as_map:
         dfout = dfin.set_index('FIPS')['r']
-    else:
+    elif case is None:
         fpath_countystate = Path(reeds.io.reeds_path, 'inputs', 'zones', 'county_state.csv')
         county_state = pd.read_csv(fpath_countystate, dtype=str)
         dfout = dfin.merge(county_state, on='FIPS', how='left')
+    else:
+        dfout = dfin
 
     return dfout
 
@@ -1217,6 +1219,19 @@ def get_distpv_cf_hourly():
         'cf_distpv_county.h5'
     )
     return read_file(h5path, parse_timestamps=True)
+
+def get_county_populations():
+    """
+    Get county populations.
+    """
+    return pd.read_csv(
+        os.path.join(
+            reeds_path,
+            'inputs',
+            'disaggregation',
+            'county_population.csv'
+        )
+    )
 
 def get_years(case):
     return pd.read_csv(
