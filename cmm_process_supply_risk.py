@@ -25,7 +25,7 @@ disc_cost = disc_cost.dropna(subset=["ref_cost"])
 disc_cost['Pct_Diff'] = ((disc_cost['Disc_Cost'] - disc_cost['ref_cost']) / disc_cost['ref_cost']) * 100
 
 disc_cost["Pct_Diff"] = (
-    disc_cost["Pct_Diff"].astype(float).round(3)
+    disc_cost["Pct_Diff"].astype(float).round(6)
 )
 
 disc_cost = disc_cost[['Scenario', 'Material_name', 'Pct_Diff']]
@@ -152,7 +152,7 @@ def plot_fixed(df_input, filename, title=None):
         )
 
     ax.set_xlabel("Composite supply risk (60/20/20)", fontsize=16)
-    ax.set_ylabel("% Difference in Disc Cost", fontsize=16)
+    ax.set_ylabel("% Difference in Discounted System Cost", fontsize=16)
 
     if title is not None:
         ax.set_title(title, fontsize=18)
@@ -369,7 +369,7 @@ def plot_polygons(df_input, filename, title=None, use_density=False):
             )
 
     ax.set_xlabel("Composite supply risk", fontsize=16)
-    ax.set_ylabel("% Difference in Disc Cost", fontsize=16)
+    ax.set_ylabel("% Difference in Discounted System Cost", fontsize=16)
 
     if title is not None:
         ax.set_title(title, fontsize=18)
