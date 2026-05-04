@@ -49,12 +49,6 @@ def solve(data: ProblemData, solver: str = "highs") -> tuple[float, float, float
                                  for i in I for r in R for t in T
                                  if data.valcap[ii[i], ri[r], ti[t]]])
 
-    # Sparse (i,r,t) set for eq_mingen — dispatchable techs within valcap
-    disp_irt = gp.Set(c, "disp_irt", domain=[i_set, r_set, t_set],
-                      records=[(i, r, str(t))
-                               for i in I for r in R for t in T
-                               if data.valcap[ii[i], ri[r], ti[t]]
-                               and data.minloadfrac[ii[i]] > 0])
 
     # Parameters
     load_p = gp.Parameter(c, "load_p", domain=[r_set, h_set, t_set],
@@ -120,16 +114,17 @@ def solve(data: ProblemData, solver: str = "highs") -> tuple[float, float, float
         )
     )
 
-    # -- eq_cap_limit (active only for valcap combinations)
+    # -- eq_cap_limit (full domain; non-valcap CAP=0 makes constraint vacuous)
     eq_cap_limit = gp.Equation(c, "eq_cap_limit", domain=[i_set, r_set, h_set, t_set])
-    eq_cap_limit[valcap_set[i_set, r_set, t_set], h_set] = (
+    eq_cap_limit[...] = (
         GEN[i_set, r_set, h_set, t_set]
         <= cf_p[i_set, h_set] * CAP[i_set, r_set, t_set]
     )
 
-    # -- eq_mingen: dispatchable techs only, within valcap
+    # -- eq_mingen: relies on mf_p sparsity (only defined for dispatchable techs)
+    #    GEN >= 0*CAP for VRE is vacuous; gamspy omits it via parameter sparsity
     eq_mingen = gp.Equation(c, "eq_mingen", domain=[i_set, r_set, h_set, t_set])
-    eq_mingen[disp_irt[i_set, r_set, t_set], h_set] = (
+    eq_mingen[...] = (
         GEN[i_set, r_set, h_set, t_set]
         >= mf_p[i_set] * CAP[i_set, r_set, t_set]
     )

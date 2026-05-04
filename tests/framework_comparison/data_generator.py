@@ -48,7 +48,7 @@ TECH_PARAMS = [
 # Minimum load fraction for dispatchable techs (0 = unconstrained)
 MINLOADFRAC = {
     "gas_cc":   0.40,
-    "gas_ct":   0.20,
+    "gas_ct":   0.00,
     "coal":     0.50,
     "nuclear":  0.70,
     "battery":  0.00,
@@ -219,7 +219,7 @@ def _ring_routes(regions: list[str], capacity_mw: float) -> tuple[list, dict]:
 # -----------------------------------------------------------------
 
 def _make_valcap(n_techs: int, n_regions: int, n_years: int,
-                 is_vre: np.ndarray,
+                 is_vre: np.ndarray, minloadfrac: np.ndarray,
                  rng: np.random.Generator) -> np.ndarray:
     """
     Build a [n_techs, n_regions, n_years] bool mask.
@@ -248,13 +248,17 @@ def _make_valcap(n_techs: int, n_regions: int, n_years: int,
 
     disp_idx = np.where(~is_vre)[0]
     vre_idx  = np.where(is_vre)[0]
+    # Prefer lowest-mingen dispatchable when forcing — prevents excess supply
+    # at minimum-load hours from making the system infeasible
+    disp_by_mingen = sorted(disp_idx, key=lambda i: minloadfrac[i])
 
     for r in range(n_regions):
         for t in range(n_years):
-            # Ensure at least 1 dispatchable (avoids nighttime infeasibility)
-            if not valcap[disp_idx, r, t].any() and len(disp_idx) > 0:
-                forced = rng.choice(disp_idx)
-                valcap[forced, r, t] = True
+            # Always force the lowest-mingen dispatchable (gas_ct, mingen=0)
+            # into every (r,t).  This guarantees that 60% of cap_init carries
+            # zero forced dispatch, keeping system mingen below minimum load.
+            if len(disp_by_mingen) > 0:
+                valcap[disp_by_mingen[0], r, t] = True
 
             # Ensure at least 1 VRE (so emission cap is achievable)
             if not valcap[vre_idx, r, t].any() and len(vre_idx) > 0:
@@ -330,22 +334,24 @@ def make_problem(size: str = "small", seed: int = 42) -> ProblemData:
     pvf = np.array([1.0 / (1.07 ** (y - 2030)) for y in years])
 
     # ---- valcap sparsity mask [i, r, t] ----------------------------
-    valcap = _make_valcap(n_techs, n_regions, n_years, is_vre, rng)
+    valcap = _make_valcap(n_techs, n_regions, n_years, is_vre, minloadfrac, rng)
 
-    # ---- initial capacity: assign to first valcap-active dispatchable ----
-    # Recompute to ensure cap_init only goes to techs active in valcap[r, t=0]
+    # ---- initial capacity: assign to lowest-mingen valcap-active dispatchables
+    # Sorting by mingen minimises forced dispatch at minimum-load hours.
     cap_init = np.zeros((n_techs, n_regions))
     disp_techs = [i for i in range(n_techs) if not is_vre[i]]
     for r in range(n_regions):
         total = 0.55 * avg_peak[r]
-        # Find first two dispatchable techs active in (r, t=0)
-        active_disp = [i for i in disp_techs if valcap[i, r, 0]]
+        active_disp = sorted(
+            [i for i in disp_techs if valcap[i, r, 0]],
+            key=lambda i: minloadfrac[i],
+        )
         if len(active_disp) >= 1:
             cap_init[active_disp[0], r] = 0.6 * total
         if len(active_disp) >= 2:
             cap_init[active_disp[1], r] = 0.4 * total
         elif len(active_disp) == 1:
-            cap_init[active_disp[0], r] = total  # all to first
+            cap_init[active_disp[0], r] = total
 
     # ---- emission cap [t] ------------------------------------------
     # Set cap at 70% of total load × mean dispatchable emit rate.

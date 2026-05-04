@@ -69,7 +69,8 @@ def solve(data: ProblemData, solver: str = "highs") -> tuple[float, float, float
     def eq_cap_accum(m, i, r, t):
         return m.CAP[i, r, t] == (
             data.cap_init[ii[i], ri[r]]
-            + sum(m.INV[i, r, tt] for tt in T if tt <= t)
+            + sum(m.INV[i, r, tt] for tt in T
+                  if tt <= t and data.valcap[ii[i], ri[r], ti[tt]])
         )
 
     # -- eq_cap_limit
