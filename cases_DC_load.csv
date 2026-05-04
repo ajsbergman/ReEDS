@@ -1,0 +1,18 @@
+,Default Value,central,high,lowgas_central,lowgas_high,highgas_central,highgas_high
+ignore,0,,,0,,,0
+input_processing_only,0,,,,,,
+yearset,2010_2015_2020..2030..2,,,,,,
+endyear,2030,,,,,,
+GSw_HierarchyFile,agg54,,,,,,
+ngscen,AEO_2025_reference,,,AEO_2025_HOG,AEO_2025_HOG,AEO_2025_LOG,AEO_2025_LOG
+GSw_PRM_CapCredit,1,,,,,,
+GSw_PRM_scenario,nerc,,,,,,
+GSw_PRM_UpdateMethod,0,,,,,,
+GSw_PRM_StressIterateMax,0,,,,,,
+pras,0,,,,,,
+GSw_H2,0,,,,,,
+GSw_H2_PTC,0,,,,,,
+GSw_LoadProfiles,/projects/largeload/ReEDS-2.0_largeload/inputs/load/demand_EER2025_IRAlow_national_central.h5,,/projects/largeload/ReEDS-2.0_largeload/inputs/load/demand_EER2025_IRAlow_national_central_high_dc.h5,,/projects/largeload/ReEDS-2.0_largeload/inputs/load/demand_EER2025_IRAlow_national_central_high_dc.h5,,/projects/largeload/ReEDS-2.0_largeload/inputs/load/demand_EER2025_IRAlow_national_central_high_dc.h5
+GSw_LoadCalibrate,0,,,,,,
+GSw_TransHurdleRate,1,,,,,,
+GSw_GrowthPenalties,1,,,,,,

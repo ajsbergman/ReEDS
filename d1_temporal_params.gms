@@ -781,6 +781,7 @@ $onlisting
 load_exog(r,allh,t) = 0 ;
 load_exog(r,h,t) = load_allyear(r,h,t) / (1.0 - distloss) ;
 
+$ifthen.notpcm %GSw_PCM% == 0
 parameter prm_year(r) "--fraction-- planning reserve margin for the current solve year"
 / 
 $offlisting
@@ -793,6 +794,7 @@ prm(r,t)$tmodel(t) = prm_year(r) ;
 
 * Stress-period load is scaled up by PRM
 load_exog(r,h,t)$h_stress(h) = load_exog(r,h,t) * (1 + prm(r,t)) ;
+$endif.notpcm
 
 * first define mexican growth load then replace canadian with
 * province-specific growth factors

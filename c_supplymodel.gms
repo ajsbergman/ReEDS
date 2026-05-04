@@ -295,8 +295,8 @@ eq_interconnection_queues(tg,r,t)         "--MW-- capacity deployment limit base
  eq_CAPTRAN_ITL(itlgrp,itlgrpp,t)            "--MW-- combined flow capacity between ITL groups"
  eq_itlgrp_limit_energy(itlgrp,itlgrpp,allh,t) "--MW-- limit on combined interface energy flows for ITLs"
  eq_itlgrp_limit_prm(itlgrp,itlgrpp,ccseason,t) "--MW-- limit on combined interface PRM flows for ITLs"
- eq_firm_transfer_limit(nercr,allh,t)        "--MW-- limit net firm capacity imports into NERC regions when using stress periods"
- eq_firm_transfer_limit_cc(nercr,ccseason,t) "--MW-- limit net firm capacity imports into NERC regions when using capacity credit"
+ eq_firm_transfer_limit(transreg,allh,t)        "--MW-- limit net firm capacity imports into FERC regions when using stress periods"
+ eq_firm_transfer_limit_cc(transreg,ccseason,t) "--MW-- limit net firm capacity imports into FERC regions when using capacity credit"
  eq_offshore_no_backflow(r,rr,trtype,allh,t) "--MW-- disallow transmission flows from land to offshore zones"
 
 * storage-specific equations
@@ -1153,7 +1153,8 @@ eq_spur_noclip(x,t)
     $[Sw_SpurScen
     $(not Sw_SpurShare)
     $xfeas(x)
-    $tmodel(t)]..
+    $tmodel(t)
+    $(not Sw_PCM)]..
 
 * Capacity of spur line to site x
     CAP_SPUR(x,t)
@@ -1653,7 +1654,7 @@ eq_cap_sdbin_balance(i,v,r,ccseason,t)
 
 * energy capacity must be greater than the binned value
 eq_cap_sdbin_energy_balance(i,v,r,ccseason,t)
-    $[tmodel(t)$valcap(i,v,r,t)$battery(i)$Sw_PRM_CapCredit]..
+    $[tmodel(t)$valcap(i,v,r,t)$battery(i)$Sw_PRM_CapCredit$(not Sw_PCM)]..
 
 *total capacity in each region
     CAP_ENERGY(i,v,r,t)
@@ -1669,7 +1670,7 @@ eq_cap_sdbin_energy_balance(i,v,r,ccseason,t)
 * for each bin, binned energy capacity must equal to binned power capacity
 * times bin duration
 eq_sdbin_power_energy_link(i,v,r,ccseason,sdbin,t)
-    $[tmodel(t)$valcap(i,v,r,t)$battery(i)$Sw_PRM_CapCredit]..
+    $[tmodel(t)$valcap(i,v,r,t)$battery(i)$Sw_PRM_CapCredit$(not Sw_PCM)]..
 
 *binned energy capacity
     CAP_SDBIN_ENERGY(i,v,r,ccseason,sdbin,t)
@@ -1683,7 +1684,7 @@ eq_sdbin_power_energy_link(i,v,r,ccseason,sdbin,t)
 * ---------------------------------------------------------------------------
 
 *binned power capacity cannot exceed sdbin size
-eq_sdbin_power_limit(ccreg,ccseason,sdbin,t)$[tmodel(t)$Sw_PRM_CapCredit]..
+eq_sdbin_power_limit(ccreg,ccseason,sdbin,t)$[tmodel(t)$Sw_PRM_CapCredit$(not Sw_PCM)]..
 
 *sdbin size from CC script
     sdbin_size(ccreg,ccseason,sdbin,t)
@@ -1718,6 +1719,7 @@ eq_reserve_margin(r,ccseason,t)
     + sum{(i,v)$[valcap(i,v,r,t)$(not vre(i))$(not hydro(i))$(not storage(i))$(not consume(i))$(not forced_retire(i,r,t))],
           CAP(i,v,r,t)
           * (1 + ccseason_cap_frac_delta(i,v,r,ccseason,t))
+          * (1 - mean_forced_outage_rate(i,r,ccseason,t))
          }
 
 *[plus] firm capacity from existing VRE or CSP
@@ -2171,51 +2173,51 @@ eq_itlgrp_limit_prm(itlgrp,itlgrpp,ccseason,t)
 
 * ---------------------------------------------------------------------------
 
-* NERC regions are only allowed to import firm capacity up to their limit
-eq_firm_transfer_limit(nercr,h,t)
+* FERC regions are only allowed to import firm capacity up to their limit
+eq_firm_transfer_limit(transreg,h,t)
     $[tmodel(t)
     $Sw_PRM_NetImportLimit
     $h_stress(h)]..
 
-* max net import fraction [.] * peak demand by NERC region [MW]
-    firm_import_limit(nercr,t) * peakload_nercr(nercr,t)
+* max net import fraction [.] * peak demand by FERC region [MW]
+    firm_import_limit(transreg,t) * peakload_transreg(transreg,t)
 
     =g=
 
 * net transmission imports (i.e. minus exports) accounting for losses on imports
 * imports [MW]
-    + sum{(r,rr,trtype,nercrr)
-          $[routes(rr,r,trtype,t)$routes_prm(rr,r)$routes_nercr(nercrr,nercr,rr,r)],
+    + sum{(r,rr,trtype,transregg)
+          $[routes(rr,r,trtype,t)$routes_prm(rr,r)$routes_transreg(transregg,transreg,rr,r)],
           FLOW(rr,r,h,t,trtype) * (1 - tranloss(rr,r,trtype)) }
 * exports [MW]
-    - sum{(r,rr,trtype,nercrr)
-          $[routes(r,rr,trtype,t)$routes_prm(r,rr)$routes_nercr(nercr,nercrr,r,rr)],
+    - sum{(r,rr,trtype,transregg)
+          $[routes(r,rr,trtype,t)$routes_prm(r,rr)$routes_transreg(transreg,transregg,r,rr)],
           FLOW(r,rr,h,t,trtype) }
 ;
 
 * ---------------------------------------------------------------------------
 
-* NERC regions are only allowed to import firm capacity up to their limit
-eq_firm_transfer_limit_cc(nercr,ccseason,t)
+* FERC regions are only allowed to import firm capacity up to their limit
+eq_firm_transfer_limit_cc(transreg,ccseason,t)
     $[tmodel(t)
     $Sw_PRM_NetImportLimit
     $Sw_PRM_CapCredit
     $(not Sw_PCM)]..
 
 * max net import fraction [.] * peak demand by ccseason [MW]
-    firm_import_limit(nercr,t)
-    * sum{r$r_nercr(r,nercr), peakdem_static_ccseason(r,ccseason,t) }
+    firm_import_limit(transreg,t)
+    * sum{r$r_transreg(r,transreg), peakdem_static_ccseason(r,ccseason,t) }
 
     =g=
 
 * net transmission imports (i.e. minus exports) accounting for losses on imports
 * imports [MW]
-    + sum{(r,rr,trtype,nercrr)
-          $[routes(rr,r,trtype,t)$routes_prm(rr,r)$routes_nercr(nercrr,nercr,rr,r)],
+    + sum{(r,rr,trtype,transregg)
+          $[routes(rr,r,trtype,t)$routes_prm(rr,r)$routes_transreg(transregg,transreg,rr,r)],
           PRMTRADE(rr,r,trtype,ccseason,t) * (1 - tranloss(rr,r,trtype)) }
 * exports [MW]
-    - sum{(r,rr,trtype,nercrr)
-          $[routes(r,rr,trtype,t)$routes_prm(r,rr)$routes_nercr(nercr,nercrr,r,rr)],
+    - sum{(r,rr,trtype,transregg)
+          $[routes(r,rr,trtype,t)$routes_prm(r,rr)$routes_transreg(transreg,transregg,r,rr)],
           PRMTRADE(r,rr,trtype,ccseason,t) }
 ;
 
@@ -3213,7 +3215,7 @@ eq_storage_in_minloading(i,v,r,h,hh,t)$[(storage_standalone(i) or hyd_add_pump(i
 * ---------------------------------------------------------------------------
 * for batteries
 * when power capacity is built, energy capacity must be greater than the minimum duration
-eq_battery_minduration(i,v,r,t)$[valcap(i,v,r,t)$tmodel(t)$newv(v)$battery(i)]..
+eq_battery_minduration(i,v,r,t)$[valcap(i,v,r,t)$tmodel(t)$newv(v)$battery(i)$(not Sw_PCM)]..
 
     CAP_ENERGY(i,v,r,t)
 

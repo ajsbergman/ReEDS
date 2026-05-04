@@ -546,6 +546,7 @@ alias(cendiv,cendiv2) ;
 alias(rscbin,arscbin) ;
 alias(nercr,nercrr) ;
 alias(transgrp,transgrpp) ;
+alias(transreg,transregg) ;
 alias(itlgrp,itlgrpp) ;
 
 parameter yeart(t) "numeric value for year",
@@ -3540,12 +3541,12 @@ routes_transgroup(transgrp,transgrpp,r,rr)$[
     $(not sameas(r,rr))
 ] = yes ;
 
-set routes_nercr(nercr,nercrr,r,rr) "collection of routes between nercrs" ;
-routes_nercr(nercr,nercrr,r,rr)$[
-    sum{(t,trtype), routes(r,rr,trtype,t) }
-    $r_nercr(r,nercr)
-    $r_nercr(rr,nercrr)
-    $(not sameas(nercr,nercrr))
+parameter routes_transreg(transreg,transregg,r,rr) "collection of routes between transregs" ;
+routes_transreg(transreg,transregg,r,rr)$[
+    sum{t, routes(r,rr,"AC",t) }
+    $r_transreg(r,transreg)
+    $r_transreg(rr,transregg)
+    $(not sameas(transreg,transregg))
     $(not sameas(r,rr))
 ] = yes ;
 
@@ -4961,7 +4962,7 @@ $onlisting
 / ;
 
 $onempty
-parameter firm_import_limit(nercr,allt) "--fraction-- limit on net firm imports into NERC regions"
+parameter firm_import_limit(transreg,allt) "--fraction-- limit on net firm imports into FERC regions"
 /
 $offlisting
 $ondelim
@@ -4970,11 +4971,11 @@ $offdelim
 $onlisting
 / ;
 
-parameter peakload_nercr(nercr,allt) "--MW-- Peak exogenous demand across all weather years by NERC region"
+parameter peakload_transreg(transreg,allt) "--MW-- Peak exogenous demand across all weather years by NERC region"
 /
 $offlisting
 $ondelim
-$include inputs_case%ds%peakload_nercr.csv
+$include inputs_case%ds%peakload_transreg.csv
 $offdelim
 $onlisting
 / ;
@@ -6730,7 +6731,8 @@ Parameter
     cc_excess(i,r,ccseason,t)              "--MW-- this is the excess capacity credit when assuming marginal capacity credit in intertemporal solve"
     vre_gen_last_year(r,allh,t)            "--MW-- generation from VRE generators in the prior solve year"
     hybrid_cc_derate(i,r,ccseason,sdbin,t) "--fraction-- derate factor for hybrid PV+battery storage capacity credit"
-    m_cc_mar(i,r,ccseason,t)               "--fraction-- marginal capacity credit",
+    m_cc_mar(i,r,ccseason,t)               "--fraction-- marginal capacity credit"
+    mean_forced_outage_rate(i,r,ccseason,t)"--fraction-- mean forced outage rate for each technology, region, and ccseason - used to derate thermal generator capacity"
 * Heuristic climate impacts
     trans_cap_delta(allh,allt)             "--fraction-- fractional adjustment to transmission capacity from climate heuristics"
 * Emissions and policies
@@ -6758,6 +6760,7 @@ cc_excess(i,r,ccseason,t) = 0 ;
 cc_old(i,r,ccseason,t) = 0 ;
 m_cc_mar(i,r,ccseason,t) = 0 ;
 hybrid_cc_derate(i,r,ccseason,sdbin,t)$[pvb(i)$valcap_irt(i,r,t)] = 1 ;
+mean_forced_outage_rate(i,r,ccseason,t) = 0 ;
 
 * Trim some of the largest matrices to reduce file sizes
 cost_vom(i,v,r,t)$[not valgen(i,v,r,t)] = 0 ;

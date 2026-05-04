@@ -221,10 +221,10 @@ def calculate_co2_storage_routes(dfzones, co2_storage_sites):
 ### --- PROCEDURE ---
 ### ===========================================================================
 
-#%% Limits on PRMTRADE across nercr boundaries
+#%% Limits on PRMTRADE across transreg boundaries
 if not int(sw.GSw_PRM_NetImportLimit):
     ## No limit
-    firm_import_limit = pd.DataFrame(columns=['*nercr','t','fraction']).set_index(['*nercr','t'])
+    firm_import_limit = pd.DataFrame(columns=['*transreg','t','fraction']).set_index(['*transreg','t'])
 else:
     limits = pd.Series(
         {int(i.split('_')[0]): i.split('_')[1] for i in sw.GSw_PRM_NetImportLimitScen.split('/')}
@@ -240,12 +240,12 @@ else:
     ## calculate the historical net_firm_import fraction for each region and drop negative values
     peak_net_imports = pd.read_csv(
         os.path.join(inputs_case,'peak_net_imports.csv'),
-        index_col=['nercr']
+        index_col=['transreg']
     )
     net_firm_import_frac = (
         peak_net_imports.MW / peak_net_imports.MW_TotalDemand
     ).clip(lower=0)
-    nercrs = net_firm_import_frac.index
+    transregs = net_firm_import_frac.index
 
     _dfout = {}
     for key, val in limits.items():
@@ -260,14 +260,14 @@ else:
                 _dfout[y] = net_firm_import_frac.clip(lower=net_firm_import_frac.max())
         else:
             ## Input values are percentages so convert to fractions
-            _dfout[key] = pd.Series(index=nercrs, data=float(val) / 100)
+            _dfout[key] = pd.Series(index=transregs, data=float(val) / 100)
 
     firm_import_limit = (
-        pd.concat(_dfout, names=('t',)).unstack('nercr')
+        pd.concat(_dfout, names=('t',)).unstack('transreg')
         ## Linear interpolation between values; flat projections before and after
         .reindex(allyears).interpolate('linear').bfill().ffill()
         .loc[solveyears]
-        .unstack('t').rename('fraction').rename_axis(['*nercr','t'])
+        .unstack('t').rename('fraction').rename_axis(['*transreg','t'])
     )
 
 firm_import_limit.to_csv(os.path.join(inputs_case, 'firm_import_limit.csv'))

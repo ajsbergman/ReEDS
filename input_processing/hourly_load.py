@@ -632,12 +632,13 @@ def main(reeds_path, inputs_case):
                 state_load_hourly,
                 endyear
             )
-            state_load_hourly = (
-                calibrate_hourly_state_load_to_historical_annuals(
-                    state_load_hourly,
-                    historical_state_load_annual
+            if sw.GSw_LoadCalibrate == 1:
+                state_load_hourly = (
+                    calibrate_hourly_state_load_to_historical_annuals(
+                        state_load_hourly,
+                        historical_state_load_annual
+                    )
                 )
-            )
             historical_state_load_hourly = reeds.io.get_load_hourly(
                 GSw_LoadProfiles='historic'
             )
@@ -737,13 +738,13 @@ def main(reeds_path, inputs_case):
 
     reeds.io.write_profile_to_h5(regional_load_hourly, 'load.h5', inputs_case)
     peakload.to_csv(os.path.join(inputs_case,'peakload.csv'))
-    ### Write peak demand by NERC region to use in firm net import constraint
+    ### Write peak demand by FERC region to use in firm net import constraint
     (
-        peakload.loc['nercr']
+        peakload.loc['transreg']
         .stack('year')
-        .rename_axis(['*nercr','t'])
+        .rename_axis(['*transreg','t'])
         .rename('MW')
-        .to_csv(os.path.join(inputs_case,'peakload_nercr.csv'))
+        .to_csv(os.path.join(inputs_case,'peakload_transreg.csv'))
     )
     if int(sw.GSw_DRShed):
         reeds.io.write_profile_to_h5(regional_dr_shed_hourly, 'dr_shed_hourly.h5', inputs_case)

@@ -253,16 +253,33 @@ if __name__ == '__main__' and not hasattr(sys, 'ps1'):
 
     # %%### Parse inputs and get switches
     outputs_path = os.path.join(case, "outputs")
-
+    os.makedirs(outputs_path, exist_ok=True)
+    
+    if 'pcm' not in case:
+        gdx_path = outputs_path
+    else:
+        gdx_path = os.path.join(os.path.dirname(case))
+    
     ### Get switches
-    sw = reeds.io.get_switches(case)
+    if 'pcm' not in case:
+        sw = reeds.io.get_switches(case)
+    else:
+        sw = reeds.io.get_switches(os.path.join(os.path.dirname(case),'..'))
 
     ### Get new file names if applicable
-    dfparams = pd.read_csv(
-        os.path.join(case, "e_report_params.csv"),
+    if 'pcm' not in case:
+        dfparams = pd.read_csv(
+        os.path.join(case,"e_report_params.csv"),
         comment="#",
         index_col="param",
-    )
+        )
+    else:
+        dfparams = pd.read_csv(
+            os.path.join(os.path.dirname(case), '..', "e_report_params.csv"),
+            comment="#",
+            index_col="param",
+        )
+
     rename = dfparams.loc[~dfparams.output_rename.isnull(), "output_rename"].to_dict()
     ## drop the indices
     rename = {k.split("(")[0]: v for k, v in rename.items()}
@@ -271,8 +288,12 @@ if __name__ == '__main__' and not hasattr(sys, 'ps1'):
     # %%### Write results for each gdx file
     ### outputs gdx
     print("Loading outputs gdx")
+    if 'pcm' not in case:
+        gdx_file = f"rep_{os.path.basename(case)}.gdx"
+    else:
+        gdx_file =f"rep_{os.path.basename(case)}_{os.path.basename(os.path.abspath(os.path.join(case,'..','..')))}.gdx"
     dict_out = gdxpds.to_dataframes(
-        os.path.join(outputs_path, f"rep_{os.path.basename(case)}.gdx")
+        os.path.join(gdx_path, gdx_file)
     )
     print("Finished loading outputs gdx")
 
@@ -288,7 +309,7 @@ if __name__ == '__main__' and not hasattr(sys, 'ps1'):
     if int(sw.GSw_calc_powfrac):
         print("Loading powerfrac gdx")
         dict_powerfrac = gdxpds.to_dataframes(
-            os.path.join(outputs_path, f"rep_powerfrac_{os.path.basename(case)}.gdx")
+            os.path.join(gdx_path, f"rep_powerfrac_{os.path.basename(case)}.gdx")
         )
         print("Finished loading powerfrac gdx")
 
