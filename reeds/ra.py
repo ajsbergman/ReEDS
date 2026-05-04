@@ -26,7 +26,7 @@ def get_pras_stress_metric(case, t, iteration=0, stress_metric='EUE'):
         c for c in dfpras
         if (c.endswith(metric_tail) and not c.startswith('USA'))
     ]].copy()
-    ## Drop the tailing _EUE
+    ## Drop the tailing metric tail
     dfmetric = dfmetric.rename(
         columns=dict(zip(dfmetric.columns, [c[:-len(metric_tail)] for c in dfmetric])))
 
