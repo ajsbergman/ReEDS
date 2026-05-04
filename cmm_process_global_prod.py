@@ -151,8 +151,9 @@ power_materials =np.array(['Alumina', 'Aluminum', 'Bauxite', 'Boron', 'Cadmium',
 byproduct_df = byproduct_df[byproduct_df["Element_name"].isin(power_materials)]
 byproduct_df = byproduct_df[['Element_name','byproduct_mT']]
 byproduct_df['mat_ctry'] = 'USA'
-new_cols = ['* mat','mat_ctry','value']
+new_cols = ['* mat','value','mat_ctry']
 byproduct_df.columns = new_cols
+byproduct_df = byproduct_df[['* mat','mat_ctry','value']]
 byproduct_df.to_csv(os.path.join(workdir, 'cmm_us_byproduct.csv'), index=False)
 
 # PRICE DATA
