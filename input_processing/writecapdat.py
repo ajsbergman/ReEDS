@@ -65,8 +65,8 @@ def create_exog_rsc(inputs_case,gendb,TECH,COLNAMES,sw,startyear):
         print(tech)
         # Filter active plants
         cap_exog[tech]= gendb.loc[(gendb['tech']==tech) &
-                                  (gendb['StartYear'] < startyear)  &
-                                  (gendb['RetireYear']     > startyear)].copy()
+                                  (gendb['StartYear'] <= startyear)  &
+                                  (gendb['RetireYear'] > startyear)].copy()
         if len(cap_exog[tech]) > 0:
             # Assigning each geothermal unit in unit database to a class based on groups' temperatures
             if tech in ['geohydro_allkm','egs_allkm']:
@@ -264,10 +264,6 @@ TECH = {
 ### ===========================================================================
 
 def main(reeds_path, inputs_case, agglevel, regions):
-    
-    # #%% Settings for testing
-    #reeds_path = os.path.expanduser('~/Documents/GitHub/ReEDS/ReEDS-2.0')
-    #inputs_case = os.path.join(reeds_path,'runs','test_startyr_Pacific','inputs_case')
 
     #########################
     ### SUPPLEMENTAL DATA ###
@@ -998,8 +994,10 @@ if __name__ == '__main__':
     args = parser.parse_args()
     reeds_path = args.reeds_path
     inputs_case = args.inputs_case
-    #reeds_path = os.path.expanduser('~/Documents/GitHub/ReEDS/ReEDS-2.0')
-    #inputs_case = os.path.join(reeds_path,'runs','test_startyr_Pacific','inputs_case')
+
+    # #%% Settings for testing
+    # reeds_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    # inputs_case = os.path.join(reeds_path,'runs','test_Pacific','inputs_case')
 
     #%% Set up logger
     log = reeds.log.makelog(
