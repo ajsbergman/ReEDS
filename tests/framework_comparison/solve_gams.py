@@ -331,9 +331,9 @@ def solve(data: ProblemData, solver: str = "highs", build_only: bool = False) ->
         t0 = time.perf_counter()
         _write_gms(data, gms, solver)
         if solver.lower() == "highs":
-            (tmp_path / "highs.opt").write_text("solver = ipm\n", encoding="ascii")
+            (tmp_path / "highs.op1").write_text("solver = ipm\n", encoding="ascii")
         elif solver.lower() == "cplex":
-            (tmp_path / "cplex.opt").write_text("lpmethod 4\n", encoding="ascii")
+            (tmp_path / "cplex.op1").write_text("lpmethod 4\n", encoding="ascii")
         write_s = time.perf_counter() - t0
         if build_only:
             return float("nan"), write_s, 0.0
