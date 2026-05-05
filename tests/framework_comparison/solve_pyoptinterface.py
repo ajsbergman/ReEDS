@@ -20,7 +20,7 @@ from __future__ import annotations
 import time
 import pyoptinterface as poi
 from pyoptinterface import highs
-from pyoptinterface._src.attributes import ModelAttribute
+from pyoptinterface._src.attributes import ModelAttribute, TerminationStatusCode
 
 from data_generator import ProblemData
 
@@ -147,12 +147,17 @@ def solve(data: ProblemData, solver: str = "highs") -> tuple[float, float, float
         m.add_linear_constraint(lhs, poi.Leq, data.emit_cap[ti[t]])
 
     # -- Objective
+    # Scale objective by 1/OBJ_SCALE to avoid dual simplex ratio errors at
+    # large problem sizes when cost coefficients span [1, 5e6].  HiGHS 1.13
+    # (bundled with pyoptinterface) is less robust to wide cost ranges than
+    # HiGHS 1.14.  The final objective is multiplied back by OBJ_SCALE.
+    OBJ_SCALE = 1e6
     obj = poi.ExprBuilder()
     for k, t in enumerate(T):
         pv = data.pvf[k]
         for i in I:
-            cinv = data.cost_inv[ii[i]]
-            cop  = data.cost_op[ii[i]]
+            cinv = data.cost_inv[ii[i]] / OBJ_SCALE
+            cop  = data.cost_op[ii[i]]  / OBJ_SCALE
             for r in R:
                 if not data.valcap[ii[i], ri[r], ti[t]]:
                     continue
@@ -169,8 +174,12 @@ def solve(data: ProblemData, solver: str = "highs") -> tuple[float, float, float
     m.optimize()
     solve_s = time.perf_counter() - t1
 
+    status = m.get_model_attribute(ModelAttribute.TerminationStatus)
+    if status != TerminationStatusCode.OPTIMAL:
+        raise RuntimeError(f"HiGHS did not find an optimal solution: {status.name}")
+
     obj_val = m.get_model_attribute(ModelAttribute.ObjectiveValue)
-    return float(obj_val), build_s, solve_s
+    return float(obj_val * OBJ_SCALE), build_s, solve_s
 
 
 if __name__ == "__main__":
