@@ -29,6 +29,7 @@ from __future__ import annotations
 import argparse
 import csv
 import importlib
+import math
 import sys
 import threading
 from datetime import datetime
@@ -115,17 +116,23 @@ def run_one(
     module_name: str,
     solver: str | None,
     data,
+    build_only: bool = False,
 ) -> dict:
     """Import module, run solve() under RSS polling, return a result dict."""
     mod = importlib.import_module(module_name)
 
     def _call():
+        kwargs: dict = {}
         if solver is not None:
-            return mod.solve(data, solver=solver)
-        return mod.solve(data)
+            kwargs["solver"] = solver
+        if build_only:
+            kwargs["build_only"] = True
+        return mod.solve(data, **kwargs)
 
     try:
         (obj, build_s, solve_s), peak_mb = _peak_rss_mb(_call)
+        if math.isnan(obj):
+            obj = None
     except Exception as exc:
         return {
             "label": label,
@@ -177,6 +184,10 @@ def main() -> None:
         help="Skip peak-memory measurement (disables psutil RSS polling thread).",
     )
     parser.add_argument(
+        "--no-solve", action="store_true",
+        help="Build models but skip the LP solve (reports build time and memory only).",
+    )
+    parser.add_argument(
         "--repeat", type=int, default=1, metavar="N",
         help="Repeat each (framework, size) N times and report the minimum times.",
     )
@@ -226,7 +237,7 @@ def main() -> None:
             best: dict | None = None
 
             for _ in range(args.repeat):
-                row = run_one(label, mod, solver, data)
+                row = run_one(label, mod, solver, data, build_only=args.no_solve)
                 if best is None or (
                     row["total_s"] is not None
                     and (best["total_s"] is None

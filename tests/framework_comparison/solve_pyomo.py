@@ -21,7 +21,7 @@ from pyomo.opt import SolverFactory
 from data_generator import ProblemData
 
 
-def solve(data: ProblemData, solver: str = "highs") -> tuple[float, float, float]:
+def solve(data: ProblemData, solver: str = "highs", build_only: bool = False) -> tuple[float, float, float]:
     R, I, H, T = data.regions, data.techs, data.hours, data.years
     ri, ii, hi, ti = data.r_idx, data.i_idx, data.h_idx, data.t_idx
 
@@ -193,11 +193,13 @@ def solve(data: ProblemData, solver: str = "highs") -> tuple[float, float, float
         )
 
     build_s = time.perf_counter() - t0
+    if build_only:
+        return float("nan"), build_s, 0.0
 
     # ------------------------------------------------------------------ solve
     t1 = time.perf_counter()
     slvr = SolverFactory(solver)
-    slvr.solve(m, tee=False)
+    slvr.solve(m, tee=False, options={"solver": "ipm"})
     solve_s = time.perf_counter() - t1
 
     return float(pyo.value(m.obj)), build_s, solve_s

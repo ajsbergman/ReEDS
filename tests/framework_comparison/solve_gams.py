@@ -279,6 +279,7 @@ def _write_gms(data: ProblemData, gms_path: Path, solver: str) -> None:
         "",
         "Model reeds_mini / all /;",
         f"Option LP = {solver};",
+        "reeds_mini.optfile = 1;",
         "Solve reeds_mini using LP minimizing Z;",
         "Display Z.l;",
     ]
@@ -321,7 +322,7 @@ def _parse_lst(lst_path: Path) -> tuple[float, float, float]:
     return obj, gen_s, solve_s
 
 
-def solve(data: ProblemData, solver: str = "highs") -> tuple[float, float, float]:
+def solve(data: ProblemData, solver: str = "highs", build_only: bool = False) -> tuple[float, float, float]:
     with tempfile.TemporaryDirectory() as tmp:
         tmp_path = Path(tmp)
         gms  = tmp_path / "reeds_mini.gms"
@@ -329,7 +330,13 @@ def solve(data: ProblemData, solver: str = "highs") -> tuple[float, float, float
 
         t0 = time.perf_counter()
         _write_gms(data, gms, solver)
+        if solver.lower() == "highs":
+            (tmp_path / "highs.opt").write_text("solver = ipm\n", encoding="ascii")
+        elif solver.lower() == "cplex":
+            (tmp_path / "cplex.opt").write_text("lpmethod 4\n", encoding="ascii")
         write_s = time.perf_counter() - t0
+        if build_only:
+            return float("nan"), write_s, 0.0
 
         t1 = time.perf_counter()
         result = subprocess.run(

@@ -25,7 +25,7 @@ import linopy
 from data_generator import ProblemData
 
 
-def solve(data: ProblemData, solver: str = "highs") -> tuple[float, float, float]:
+def solve(data: ProblemData, solver: str = "highs", build_only: bool = False) -> tuple[float, float, float]:
     R, I, H, T = data.regions, data.techs, data.hours, data.years
     nRoutes = len(data.routes)
     xp = data.as_xarray()
@@ -171,10 +171,13 @@ def solve(data: ProblemData, solver: str = "highs") -> tuple[float, float, float
     m.add_objective(obj)
 
     build_s = time.perf_counter() - t0
+    if build_only:
+        return float("nan"), build_s, 0.0
 
     # ------------------------------------------------------------------ solve
     t1 = time.perf_counter()
-    m.solve(solver, io_api="direct", output_flag=False)
+    highs_opts = {"solver": "ipm"}
+    m.solve(solver, io_api="direct", output_flag=False, solver_options=highs_opts)
     solve_s = time.perf_counter() - t1
 
     return float(m.objective.value), build_s, solve_s

@@ -29,7 +29,7 @@ def _param(c, name, domain, records):
     return gp.Parameter(c, name, domain=domain)
 
 
-def solve(data: ProblemData, solver: str = "highs") -> tuple[float, float, float]:
+def solve(data: ProblemData, solver: str = "highs", build_only: bool = False) -> tuple[float, float, float]:
     R, I, H, T = data.regions, data.techs, data.hours, data.years
     ri, ii, hi, ti = data.r_idx, data.i_idx, data.h_idx, data.t_idx
 
@@ -300,10 +300,18 @@ def solve(data: ProblemData, solver: str = "highs") -> tuple[float, float, float
     )
 
     build_s = time.perf_counter() - t0
+    if build_only:
+        return float("nan"), build_s, 0.0
 
     # ------------------------------------------------------------------ solve
     t1 = time.perf_counter()
-    model.solve(solver=solver, output=None)
+    if solver.lower() == "highs":
+        solver_opts = {"solver": "ipm"}
+    elif solver.lower() == "cplex":
+        solver_opts = {"lpmethod": 4}
+    else:
+        solver_opts = {}
+    model.solve(solver=solver, output=None, solver_options=solver_opts)
     solve_s = time.perf_counter() - t1
 
     return float(Z.records["level"].iloc[0]), build_s, solve_s
