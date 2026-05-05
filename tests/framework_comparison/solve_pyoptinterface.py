@@ -9,11 +9,11 @@ Key pyoptinterface patterns used:
 - Constraints: m.add_linear_constraint(expr, poi.Eq/Leq/Geq, rhs)
 - Expressions: arithmetic on VariableIndex objects + poi.quicksum()
 - Objective: m.set_objective(expr, poi.ObjectiveSense.Minimize)
-- Result: m.get_model_attribute(ModelAttribute.ObjectiveValue)
+- cf is now [i,r,h]: data.cf[ii[i], ri[r], hi[h]]
 
-valcap sparsity is handled naturally: variables and constraints are
-simply not created for inactive (i,r,t) combinations — equivalent to
-GAMS $valcap dollar-conditionals.
+OBJ_SCALE divides all cost coefficients to avoid dual simplex ratio errors
+in HiGHS 1.13 (bundled) for large objective magnitudes; result is
+multiplied back at the end.
 """
 
 from __future__ import annotations
@@ -29,24 +29,36 @@ def solve(data: ProblemData, solver: str = "highs") -> tuple[float, float, float
     R, I, H, T = data.regions, data.techs, data.hours, data.years
     ri, ii, hi, ti = data.r_idx, data.i_idx, data.h_idx, data.t_idx
 
-    # Pre-build neighbour lookups
+    disp_techs    = [i for i in I if not data.is_vre[ii[i]] and not data.is_storage[ii[i]]]
+    storage_techs = [i for i in I if data.is_storage[ii[i]]]
+
+    h_next      = {H[k]: H[k+1] for k in range(len(H)-1)}
+    h_next_wrap = {H[k]: H[(k+1) % len(H)] for k in range(len(H))}
+
     imports_from = {r: [] for r in R}
     exports_to   = {r: [] for r in R}
     for (r_from, r_to) in data.routes:
         imports_from[r_to].append(r_from)
         exports_to[r_from].append(r_to)
 
+    active_storage_i = {(r, t): [i for i in storage_techs
+                                   if data.valcap[ii[i], ri[r], ti[t]]]
+                        for r in R for t in T}
+
     # ------------------------------------------------------------------ build
     t0 = time.perf_counter()
     m = highs.Model()
     m.set_model_attribute(ModelAttribute.Silent, True)
 
-    GEN  = {}
-    CAP  = {}
-    INV  = {}
-    FLOW = {}
+    GEN    = {}
+    CAP    = {}
+    INV    = {}
+    FLOW   = {}
+    RAMPUP = {}
+    CHARGE = {}
+    SOC    = {}
 
-    # Variables — only created for active valcap(i,r,t) combinations
+    # Variables
     for i in I:
         for r in R:
             for t in T:
@@ -55,13 +67,20 @@ def solve(data: ProblemData, solver: str = "highs") -> tuple[float, float, float
                     INV[(i, r, t)] = m.add_variable(lb=0.0)
                     for h in H:
                         GEN[(i, r, h, t)] = m.add_variable(lb=0.0)
+                    if not data.is_vre[ii[i]] and not data.is_storage[ii[i]]:
+                        for h in H[:-1]:
+                            RAMPUP[(i, r, h, t)] = m.add_variable(lb=0.0)
+                    if data.is_storage[ii[i]]:
+                        for h in H:
+                            CHARGE[(i, r, h, t)] = m.add_variable(lb=0.0)
+                            SOC[(i, r, h, t)]    = m.add_variable(lb=0.0)
 
     for (r_from, r_to) in data.routes:
         for h in H:
             for t in T:
                 FLOW[(r_from, r_to, h, t)] = m.add_variable(lb=0.0)
 
-    # -- eq_cap_accum: CAP[i,r,t] - sum_{tt<=t} INV[i,r,tt] = cap_init[i,r]
+    # -- eq_cap_accum
     for i in I:
         for r in R:
             for t in T:
@@ -73,24 +92,23 @@ def solve(data: ProblemData, solver: str = "highs") -> tuple[float, float, float
                     m.add_linear_constraint(lhs, poi.Eq,
                                             data.cap_init[ii[i], ri[r]])
 
-    # -- eq_cap_limit: GEN[i,r,h,t] - cf[i,h]*CAP[i,r,t] <= 0
+    # -- eq_cap_limit: GEN[i,r,h,t] <= cf[i,r,h] * CAP[i,r,t]
     for i in I:
         for r in R:
             for t in T:
                 if not data.valcap[ii[i], ri[r], ti[t]]:
                     continue
                 cap_var = CAP[(i, r, t)]
-                cf_row  = data.cf[ii[i], :]
                 for h in H:
                     m.add_linear_constraint(
-                        GEN[(i, r, h, t)] - cf_row[hi[h]] * cap_var,
+                        GEN[(i, r, h, t)] - data.cf[ii[i], ri[r], hi[h]] * cap_var,
                         poi.Leq, 0.0,
                     )
 
-    # -- eq_mingen: GEN[i,r,h,t] >= minloadfrac[i] * CAP[i,r,t]
+    # -- eq_mingen
     for i in I:
         mf = data.minloadfrac[ii[i]]
-        if mf <= 0:
+        if mf <= 0 or data.is_storage[ii[i]]:
             continue
         for r in R:
             for t in T:
@@ -99,8 +117,7 @@ def solve(data: ProblemData, solver: str = "highs") -> tuple[float, float, float
                 cap_var = CAP[(i, r, t)]
                 for h in H:
                     m.add_linear_constraint(
-                        GEN[(i, r, h, t)] - mf * cap_var,
-                        poi.Geq, 0.0,
+                        GEN[(i, r, h, t)] - mf * cap_var, poi.Geq, 0.0,
                     )
 
     # -- eq_supply_demand_balance
@@ -115,6 +132,8 @@ def solve(data: ProblemData, solver: str = "highs") -> tuple[float, float, float
                     lhs += (1 - data.tranloss) * FLOW[(rf, r, h, t)]
                 for rt in exports_to[r]:
                     lhs -= FLOW[(r, rt, h, t)]
+                for i in active_storage_i[(r, t)]:
+                    lhs -= CHARGE[(i, r, h, t)]
                 m.add_linear_constraint(lhs, poi.Eq,
                                         data.load[ri[r], hi[h], ti[t]])
 
@@ -137,7 +156,7 @@ def solve(data: ProblemData, solver: str = "highs") -> tuple[float, float, float
                     FLOW[(r_from, r_to, h, t)], poi.Leq, cap_val,
                 )
 
-    # -- eq_emit_cap: sum_{i,r,h} emit_rate[i]*hw[h]*GEN <= emit_cap[t]
+    # -- eq_emit_cap
     for t in T:
         lhs = poi.quicksum(
             data.emit_rate[ii[i]] * data.hours_weight[hi[h]] * GEN[(i, r, h, t)]
@@ -146,11 +165,63 @@ def solve(data: ProblemData, solver: str = "highs") -> tuple[float, float, float
         )
         m.add_linear_constraint(lhs, poi.Leq, data.emit_cap[ti[t]])
 
-    # -- Objective
-    # Scale objective by 1/OBJ_SCALE to avoid dual simplex ratio errors at
-    # large problem sizes when cost coefficients span [1, 5e6].  HiGHS 1.13
-    # (bundled with pyoptinterface) is less robust to wide cost ranges than
-    # HiGHS 1.14.  The final objective is multiplied back by OBJ_SCALE.
+    # -- eq_ramping: RAMPUP[i,r,h,t] >= GEN[i,r,h+1,t] - GEN[i,r,h,t]
+    for i in disp_techs:
+        for r in R:
+            for t in T:
+                if not data.valcap[ii[i], ri[r], ti[t]]:
+                    continue
+                for h in H[:-1]:
+                    m.add_linear_constraint(
+                        RAMPUP[(i, r, h, t)]
+                        - GEN[(i, r, h_next[h], t)]
+                        + GEN[(i, r, h, t)],
+                        poi.Geq, 0.0,
+                    )
+
+    # -- eq_min_cf: sum_h hw[h]*GEN[i,r,h,t] >= min_cf[i]*CAP[i,r,t]*total_hw
+    total_hw = float(data.hours_weight.sum())
+    for i in I:
+        mcf = data.min_cf[ii[i]]
+        if mcf <= 0:
+            continue
+        for r in R:
+            for t in T:
+                if not data.valcap[ii[i], ri[r], ti[t]]:
+                    continue
+                lhs = poi.quicksum(
+                    data.hours_weight[hi[h]] * GEN[(i, r, h, t)] for h in H
+                ) - mcf * total_hw * CAP[(i, r, t)]
+                m.add_linear_constraint(lhs, poi.Geq, 0.0)
+
+    # Storage constraints
+    for i in storage_techs:
+        for r in R:
+            for t in T:
+                if not data.valcap[ii[i], ri[r], ti[t]]:
+                    continue
+                cap_var = CAP[(i, r, t)]
+                for h in H:
+                    # eq_soc_cap: SOC <= duration_h * CAP
+                    m.add_linear_constraint(
+                        SOC[(i, r, h, t)] - data.duration_h * cap_var,
+                        poi.Leq, 0.0,
+                    )
+                    # eq_charge_cap: CHARGE <= CAP
+                    m.add_linear_constraint(
+                        CHARGE[(i, r, h, t)] - cap_var, poi.Leq, 0.0,
+                    )
+                    # eq_soc: SOC[h_next] = SOC[h] + eff*CHARGE[h] - GEN[h]
+                    hn = h_next_wrap[h]
+                    m.add_linear_constraint(
+                        SOC[(i, r, hn, t)]
+                        - SOC[(i, r, h, t)]
+                        - data.charge_eff * CHARGE[(i, r, h, t)]
+                        + GEN[(i, r, h, t)],
+                        poi.Eq, 0.0,
+                    )
+
+    # -- Objective (scaled to avoid HiGHS 1.13 dual simplex ratio errors)
     OBJ_SCALE = 1e6
     obj = poi.ExprBuilder()
     for k, t in enumerate(T):
@@ -158,13 +229,17 @@ def solve(data: ProblemData, solver: str = "highs") -> tuple[float, float, float
         for i in I:
             cinv = data.cost_inv[ii[i]] / OBJ_SCALE
             cop  = data.cost_op[ii[i]]  / OBJ_SCALE
+            sc   = data.startcost[ii[i]] / OBJ_SCALE
             for r in R:
                 if not data.valcap[ii[i], ri[r], ti[t]]:
                     continue
                 obj += pv * cinv * INV[(i, r, t)]
-                hw   = data.hours_weight
+                hw = data.hours_weight
                 for h in H:
                     obj += pv * cop * hw[hi[h]] * GEN[(i, r, h, t)]
+                if not data.is_vre[ii[i]] and not data.is_storage[ii[i]]:
+                    for h in H[:-1]:
+                        obj += pv * sc * RAMPUP[(i, r, h, t)]
     m.set_objective(obj, poi.ObjectiveSense.Minimize)
 
     build_s = time.perf_counter() - t0
