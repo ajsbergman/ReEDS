@@ -148,7 +148,7 @@ def read_runfiles(reeds_path, inputs_case, sw, agglevel_variables):
     return runfiles, non_region_files, region_files
 
 
-def get_source_deflator_map(reeds_path,sw):
+def get_source_deflator_map(reeds_path):
     """
     Get the deflator for each input file
     """
@@ -159,22 +159,18 @@ def get_source_deflator_map(reeds_path,sw):
     )
     
     ### Deflator Calculation
-    # The deflator values are calculated relative to the base year, so the base year deflator is set to 1.0, and the deflator values for other years 
-    # are calculated based on the inflation rates relative to the base year.
+    # The deflator values are calculated relative to the reeds dollar year to most recent 
+    # inputs dollar year by using inflatable.
     # Define the base year and current year for the deflator calculation.
-
-    # years list from the dollar year to the most recent year in sources.csv (inclusive)
-    max_dollar_year = pd.to_numeric(sources_dollaryear['DollarYear'], errors='coerce').max()
-    
     scalars = reeds.io.get_scalars(full=True)
+    reeds_dollar_year=int(scalars.loc['dollar_year', 'value'])
+    max_dollar_year = pd.to_numeric(sources_dollaryear['DollarYear'], errors='coerce').max()
+
+    # Define the deflator 
     inflatable = reeds.io.get_inflatable()  
-
-    deflator =( 1 / inflatable[int(scalars.loc['dollar_year', 'value'])].loc[int(scalars.loc['dollar_year', 'value']):max_dollar_year]).reset_index() 
-
+    deflator =( 1 / inflatable[reeds_dollar_year].loc[reeds_dollar_year:max_dollar_year]).reset_index() 
     deflator.columns = ['*Dollar.Year', 'Deflator']
-
     deflator.to_csv(os.path.join(inputs_case, 'deflator.csv'), index=False)
-
     deflator.rename(columns={'*Dollar.Year': 'Dollar.Year'}, inplace=True)
 
     # Create a mapping between inputs' relative filepaths and their deflation
@@ -1629,7 +1625,7 @@ def main(reeds_path, inputs_case):
     # (gswitches.csv is first written at runbatch.py)
     scalar_csv_to_txt(os.path.join(inputs_case,'gswitches.csv'))
     
-    source_deflator_map = get_source_deflator_map(reeds_path,sw)
+    source_deflator_map = get_source_deflator_map(reeds_path)
 
     # Copy non-region files
     write_non_region_files(non_region_files, sw, inputs_case, regions_and_agglevel, source_deflator_map)
