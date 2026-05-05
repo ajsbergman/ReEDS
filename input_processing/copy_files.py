@@ -162,28 +162,16 @@ def get_source_deflator_map(reeds_path,sw):
     # The deflator values are calculated relative to the base year, so the base year deflator is set to 1.0, and the deflator values for other years 
     # are calculated based on the inflation rates relative to the base year.
     # Define the base year and current year for the deflator calculation.
-    inflation_df = pd.read_csv(
-        os.path.join(reeds_path,'inputs','financials','inflation_default.csv')
-    )
 
+    # years list from the dollar year to the most recent year in sources.csv (inclusive)
+    max_dollar_year = pd.to_numeric(sources_dollaryear['DollarYear'], errors='coerce').max()
+    
     scalars = reeds.io.get_scalars(full=True)
-    # years list from the dollar year to the current financial year (inclusive)
-    years = [y for y in inflation_df.t if y >= int(sw.dollar_year) and y <= int(scalars.loc['current_financial_year', 'value'])]
+    inflatable = reeds.io.get_inflatable()  
 
-    # Set the initial deflator value for the base year to 1.0
-    deflator_values: dict[int, float] = {int(sw.dollar_year): 1.0}
+    deflator =( 1 / inflatable[int(scalars.loc['dollar_year', 'value'])].loc[int(scalars.loc['dollar_year', 'value']):max_dollar_year]).reset_index() 
 
-    # Calculate the deflator values for each year, relative to the base year, using the inflation rates
-    for y in years[1:]:
-        rate = inflation_df.loc[inflation_df['t'] == y, 'inflation_rate'].values[0]
-        deflator_values[y] = deflator_values[y - 1] / rate
-
-    deflator = pd.DataFrame(
-        {
-            "*Dollar.Year": list(deflator_values.keys()),
-            "Deflator":     [round(v, 9) for v in deflator_values.values()],
-        }
-    ).sort_values("*Dollar.Year").reset_index(drop=True)
+    deflator.columns = ['*Dollar.Year', 'Deflator']
 
     deflator.to_csv(os.path.join(inputs_case, 'deflator.csv'), index=False)
 

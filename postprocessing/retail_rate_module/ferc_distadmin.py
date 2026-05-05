@@ -10,6 +10,10 @@ Created on Mon May  4 14:14:07 2020
 import pandas as pd
 import numpy as np
 import os
+import sys
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from bokehpivot.defaults import ReEDS_DOLLAR_YEAR
 
 
 #################
@@ -172,7 +176,7 @@ def get_inflatable(inflationpath=None):
     inflatable = pd.Series(inflatable)
     return inflatable
 
-def get_excluded_costs(excludecells=excludecells, inflationpath=None, dollar_year=2004):
+def get_excluded_costs(excludecells=excludecells, inflationpath=None, dollar_year=ReEDS_DOLLAR_YEAR):
     """
     Get subtracted cells so we can add them back in with special treatment.
     Returns monetary values in dollar_year dollars.

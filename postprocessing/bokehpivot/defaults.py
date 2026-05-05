@@ -1,5 +1,5 @@
 DEFAULT_DOLLAR_YEAR = 2024
-DEFAULT_DOLLAR_BASED_YEAR = 2004
+ReEDS_DOLLAR_YEAR=2004
 DEFAULT_PV_YEAR = 2024
 ### Source for default discount rate:
 ### https://www.whitehouse.gov/wp-content/uploads/2023/11/CircularA-4.pdf

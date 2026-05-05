@@ -12,8 +12,12 @@ The results are written in ¢/kWh in {out_dollar_year} dollars.
 import pandas as pd
 import os
 import io
+import sys
 import argparse
 import retail_rate_calculations
+
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from bokehpivot.defaults import ReEDS_DOLLAR_YEAR
 
 pd.options.display.max_columns = 200
 pd.options.display.max_rows = 50
@@ -40,7 +44,7 @@ out_dollar_year = args.out_dollar_year
 #%% Inputs ###
 
 validationyears = list(range(2010,2020))
-data_dollar_year = 2004
+reeds_dollar_year = ReEDS_DOLLAR_YEAR
 
 retailmodulepath = os.path.join(reeds_path,'postprocessing','retail_rate_module','')
 inputs_default_path = retailmodulepath+'inputs_default.csv'
@@ -49,7 +53,7 @@ inflation = pd.read_csv(
     os.path.join(reeds_path,'inputs','financials','inflation_default.csv'),
     index_col=['t'])
 inf_adjust = inflation.loc[
-    data_dollar_year+1:out_dollar_year,
+    reeds_dollar_year+1:out_dollar_year,
     'inflation_rate'
 ].cumprod()[out_dollar_year]
 

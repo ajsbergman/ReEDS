@@ -19,7 +19,7 @@ import reeds
 from reeds import plots
 from reeds import reedsplots
 from reeds.report_utils import SLIDE_HEIGHT, SLIDE_WIDTH
-from bokehpivot.defaults import DEFAULT_DOLLAR_YEAR, DEFAULT_PV_YEAR, DEFAULT_DISCOUNT_RATE
+from bokehpivot.defaults import DEFAULT_DOLLAR_YEAR,ReEDS_DOLLAR_YEAR, DEFAULT_PV_YEAR, DEFAULT_DISCOUNT_RATE
 
 reeds_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 plots.plotparams()
@@ -138,7 +138,7 @@ discountrate_social = DEFAULT_DISCOUNT_RATE
 discountrate_scghg = 0.02
 assert discountrate_scghg in [0.015, 0.02, 0.025]
 central_health = {'cr':'ACS', 'model':'EASIUR'}
-reeds_dollaryear = 2004
+reeds_dollaryear = ReEDS_DOLLAR_YEAR
 output_dollaryear = DEFAULT_DOLLAR_YEAR
 startyear_notes = DEFAULT_PV_YEAR
 
