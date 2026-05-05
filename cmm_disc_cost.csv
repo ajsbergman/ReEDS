@@ -40,7 +40,9 @@ Best_Vanadium,7342.952167
 Best_Zinc,7352.230689
 Best_Zirconium,7342.712527
 ConREST_Reference,7119.054399
+ConREST_Aluminum,7137.22433
 ConREST_Cobalt,7119.716669
+ConREST_Copper,7164.240706
 ConREST_Manganese,7122.871833
 ConREST_Nickel,7122.782186
 ConREST_Vanadium,7119.439607
@@ -56,6 +58,7 @@ HOG_Aluminum,6365.777547
 HOG_Cobalt,6341.814953
 HOG_Copper,6397.79894
 HOG_Manganese,6344.620055
+HOG_Nickel,6346.025385
 HOG_Vanadium,6341.447228
 LOG_Reference,7537.805481
 LOG_Aluminum,7579.103588
@@ -75,6 +78,7 @@ Reference_Reference,6802.766782
 Reference_Aluminum,6837.60408
 Reference_Boron,6802.767499
 Reference_Cadmium,6802.795169
+Reference_Chromium,6810.874048
 Reference_Cobalt,6803.194516
 Reference_Copper,6876.998059
 Reference_Dysprosium,6802.956055
@@ -122,12 +126,14 @@ Restrict_Molybdenum,6856.065854
 Restrict_Neodymium,6815.693039
 Restrict_Nickel,7059.671692
 Restrict_Niobium,6802.794203
+Restrict_Praseodymium,6804.485279
 Restrict_Selenium,6802.765849
 Restrict_Silicon,7063.483208
 Restrict_Silver,6817.65768
 Restrict_Steel,7967.784882
 Restrict_Tantalum,6803.257976
 Restrict_Tellurium,6826.318182
+Restrict_Terbium,6802.711437
 Restrict_Tin,6954.114441
 Restrict_Titanium,6802.794203
 Restrict_Tungsten,6802.796812
@@ -140,6 +146,7 @@ Worst_Aluminum,7629.38235
 Worst_Boron,7593.497836
 Worst_Cadmium,7593.298047
 Worst_Chromium,7599.406306
+Worst_Cobalt,7593.986681
 Worst_Copper,7677.236518
 Worst_Dysprosium,7593.637755
 Worst_Gallium,7592.813611
@@ -168,3 +175,8 @@ Worst_Vanadium,7593.758163
 Worst_Yttrium,7593.497983
 Worst_Zinc,7615.072592
 Worst_Zirconium,7593.503664
+AdvREST_Tellurium,6504.674385
+ConREST_Tellurium,7119.227697
+Highdemand_Tellurium,7222.668873
+HOG_Tellurium,6339.163048
+Lowdemand_Tellurium,6490.198108
