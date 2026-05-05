@@ -193,6 +193,13 @@ above — it reduces the chance that something unexpected shows up when the
 full tests are eventually run.
 
 ### 2.4 Ask the human when something is unclear
+**Do not speculate and present the answer as fact.** ReEDS is large and
+complex; if you are not certain something is true — about how a switch
+behaves, what a parameter represents, which file is canonical, or what a
+script does — say so explicitly and verify before answering. Use the repo's
+files as the source of truth, not training-data assumptions about how energy
+models generally work.
+
 Stop and ask when:
 
 - The intent of a switch, parameter, or set is ambiguous.
