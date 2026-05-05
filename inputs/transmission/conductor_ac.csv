@@ -1,4 +1,4 @@
-voltage_kv,kcmil,conductor_type,conductor_quantity,amp,mva
+voltage_kv,kcmil,conductor_type,conductor_quantity,amp,MVA
 69,477,ACSS,1,1175,140
 115,795,ACSS,1,1650,329
 138,795,ACSS,1,1650,394

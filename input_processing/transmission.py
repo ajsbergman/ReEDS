@@ -25,33 +25,15 @@ inputs_case = args.inputs_case
 
 # #%% Settings for testing ###
 # reeds_path = reeds.io.reeds_path
-# inputs_case = str(Path(reeds_path,'runs','v20260407_transcostM0_Pacific','inputs_case'))
+# inputs_case = str(Path(reeds_path,'runs','v20260420_transcostM0_Pacific','inputs_case'))
 
 
 #%%#################
 ### FIXED INPUTS ###
 decimals = 5
-drop_canmex = True
-dollar_year = 2004
-
-
-#%% Set up logger
-log = reeds.log.makelog(
-    scriptname=__file__,
-    logpath=os.path.join(inputs_case,'..','gamslog.txt'),
-)
-print('Starting transmission.py', flush=True)
-
-#%% Inputs from switches
-sw = reeds.io.get_switches(inputs_case)
-
-## networksource must end in a 4-digit year indicating the year represented by the network
-trans_init_year = int(sw.GSw_TransNetworkSource[-4:])
-
-valid_regions = {}
-for level in ['r','itlgrp','transgrp']:
-    valid_regions[level] = pd.read_csv(
-        os.path.join(inputs_case, f'val_{level}.csv'), header=None).squeeze(1).tolist()
+input_dollar_year = pd.read_csv(
+    Path(reeds_path, 'inputs', 'transmission', 'dollaryear.csv'), index_col=0,
+).squeeze(1)
 
 
 #%% ===========================================================================
@@ -89,7 +71,10 @@ def get_trancap_init(case, networksource='NARIS2024', level='r'):
     ### DC
     if level == 'r':
         ## transgrp capacity is only defined for AC
-        hvdc = reeds.inputs.map_hvdc_lines_to_interfaces(case).assign(trtype='LCC')
+        hvdc = (
+            reeds.inputs.map_hvdc_lines_to_interfaces(case, filename='hvdc_lines.csv')
+            .reset_index()
+        )
         b2b = reeds.inputs.get_b2b(case).assign(trtype='B2B')
         ## DC capacity is only defined in one direction,
         ## so duplicate it for the opposite direction
@@ -188,6 +173,29 @@ def get_firm_import_limit(inputs_case):
     return firm_import_limit
 
 
+def convert_to_tsc(interface_params, dollar_year=2004):
+    transmission_cost_ac = interface_params.loc[
+        interface_params.trtype=='AC',
+        ['r', 'rr', f'USD{dollar_year}perMW']
+    ].copy()
+    transmission_cost_ac = (
+        transmission_cost_ac
+        .rename(columns={f'USD{dollar_year}perMW':f'USD{dollar_year}perMW_forward'})
+        .assign(**{f'USD{dollar_year}perMW_reverse':transmission_cost_ac[f'USD{dollar_year}perMW']})
+        .assign(tscbin='t0')
+        .assign(**{f'binwidth_USD{dollar_year}':1e12})
+        .rename(columns={})
+        [[
+            'r', 'rr', 'tscbin', f'binwidth_USD{dollar_year}',
+            f'USD{dollar_year}perMW_forward', f'USD{dollar_year}perMW_reverse',
+        ]]
+    )
+    _test = transmission_cost_ac.r < transmission_cost_ac.rr
+    if not _test.all():
+        print(transmission_cost_ac.loc[~_test])
+        raise ValueError('Region must be lexicographically sorted so r < rr')
+    return transmission_cost_ac
+
 
 def calculate_adjacent_routes(dfzones):
     routes_adjacent = dfzones.copy()
@@ -274,20 +282,39 @@ def calculate_co2_storage_routes(dfzones, co2_storage_sites):
 ### --- PROCEDURE ---
 ### ===========================================================================
 
+#%% Set up logger
+log = reeds.log.makelog(
+    scriptname=__file__,
+    logpath=os.path.join(inputs_case,'..','gamslog.txt'),
+)
+print('Starting transmission.py', flush=True)
+
+
+#%% Inputs from switches
+sw = reeds.io.get_switches(inputs_case)
+
+## networksource must end in a 4-digit year indicating the year represented by the network
+trans_init_year = int(sw.GSw_TransNetworkSource[-4:])
+
+valid_regions = {}
+for level in ['r','itlgrp','transgrp']:
+    valid_regions[level] = pd.read_csv(
+        os.path.join(inputs_case, f'val_{level}.csv'), header=None).squeeze(1).tolist()
+
+
 #%% Limits on PRMTRADE across nercr boundaries
 firm_import_limit = get_firm_import_limit(inputs_case)
 firm_import_limit.to_csv(os.path.join(inputs_case, 'firm_import_limit.csv'))
 
 
 #%% Load the transmission scalars
+case = Path(inputs_case).parent
 scalars = reeds.io.get_scalars(inputs_case)
 ### Put some in dicts for easier access
+## B2B converters are AC-AC/DC-DC/AC-AC, so use AC per-mile losses
+trtypes = {'AC':'ac', 'B2B':'ac', 'LCC':'dc', 'VSC':'dc'}
 tranloss_permile = {
-    'AC': scalars['tranloss_permile_ac'],
-    ### B2B converters are AC-AC/DC-DC/AC-AC, so use AC per-mile losses
-    'B2B': scalars['tranloss_permile_ac'],
-    'LCC': scalars['tranloss_permile_dc'],
-    'VSC': scalars['tranloss_permile_dc'],
+    trtype: scalars[f'tranloss_permile_{polarity}'] for trtype, polarity in trtypes.items()
 }
 tranloss_fixed = {
     'AC': 1 - scalars['converter_efficiency_ac'],
@@ -298,42 +325,63 @@ tranloss_fixed = {
 
 
 #%% Get single-link distances and losses
-interface_params = pd.read_csv(
-    os.path.join(inputs_case,'transmission_distance.csv'),
-)
+interface_params = reeds.inputs.get_distances(case)
 interface_params['r_rr'] = interface_params.r + '_' + interface_params.rr
 
-# Apply the distance multiplier
-interface_params['miles'] = interface_params['miles'] * float(sw.GSw_TransSquiggliness)
+## Calculate $/MW
+_line_params = {
+    polarity: pd.read_csv(
+        Path(reeds_path, 'inputs', 'transmission', f'conductor_{polarity}.csv'),
+        index_col='voltage_kv',
+    )
+    for polarity in ['ac', 'dc']
+}
+_line_params['ac']['MW'] = _line_params['ac']['MVA'] * scalars['power_factor_ac']
+line_params = pd.concat(_line_params, names=('polarity','voltage')).MW
+interface_params = interface_params.merge(line_params, on=['polarity','voltage'], how='left')
 
-# Make sure there are no duplicates
-if interface_params[['r','rr']].duplicated().sum():
+## Convert to output dollaryear
+inflatable = reeds.io.get_inflatable()
+deflator = inflatable[input_dollar_year['transmission_cost_distance.csv'], int(sw.dollar_year)]
+interface_params[f'USD{sw.dollar_year}perMW'] = (
+    interface_params['cost_MUSD'] * 1e6
+    / interface_params['MW']
+    * deflator
+)
+interface_params[f'USD{sw.dollar_year}perMWmile'] = (
+    interface_params[f'USD{sw.dollar_year}perMW']
+    / interface_params['length_miles']
+)
+interface_params[f'USD{sw.dollar_year}perMile'] = (
+    interface_params['cost_MUSD'] * 1e6 / interface_params['length_miles']
+)
+
+## Apply the distance multiplier
+interface_params['miles'] = interface_params['length_miles'] * float(sw.GSw_TransSquiggliness)
+
+## Make sure there are no duplicates
+if interface_params[['r','rr','polarity']].duplicated().sum():
     print(
         interface_params.loc[
-            interface_params[['r','rr']].duplicated(keep=False)
-        ].sort_values(['r','rr'])
+            interface_params[['r','rr','polarity']].duplicated(keep=False)
+        ].sort_values(['r','rr','polarity'])
     )
     raise Exception('Duplicate entries in transmission_distance.csv')
 
 ### Calculate losses
-def getloss(row, trtype='AC'):
+def getloss(row):
     """
     Fixed losses are entered as per-endpoint values (e.g. for each AC/DC converter station
     on a LCC DC line). There are two endpoints per line, so multiply fixed losses by 2.
     Note that this approach only applies for LCC DC lines; VSC AC/DC losses are applied later.
     """
-    return row.miles * tranloss_permile[trtype] + tranloss_fixed[trtype] * 2
+    return row.miles * tranloss_permile[row.trtype] + tranloss_fixed[row.trtype] * 2
 
-trtypes = ['AC', 'LCC', 'B2B', 'VSC']
-interface_params = pd.concat(
-    {
-        trtype:
-        interface_params.assign(loss=interface_params.apply(getloss, args=(trtype,), axis=1))
-        for trtype in trtypes
-    },
-    axis=0,
-    names=('trtype',),
-).reset_index(level='trtype').set_index(['r','rr','trtype'])
+interface_params = pd.concat({
+    trtype: interface_params.loc[interface_params.polarity == polarity]
+    for trtype, polarity in trtypes.items()
+}, names=('trtype', 'drop')).reset_index().drop(columns=['drop'])
+interface_params['loss'] = interface_params.apply(lambda row: getloss(row), axis=1)
 
 
 #%% Include distances for existing lines
@@ -343,30 +391,21 @@ transmission_distance = interface_params.miles.copy()
 trans_fom_region_mult = int(scalars['trans_fom_region_mult'])
 trans_fom_frac = scalars['trans_fom_frac']
 
-### For simplicity we just take the unweighted average base cost across
-### the four regions for which we have transmission cost data.
+### For simplicity we just take the unweighted average greenfield $/MWmile cost
+### across all interfaces.
 ### Future work should identify a better assumption.
-rev_transcost_base = pd.read_csv(
-    os.path.join(inputs_case,'rev_transmission_basecost.csv'),
-    header=[0], skiprows=[1],
-).replace({'500ACsingle':'AC','500DCbipole':'LCC'}).set_index('Voltage')
-
-transfom_USDperMWmileyear = {
-    trtype: (
-        rev_transcost_base.loc[trtype][['TEPPC','SCE','MISO','Southeast']].mean()
-        * trans_fom_frac
-    )
-    for trtype in ['AC','LCC']
-}
-### B2B is treated like (AC line)-(AC/DC converter)-(AC/DC converter)-(AC line) so uses AC line FOM
-transfom_USDperMWmileyear['B2B'] = transfom_USDperMWmileyear['AC']
-transfom_USDperMWmileyear['VSC'] = transfom_USDperMWmileyear['LCC']
+transfom_USDperMWmileyear = (
+    interface_params.groupby('trtype')[f'USD{sw.dollar_year}perMWmile'].mean()
+    * trans_fom_frac
+)
 
 ### Multiply $/MW/mile/year by distance [miles] to get $/MW/year for ALL lines
-transmission_line_fom = (
-    transmission_distance.reset_index().trtype.map(transfom_USDperMWmileyear)
-    * transmission_distance.values
-).set_axis(transmission_distance.index).rename('USDperMWyear')
+transmission_line_fom = interface_params.copy()
+transmission_line_fom['USDperMWyear'] = transmission_line_fom.apply(
+    lambda row: transfom_USDperMWmileyear[row.trtype] * row.miles,
+    axis=1
+)
+transmission_line_fom = transmission_line_fom.set_index(['r','rr','trtype']).USDperMWyear
 
 
 #%%### Write files for ReEDS (adding * to make GAMS read column names as comment)
@@ -384,7 +423,6 @@ transmission_line_fom.round(2).rename_axis(('*r','rr','trtype')).to_csv(
     os.path.join(inputs_case,'transmission_line_fom.csv'))
 
 #%% Write the initial capacities
-case = Path(inputs_case).parent
 trancap_init = {}
 for captype, level in [
     ('energy', 'r'),
@@ -426,42 +464,43 @@ trancap_init['energy'].rename(columns={'r':'*r'}).round(3).to_csv(
 #%%### Future transmission capacity
 ## note that '0' is used as a filler value in the t column for firstyear_trans, which is defined
 ## in inputs/scalars.csv. So we replace it whenever we load a transmission_capacity_future file.
-trancap_fut = (
-    pd.concat(
-        [
-            pd.read_csv(
-                os.path.join(inputs_case, 'transmission_capacity_future_baseline.csv'),
-                comment='#',
-            ),
-            pd.read_csv(
-                os.path.join(inputs_case, 'transmission_capacity_future.csv'),
-                comment='#',
-            )
-        ],
-        axis=0,
-        ignore_index=True,
-    )
-    .astype({'t': int})
-    .drop(['Notes', 'notes', 'Note', 'note'], axis=1, errors='ignore')
-    .replace({'t': {0: int(scalars['firstyear_trans_longterm'])}})
+planned_capacity = reeds.inputs.map_hvdc_lines_to_interfaces(
+    case=case, filename='planned_lines-baseline.csv',
 )
+if sw.GSw_TransScen != 'none':
+    planned_capacity = pd.concat([
+        planned_capacity,
+        reeds.inputs.map_hvdc_lines_to_interfaces(
+            case=case, filename=f'planned_lines-{sw.GSw_TransScen}.csv',
+        )
+    ])
 
-### Drop prospective AC lines from years <= trans_init_year
-trancap_fut = trancap_fut.drop(
-    trancap_fut.loc[
-        (trancap_fut.t <= trans_init_year)
-        & (trancap_fut.trtype == 'AC')
-    ].index,
-).copy()
+trancap_fut = (
+    planned_capacity.reset_index()
+    .rename(columns={'year_online':'t', 'certain':'status'})
+    .astype({'t':int})
+    .replace({
+        't': {0: int(scalars['firstyear_trans_longterm'])},
+        'status': {0:'possible', 1:'certain'}
+    })
+    [['r', 'rr', 'status', 'trtype', 't', 'MW']]
+)
 
 trancap_fut.rename(columns={'r':'*r'}).astype({'t':int}).round(3).to_csv(
     os.path.join(inputs_case,'trancap_fut.csv'), index=False)
 
 
 #%%### Transmission upgrade supply curve
-transmission_cost_ac = pd.read_csv(
-    os.path.join(inputs_case, 'transmission_cost_ac.csv')
-)
+if sw.GSw_TransUpgradeMethod == 'greenfield':
+    transmission_cost_ac = convert_to_tsc(interface_params, sw.dollar_year)
+else:
+    fpath = Path(
+        reeds.io.reeds_path, 'inputs', 'transmission',
+        f'transmission_cost_ac_{sw.GSw_TransUpgradeMethod}_{sw.GSw_ZoneSet}.h5'
+    )
+    transmission_cost_ac = reeds.io.read_file(fpath).reset_index()
+    for col in ['r', 'rr', 'tscbin']:
+        transmission_cost_ac[col] = transmission_cost_ac[col].str.decode('utf-8')
 ### Interfaces are always defined with the zones sorted in lexicographic order
 reverse_interfaces = transmission_cost_ac.loc[
     transmission_cost_ac.apply(lambda row: row.r > row.rr, axis=1)
@@ -498,48 +537,14 @@ transmission_cost_ac.tscbin.drop_duplicates().to_csv(
 )
 
 
-#%% DC and B2B transmission cost
-## Get DC line cost
-transmission_cost_dc = pd.read_csv(os.path.join(inputs_case, 'transmission_cost_dc.csv'))
+#%% DC and B2B per-mile costs use greenfield assumptions
+costcol = f'USD{sw.dollar_year}perMW'
+transmission_cost_nonac = interface_params.loc[
+    interface_params.trtype != 'AC',
+    ['r', 'rr', 'trtype', costcol]
+]
 
-## B2B is: (zone center)--------(AC/DC converter)(DC/AC converter)--------(zone center)
-##                         ^ AC line                                 ^ AC line
-## so use AC per-mile costs.
-b2b_links = trancap_init['energy'].loc[
-    (trancap_init['energy'].trtype=='B2B')
-    & (trancap_init['energy'].r < trancap_init['energy'].rr)
-].set_index(['r','rr']).index
-## Take the weighted average of the whole supply curve (for the default 500 kV assumption
-## the supply curve only has one bin per interface, so it doesn't matter; when we add the
-## full supply curve, we'll need to include entries for these B2B-containing interfaces).
-df = transmission_cost_ac.set_index(['r','rr']).loc[b2b_links].copy()
-df['cost_weighted'] = (
-    df.binwidth_USD2004
-    * df.USD2004perMW_forward
-)
-transmission_cost_b2b = (
-    df.groupby(['r','rr','tscbin']).cost_weighted.sum()
-    / df.groupby(['r','rr','tscbin']).binwidth_USD2004.sum()
-).reset_index(level='tscbin', drop=True).rename('USD2004perMW').reset_index()
-## Add the reverse direction and write it
-transmission_cost_b2b = pd.concat([
-    transmission_cost_b2b,
-    transmission_cost_b2b.rename(columns={'r':'rr', 'rr':'r'})
-])
-
-### Write the combined cost table
-transmission_cost_nonac = (
-    pd.concat({
-        'LCC': transmission_cost_dc,
-        'B2B': transmission_cost_b2b,
-        'VSC': transmission_cost_dc,
-    }, names=('trtype','drop'))
-    .reset_index('drop', drop=True)
-    .reset_index()
-    .rename(columns={'r':'*r'})
-    [['*r','rr','trtype','USD2004perMW']]
-)
-transmission_cost_nonac.round(2).to_csv(
+transmission_cost_nonac.rename(columns={'r':'*r'}).round(2).to_csv(
     os.path.join(inputs_case, 'transmission_cost_nonac.csv'),
     index=False,
 )
@@ -569,9 +574,8 @@ for i in hurdle_levels:
 fpath = os.path.join(inputs_case, 'pipeline_cost_mult.csv')
 if len(transmission_cost_nonac):
     dc_cost_permile = (
-        transmission_cost_nonac.rename(columns={'*r':'r'})
-        .set_index(['trtype','r','rr']).loc['LCC'].squeeze(1)
-        / interface_params.xs('LCC', 0, 'trtype').miles
+        interface_params.loc[interface_params.trtype=='VSC']
+        .set_index(['r','rr'])[f'USD{sw.dollar_year}perMile']
     )
     pipeline_cost_mult = dc_cost_permile.rename('multiplier') / dc_cost_permile.min() - 1
 
@@ -583,14 +587,13 @@ else:
     pd.DataFrame(columns=['*r','rr','multiplier']).to_csv(fpath, index=False)
 
 
+#%%### Adjacent regions
 # Get model regions
 dfzones = reeds.io.get_dfmap(
     os.path.dirname(inputs_case),
     levels=['r'],
     exclude_water_areas=True
 )['r']
-
-#%%### Adjacent regions
 # Determine which pairs of model regions are adjacent to each other
 routes_adjacent = calculate_adjacent_routes(dfzones)
 routes_adjacent.to_csv(
@@ -631,6 +634,7 @@ r_cs_spurlines.to_csv(
     os.path.join(inputs_case,'ctus_r_cs_spurlines_200mi.csv'),
     index=False
 )
+
 
 #%% Finish the timer
 reeds.log.toc(tic=tic, year=0, process='input_processing/transmission.py',

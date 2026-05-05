@@ -482,21 +482,12 @@ def read_special_h5file(full_path):
     """
     Read .h5 file and make special-case adjustments if necessary:
     - recf_distpv: drop 'distpv|' from column titles
-    - transmission_cost_ac: reset index and decode strings
-    - transmission_distance: stack from wide into long and decode strings
     """
     filename = os.path.basename(full_path)
     df = reeds.io.read_file(full_path, parse_timestamps=True)
 
     if filename.startswith('recf_distpv'):
         df.columns = df.columns.str.replace('distpv|','')
-    elif filename.startswith('transmission_cost_ac'):
-        df = df.reset_index()
-        for col in ['r', 'rr', 'tscbin']:
-            df[col] = df[col].str.decode('utf-8')
-    elif filename.startswith('transmission_distance'):
-        df = df.stack().rename('miles').reset_index()
-        df['r'] = df['r'].str.decode('utf-8')
 
     return df
 
