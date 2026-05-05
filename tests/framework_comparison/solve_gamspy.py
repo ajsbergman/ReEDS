@@ -75,18 +75,24 @@ def solve(data: ProblemData, solver: str = "highs") -> tuple[float, float, float
                                       for t in T
                                       if data.valcap[ii[i], ri[r], ti[t]]])
     if has_storage:
-        stor_set    = gp.Set(c, "stor", domain=[i_set], records=storage_techs)
-        stor_valcap = gp.Set(c, "stor_valcap", domain=[i_set, r_set, t_set],
-                             records=[(i, r, str(t))
-                                      for i in storage_techs for r in R for t in T
-                                      if data.valcap[ii[i], ri[r], ti[t]]])
+        stor_set      = gp.Set(c, "stor", domain=[i_set], records=storage_techs)
+        stor_valcap   = gp.Set(c, "stor_valcap", domain=[i_set, r_set, t_set],
+                               records=[(i, r, str(t))
+                                        for i in storage_techs for r in R for t in T
+                                        if data.valcap[ii[i], ri[r], ti[t]]])
+        # (i,r,h,t) for eq_soc_cap / eq_charge_cap: storage valcap × all h
+        stor_h_domain = gp.Set(c, "stor_h_domain", domain=[i_set, r_set, h_set, t_set],
+                               records=[(i, r, str(h), str(t))
+                                        for i in storage_techs for r in R
+                                        for h in H for t in T
+                                        if data.valcap[ii[i], ri[r], ti[t]]])
         # (i,r,h,hh,t) for eq_soc: storage valcap × cyclic consecutive h pairs
-        soc_domain  = gp.Set(c, "soc_domain", domain=[i_set, r_set, h_set, hh, t_set],
-                             records=[(i, r, str(H[k]), str(H[(k + 1) % len(H)]), str(t))
-                                      for i in storage_techs for r in R
-                                      for k in range(len(H))
-                                      for t in T
-                                      if data.valcap[ii[i], ri[r], ti[t]]])
+        soc_domain    = gp.Set(c, "soc_domain", domain=[i_set, r_set, h_set, hh, t_set],
+                               records=[(i, r, str(H[k]), str(H[(k + 1) % len(H)]), str(t))
+                                        for i in storage_techs for r in R
+                                        for k in range(len(H))
+                                        for t in T
+                                        if data.valcap[ii[i], ri[r], ti[t]]])
 
     mincf_valcap = gp.Set(c, "mincf_valcap", domain=[i_set, r_set, t_set],
                            records=[(i, r, str(t))
@@ -94,6 +100,13 @@ def solve(data: ProblemData, solver: str = "highs") -> tuple[float, float, float
                                     if (data.valcap[ii[i], ri[r], ti[t]]
                                         and data.min_cf[ii[i]] > 0
                                         and not data.is_storage[ii[i]])])
+
+    # Binary mask for valcap — used to restrict sums to active (i,r,t) only,
+    # preventing non-valcap GEN/CAP from satisfying supply/reserve constraints for free.
+    valcap_p = gp.Parameter(c, "valcap_p", domain=[i_set, r_set, t_set],
+                            records=[(i, r, str(t), 1.0)
+                                     for i in I for r in R for t in T
+                                     if data.valcap[ii[i], ri[r], ti[t]]])
 
     # Parameters
     load_p = gp.Parameter(c, "load_p", domain=[r_set, h_set, t_set],
@@ -181,7 +194,7 @@ def solve(data: ProblemData, solver: str = "highs") -> tuple[float, float, float
     # -- eq_supply_demand_balance
     eq_supply = gp.Equation(c, "eq_supply_demand_balance", domain=[r_set, h_set, t_set])
     supply_lhs = (
-        gp.Sum(i_set, GEN[i_set, r_set, h_set, t_set])
+        gp.Sum(i_set, valcap_p[i_set, r_set, t_set] * GEN[i_set, r_set, h_set, t_set])
         + gp.Sum(rt_set[rr, r_set], (1 - data.tranloss) * FLOW[rr, r_set, h_set, t_set])
         - gp.Sum(rt_set[r_set, rr], FLOW[r_set, rr, h_set, t_set])
     )
@@ -195,7 +208,7 @@ def solve(data: ProblemData, solver: str = "highs") -> tuple[float, float, float
     # -- eq_reserve_margin
     eq_reserve = gp.Equation(c, "eq_reserve_margin", domain=[r_set, t_set])
     eq_reserve[...] = (
-        gp.Sum(i_set, CAP[i_set, r_set, t_set])
+        gp.Sum(i_set, valcap_p[i_set, r_set, t_set] * CAP[i_set, r_set, t_set])
         >= (1 + data.prm) * peak_p[r_set, t_set]
     )
     equations.append(eq_reserve)
@@ -237,13 +250,13 @@ def solve(data: ProblemData, solver: str = "highs") -> tuple[float, float, float
     # -- Storage constraints
     if has_storage:
         eq_soc_cap = gp.Equation(c, "eq_soc_cap", domain=[i_set, r_set, h_set, t_set])
-        eq_soc_cap[stor_valcap[i_set, r_set, t_set]] = (
+        eq_soc_cap[stor_h_domain[i_set, r_set, h_set, t_set]] = (
             SOC[i_set, r_set, h_set, t_set] <= data.duration_h * CAP[i_set, r_set, t_set]
         )
         equations.append(eq_soc_cap)
 
         eq_charge_cap = gp.Equation(c, "eq_charge_cap", domain=[i_set, r_set, h_set, t_set])
-        eq_charge_cap[stor_valcap[i_set, r_set, t_set]] = (
+        eq_charge_cap[stor_h_domain[i_set, r_set, h_set, t_set]] = (
             CHARGE[i_set, r_set, h_set, t_set] <= CAP[i_set, r_set, t_set]
         )
         equations.append(eq_charge_cap)
