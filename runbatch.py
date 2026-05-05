@@ -1402,8 +1402,9 @@ def write_batch_script(
         OPATH.writelines(writeerrorcheck(os.path.join('g00files', restartfile + '.g*')))
 
         # call to set up MGA random vector sampling if needed
-        OPATH.writelines(
-                f"python {os.path.join(casedir,'input_processing','mcs_sampler.py')} {reeds_path} {inputs_case} -r \n")
+        if(float(caseSwitches['GSw_MGA_CostDelta']) > 0):
+            OPATH.writelines(
+                    f"python {os.path.join(casedir,'input_processing','mcs_sampler.py')} {reeds_path} {inputs_case} -r \n")
         OPATH.writelines(writescripterrorcheck(s)+'\n')
 
         ################################

@@ -1809,12 +1809,13 @@ if __name__ == '__main__' and not hasattr(sys, 'ps1'):
     parser.add_argument('reeds_path', help='ReEDS directory')
     parser.add_argument('inputs_case', help='Output directory')
     parser.add_argument('--nolog', '-n', default=False, action='store_true', help='turn off logging for debugging')
+    parser.add_argument('--random_vector', '-r', default=False, action='store_true', help='compute random vector for MGA')
                     
-
     args = parser.parse_args()
     reeds_path = os.path.abspath(args.reeds_path)
     inputs_case = os.path.abspath(args.inputs_case)
     nolog = args.nolog
+    random_vector = args.random_vector
 
     # ---- Settings for testing ----
     # reeds_path = reeds.io.reeds_path
@@ -1829,17 +1830,22 @@ if __name__ == '__main__' and not hasattr(sys, 'ps1'):
             scriptname=__file__,
             logpath=os.path.join(os.path.dirname(inputs_case), 'gamslog.txt'),
         )
-
-    # Read switches and check if MCS_runs is enabled.
-    sw = reeds.io.get_switches(inputs_case)
-    MCS_runs = int(sw.get('MCS_runs', 0))
-    MCS_lhs = int(sw.get('MCS_lhs', 0))
-
-    if MCS_runs >= 1:
-        print('Starting mcs_sampler.py')
-        main(reeds_path, inputs_case, n_samples=MCS_runs, lhs_sampling=MCS_lhs)
+    
+    # use sampling capability to set up random vector for modeing to generate alternatives (MGA)
+    if random_vector:
+        print("MGA random vector sampling will be implemented in the future")
+    # set up monte carlo sampling (MCS)
     else:
-        print('MCS_runs switch is set to 0 or not found. No Monte Carlo sampling will be performed')
+        # Read switches and check if MCS_runs is enabled.
+        sw = reeds.io.get_switches(inputs_case)
+        MCS_runs = int(sw.get('MCS_runs', 0))
+        MCS_lhs = int(sw.get('MCS_lhs', 0))
+
+        if MCS_runs >= 1:
+            print('Starting mcs_sampler.py')
+            main(reeds_path, inputs_case, n_samples=MCS_runs, lhs_sampling=MCS_lhs)
+        else:
+            print('MCS_runs switch is set to 0 or not found. No Monte Carlo sampling will be performed')
 
     # Final log/timing update.
     reeds.log.toc(
