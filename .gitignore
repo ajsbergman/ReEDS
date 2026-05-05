@@ -64,5 +64,8 @@ gamslice.txt
 slurm*.out
 slurm_parallel_runs/
 
-# documentation files 
+# documentation files
 docs/build/*
+
+# framework comparison benchmark outputs
+tests/framework_comparison/results/
