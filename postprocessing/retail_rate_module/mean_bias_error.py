@@ -44,7 +44,6 @@ out_dollar_year = args.out_dollar_year
 #%% Inputs ###
 
 validationyears = list(range(2010,2020))
-reeds_dollar_year = ReEDS_DOLLAR_YEAR
 
 retailmodulepath = os.path.join(reeds_path,'postprocessing','retail_rate_module','')
 inputs_default_path = retailmodulepath+'inputs_default.csv'
@@ -53,7 +52,7 @@ inflation = pd.read_csv(
     os.path.join(reeds_path,'inputs','financials','inflation_default.csv'),
     index_col=['t'])
 inf_adjust = inflation.loc[
-    reeds_dollar_year+1:out_dollar_year,
+    ReEDS_DOLLAR_YEAR+1:out_dollar_year,
     'inflation_rate'
 ].cumprod()[out_dollar_year]
 
