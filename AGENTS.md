@@ -1,6 +1,6 @@
 # AGENTS.md — Guidance for AI Coding Assistants
 
-This file gives AI coding tools (Claude, ChatGPT, GitHub Copilot, Cursor, Codex,
+This file gives AI coding tools (ChatGPT, Claude, Codex, Cursor, GitHub Copilot,
 etc.) the context and operating rules they need to make safe, high-quality
 contributions to the ReEDS repository. Human contributors should also feel free
 to read it.
@@ -50,6 +50,10 @@ for confirmation when uncertain.
 - Don't add docstrings, comments, type hints, or error handling to code you
   did not need to touch.
 - Prefer the smallest patch that correctly accomplishes the request.
+- Before writing a new utility function, check whether one already exists in
+  the `reeds/` package (`reeds/io.py`, `reeds/inputs.py`, `reeds/spatial.py`,
+  `reeds/techs.py`, `reeds/units.py`, etc.). These modules contain broadly
+  reused helpers for reading switches, hierarchies, deflators, maps, and more.
 - Don't introduce new dependencies (Python, Julia, or otherwise) without
   explicit approval. Changes to [`environment.yml`](environment.yml) or
   [`Project.toml`](Project.toml) must be called out.
@@ -125,7 +129,7 @@ actually) check:
 1. **Switch coverage.** Does the change behave correctly for every documented
    value of every switch it touches? In particular: `GSw_Region`,
    `GSw_HourlyType`, `GSw_HourlyNumClusters`, `GSw_AnnualCap`, `GSw_H2`,
-   `GSw_Canada`, `GSw_PRM_CapCredit`, `GSw_Storage`. If a switch defaults to
+   `GSw_PRM_CapCredit`, `GSw_Storage`. If a switch defaults to
    off, document the assumption explicitly in the PR.
 2. **Default case neutrality.** If the change is *not expected to alter
    results for the default case* (for example, a rename, a reformat, or new
@@ -224,7 +228,7 @@ an open-ended question.
 | [`reeds/core/solve/`](reeds/core/solve) | Sequential / intertemporal / window solve loop (`solve.py`, `3_solve_oneyear.gms`, `3_solve_allyears.gms`, `3_solve_window.gms`, `2_financials.gms`, `2_temporal_params.gms`, `4_post_solve_adjustments.gms`, `5_varfix.gms`, `6_data_dump.gms`, `1_tc_phaseout.py`). |
 | [`reeds/core/solve_pcm/`](reeds/core/solve_pcm) | Production-cost (PCM) dispatch mode — `solve_pcm.gms` and `unfix_op.gms`. Launched by [`postprocessing/run_pcm.py`](postprocessing/run_pcm.py). |
 | [`reeds/core/terminus/`](reeds/core/terminus) | Reporting: `report.gms`, `report_dump.py`, `report_params.csv`, `powfrac_calc.gms`, `dump_alldata.gms`. `report_params.csv` controls which parameters get exported; adding/renaming a parameter also requires updating any downstream postprocessing that reads it. |
-| [`reeds/resource_adequacy/`](reeds/resource_adequacy) | Capacity-credit and curtailment calculations (`ra_calcs.py`, `capacity_credit.py`, `stress_periods.py`, etc.) that run **between** solve years and feed back into the next solve. Not a postprocessing step — changes here affect results. Includes `reeds2pras/` (Julia, pinned to 1.12.1). |
+| [`reeds/resource_adequacy/`](reeds/resource_adequacy) | Capacity-credit and stress period calculations (`ra_calcs.py`, `capacity_credit.py`, `stress_periods.py`, etc.) that run **between** solve years and feed back into the next solve. Not a postprocessing step — changes here affect results. Includes `reeds2pras/` (Julia, pinned to 1.12.1). |
 | [`reeds/input_processing/`](reeds/input_processing) | Python preprocessing — load, hourly clustering, supply curves, financials, copying input files into `inputs_case/`, etc. |
 | [`hourlize/`](hourlize) | Hourly load/resource preprocessing pipeline (often run upstream and committed as data). |
 | [`postprocessing/`](postprocessing) | Reports, plots, comparison tools (`compare_cases.py`, `compare_dispatch.py`, BokehPivot, Tableau, retail-rate module, reValue, R2X runner, etc.). |
@@ -240,8 +244,11 @@ an open-ended question.
 | [`reeds/solver/`](reeds/solver) | Solver option files (`cplex.opt`, `cplex.op2`, `gurobi.opt`, `cbc.opt`). |
 | [`environment.yml`](environment.yml), [`Project.toml`](Project.toml) | Conda env and Julia project file. Changes to these must be called out explicitly. |
 
-A typical run produces `runs/{batch}_{case}/` containing `inputs_case/`,
-`g00files/` (GAMS work files), `lstfiles/`, `gdxfiles/`, and `outputs/`.
+A typical run produces `runs/{batch}_{case}/` containing `inputs_case/`
+(all inputs for the run), `g00files/` (GAMS save/restart files), `lstfiles/`
+(GAMS listing files), `handoff/` (resource adequacy data passed between solve
+years), `autocode/` (auto-generated GAMS code), `outputs/` (results), and
+`reeds/` (frozen copy of the source tree used by `call_*`).
 
 ---
 
@@ -397,7 +404,7 @@ full-case tier before opening a PR.
 1. **A completed run must already exist.** Check `runs/` first. If it is
    empty, there is nothing to diff against and the fast inner loop cannot
    be used. Either ask the user to run the Pacific test case first (a
-   single ~30-minute investment that pays off across many iterations) or
+   single ~20-minute investment that pays off across many iterations) or
    fall back to the full-case tier.
 2. **If multiple runs exist, ask which to use.** Different folders may come
    from different branches, scenarios, or vintages. Each run's
@@ -407,7 +414,7 @@ full-case tier before opening a PR.
    run, it copies the `reeds/` source tree into the run folder. The
    `call_*` script invokes those copies, e.g.:
    ```
-   python <repo>/runs/p1_Pacific/reeds/input_processing/writecapdat.py ...
+   python <repo>/runs/t1_Pacific/reeds/input_processing/writecapdat.py ...
    ```
    If you edited the source file in the repo (e.g.,
    `reeds/input_processing/writecapdat.py`), the rerun will silently use
