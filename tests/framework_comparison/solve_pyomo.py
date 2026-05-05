@@ -16,6 +16,7 @@ from __future__ import annotations
 import time
 import pyomo.environ as pyo
 from pyomo.opt import SolverFactory
+from pyomo.contrib.appsi.solvers import Highs as AppsiHighs
 
 from data_generator import ProblemData
 
@@ -132,9 +133,14 @@ def solve(data: ProblemData, solver: str = "highs") -> tuple[float, float, float
     build_s = time.perf_counter() - t0
 
     # ------------------------------------------------------------------ solve
+    # Use appsi_highs (in-process HiGHS via Python bindings) rather than
+    # SolverFactory("highs") which forks HiGHS as a child process.  The
+    # child-process path makes psutil RSS polling undercount pyomo's memory
+    # because the HiGHS allocations live in a separate OS process.
     t1 = time.perf_counter()
-    slvr = SolverFactory(solver)
-    slvr.solve(m, tee=False)
+    slvr = AppsiHighs()
+    slvr.highs_options["output_flag"] = False
+    slvr.solve(m)
     solve_s = time.perf_counter() - t1
 
     return float(pyo.value(m.obj)), build_s, solve_s
