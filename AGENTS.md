@@ -100,21 +100,21 @@ silently affect:
 
 - Other scenarios in [`cases.csv`](cases.csv),
   [`cases_test.csv`](cases_test.csv), [`cases_standardscenarios.csv`](cases_standardscenarios.csv), etc.
-- Files declared in [`reeds/input_processing/runfiles.csv`](reeds/input_processing/runfiles.csv) (governs which inputs are
-  copied into a run's `inputs_case/` directory and how they are aggregated /
-  disaggregated).
+- Files declared in [`reeds/input_processing/runfiles.csv`](reeds/input_processing/runfiles.csv)
+  (governs which inputs are copied into a run's `inputs_case/` directory
+  and how they are aggregated / disaggregated).
 - The objective function (`reeds/core/setup/d_objective.gms`) — inputs used here should
   also appear in [`tests/objective_function_params.yaml`](tests/objective_function_params.yaml)
-  so [`reeds/input_processing/check_inputs.py`](reeds/input_processing/check_inputs.py) can
-  validate them.
+  so [`reeds/input_processing/check_inputs.py`](reeds/input_processing/check_inputs.py)
+  can validate them.
 - Reported outputs declared in [`reeds/core/terminus/report_params.csv`](reeds/core/terminus/report_params.csv)
   and assembled in [`reeds/core/terminus/report.gms`](reeds/core/terminus/report.gms). Adding, removing, or
   renaming a reported parameter touches both files plus any downstream
   postprocessing (`postprocessing/`, `compare_cases.py`, BokehPivot, R2X)
   that reads it.
-- The resource adequacy module (`reeds/resource_adequacy/`) — runs **between** solve
-  years to compute capacity credit and curtailment that feed back into the
-  next solve. It is not a postprocessing step; changes here can change
+- The resource adequacy module (`reeds/resource_adequacy/`) — runs **between**
+  solve years to compute capacity credit and curtailment that feed back into
+  the next solve. It is not a postprocessing step; changes here can change
   results.
 - Postprocessing reports that depend on parameter names, units, or
   CSV column headers.
@@ -132,8 +132,9 @@ actually) check:
    code that only runs when an off-by-default switch is turned on), say so
    explicitly so the reviewer knows that the comparison report should show
    no differences.
-3. **`reeds/input_processing/runfiles.csv` consistency.** If you add, remove, or rename a CSV file
-   that is read by GAMS, update `reeds/input_processing/runfiles.csv`. Pay attention to
+3. **`reeds/input_processing/runfiles.csv` consistency.** If you add, remove,
+   or rename a CSV file that is read by GAMS, update
+   `reeds/input_processing/runfiles.csv`. Pay attention to
    `aggfunc`/`disaggfunc`, `region_col`, `fix_cols`, `i_col`, `wide`,
    `header`, `key`, `post_copy`, `GAMStype`, `GAMSname`, and `required_if`
    columns. A wrong `required_if` expression silently breaks switch-gated
@@ -146,8 +147,8 @@ actually) check:
    how to project the file forward in time — forecast.py will print a
    loud warning if a file is missing from it.
 4. **Units and dollar year.** Costs read into `b_inputs.gms` must already be
-   in 2004$. Use `inputs/financials/deflator.csv` (do not hard-code
-   conversions). Add unit suffixes to new column names
+   in 2004$. Use `inputs/financials/deflator.csv` in preprocessing scripts
+   (do not hard-code conversions). Add unit suffixes to new column names
    (e.g., `capcost_usd.per.kw`).
 5. **Tests.** Run `pytest` from the repo root. Note that the `pytest` suite
    in [`tests/`](tests) is lightweight (input checks, h5 read sanity) and
@@ -182,9 +183,8 @@ can run it before opening a PR.
 Before (or alongside) recommending one of the tiers above, see
 [§6 “Fast inner loop”](#6-fast-inner-loop-iterating-on-a-single-step-from-call_).
 Re-running individual steps from a completed run's `call_*` script (`.bat`
-on Windows, `.sh` on macOS/Linux) is much
-faster than a full Pacific run and lets you catch obvious errors and
-verify expected diffs early. It does **not** replace the testing tiers
+on Windows, `.sh` on macOS/Linux) is much faster than a full Pacific run
+and lets you catch obvious errors and verify expected diffs early. It does **not** replace the testing tiers
 above — it reduces the chance that something unexpected shows up when the
 full tests are eventually run.
 
@@ -214,7 +214,7 @@ an open-ended question.
 | --- | --- |
 | [`runreeds.py`](runreeds.py) | Top-level launcher. **Interactive by default** — prompts for a batch name and cases suffix when run with no arguments. AI agents must pass `-b <batch>` and `-c <suffix>` (and typically `-s <case>` and/or `-f`) to avoid hanging. Reads `cases_{suffix}.csv` and creates a `runs/{batch}_{case}/` directory per case. |
 | [`cases.csv`](cases.csv), `cases_*.csv` | Switch definitions and scenario specifications. The first columns describe each switch; remaining columns are scenarios. |
-| [`reeds/input_processing/runfiles.csv`](reeds/input_processing/runfiles.csv) | Declares every input/output CSV the run pipeline knows about, including how to aggregate/disaggregate spatially and how it maps to GAMS. |
+| [`reeds/input_processing/runfiles.csv`](reeds/input_processing/runfiles.csv) | Declares every input/output CSV the run pipeline knows about, including how to aggregate/disaggregate spatially and how it maps to GAMS. Consumed by `copy_files.py` (the first preprocessing step), which copies the listed files from `inputs/` into `inputs_case/`. After `copy_files.py` runs, all subsequent steps — GAMS and Python alike — read exclusively from `inputs_case/` and do not reference `inputs/` in the repo. |
 | [`inputs/scalars.csv`](inputs/scalars.csv) | Central registry of GAMS scalar parameters and their default values. |
 | [`reeds/core/`](reeds/core) | All GAMS model code, organized into `setup/`, `solve/`, `solve_pcm/`, and `terminus/` subdirectories. |
 | [`reeds/core/setup/b_inputs.gms`](reeds/core/setup/b_inputs.gms) | Loads inputs from `inputs_case/` into GAMS sets/parameters. |
@@ -284,8 +284,15 @@ A typical run produces `runs/{batch}_{case}/` containing `inputs_case/`,
   (which controls how the file is projected forward in time by
   `reeds/input_processing/forecast.py`).
 - Costs land in `b_inputs.gms` already in 2004$.
-- Add a comment in `reeds/core/setup/b_inputs.gms` noting the upstream script when a file is
-  generated by preprocessing (e.g., `* Written by writecapdat.py`).
+- If a new input file contains dollar values, either pre-convert them to 2004$
+  in the preprocessing script (using `inputs/financials/deflator.csv` — do not
+  hard-code conversions), or record the dollar year in the relevant subfolder's
+  `dollaryear.csv`. Some input subfolders (e.g., `plant_characteristics/`,
+  `supply_curve/`, `fuelprices/`, `consume/`) maintain a `dollaryear.csv` that
+  maps scenario names to dollar years — update that file when adding a
+  scenario-based cost file to one of those folders.
+- Add a comment in `reeds/core/setup/b_inputs.gms` noting the upstream script
+  when a file is generated by preprocessing (e.g., `* Written by writecapdat.py`).
 - Add unit suffixes to data column names (e.g., `capcost_usd.per.kw`).
 
 ---
@@ -309,7 +316,8 @@ A short checklist to apply to every non-trivial change:
    - Recommended test tier (post-process / Pacific / full-US).
    - Any docs updated and any docs the user still needs to update.
 6. **Branch and PR hygiene.**
-   - Start branches from `main`, not from another feature branch.
+   - Start branches from `main`, not from another feature branch unless
+     specified by the user.
    - Keep PRs small and single-topic.
    - Make the PR **title** descriptive and complete — it is reused verbatim
      in the release-notes summary for each ReEDS version.
