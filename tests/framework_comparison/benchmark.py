@@ -49,6 +49,8 @@ FRAMEWORK_REGISTRY: list[tuple[str, str, str | None]] = [
     ("linopy",         "solve_linopy",         "highs"),
     ("pyomo",          "solve_pyomo",          "highs"),
     ("pyoptinterface", "solve_pyoptinterface", "highs"),
+    ("gams_highs",     "solve_gams",           "highs"),
+    ("gams_cplex",     "solve_gams",           "cplex"),
     ("gamspy_highs",   "solve_gamspy",         "highs"),
     ("gamspy_cplex",   "solve_gamspy",         "cplex"),
 ]
