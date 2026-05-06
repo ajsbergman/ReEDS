@@ -308,6 +308,7 @@ def get_missing_class_resource(existing_techs, resources):
         # If there are existing tech classes with missing resources,
         # assign them to the nearest resource of the same tech
         missing_class_resource = existing_tech_resource_match[existing_tech_resource_match['_merge'] == 'left_only'].copy()
+        missing_class_resource = missing_class_resource[missing_class_resource['i'].str.contains("upv|wind")]
         
         if len(missing_class_resource) > 0:
             if tech in resource_tech['i'].unique().tolist():
@@ -626,7 +627,7 @@ if __name__ == '__main__':
 
     # #%% Settings for testing
     # reeds_path = os.path.realpath(os.path.join(os.path.dirname(__file__),'..'))
-    # inputs_case = os.path.join(reeds_path,'runs','test_github_MA_county_CC','inputs_case')
+    # inputs_case = os.path.join(reeds_path,'runs','test_Pacific','inputs_case')
     
     log = reeds.log.makelog(
         scriptname=__file__,
