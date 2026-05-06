@@ -18,7 +18,6 @@ import os
 import sys
 import argparse
 import datetime
-import h5py
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import reeds
 
