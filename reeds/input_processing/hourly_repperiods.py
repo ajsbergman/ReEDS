@@ -142,7 +142,7 @@ def optimize_period_weights(profiles_fitperiods, numclusters=100):
     ])
 
     ### Solve it
-    m.solve(solver=pulp.PULP_CBC_CMD(msg=True))
+    m.solve(solver=pulp.HiGHS_CMD(msg=True))
 
     ### Collect weights, scaled by total number of days
     weights = pd.Series({d:WEIGHT[d].varValue for d in days}) * numdays
@@ -221,7 +221,7 @@ def assign_representative_days(profiles_day, rweights):
     ])
 
     ### Solve it
-    m.solve(solver=pulp.PULP_CBC_CMD(msg=True))
+    m.solve(solver=pulp.HiGHS_CMD(msg=True))
 
     ### Collect assignments
     assignments = pd.Series(
