@@ -7,14 +7,6 @@ and parses the .lst output for timing and objective value.
 Timing split:
   build_s = Python .gms generation time + GAMS compilation + GAMS GENERATION TIME
   solve_s = GAMS SOLVE TIME (HiGHS) or RESOURCE USAGE (CPLEX)
-
-New constraints vs. original:
-  eq_ramping   — RAMPUP[i,r,h,t] >= GEN[i,r,hh,t] - GEN[i,r,h,t]  (h_ramp set)
-  eq_soc       — SOC[i,r,hh,t] = SOC[i,r,h,t] + eff*CHARGE[h] - GEN[h]  (h_suc set)
-  eq_soc_cap   — SOC <= duration * CAP
-  eq_charge_cap— CHARGE <= CAP
-  eq_mincf     — sum_h hw*GEN >= mincf * CAP * total_hw
-  cf is now 3D: cf_p(i,r,h)  (region-specific VRE)
 """
 
 from __future__ import annotations
@@ -100,7 +92,6 @@ def _write_gms(data: ProblemData, gms_path: Path, solver: str) -> None:
           [f"{r}.{h}.{t}  {data.load[ri[r], hi[h], ti[t]]:.15g}"
            for r in R for h in H for t in T])
 
-    # cf is now 3D: region-specific for VRE, uniform across r for others
     param("cf_p", "i,r,h",
           [f"{i}.{r}.{h}  {data.cf[ii[i], ri[r], hi[h]]:.15g}"
            for i in I for r in R for h in H])
@@ -361,7 +352,7 @@ if __name__ == "__main__":
     import sys
     sys.path.insert(0, __file__.rsplit("\\", 1)[0])
     from data_generator import make_problem
-    for size in ("small", "medium", "large"):
+    for size in ("small", "medium", "large", "xlarge"):
         data = make_problem(size)
         obj, b, s = solve(data, solver="cplex")
         print(f"{size:6s}  obj={obj:>18,.0f}  build={b:.3f}s  solve={s:.3f}s")

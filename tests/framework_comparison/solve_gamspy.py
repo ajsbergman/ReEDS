@@ -323,7 +323,7 @@ if __name__ == "__main__":
     from data_generator import make_problem
 
     gams_solver = sys.argv[1] if len(sys.argv) > 1 else "highs"
-    for size in ("small", "medium", "large"):
+    for size in ("small", "medium", "large", "xlarge"):
         data = make_problem(size)
         obj, b, s = solve(data, solver=gams_solver)
         print(f"{size:6s}  obj={obj:>18,.0f}  build={b:.3f}s  solve={s:.3f}s")

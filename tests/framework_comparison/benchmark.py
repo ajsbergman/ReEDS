@@ -56,9 +56,6 @@ FRAMEWORK_REGISTRY: list[tuple[str, str, str | None]] = [
     ("gamspy_cplex",   "solve_gamspy",         "cplex"),
 ]
 
-# Short label → registry index
-_LABEL_MAP = {label: i for i, (label, *_) in enumerate(FRAMEWORK_REGISTRY)}
-
 SIZES = ["small", "medium", "large", "xlarge"]
 
 # Objective tolerance for cross-framework sanity check (relative)
@@ -177,7 +174,7 @@ def main() -> None:
     parser.add_argument(
         "--size", nargs="+", choices=SIZES, default=SIZES,
         metavar="SIZE",
-        help="Problem size(s) to benchmark. Default: all three.",
+        help="Problem size(s) to benchmark. Default: all.",
     )
     parser.add_argument(
         "--frameworks", nargs="+",
@@ -278,13 +275,13 @@ def main() -> None:
                 size_first = False
 
             err_suffix = f"  << {best['error']}" if best["error"] else ""
+            peak_str = f"{'---':>{num_w}}" if args.no_memory else fmt(best['peak_mb'], f'>{num_w}.1f')
             print(
                 f"{label:<{col_w}} {sz:<8}"
                 f" {fmt(best['build_s'], f'>{num_w}.3f')}"
                 f" {fmt(best['solve_s'], f'>{num_w}.3f')}"
                 f" {fmt(best['total_s'], f'>{num_w}.3f')}"
-                f" {'---':>{num_w}}" if args.no_memory else
-                f" {fmt(best['peak_mb'], f'>{num_w}.1f')}"
+                f" {peak_str}"
                 f" {fmt(best['objective'], f'>20,.0f')}"
                 f" {best['loc']:>{6}}"
                 f"{err_suffix}"

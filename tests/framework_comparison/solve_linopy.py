@@ -8,9 +8,9 @@ Key linopy patterns used:
 - Variables: m.add_variables(lower=0, coords=..., mask=valcap_da)
   mask=valcap_da excludes inactive (i,r,t) combinations
 - Constraints: m.add_constraints(lhs == rhs, name="eq_name", mask=...)
-- cf is now [i,r,h] (region-specific VRE profiles)
-- RAMPUP[i,r,h,t] indexed by h=H[:-1] (starting hour); gen_next aligned
-  via .assign_coords so both sides share the same h coordinate labels
+- cf is [i,r,h] (region-specific VRE profiles)
+- RAMPUP uses h=H[:-1] as the starting hour; gen_next relabeled via
+  .assign_coords so both sides share the same h coordinate labels
 - SOC wrap-around: SOC.roll(h=-1, roll_coords=False) shifts data one
   step forward in h (so rolled[h=k] = original SOC[h=k+1]) with the
   last hour wrapping to h=0, enforcing cyclic energy balance
@@ -186,7 +186,7 @@ if __name__ == "__main__":
     import sys
     sys.path.insert(0, __file__.rsplit("\\", 1)[0])
     from data_generator import make_problem
-    for size in ("small", "medium", "large"):
+    for size in ("small", "medium", "large", "xlarge"):
         data = make_problem(size)
         obj, b, s = solve(data)
         print(f"{size:6s}  obj={obj:>18,.0f}  build={b:.3f}s  solve={s:.3f}s")

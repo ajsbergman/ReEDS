@@ -9,11 +9,10 @@ Key pyoptinterface patterns used:
 - Constraints: m.add_linear_constraint(expr, poi.Eq/Leq/Geq, rhs)
 - Expressions: arithmetic on VariableIndex objects + poi.quicksum()
 - Objective: m.set_objective(expr, poi.ObjectiveSense.Minimize)
-- cf is now [i,r,h]: data.cf[ii[i], ri[r], hi[h]]
+- cf is [i,r,h]: data.cf[ii[i], ri[r], hi[h]]
 
-OBJ_SCALE divides all cost coefficients to avoid dual simplex ratio errors
-in HiGHS 1.13 (bundled) for large objective magnitudes; result is
-multiplied back at the end.
+OBJ_SCALE divides all cost coefficients to keep objective magnitudes in a
+reasonable range; result is multiplied back at the end.
 """
 
 from __future__ import annotations
@@ -264,7 +263,7 @@ if __name__ == "__main__":
     import sys
     sys.path.insert(0, __file__.rsplit("\\", 1)[0])
     from data_generator import make_problem
-    for size in ("small", "medium", "large"):
+    for size in ("small", "medium", "large", "xlarge"):
         data = make_problem(size)
         obj, b, s = solve(data)
         print(f"{size:6s}  obj={obj:>18,.0f}  build={b:.3f}s  solve={s:.3f}s")

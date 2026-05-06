@@ -10,7 +10,7 @@ Key pyomo patterns used:
 - VALCAP / VGEN sparse sets filter to active (i,r,t) combinations
 - active_i / active_storage_i lookup precomputed per (r,t)
 - h_next / h_next_wrap dicts map each hour to its successor
-- cf is now [i,r,h]: data.cf[ii[i], ri[r], hi[h]]
+- cf is [i,r,h]: data.cf[ii[i], ri[r], hi[h]]
 """
 
 from __future__ import annotations
@@ -209,7 +209,7 @@ if __name__ == "__main__":
     import sys
     sys.path.insert(0, __file__.rsplit("\\", 1)[0])
     from data_generator import make_problem
-    for size in ("small", "medium", "large"):
+    for size in ("small", "medium", "large", "xlarge"):
         data = make_problem(size)
         obj, b, s = solve(data)
         print(f"{size:6s}  obj={obj:>18,.0f}  build={b:.3f}s  solve={s:.3f}s")
