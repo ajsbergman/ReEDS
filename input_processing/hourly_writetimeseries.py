@@ -239,7 +239,7 @@ def get_gas_price_multipliers(sw, hmap_myr, inputs_case, periodtype='rep', regio
         parse_timestamps=True
     )
     dfin = dfin.unstack(level=0)
-    dfin.columns = dfin.columns.rename(['r','t'])
+    dfin.columns = dfin.columns.rename([regionlevel,'t'])
     dfin = dfin.reindex(hmap_myr.timestamp).ffill()
     dfin.index = (
         dfin.index.map(hmap_myr.set_index('timestamp')['actual_h'])
@@ -254,7 +254,7 @@ def get_gas_price_multipliers(sw, hmap_myr, inputs_case, periodtype='rep', regio
         dfout = dfin.loc[hmap_myr.h.unique()].copy()
 
     ### Reshape for ReEDS
-    dfout = dfout.stack("r").reorder_levels(["r", "h"], axis=0).sort_index()
+    dfout = dfout.stack(regionlevel).reorder_levels([regionlevel, "h"], axis=0).sort_index()
 
     return dfout
 
@@ -531,6 +531,8 @@ def main(sw, reeds_path, inputs_case, periodtype='rep', make_plots=1, logging=Tr
             'evmc_storage_energy': ['*i','r','h','t'],
             'flex_frac_all': ['*flex_type','r','h','t'],
             'peak_h': ['*r','h','t','MW'],
+            'gas_price_multipliers_r': ['*r','h','t','multiplier'],
+            'gas_price_multipliers_cendiv': ['*cendiv','h','t','multiplier'],
         }
         for f, columns in write.items():
             pd.DataFrame(columns=columns).to_csv(
