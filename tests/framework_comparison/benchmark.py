@@ -105,9 +105,11 @@ def _peak_rss_mb(func, *args, **kwargs):
 
     t = threading.Thread(target=_poll, daemon=True)
     t.start()
-    result = func(*args, **kwargs)
-    stop.set()
-    t.join()
+    try:
+        result = func(*args, **kwargs)
+    finally:
+        stop.set()
+        t.join()
     return result, (peak[0] - baseline) / 1024**2
 
 
@@ -117,6 +119,7 @@ def run_one(
     solver: str | None,
     data,
     build_only: bool = False,
+    measure_memory: bool = True,
 ) -> dict:
     """Import module, run solve() under RSS polling, return a result dict."""
     mod = importlib.import_module(module_name)
@@ -130,7 +133,11 @@ def run_one(
         return mod.solve(data, **kwargs)
 
     try:
-        (obj, build_s, solve_s), peak_mb = _peak_rss_mb(_call)
+        if measure_memory:
+            (obj, build_s, solve_s), peak_mb = _peak_rss_mb(_call)
+        else:
+            obj, build_s, solve_s = _call()
+            peak_mb = None
         if math.isnan(obj):
             obj = None
     except Exception as exc:
@@ -237,7 +244,9 @@ def main() -> None:
             best: dict | None = None
 
             for _ in range(args.repeat):
-                row = run_one(label, mod, solver, data, build_only=args.no_solve)
+                row = run_one(label, mod, solver, data,
+                              build_only=args.no_solve,
+                              measure_memory=not args.no_memory)
                 if best is None or (
                     row["total_s"] is not None
                     and (best["total_s"] is None
@@ -274,6 +283,7 @@ def main() -> None:
                 f" {fmt(best['build_s'], f'>{num_w}.3f')}"
                 f" {fmt(best['solve_s'], f'>{num_w}.3f')}"
                 f" {fmt(best['total_s'], f'>{num_w}.3f')}"
+                f" {'---':>{num_w}}" if args.no_memory else
                 f" {fmt(best['peak_mb'], f'>{num_w}.1f')}"
                 f" {fmt(best['objective'], f'>20,.0f')}"
                 f" {best['loc']:>{6}}"
