@@ -39,7 +39,7 @@ echo         Done.
 :: ── Frontend dependencies ────────────────────
 echo   [4/5] Installing frontend dependencies...
 cd frontend
-if not exist "node_modules\" (
+if not exist "node_modules\.bin\vite" (
     echo         Running npm install...
     call npm install
 ) else (
