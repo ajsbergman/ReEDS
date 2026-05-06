@@ -117,11 +117,12 @@ def calculate_projected_daily_gasreg_popweighted_degree_days(
             )
             .transform('sum')
         )
+        .reset_index()
     )
     daily_gasreg_popweighted_degree_days = (
         pd.merge(
-            historical_gasreg_popweighted_degree_day_shapes.reset_index(),
-            annual_gasreg_degree_day_projections.reset_index(),
+            historical_gasreg_popweighted_degree_day_shapes,
+            annual_gasreg_degree_day_projections,
             how='cross',
             suffixes=('_shape', '_magnitude')
         )
@@ -129,7 +130,13 @@ def calculate_projected_daily_gasreg_popweighted_degree_days(
         .rename_axis(['year', 'datetime'])
         .sort_index()
     )
-    for gasreg in annual_gasreg_degree_day_projections.columns:
+    gasregs = (
+        annual_gasreg_degree_day_projections
+        .drop(columns='t')
+        .columns
+        .tolist()
+    )
+    for gasreg in gasregs:
         daily_gasreg_popweighted_degree_days[gasreg] = (
             daily_gasreg_popweighted_degree_days[f"{gasreg}_shape"]
             * daily_gasreg_popweighted_degree_days[f"{gasreg}_magnitude"]
@@ -175,36 +182,22 @@ def calculate_daily_gasreg_population_weighted_degree_days(
             st2gasreg
         )
     )
-    # Get gasreg-level annual HDD/CDD projections 
-    valid_gasregs = historical_popweighted_hdd_daily_gasreg.columns.tolist()
+    # Get gasreg-level annual HDD/CDD projections and
+    # subset to solve years only
     solveyears = reeds.io.get_years(os.path.dirname(inputs_case))
-    gasreg_hdd = pd.read_csv(
-        os.path.join(
-            reeds_path,
-            'inputs',
-            'fuelprices',
-            "gasreg_hdd.csv"
-        ),
-        index_col=0
+    gasreg_degree_days = pd.read_csv(
+        os.path.join(inputs_case, 'gasreg_degree_days.csv')
+    )
+    gasreg_degree_days = (
+        gasreg_degree_days.loc[gasreg_degree_days['t'].isin(solveyears)]
     )
     gasreg_hdd = (
-        gasreg_hdd.loc[gasreg_hdd.index.isin(solveyears)]
-        .copy()
-        [valid_gasregs]
-    )
-    gasreg_cdd = pd.read_csv(
-        os.path.join(
-            reeds_path,
-            'inputs',
-            'fuelprices',
-            "gasreg_cdd.csv"
-        ),
-        index_col=0
+        gasreg_degree_days.loc[gasreg_degree_days.ddtype == 'HDD']
+        .drop(columns='ddtype')
     )
     gasreg_cdd = (
-        gasreg_cdd.loc[gasreg_cdd.index.isin(solveyears)]
-        .copy()
-        [valid_gasregs]
+        gasreg_degree_days.loc[gasreg_degree_days.ddtype == 'CDD']
+        .drop(columns='ddtype')
     )
     # Apply annual HDD/CDD projections to historical degree day shapes
     popweighted_hdd_daily_gasreg = (
@@ -225,11 +218,9 @@ def calculate_daily_gasreg_population_weighted_degree_days(
 def calculate_daily_gas_price_multipliers(reeds_path, inputs_case):
     # Get temperature-price regression parameters and daily
     # population-weighted degree days for each gasreg
-    params = pd.read_csv(
+    dd_gas_price_regression_params = pd.read_csv(
         os.path.join(
-            reeds_path,
-            'inputs',
-            'fuelprices',
+            inputs_case,
             'degree_day_gas_price_regression_parameters.csv'
         ),
         index_col='param'
@@ -242,13 +233,16 @@ def calculate_daily_gas_price_multipliers(reeds_path, inputs_case):
     )
     # Apply regression parameters to get daily price multipliers
     df_out = pd.DataFrame(index=popweighted_hdd_daily_gasreg.index)
-    regions = popweighted_hdd_daily_gasreg.columns.tolist()
-    for r in regions:
-        beta_cdd = params.loc['beta_CDD', r]
-        beta_hdd = params.loc['beta_HDD', r]
-        alpha = params.loc['alpha', r]
+    for gasreg in dd_gas_price_regression_params.columns:
+        beta_cdd = dd_gas_price_regression_params.loc['beta_CDD', gasreg]
+        beta_hdd = dd_gas_price_regression_params.loc['beta_HDD', gasreg]
+        alpha = dd_gas_price_regression_params.loc['alpha', gasreg]
         # monthly effects
-        month_effects_map = params.loc[params.index.str.contains('alpha_')][r]
+        month_effects_map = (
+            dd_gas_price_regression_params
+            .loc[dd_gas_price_regression_params.index.str.contains('alpha_')]
+            [gasreg]
+        )
         month_effects_map.index = month_effects_map.index.str.removeprefix('alpha_')
         month_effects = (
             popweighted_hdd_daily_gasreg.index
@@ -260,24 +254,18 @@ def calculate_daily_gas_price_multipliers(reeds_path, inputs_case):
         )
         gasreg_price_log_returns = (
             alpha
-            + beta_cdd * popweighted_cdd_daily_gasreg[r]
-            + beta_hdd * popweighted_hdd_daily_gasreg[r]
+            + beta_cdd * popweighted_cdd_daily_gasreg[gasreg]
+            + beta_hdd * popweighted_hdd_daily_gasreg[gasreg]
             + month_effects.values
         )
+        df_out[gasreg] = np.exp(gasreg_price_log_returns)
 
-        df_out[r] = np.exp(gasreg_price_log_returns)
-
-    valid_zones = reeds.io.get_rmap(os.path.dirname(inputs_case)).index.tolist()
-    hierarchy = reeds.io.assemble_hierarchy(os.path.dirname(inputs_case))
-    hierarchy = hierarchy.loc[hierarchy.r.isin(valid_zones)]
-
+    hierarchy = reeds.io.get_hierarchy(os.path.dirname(inputs_case))
     # Create one set of multipliers for model zones
     # (needed if GSw_GasCurve == 2)
-    r_gasreg_map = dict(zip(hierarchy['r'], hierarchy['gasreg']))
     df_out_r = pd.DataFrame(data={
-        r: df_out[gasreg] for r, gasreg in r_gasreg_map.items()
+        r: df_out[gasreg] for r, gasreg in hierarchy['gasreg'].items()
     })
-
     # Create another set of multipliers for census divisions
     # (needed if GSw_GasCurve != 2)
     popweighted_dd_daily_gasreg = (
