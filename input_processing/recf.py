@@ -323,8 +323,8 @@ def get_missing_class_resource(existing_techs, resources):
             
             missing_class_resource_nearest['i'] = missing_class_resource_nearest['i_left']
             missing_class_resource_nearest['ii'] = missing_class_resource_nearest['i_right']
-            missing_class_resource_nearest = missing_class_resource_nearest[['i','ii','r_right']].rename(
-                columns={'i': '*i','r_right':'r'})
+            missing_class_resource_nearest = missing_class_resource_nearest[['i','ii','r_left']].rename(
+                columns={'i': '*i','r_left':'r'})
         else:
             missing_class_resource_nearest = pd.DataFrame(columns=['*i','ii','r'])
         
