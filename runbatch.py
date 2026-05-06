@@ -1426,7 +1426,7 @@ def write_batch_script(
                 if LINUXORMAC else
                 f'set "r={os.path.join("g00files", f"{batch_case}_{max(solveyears)}i0")}"\n'
             )
-        ### Otherwise, run for the last iteration (lexicographically sorted)
+        ### Otherwise, run for the last iteration (selected numerically)
         else:
             OPATH.writelines(
                 f'r=$(python {os.path.join(casedir, "reeds", "get_last_iter.py")} {batch_case} {max(solveyears)})\n'
