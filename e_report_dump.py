@@ -73,7 +73,7 @@ def dfdict_to_h5(
     _symbol_list = dfdict.keys() if symbol_list is None else symbol_list
 
     ### Check for existing file
-    _filepath = filepath if filepath.endswith(".h5") else filepath + ".h5"
+    _filepath = filepath if Path(filepath).suffix == '.h5' else str(filepath) + '.h5'
     if os.path.exists(_filepath):
         if overwrite:
             os.remove(_filepath)

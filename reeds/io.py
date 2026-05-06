@@ -475,7 +475,7 @@ def read_output(
     Returns:
         pd.DataFrame
     """
-    if case.endswith('.h5'):
+    if Path(case).suffix == '.h5':
         h5path = case
     else:
         h5path = os.path.join(case, 'outputs', 'outputs.h5')

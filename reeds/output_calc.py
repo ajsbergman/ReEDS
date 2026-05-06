@@ -9,8 +9,10 @@ complex ReEDS output data like system costs, reinforcement transmission, etc.
 ### ===========================================================================
 import os
 import sys
-import pandas as pd
+import h5py
 import numpy as np
+import pandas as pd
+from pathlib import Path
 from itertools import product
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))  
@@ -730,4 +732,94 @@ def get_level_map(case):
       
     return level_map
 
-# %%
+
+def diff_outputs(
+    casebase:str|Path,
+    casecomp:str|Path,
+    outpath:str|Path|None|bool=None,
+    threshold_abs=0,
+    threshold_rel=0,
+    verbose=0,
+):
+    """
+    Diff two {case}/outputs/outputs.h5 files and save the result to outpath.
+
+    Args:
+        casebase: Absolute path to base ReEDS case
+        casecomp: Absolute path to comparison ReEDS case
+        outpath: Absolute path to resulting difference .h5 file
+            If None, difference file is saved to
+            {casebase}/comparisons/diff_{casebase.stem}_{casecomp.stem}.h5
+        threshold_abs: Absolute cutoff for differences to include
+            (i.e., to ignore differences of 0.1 MW in an output parameter in units of MW,
+            set to 0.1)
+        threshold_rel: [fraction] Relative cutoff for differences to include, relative to base
+            (i.e., to ignore differences <1%, set to 0.01)
+        verbose (int): If nonzero, print descriptive logs
+
+    Returns:
+        dict of pd.DataFrames (keys = entries in outputs.h5 with nonzero diff)
+
+    Inputs for testing:
+        casebase = Path(reeds.io.reeds_path, 'runs', 'v20260306_itlM0_Pacific')
+        casecomp = Path(reeds.io.reeds_path, 'runs', 'v20260306_itlM0_Pacific_CC')
+        outpath = None
+    """
+    ## Check inputs
+    casebase = Path(casebase)
+    casecomp = Path(casecomp)
+    fpaths = {
+        'base': Path(casebase, 'outputs', 'outputs.h5'),
+        'comp': Path(casecomp, 'outputs', 'outputs.h5'),
+    }
+    for key, fpath in fpaths.items():
+        if not fpath.is_file():
+            raise FileNotFoundError(fpath)
+    ## Make output directory
+    if outpath in [None, True]:
+        outpath = Path(
+            casebase, 'outputs', 'comparisons', f'diff_{casebase.stem}_{casecomp.stem}.h5'
+        )
+    elif outpath is False:
+        pass
+    else:
+        outpath = Path(outpath)
+    if outpath:
+        outpath.parent.mkdir(exist_ok=True, parents=True)
+    ## Get results
+    keys = {}
+    dictin = {}
+    for case, fpath in fpaths.items():
+        _dictin = {}
+        with h5py.File(fpath, 'r') as f:
+            keys[case] = list(f)
+        for key in keys[case]:
+            df = reeds.io.read_output(fpath, key)
+            indices = [i for i in df if i.lower() != 'value']
+            if len(indices):
+                df = df.set_index(indices)
+            _dictin[key] = df.squeeze(1).astype(np.float32)
+        dictin[case] = _dictin
+    ## Take diff
+    allkeys = sorted(set(keys['base'] + keys['comp']))
+    dictout = {}
+    for key in allkeys:
+        df = pd.concat({case:dictin[case].get(key, None) for case in dictin}, axis=1)
+        ## Sets have no value column; ignore them
+        if df.shape[1] == 0:
+            continue
+        df['diff'] = df.get('comp', 0) - df.get('base', 0)
+        df['frac'] = df.get('comp', 0) / df.get('base', 0) - 1
+        df = df.loc[(df['diff'].abs() > threshold_abs) & (df['frac'].abs() > threshold_rel)].copy()
+        if len(df):
+            dictout[key] = df
+        if (verbose > 1) or (((verbose > 0) and len(df))):
+            print(f'{key}: {len(df)} differences')
+    ## Write it
+    if outpath:
+        if outpath.is_file():
+            outpath.unlink()
+        for key, df in dictout.items():
+            reeds.io.write_to_h5(df.reset_index(), key, outpath)
+        print(f'Difference written to {outpath}')
+    return dictout
