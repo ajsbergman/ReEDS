@@ -22,6 +22,7 @@ import datetime
 import numpy as np
 import os
 import pandas as pd
+import geopandas as gpd
 import sys
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import reeds
@@ -274,34 +275,67 @@ def calculate_regional_distpv_cf(inputs_case, cap_min=0.0001):
     return regional_distpv_cf
 
 def get_missing_class_resource(existing_techs, resources):
-    existing_techs = existing_techs.merge(resources[['i','r']],
-                                          on=['i','r'],
-                                          how='left',
-                                          indicator=True)
-    missing_class_resource = existing_techs[existing_techs['_merge'] == 'left_only'][['i','r']].copy()
-    missing_class_resource = missing_class_resource[missing_class_resource["i"].str.contains("upv|wind")].reset_index(drop=True)
-    # Assign closest matching technology class based on available resources 
-    # Assign lower class if available, otherwise assign the next higher class
-    if len(missing_class_resource) > 0:
-        for idx, row in missing_class_resource.iterrows():
-            tech = row['i']
-            region = row['r']
-            available_resources = resources[resources["i"].astype(str).str.contains(tech.split("_")[0], na=False)&(resources['r'] == region)].copy()
-            available_resources.loc[:, "num"] = available_resources["i"].str.split("_").str[1].astype(int)        
-            lower = available_resources[available_resources["num"] <= int(tech.split("_")[1])]
-            if not lower.empty:
-                match = lower.loc[lower["num"].idxmax()]
-            else:
-                upper = available_resources[available_resources["num"] > int(tech.split("_")[1])]
-                if upper.empty:
-                    raise ValueError(f"No matching tech class found for '{tech}'. Exiting program.")
-                match = upper.loc[upper["num"].idxmin()]
-            missing_class_resource.loc[idx, "ii"] = match['i']
-    else:
-        missing_class_resource['ii'] = missing_class_resource['i']
-    missing_class_resource=missing_class_resource[['i','ii','r']].rename(columns={'i': '*i'})
+    crs = 'EPSG:5070'
+    dfr = reeds.io.get_zonemap(reeds.io.standardize_case(inputs_case))
+    dfr['r'] = dfr.index
+    existing_techs = gpd.GeoDataFrame(existing_techs.merge(dfr[['r','geometry']], 
+                                                           on = 'r', how = 'left'), 
+                                                           geometry='geometry').to_crs(crs)
+    resources = gpd.GeoDataFrame(resources.merge(dfr[['r','geometry']], 
+                                                 on = 'r', how = 'left'), 
+                                                 geometry='geometry').to_crs(crs)
+    
+    techs = existing_techs['i'].unique().tolist()
+    existing_techs_list = []
+    for tech in techs:
+        if 'upv' in tech:
+            tech_cat = 'upv'
+        elif 'wind-ons' in tech:
+            tech_cat = 'wind-ons'
+        elif 'wind-ofs' in tech:
+            tech_cat = 'wind-ofs'
 
-    return missing_class_resource
+        existing_tech = existing_techs[existing_techs['i']==tech]
+        resource_tech = resources[resources['i']==tech]
+        resource_tech_cat = resources[resources['i'].str.contains(tech_cat)]
+
+        # First merge existing techs to resource by tech class and exact location
+        existing_tech_resource_match = existing_tech.merge(resource_tech[['i','r']],
+                                                           on=['i','r'],
+                                                           how='left',
+                                                           indicator=True)
+        
+        # If there are existing tech classes with missing resources,
+        # assign them to the nearest resource of the same tech
+        missing_class_resource = existing_tech_resource_match[existing_tech_resource_match['_merge'] == 'left_only'].copy()
+        
+        if len(missing_class_resource) > 0:
+            if tech in resource_tech['i'].unique().tolist():
+                missing_class_resource_nearest = gpd.sjoin_nearest(missing_class_resource, 
+                                                        resource_tech, 
+                                                        distance_col='distance', 
+                                                        how='left')
+            else:
+                missing_class_resource_nearest = gpd.sjoin_nearest(missing_class_resource, 
+                                                        resource_tech_cat, 
+                                                        distance_col='distance', 
+                                                        how='left')
+            
+            missing_class_resource_nearest['i'] = missing_class_resource_nearest['i_left']
+            missing_class_resource_nearest['ii'] = missing_class_resource_nearest['i_right']
+            missing_class_resource_nearest = missing_class_resource_nearest[['i','ii','r_right']].rename(
+                columns={'i': '*i','r_right':'r'})
+        else:
+            missing_class_resource_nearest = pd.DataFrame(columns=['*i','ii','r'])
+        
+        existing_techs_list = existing_techs_list + [missing_class_resource_nearest]
+        
+    missing_class_resource_match = pd.concat(existing_techs_list, 
+                                             ignore_index=False,
+                                             sort=False)
+    missing_class_resource_match = missing_class_resource_match.drop_duplicates(subset=['*i','ii','r'],
+                                                                                keep='first')
+    return missing_class_resource_match
 
 #%% ===========================================================================
 ### --- MAIN FUNCTION ---
@@ -309,11 +343,6 @@ def get_missing_class_resource(existing_techs, resources):
 def main(reeds_path, inputs_case):
     print('Starting recf.py')
     
-    # #%% Settings for testing
-    # reeds_path = os.path.realpath(os.path.join(os.path.dirname(__file__),'..'))
-    # inputs_case = os.path.join(
-    #     reeds_path,'runs','v20260416_mainM0_Pacific','inputs_case')
-
     #%% Inputs from switches
     sw = reeds.io.get_switches(inputs_case)
     resource_adequacy_years = sw['resource_adequacy_years_list']
@@ -595,9 +624,9 @@ if __name__ == '__main__':
     reeds_path = args.reeds_path
     inputs_case = args.inputs_case
 
-    #%% Set up logger
-    #reeds_path = os.path.realpath(os.path.join(os.path.dirname(__file__),'..'))
-    #inputs_case = os.path.join(reeds_path,'runs','test_flex_Pacific','inputs_case')
+    # #%% Settings for testing
+    # reeds_path = os.path.realpath(os.path.join(os.path.dirname(__file__),'..'))
+    # inputs_case = os.path.join(reeds_path,'runs','test_github_MA_county_CC','inputs_case')
     
     log = reeds.log.makelog(
         scriptname=__file__,
