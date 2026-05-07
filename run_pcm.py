@@ -131,7 +131,7 @@ def submit_job(casepath, command_string, jobname='', joblabel='', bigmem=0):
     with open(os.path.join(reeds_path, 'srun_template.sh'), 'r') as f:
         for line in f:
             if bigmem and ('--mem=' in line):
-                line = '#SBATCH --mem=500000'
+                line = '#SBATCH --mem=2000000'
 
             if line.strip().startswith('#!'):
                 commands_header.append(line.strip())
