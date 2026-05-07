@@ -3,7 +3,7 @@ ignore,0,,,0,,,0
 input_processing_only,0,,,,,,
 yearset,2010_2015_2020..2030..2,,,,,,
 endyear,2030,,,,,,
-GSw_HierarchyFile,agg54,,,,,,
+GSw_ZoneSet,z54,,,,,,
 ngscen,AEO_2025_reference,,,AEO_2025_HOG,AEO_2025_HOG,AEO_2025_LOG,AEO_2025_LOG
 GSw_PRM_CapCredit,1,,,,,,
 GSw_PRM_scenario,nerc,,,,,,
