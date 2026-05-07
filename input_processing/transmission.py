@@ -258,6 +258,16 @@ def get_transmission_fom(case, interface_params):
         .USDperMWyear
         .round(2)
     )
+    ## Include both directions
+    reverse = (
+        transmission_line_fom.reset_index().rename(columns={'r':'rr', 'rr':'r'})
+        .set_index(['r','rr','trtype']).squeeze(1)
+    )
+    transmission_line_fom = pd.concat([transmission_line_fom, reverse])
+    dups = transmission_line_fom.index.duplicated()
+    if dups.sum():
+        print(transmission_line_fom.loc[dups])
+        raise ValueError(f'{len(dups)} duplicate values in transmission_line_fom')
     return transmission_line_fom
 
 
@@ -628,7 +638,7 @@ if __name__ == '__main__':
     case = Path(args.inputs_case).parent
 
     # #%% Settings for testing ###
-    # case = str(Path(reeds.io.reeds_path, 'runs', 'v20260507_transcostM1_Pacific'))
+    # case = str(Path(reeds.io.reeds_path, 'runs', 'v20260507_transcostM1_MARICTNYNJPAOH_Offshore'))
 
     #%% Set up logger
     log = reeds.log.makelog(scriptname=__file__, logpath=Path(case, 'gamslog.txt'))

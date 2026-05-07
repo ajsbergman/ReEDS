@@ -271,8 +271,8 @@ def check_compatibility(sw):
 
     if sw['GSw_RegionResolution'] in ['county','mixed']:
         err_switch_configs = []
-        if int(sw['GSw_OffshoreZones']):
-            err_switch_configs.append('GSw_OffshoreZones=1')
+        if int(sw['GSw_CO2_Detail']):
+            err_switch_configs.append('GSw_CO2_Detail=1')
         if sw['GSw_LoadAllocationMethod'] == 'state_lpf':
             err_switch_configs.append('GSw_LoadAllocationMethod=state_lpf')
 
