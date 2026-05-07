@@ -1,0 +1,57 @@
+order,color,marker
+Thermal,#820000,X
+Nuclear,#820000,p
+Nuclear-SMR,#D40000,p
+Coal,#000000,X
+Coal-CCS-Flex,#666666,P
+Coal-CCS,#666666,P
+Coal-CCS_Upgrade,#666666,P
+Cofire,#66C238,X
+Gas-CC,#5E1688,<
+Gas-CCS,#9467BD,D
+Gas-CC-CCS,#9467BD,D
+Gas-CC-CCS-Flex,#9824DB,D
+Gas-CC-CCS_Upgrade,#9467BD,D
+Gas-CT,#C2A1DB,>
+Oil/Gas Steam,#3D3376,d
+Gas,#5E1688,<
+H2-CC_Upgrade,#4B5320,<
+H2-CC,#708238,<
+H2-CT_Upgrade,#66C238,>
+H2-CT,#A8C839,>
+NG-Fuel-Cell,#AD50E2,<
+Hydrogen Combustion,#A8C839,<
+Hydropower,#187F94,s
+Hydropower Existing,#187F94,s
+Hydropower New,#187F94,s
+Geothermal,#A96235,h
+Biopower,#3BB143,"(5,1,0)"
+Bio/Geo/Hydro,#043927,"(5,1,0)"
+BECCS,#C7EA46,"(5,1,180)"
+Landfill-Gas,#708238,"(5,1,0)"
+VRE,#ff7f0e,o
+Onshore Wind,#00B6EF,^
+Offshore Wind,#106BA7,v
+Wind,#00B6EF,o
+CSP,#FC761A,o
+UPV,#FFC903,o
+DPV,#FEE603,o
+PVB,#D1C202,o
+Solar,#FFC903,o
+CAES,#FF4741,"(6,1,0)"
+Battery,#FF4A88,"(4,1,0)"
+DR Shed,#B9CBF5,o
+EVMC_Storage,#a55194,o
+EVMC_Shape,#ce6dbd,o
+DR,#B9CBF5,o
+Storage-H2,#FF7FBB,"(6,1,0)"
+Pumped-Hydro,#CC0079,"(8,1,0)"
+Pumped-Hydro-Flex,#CC0079,"(8,1,0)"
+Storage,#FF4A88,"(4,1,0)"
+Canadian Imports,#193A71,-
+SMR,#D49E2E,-
+SMR-CCS,#5F522D,-
+Electrolyzer,#896F2D,-
+Other,#ff69b4,-
+Remove,#000000,-
+Dropped,#d62728,-

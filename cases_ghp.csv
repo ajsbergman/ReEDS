@@ -1,0 +1,11 @@
+,Default Value,33rep_1h_test
+ignore,1,0
+input_processing_only,0,
+GSw_RegionResolution,aggreg,
+GSw_HierarchyFile,agg54,
+GSw_HourlyChunkLengthRep,3,1
+GSw_HourlyChunkLengthStress,3,1
+GSw_HourlyClusterRegionLevel,transgrp,
+GSw_HourlyNumClusters,67,33
+GSw_HourlyClusterWeights,load_1/upv_1/wind-ons_1/wind-ofs_1,
+GSw_HourlyType,day,

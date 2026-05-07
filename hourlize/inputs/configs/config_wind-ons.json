@@ -1,0 +1,14 @@
+{
+    "capacity_col": "capacity_ac_mw",
+    "class_bin_col": "capacity_factor_ac",
+    "class_bin_num": 10,
+    "class_bin": true,
+    "class_path": null,
+    "filter_cols": {"capacity": [">", 0], "offshore":[":",0]},
+    "min_cap": 0,
+    "profile_dir": "" ,
+    "profile_dset": "rep_profiles_0",
+    "profile_file_format": "" ,
+    "profile_weight_col": "capacity",
+    "single_profile": true  
+}

@@ -1,0 +1,15 @@
+{
+    "cost_out": "combined_off_ons_trans" ,
+    "capacity_col": "capacity_ac_mw",
+    "class_bin_col": "ncf_2035",
+    "class_bin_num": 5,
+    "class_bin": true,
+    "class_path": "{hourlize_path}/inputs/resource/{tech}_resource_classes.csv",
+    "filter_cols": {"capacity_ac_mw": [">", 0], "offshore": [":",1], "mean_depth": [">",-1300]},
+    "min_cap": 15,
+    "profile_dir": "",
+    "profile_dset": "rep_profiles_0",
+    "profile_file_format": "{rev_case}_rep-profiles",
+    "profile_weight_col": "capacity",
+    "single_profile": false
+}
