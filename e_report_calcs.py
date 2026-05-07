@@ -1,9 +1,8 @@
 #%% Imports
-import sys
 import gdxpds
 import pandas as pd
 from pathlib import Path
-import reeds
+
 
 #%% Functions
 def get_gams_results(case):
@@ -33,23 +32,27 @@ def calc_co2_stor(g):
     return dfs
 
 
-# def calc_transmission(g):
-#     """Transmission capacity and flow"""
-#     dfs = {}
-#     ## Combine forward and reverse into one +/- series
-#     # forward = list(zip(g['FLOW'].index.get_level_values('r'), g['FLOW'].index.get_level_values('rr')))
-#     # reverse = list(zip(g['FLOW'].index.get_level_values('rr'), g['FLOW'].index.get_level_values('r')))
-#     # g['FLOW'].reset_index(['allh','t','trtype']).loc[forward]
-#     g['FLOW'].loc[g['FLOW'].index.get_level_values('r') > g['FLOW'].index.get_level_values('rr')]
-#     g['FLOW'].loc[g['FLOW'].index.get_level_values('r') < g['FLOW'].index.get_level_values('rr')]
-#     # dfs['tran_flow_rep'] = g['FLOW'].Level
+def combine_forward_reverse(df, value='Level'):
+    """Combine forward (r < rr) and reverse (r > rr) into one +/- series"""
+    r_indices = ['r', 'rr']
+    other_indices = [i for i in df.index.names if i not in r_indices]
+    forward = df.loc[
+        df.index.get_level_values('r') < df.index.get_level_values('rr'),
+        value,
+    ]
+    reverse = -df.loc[
+        df.index.get_level_values('r') > df.index.get_level_values('rr'),
+        value,
+    ].rename_axis(['rr', 'r'] + other_indices).reorder_levels(['r', 'rr'] + other_indices)
+    return pd.concat([forward, reverse]).groupby(['r', 'rr'] + other_indices).sum()
 
-#     # g['FLOW']
-#     # g['FLOW'].loc[
-#     #     g['FLOW'].index.get_level_values('rr'),
-#     #     g['FLOW'].index.get_level_values('r'),
-#     # ]
-#     return dfs
+
+def calc_transmission(g):
+    """Transmission capacity and flow"""
+    dfs = {}
+    dfs['tran_flow_rep'] = combine_forward_reverse(g['FLOW'])
+    dfs['tran_flow_rep_ann'] = (dfs['tran_flow_rep'] * g['hours']).groupby(['r','rr','trtype','t']).sum()
+    return dfs
 
 
 def main(case):
@@ -57,6 +60,7 @@ def main(case):
     dictout = {
         **calc_iq(dictin),
         **calc_co2_stor(dictin),
+        **calc_transmission(dictin),
     }
     ## Drop zeros to reduce file size and match GAMS convention
     for key, df in dictout.items():

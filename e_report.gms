@@ -1786,19 +1786,9 @@ tran_flow_all_rep(r,rr,h,trtype,t)
 tran_flow_all_stress(r,rr,allh,trtype,t)
     $[tmodel_new(t)$routes(r,rr,trtype,t)$h_stress_t(allh,t)] = FLOW.l(r,rr,allh,t,trtype) ;
 
-tran_flow_rep(r,rr,h,trtype,t)
-    $[tmodel_new(t)$routes(r,rr,trtype,t)$(ord(r) < ord(rr))] =
-    FLOW.l(r,rr,h,t,trtype) - FLOW.l(rr,r,h,t,trtype)
-;
-
 tran_flow_stress(r,rr,allh,trtype,t)
     $[tmodel_new(t)$routes(r,rr,trtype,t)$(ord(r) < ord(rr))$h_stress_t(allh,t)] =
     FLOW.l(r,rr,allh,t,trtype) - FLOW.l(rr,r,allh,t,trtype)
-;
-
-tran_flow_rep_ann(r,rr,trtype,t)
-  $[sum{h, tran_flow_rep(r,rr,h,trtype,t)}] =
-  sum{h, hours(h) * tran_flow_rep(r,rr,h,trtype,t) }
 ;
 
 tran_util_h_rep(r,rr,h,trtype,t)
