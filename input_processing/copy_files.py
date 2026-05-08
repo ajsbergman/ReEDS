@@ -148,7 +148,7 @@ def read_runfiles(reeds_path, inputs_case, sw, agglevel_variables):
     return runfiles, non_region_files, region_files
 
 
-def get_source_deflator_map(reeds_path):
+def get_source_deflator_map(reeds_path,inputs_case,write_out=True):
     """
     Get the deflator for each input file
     """
@@ -170,7 +170,14 @@ def get_source_deflator_map(reeds_path):
     inflatable = reeds.io.get_inflatable()  
     deflator =( 1 / inflatable[reeds_dollar_year].loc[reeds_dollar_year:max_dollar_year]).reset_index() 
     deflator.columns = ['*Dollar.Year', 'Deflator']
-    deflator.to_csv(os.path.join(inputs_case, 'deflator.csv'), index=False)
+
+    # if get_source_deflator_map function is being called from mcs_sampler,
+    # we do not want to write out the deflator.csv file as it is only used for 
+    # the copy_files function.
+    
+    if write_out:
+        deflator.to_csv(os.path.join(inputs_case, 'deflator.csv'), index=False)
+
     deflator.rename(columns={'*Dollar.Year': 'Dollar.Year'}, inplace=True)
 
     # Create a mapping between inputs' relative filepaths and their deflation
@@ -1625,7 +1632,7 @@ def main(reeds_path, inputs_case):
     # (gswitches.csv is first written at runbatch.py)
     scalar_csv_to_txt(os.path.join(inputs_case,'gswitches.csv'))
     
-    source_deflator_map = get_source_deflator_map(reeds_path)
+    source_deflator_map = get_source_deflator_map(reeds_path,inputs_case)
 
     # Copy non-region files
     write_non_region_files(non_region_files, sw, inputs_case, regions_and_agglevel, source_deflator_map)

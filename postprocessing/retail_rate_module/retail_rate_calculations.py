@@ -15,7 +15,7 @@ import ferc_distadmin
 import calculate_historical_capex
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from bokehpivot.defaults import ReEDS_DOLLAR_YEAR, DEFAULT_DOLLAR_YEAR
+from bokehpivot.defaults import REEDS_DOLLAR_YEAR, DEFAULT_DOLLAR_YEAR
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
 import reeds
@@ -1022,7 +1022,7 @@ def main(run_dir, inputpath='inputs.csv', write=True, verbose=0):
             mdir, 'calc_historical_capex',
             'existing_transmission_cost_bystate_USD2024.csv'),
         index_col='state',
-    ).squeeze(1).rename('init_trans_capex') * inflatable[DEFAULT_DOLLAR_YEAR, ReEDS_DOLLAR_YEAR]
+    ).squeeze(1).rename('init_trans_capex') * inflatable[DEFAULT_DOLLAR_YEAR, REEDS_DOLLAR_YEAR]
     # This approach assumes the existing transmission capacity was built evently 
     # over the trans_timeframe years prior to 2010
     init_trans_capex = pd.concat(

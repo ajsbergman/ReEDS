@@ -17,7 +17,7 @@ import argparse
 import retail_rate_calculations
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from bokehpivot.defaults import ReEDS_DOLLAR_YEAR
+from bokehpivot.defaults import REEDS_DOLLAR_YEAR
 
 pd.options.display.max_columns = 200
 pd.options.display.max_rows = 50
@@ -52,7 +52,7 @@ inflation = pd.read_csv(
     os.path.join(reeds_path,'inputs','financials','inflation_default.csv'),
     index_col=['t'])
 inf_adjust = inflation.loc[
-    ReEDS_DOLLAR_YEAR+1:out_dollar_year,
+    REEDS_DOLLAR_YEAR+1:out_dollar_year,
     'inflation_rate'
 ].cumprod()[out_dollar_year]
 

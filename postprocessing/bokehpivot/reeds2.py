@@ -18,7 +18,7 @@ import copy
 from itertools import product
 from math import prod
 ## Inherit the default present value year to use in plot definitions
-from defaults import DEFAULT_PV_YEAR,ReEDS_DOLLAR_YEAR
+from defaults import DEFAULT_PV_YEAR,REEDS_DOLLAR_YEAR
 
 rb_globs = {'output_subdir':'/outputs/', 'test_file':['cap.csv','outputs.h5'], 'report_subdir':'/reeds2'}
 this_dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -73,7 +73,7 @@ def apply_inflation(df, **kw):
 def inflate_series(ser_in):
     inflation_dict = dict(zip(df_inflation.index, df_inflation['inflation_rate']))
     deflator_multiplier = prod( inflation_dict[y]
-        for y in range(int(ReEDS_DOLLAR_YEAR) + 1, int(core.GL['widgets']['var_dollar_year'].value) + 1 ))
+        for y in range(int(REEDS_DOLLAR_YEAR) + 1, int(core.GL['widgets']['var_dollar_year'].value) + 1 ))
     return ser_in * deflator_multiplier
     
 def gather_cost_types(df):

@@ -483,7 +483,7 @@ def get_dist_instructions(reeds_path: str, inputs_case: str, run_ReEDS: bool = T
     regions_and_agglevel = copy_files.get_regions_and_agglevel(
         reeds_path, inputs_case, save_regions_and_agglevel=False)
 
-    source_deflator_map = copy_files.get_source_deflator_map(reeds_path)
+    source_deflator_map = copy_files.get_source_deflator_map(reeds_path,inputs_case,False)
 
     hierarchy_file = get_hierarchy_file(inputs_case, sw['GSw_RegionResolution'])
 

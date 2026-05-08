@@ -19,7 +19,7 @@ import reeds
 from reeds import plots
 from reeds import reedsplots
 from reeds.report_utils import SLIDE_HEIGHT, SLIDE_WIDTH
-from bokehpivot.defaults import DEFAULT_DOLLAR_YEAR,ReEDS_DOLLAR_YEAR, DEFAULT_PV_YEAR, DEFAULT_DISCOUNT_RATE
+from bokehpivot.defaults import DEFAULT_DOLLAR_YEAR,REEDS_DOLLAR_YEAR, DEFAULT_PV_YEAR, DEFAULT_DISCOUNT_RATE
 
 reeds_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 plots.plotparams()
@@ -138,8 +138,6 @@ discountrate_social = DEFAULT_DISCOUNT_RATE
 discountrate_scghg = 0.02
 assert discountrate_scghg in [0.015, 0.02, 0.025]
 central_health = {'cr':'ACS', 'model':'EASIUR'}
-reeds_dollaryear = ReEDS_DOLLAR_YEAR
-output_dollaryear = DEFAULT_DOLLAR_YEAR
 startyear_notes = DEFAULT_PV_YEAR
 
 colors_social = {
@@ -317,7 +315,7 @@ phaseout_trigger = float(scalars.co2_emissions_2022) * float(sw.GSw_TCPhaseout_t
 
 inflatable = reeds.io.get_inflatable(os.path.join(
     reeds_path,'inputs','financials','inflation_default.csv'))
-inflator = inflatable[reeds_dollaryear, output_dollaryear]
+inflator = inflatable[REEDS_DOLLAR_YEAR, DEFAULT_DOLLAR_YEAR]
 
 scghg = pd.read_csv(
     os.path.join(reeds_path, 'postprocessing', 'plots', 'scghg_annual.csv'),
@@ -331,7 +329,7 @@ scghg = pd.read_csv(
 }).set_index(['e','t'])
 scghg_central = (
     scghg[f'2020_{discountrate_scghg*100:.1f}%'].unstack('e')
-    * inflatable[2020, output_dollaryear]
+    * inflatable[2020, DEFAULT_DOLLAR_YEAR]
 )
 
 #%% Colors and mapping
@@ -527,7 +525,7 @@ for case in tqdm(cases, desc='health'):
             .xs(central_health['model'], level='model')
             .groupby('year').sum()
             ['damage_$']
-            ### Inflate from reeds_dollaryear (2004) to bokeh output_dollaryear (2021)
+            ### Inflate from REEDS_DOLLAR_YEAR (2004) to bokeh DEFAULT_DOLLAR_YEAR (2024)
             * inflator
             ### Convert to $B
             / 1e9
