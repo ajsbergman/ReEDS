@@ -28,7 +28,6 @@ import os
 import sys
 import datetime
 import pandas as pd
-import scipy
 import sklearn.cluster
 import sklearn.neighbors
 import traceback
@@ -108,7 +107,7 @@ def optimize_period_weights(profiles_fitperiods, numclusters=100):
 
     ### Input processing
     profiles_day = (
-        profiles_fitperiods.groupby(['property','region'], axis=1).mean())
+        profiles_fitperiods.T.groupby(level=['property','region']).mean().T)
     profiles_mean = profiles_day.mean()
     numdays = len(profiles_day)
     days = profiles_day.index.values
@@ -244,7 +243,7 @@ def identify_peak_containing_periods(df, hierarchy, level):
         rmap = hierarchy[level]
     dfmod = df.copy()
     dfmod.columns = dfmod.columns.map(lambda x: x.split('|')[-1]).map(rmap)
-    dfmod = dfmod.groupby(axis=1, level=0).sum()
+    dfmod = dfmod.T.groupby(level=0).sum().T
     ### Get the max value by (year,yperiod)
     dfmax = dfmod.groupby(['year','yperiod']).max()
     ### Get the max (year,yperiod) for each column
@@ -265,7 +264,7 @@ def identify_min_periods(df, hierarchy, level, prefix=''):
         rmap = hierarchy[level]
     dfmod = df[[c for c in df if c.startswith(prefix)]].copy()
     dfmod.columns = dfmod.columns.map(lambda x: x.split('|')[-1]).map(rmap)
-    dfmod = dfmod.groupby(axis=1, level=0).sum()
+    dfmod = dfmod.T.groupby(level=0).sum().T
     ### Get the mean value by (year,yperiod)
     dfmean = dfmod.groupby(['year','yperiod']).mean()
     ### Get the min (year,yperiod) for each column
@@ -339,14 +338,15 @@ def cluster_profiles(profiles_fitperiods, sw, forceperiods_yearperiod):
             sklearn.neighbors.NearestCentroid().fit(profiles_fitperiods, idx).centroids_,
             columns=profiles_fitperiods.columns,
         )
-        nearest_period = {
-            i:
-            profiles_fitperiods.loc[:,idx==i,:].apply(
-                lambda row: scipy.spatial.distance.euclidean(row, centroids.loc[i]),
-                axis=1
-            ).nsmallest(1).index[0]
-            for i in range(int(sw['GSw_HourlyNumClusters']))
-        }
+        nearest_period = {}
+        centroid_values = centroids.values
+        profile_values = profiles_fitperiods.values
+        for i in range(int(sw['GSw_HourlyNumClusters'])):
+            cluster_mask = idx == i
+            # Calculate distance from each point in the cluster to the centroid
+            dists = np.linalg.norm(profile_values[cluster_mask] - centroid_values[i], axis=1)
+            # Find the index of the point closest to the centroid
+            nearest_period[i] = profiles_fitperiods.index[cluster_mask][np.argmin(dists)]
 
         period_szn = pd.DataFrame({
             'period': profiles_fitperiods.index.values,
@@ -570,7 +570,7 @@ def main(
     recf_agg = recf_agg[tmp.index]
     columns['region'] = columns.region.map(rmap)
     recf_agg.columns = pd.MultiIndex.from_frame(columns[['tech','region']])
-    recf_agg = recf_agg.groupby(axis=1, level=['tech','region']).sum()
+    recf_agg = recf_agg.T.groupby(level=['tech','region']).sum().T
 
     ### Divide by aggregated capacity to get back to CF
     recf_agg /= sc.groupby(['tech','aggreg']).capacity.sum().rename_axis(['tech','region'])
@@ -599,7 +599,7 @@ def main(
     ### Aggregate to GSw_HourlyClusterRegionLevel
     load_agg = load.copy()
     load_agg.columns = load_agg.columns.map(rmap)
-    load_agg = load_agg.groupby(axis=1, level=0).sum()
+    load_agg = load_agg.T.groupby(level=0).sum().T
     match sw.GSw_HourlyClusterLoadNorm:
         case 'none':
             ## Don't normalize load
@@ -665,7 +665,7 @@ def main(
     ### Aggregate from hours to periods if necessary
     if sw.GSw_HourlyClusterTimestep in ['period','day','wek','week']:
         profiles_fitperiods = (
-            profiles_fitperiods_hourly.groupby(axis=1, level=['property','region']).mean())
+            profiles_fitperiods_hourly.T.groupby(level=['property','region']).mean().T)
     else:
         profiles_fitperiods = profiles_fitperiods_hourly.copy()
 
@@ -953,10 +953,19 @@ if __name__ == '__main__':
 
     ####################################################
     #%% Write timeseries data for representative periods
+    # Load shared hourly files once to avoid repeated reads across all writetimeseries calls
+    recf_input = reeds.io.read_file(os.path.join(inputs_case, 'recf.h5'), parse_timestamps=True)
+    cspcf_input = reeds.io.read_file(os.path.join(inputs_case, 'csp.h5'), parse_timestamps=True)
+    load_input = reeds.io.read_file(
+        os.path.join(inputs_case, 'load.h5'), parse_timestamps=True).unstack(level=0)
+    load_input.columns = load_input.columns.rename(['r', 't'])
+    load_input *= (1 - reeds.io.get_scalars(inputs_case)['distloss'])
+
     hourly_writetimeseries.main(
         sw=sw, reeds_path=reeds_path, inputs_case=inputs_case,
         periodtype='rep',
         make_plots=1,
+        recf_input=recf_input, cspcf_input=cspcf_input, load_input=load_input,
     )
 
     ############################################
@@ -969,6 +978,7 @@ if __name__ == '__main__':
             sw=sw, reeds_path=reeds_path, inputs_case=inputs_case,
             periodtype=f'stress{t}i0',
             make_plots=0,
+            recf_input=recf_input, cspcf_input=cspcf_input, load_input=load_input,
         )
 
     #%% All done

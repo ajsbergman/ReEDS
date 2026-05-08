@@ -194,18 +194,22 @@ def get_minloading_windows(sw, h_szn, chunkmap):
     return hour_szn_group
 
 
-def get_yearly_demand(sw, hmap_myr, hmap_allyrs, inputs_case, periodtype='rep'):
+def get_yearly_demand(sw, hmap_myr, hmap_allyrs, inputs_case, periodtype='rep', load_input=None):
     """
     After clustering based on GSw_HourlyClusterYear and identifying the modeled days,
     reload the raw demand and extract the demand on the modeled days for each year.
     """
-    ### Get original demand data, subset to cluster year
-    load_in = reeds.io.read_file(
-        os.path.join(inputs_case,'load.h5'), parse_timestamps=True).unstack(level=0)
-    load_in.columns = load_in.columns.rename(['r','t'])
-    ### load.h5 is busbar load, but b_inputs.gms ingests end-use load, so scale down by distloss
-    scalars = reeds.io.get_scalars(inputs_case)
-    load_in *= (1 - scalars['distloss'])
+    if load_input is not None:
+        ### Use pre-loaded data (distloss already applied); copy to avoid mutating shared ref
+        load_in = load_input.copy()
+    else:
+        ### Get original demand data, subset to cluster year
+        load_in = reeds.io.read_file(
+            os.path.join(inputs_case,'load.h5'), parse_timestamps=True).unstack(level=0)
+        load_in.columns = load_in.columns.rename(['r','t'])
+        ### load.h5 is busbar load, but b_inputs.gms ingests end-use load, so scale down by distloss
+        scalars = reeds.io.get_scalars(inputs_case)
+        load_in *= (1 - scalars['distloss'])
 
     ### Add time index
     load_in.index = load_in.index.map(hmap_allyrs.set_index('timestamp')['actual_h']).rename('h')
@@ -394,7 +398,8 @@ def get_yearly_flexibility(
 # %% ===========================================================================
 ### --- MAIN FUNCTION ---
 ### ===========================================================================
-def main(sw, reeds_path, inputs_case, periodtype='rep', make_plots=1, logging=True):
+def main(sw, reeds_path, inputs_case, periodtype='rep', make_plots=1, logging=True,
+         recf_input=None, cspcf_input=None, load_input=None):
     """ """
     # #%% Settings for testing
     # reeds_path = os.path.realpath(os.path.join(os.path.dirname(__file__),'..'))
@@ -534,12 +539,14 @@ def main(sw, reeds_path, inputs_case, periodtype='rep', make_plots=1, logging=Tr
 
     #%%### Load full hourly RE CF, for downselection below
     #%% VRE
-    recf = reeds.io.read_file(os.path.join(inputs_case, 'recf.h5'), parse_timestamps=True)
+    if recf_input is None:
+        recf_input = reeds.io.read_file(os.path.join(inputs_case, 'recf.h5'), parse_timestamps=True)
+    if cspcf_input is None:
+        cspcf_input = reeds.io.read_file(os.path.join(inputs_case, 'csp.h5'), parse_timestamps=True)
     ### Overwrite CSP CF (which in recf.h5 is post-storage) with solar field CF
-    cspcf = reeds.io.read_file(os.path.join(inputs_case, 'csp.h5'), parse_timestamps=True)
     recf = (
-        recf.drop([c for c in recf if c.startswith('csp')], axis=1)
-        .merge(cspcf, left_index=True, right_index=True)
+        recf_input.drop([c for c in recf_input if c.startswith('csp')], axis=1)
+        .merge(cspcf_input, left_index=True, right_index=True)
     ).loc[hmap_allyrs.timestamp]
     recf.index = hmap_allyrs.actual_h
 
@@ -1006,7 +1013,7 @@ def main(sw, reeds_path, inputs_case, periodtype='rep', make_plots=1, logging=Tr
 
     load_in, load_h = get_yearly_demand(
         sw=sw, hmap_myr=hmap_myr, hmap_allyrs=hmap_allyrs, inputs_case=inputs_case,
-        periodtype=periodtype,
+        periodtype=periodtype, load_input=load_input,
     )
 
     ###### Get the peak demand in each (r,szn,modelyear) for GSw_HourlyWeatherYears
