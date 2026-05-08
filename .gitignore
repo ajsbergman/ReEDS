@@ -1,0 +1,72 @@
+## Ignore:
+#setup files
+setuplog.txt
+setuperr.txt
+errors.log
+.bashrc
+
+# files in runs folder
+runs/*
+
+# files in bokehpivot output folder
+bokehpivot/out/*
+postprocessing/tableau/out/*
+
+# temporary GAMS files
+*.~gm
+225*/
+*.gsp
+
+# pyc files
+*.pyc
+*__pycache__
+
+# jupyter notebook checkpoints
+*.ipynb_checkpoints*/
+
+# lst and g00 files
+*.lst
+*.g00
+
+# ds_store files
+*.DS_Store
+
+# R stuff
+*.Rhistory
+*.RData
+
+# Julia stuff
+Manifest.toml
+
+# raw input files for retail rates
+retail_rate_module/inputs/EIA861/*
+postprocessing/retail_rate_module/inputs/EIA861/*
+
+# Large files from remote sources
+inputs/profiles_cf
+inputs/profiles_demand
+inputs/profiles_dr
+inputs/profiles_temperature
+inputs/remote
+inputs/shapefiles/cache
+
+# Old climate scenarios (temporarily ignore, remove this section once ESPRS data is available)
+inputs/climate/
+!inputs/climate/climate_heuristics_*.csv
+
+# IDE stuff
+*.vscode
+
+# GAMS project files
+*.gpr
+gamslice.txt
+
+# IDE files
+*.vscode
+
+# HPC files
+slurm*.out
+slurm_parallel_runs/
+
+# documentation files 
+docs/build/*

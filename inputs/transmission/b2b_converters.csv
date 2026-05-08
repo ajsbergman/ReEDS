@@ -1,0 +1,10 @@
+name,MW,interconnection_from,interconnection_to,osm_id,longitude,latitude
+"Miles City, MT",200,western,eastern,137835349,-105.79370525,46.40822575
+"Rapid City, SD",200,western,eastern,121295145,-103.16472302,44.01079881
+"Stegall, NE",110,western,eastern,104026804,-103.94222286,41.8208706
+"Sidney, NE",200,western,eastern,102222592,-102.98764092,41.1641511
+"Lamar, CO",210,western,eastern,163973336,-102.52881628,38.20670835
+"Clovis, NM",200,western,eastern,552483347,-103.17520723,34.30081316
+"Artesia, NM",200,western,eastern,164288138,-104.23985082,32.81441374
+"Oklaunion, TX",220,texas,eastern,165665526,-99.18338579,34.08510351
+Welsh Intertie,600,texas,eastern,165669465,-94.84405263,33.0583032

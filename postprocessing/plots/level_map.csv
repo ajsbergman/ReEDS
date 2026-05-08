@@ -1,0 +1,16 @@
+raw,display
+county,County
+ba,Balancing Area
+nercr,NERC regions
+transreg,Transmission Planning Region
+transgrp,Transmission Planning Subregion
+cendiv,Census Division
+st,State
+interconnect,Interconnection
+st_interconnect,States with Interconnection designated
+country,Country
+usda_region,USDA (Biomass Supply Curve) Region
+h2ptcreg,Hydrogen Production Tax Credit Regions
+hurdlereg,Hurdle Regions
+ccreg,Capacity Credit Regions
+aggreg,Aggregated Regions

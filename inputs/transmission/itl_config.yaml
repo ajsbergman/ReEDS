@@ -1,0 +1,144 @@
+### Shared settings
+crs: ESRI:102008
+
+### Filepaths
+candidate_reeds_paths:
+- ~/github/ReEDS-2.0
+- /projects/reedsweto/pbrown/github/ReEDS-2.0
+- ~//Downloads/TSC/TSC/ReEDS-2.0
+routes_fpath:
+  HIFLD: '{tscpath}/data/routes/HIFLD/Electric__Power_Transmission_Lines'
+  OSM: '{tscpath}/data/routes/OSM/USA.gpkg'
+
+### Branch/route matchup
+routesource: HIFLD
+## HIFLD
+volt_class_endpoint_threshold_km_map:
+  735 AND ABOVE: 2
+  "500": 5
+  "345": 10
+  220-287: 10
+  100-161: 10
+  UNDER 100: 10
+
+### Node location cleanup
+apply_osm_snapping: true
+apply_osm_snapping_same_voltage: true
+generate_flagged_centroids: true
+buffer_type: radial
+out_dirpath: ~/TSC/node_cleanup_methods/test_run
+volt_class_km_flag_heuristic:
+  735 AND ABOVE: 250
+  "500": 100
+  "345": 75
+  220-287: 50
+  100-161: 25
+  UNDER 100: 25
+
+### Network subset
+## [km] from interface
+buffer_from_interface: 400
+## [km] from edges of interface-defining pair of zones
+buffer_from_zones: 100
+## [.] hops away from interface-crossing lines
+branch_hops_from_interface: 10
+## If True, does not apply rating limits on zero-length branches with same to/from voltage.
+## If to/from voltage is different, they're treated as transformers and incur the normal
+## upgrade cost.
+ignore_zero_length_same_voltage: False
+
+### ITL settings
+## Load participation factors (LPF)
+apply_lpf: True
+## Restrict injections/withdrawals by node type?
+restrict_by_node_type: True
+## Allow injections from load buses (typically only withdrawals)?
+load_inject: False
+## decimals: Used for PTDF and dual values
+decimals: 4
+## simple_names: Turn on when bus/branch names have characters GAMS doesn't like (spaces, etc.)
+simple_names: True
+
+### Power transfer distribution factor (PTDF)
+## [fraction]; PTDF absolute values below this value will be rounded to zero
+ptdf_minimum: 0.001
+
+### Branch outage distribution factor (BODF)
+apply_bodf: True
+## If network is A-B-C-D and interface is A-B, 1 hop includes B-C, 2 includes B-C and C-D, etc.
+bodf_include_hops_from_interface: 1
+## Units are MW (to ignore, set to an arbitrarily high number)
+bodf_include_above_rating: 500
+## [fraction]; BODF absolute values below this value will be rounded to zero
+bodf_minimum: 0.05
+## Specifies which branches to downselect according to bodf_include_hops_from_interface
+## and bodf_include_above_rating.
+## Options are:
+## - outage: the branches able to fail are downselected, but all post-contingency flows are monitored
+## - monitored: all branches can fail, but branches on which post-contingency flows are monitored are downselected
+## - both: outages and post-contingency flows are both applied for the same downselected branches
+## - none: don't downselect; keep all elements of bodf (still apply bodf_minimum though)
+## So if there are 1000 lines before the downselection and 200 after, the BODF has:
+## - 1000 × 1000 elements if bodf_downselect = none
+## - 1000 × 200 elements if bodf_downselect = outage
+## - 200 × 1000 elements if bodf_downselect = monitored
+## - 200 × 200 elements if bodf_downselect = both
+bodf_downselect: none
+
+## Whether to apply hourly rating multipliers to line ratings and
+## use the hourly ratings to calculate hourly ITLs
+hourly_itl: False
+## Filepath containing hourly rating multipliers for routes.
+## Multipliers are assigned to branches using the branch-route lineup
+## contained in 'io/branch_route_lineup'.
+hourly_rating_multiplier_fpath: null
+## The range (left-inclusive, right-exclusive) of hours (in UTC) that
+## the ITL should be calculated across (example: [2012-01-01, 2013-01-01]).
+hourly_rating_datetime_range: null
+## Maximum number of GAMS model solves that can be run asynchronously in parallel.
+## If set to 0, GAMS will determine and use the maximum number of available threads for the system.
+max_parallel_solves: 0
+
+
+### Upgrade settings
+miso_tceg_year: 2025
+dollar_year: 2024
+## Make sure delim_upgrade doesn't show up in any bus/branch names
+delim_upgrade: <><><>
+## Make sure idelim doesn't show up in any zone names and doesn't use forbidden filename characters
+idelim: ~~
+## Used to label zones as delimited lists of county FIPS codes
+delim_county: ','
+## A named function in the hashlib python library, used on delim_county-delimited lists of counties
+hashfunc: md5
+## 20250611: We've only calculated route cost adders for ≥115 kV lines
+min_upgrade_kv: 115
+## From MISO 2024, and to avoid increased sag from ACSS
+reconductor_conductor: accc
+## From INL 2024 - Advanced Conductor Scan Report
+reconductoring_rate_mult: 1.65
+## Generic rule of thumb
+max_miles_reconductoring: 50
+## 345 from INL 2023 - Advanced Conductor Scan Report
+## https://inl.gov/content/uploads/2024/10/23-50856_R12a_-AdvConductorsScanProjectReportCompressed.pdf
+## 500 based on 500 kV examples in INL 2023 - Advanced Conductor Use Case Studies
+## https://inl.gov/content/uploads/2024/02/23-50856_R4a_-Use-Case-Studies.pdf
+max_kv_reconductoring: 500
+## From Jarrad 2024
+max_parallel_transformers: 4
+max_parallel_substation_elements: 4
+## 3 = 1 new single-circuit on each side. Eventually go to 5 for 1 new double-circuit each side.
+max_parallel_lines: 3
+## Largest rating on an AC line in the US from NARIS
+## (avoid creating single contingencies larger than that)
+max_line_rating: 6750
+## Voltage upgrades
+voltage_upgrade_new_kvs: [230, 345, 500, 765]
+## Allowed upgrades
+only_upgrade_interface_zones: True
+allow_reconductor: True
+allow_new_line: True
+allow_new_transformer: True
+allow_new_substation_element: True
+allow_voltage_upgrade_existing_lines: False
+allow_voltage_upgrade_new_lines: False

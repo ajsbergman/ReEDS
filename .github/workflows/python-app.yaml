@@ -1,0 +1,271 @@
+# This workflow will install and set up conda and gams, run ReEDS, and run tests
+name: CI
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+      - 'LICENSE'
+      - '.gitignore'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash -le {0}
+
+env:
+  CACHE_NUMBER: 1
+  REEDS_ENV_NAME: reeds2
+
+jobs:
+  julia-setup:
+    name: "Julia environment"
+    runs-on: reeds-runners
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        with:
+          persist-credentials: false
+
+      - name: Restore Julia cache
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4
+        with:
+          path: ~/.julia
+          key: julia-${{ runner.os }}-${{ hashFiles('Project.toml') }}
+          restore-keys: julia-${{ runner.os }}-
+
+      - uses: julia-actions/setup-julia@5c9647d97b78a5debe5164e9eec09d653d29bd71 # v2
+        env:
+          NODE_EXTRA_CA_CERTS: /usr/local/share/ca-certificates/nrel_ca_chain.crt
+
+      - run: julia --project=. instantiate.jl
+
+  python-setup:
+    name: "Python environment"
+    runs-on: reeds-runners
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        with:
+          persist-credentials: false
+      - uses: mamba-org/setup-micromamba@4b9113af4fba0e9e1124b252dd6497a419e7396d # v1
+        with:
+          environment-file: environment.yml
+          cache-environment: true
+          post-cleanup: 'all'
+          cache-environment-key: ${{ runner.os }}-conda-${{ env.CACHE_NUMBER }}-${{ hashFiles('environment.yml') }}
+
+  zenodo-setup:
+    name: "Get Zenodo files"
+    needs:
+      - python-setup
+    runs-on: reeds-runners
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        with:
+          fetch-depth: 1
+          lfs: false
+          persist-credentials: false
+
+      - name: Create directories for zenodo files
+        run: mkdir -p inputs/remote inputs/profiles_cf inputs/profiles_demand inputs/profiles_dr inputs/profiles_temperature
+        
+      - name: Identify Zenodo files for cache key
+        id: zenodo-files
+        run: |
+          echo "files-hash=$(md5sum inputs/remote_files.csv | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+        
+      - name: Restore Zenodo files from cache
+        id: cache-zenodo
+        uses: actions/cache@v4
+        with:
+          path: |
+            inputs/remote/
+            inputs/profiles_cf/
+            inputs/profiles_demand/
+            inputs/profiles_dr/
+            inputs/profiles_temperature/
+          key: zenodo-files-${{ steps.zenodo-files.outputs.files-hash }}-v1
+          restore-keys: |
+            zenodo-files-${{ steps.zenodo-files.outputs.files-hash }}-
+            zenodo-files-
+      
+      - uses: mamba-org/setup-micromamba@4b9113af4fba0e9e1124b252dd6497a419e7396d # v1
+        id: mamba
+        with:
+          environment-file: environment.yml
+          cache-environment: true
+          post-cleanup: 'all'
+          cache-environment-key: ${{ runner.os }}-conda-${{ env.CACHE_NUMBER }}-${{ hashFiles('environment.yml') }}
+
+      - name: Download Zenodo files if not cached
+        if: steps.cache-zenodo.outputs.cache-hit != 'true'
+        run: python .github/scripts/download_test_zenodo_files.py
+
+  run-ReEDS:
+    runs-on: reeds-runners
+    needs:
+      - julia-setup
+      - python-setup
+      - zenodo-setup
+    permissions:
+      contents: read
+      actions: write
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        include:
+          - scenario: github_Pacific
+            solve-year: 2029
+          - scenario: github_Everything
+            solve-year: 2060
+          - scenario: github_MA_county_CC
+            solve-year: 2026
+    env:
+      batch: test
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4
+        with:
+          fetch-depth: 1
+          lfs: false
+          persist-credentials: false
+
+      - name: Build LFS manifest
+        run: git lfs ls-files -l | cut -d' ' -f1 | sort > .lfs-assets-id
+
+      - name: Restore LFS cache
+        id: lfs-restore
+        uses: actions/cache/restore@5a3ec84eff668545956fd18022155c47e93e2684 # v4
+        with:
+          path: .git/lfs
+          key: lfs-${{ runner.os }}-${{ hashFiles('.lfs-assets-id') }}-v1
+          restore-keys: lfs-${{ runner.os }}-
+
+      - name: Pull missing LFS blobs
+        run: git lfs pull
+
+      - name: Save the updated LFS cache
+        if: steps.lfs-restore.outputs.cache-hit != 'true'
+        uses: actions/cache/save@5a3ec84eff668545956fd18022155c47e93e2684 # v4
+        with:
+          path: .git/lfs
+          key: ${{ steps.lfs-restore.outputs.cache-primary-key }}
+                
+      - name: Identify Zenodo files for cache key
+        id: zenodo-files
+        run: |
+          echo "files-hash=$(md5sum inputs/remote_files.csv | cut -d' ' -f1)" >> "$GITHUB_OUTPUT"
+
+      - name: Restore Zenodo files from cache
+        id: cache-zenodo
+        uses: actions/cache@v4
+        with:
+          path: |
+            inputs/remote/
+            inputs/profiles_cf/
+            inputs/profiles_demand/
+          key: zenodo-files-${{ steps.zenodo-files.outputs.files-hash }}-v1
+          restore-keys: |
+            zenodo-files-${{ steps.zenodo-files.outputs.files-hash }}-
+            zenodo-files-
+
+      - uses: mamba-org/setup-micromamba@4b9113af4fba0e9e1124b252dd6497a419e7396d # v1
+        id: mamba
+        with:
+          environment-file: environment.yml
+          cache-environment: true
+          post-cleanup: 'all'
+          cache-environment-key: ${{ runner.os }}-conda-${{ env.CACHE_NUMBER }}-${{ hashFiles('environment.yml') }}
+
+      - name: Removing julia from python
+        run: micromamba remove -y julia
+
+      - uses: julia-actions/setup-julia@5c9647d97b78a5debe5164e9eec09d653d29bd71 # v2
+        id: setup-julia
+        env:
+          NODE_EXTRA_CA_CERTS: /usr/local/share/ca-certificates/nrel_ca_chain.crt
+
+      - name: Restore Julia cache
+        uses: actions/cache@5a3ec84eff668545956fd18022155c47e93e2684 # v4
+        with:
+          path: ~/.julia
+          key: julia-${{ runner.os }}-${{ hashFiles('Project.toml') }}
+          restore-keys: julia-${{ runner.os }}-
+
+      - run: julia --project=. instantiate.jl
+
+      - name: Prepend Julia install to PATH
+        env:
+          JULIA_BINDIR: ${{ steps.setup-julia.outputs.julia-bindir }}
+        run: echo "$JULIA_BINDIR" >> $GITHUB_PATH
+
+      - name: Setup environment variables
+        run: |
+          echo "GAMSDIR=$(python -c 'from gamspy_base import directory;print(directory)')" >> "$GITHUB_ENV"
+          echo "$(python -c 'from gamspy_base import directory;print(directory)')" >> "$GITHUB_PATH"
+          echo "LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$GAMSDIR" >> "$GITHUB_ENV"
+
+      - name: Setup licence
+        env:
+          GAMSLICE_CONTENT: ${{ secrets.GAMSLICE }}
+          MAMBA_ENV_PATH: ${{ steps.mamba.outputs.environment-path }}
+        run: |
+          echo "$GAMSLICE_CONTENT" > "${MAMBA_ENV_PATH}/lib/python3.11/site-packages/gamspy_base/gamslice.txt"
+
+      - name: Run ReEDS model
+        env:
+          SCENARIO: ${{ matrix.scenario }}
+        run: |
+          python runbatch.py -b "$batch" -c test -s "$SCENARIO"
+          echo "RUN_FOLDER=$GITHUB_WORKSPACE/runs/${batch}_${SCENARIO}" >> "$GITHUB_ENV"
+
+      - name: Print GAMS log
+        if: runner.debug == '1'
+        run: cat $RUN_FOLDER/gamslog.txt
+
+      - name: Check ReEDS outputs
+        if: ${{ hashFiles(format('{0}/outputs/cap_ivrt.csv', env.RUN_FOLDER)) == '' }}
+        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7
+        with:
+          script: |
+            core.setFailed('ReEDS run failed. Check log to diagnose.')
+
+      - name: Run output validation tests
+        env:
+          SCENARIO: ${{ matrix.scenario }}
+        run: python -m pytest tests/test_outputs.py --casepath "$GITHUB_WORKSPACE/runs/${batch}_${SCENARIO}"
+
+      - name: Save ReEDS run
+        uses: actions/upload-artifact@ff15f0306b3f739f7b6fd43fb5d26cd321bd4de5 # v3
+        with:
+          name: ${{ matrix.scenario }}
+          compression-level: 9
+          retention-days: 1
+          path: |
+            ${{ env.RUN_FOLDER }}/inputs_case/**/*.csv
+            ${{ env.RUN_FOLDER }}/meta.csv
+            ${{ env.RUN_FOLDER }}/inputs_case/**/*.h5
+            ${{ env.RUN_FOLDER }}/outputs/**/*.csv
+            ${{ env.RUN_FOLDER }}/outputs/**/*.h5
+
+      - name: R2X compatibility
+        uses: ./.github/actions/r2x-check
+        id: r2x-check
+        with:
+          reeds-run-path: ${{ env.RUN_FOLDER }}
+          scenario: ${{ matrix.scenario }}
+          solve-year: ${{ matrix.solve-year }}
