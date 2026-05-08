@@ -4,6 +4,8 @@ This file is the **day-to-day operating guide** for LLM coding agents (for examp
 For files in nested folders that contain their own AGENTS.md, the nearer file takes precedence.
 It is the primary source of truth for agent instructions in this repository root.
 
+**This is the repository equivalent of `CLAUDE.md`** (kept here as `AGENTS.md` for broader agent tooling compatibility).
+
 If anything here conflicts with:
 
 1. explicit user instructions, or
