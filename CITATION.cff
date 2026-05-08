@@ -1,0 +1,75 @@
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+
+cff-version: 1.2.0
+title: >-
+  Regional Energy Deployment System Model 2.0 (ReEDS
+  2.0)
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Patrick
+    family-names: Brown
+    email: patrick.brown@nlr.gov
+    orcid: 'https://orcid.org/0000-0001-7388-2815'
+  - given-names: Vincent
+    family-names: Carag
+  - given-names: Yunzhi
+    family-names: Chen
+  - given-names: Ilya
+    family-names: Chernyakhovskiy
+  - given-names: Stuart
+    family-names: Cohen
+    orcid: 'https://orcid.org/0000-0001-8389-6516'
+  - given-names: Wesley
+    family-names: Cole
+    email: wesley.cole@nlr.gov
+    orcid: 'https://orcid.org/0000-0002-9194-065X'
+  - given-names: Victor
+    family-names: Duraes de Faria
+  - given-names: Pieter
+    family-names: Gagnon
+  - given-names: Claire
+    family-names: Halloran
+  - given-names: Anne
+    family-names: Hamilton
+  - given-names: Jonathan
+    family-names: Ho
+  - given-names: Kennedy
+    family-names: Mindermann
+  - given-names: Joe
+    family-names: Mowers
+  - given-names: Matt
+    family-names: Mowers
+  - given-names: Kodi
+    family-names: Obika
+  - given-names: An
+    family-names: Pham
+  - given-names: Anna
+    family-names: Schleifer
+  - given-names: Brian
+    family-names: Sergi
+    orcid: 'https://orcid.org/0000-0002-3453-9878'
+  - given-names: Louisa
+    family-names: Serpe
+  - given-names: Shashwat
+    family-names: Sharma
+  - given-names: Merve
+    family-names: Turan
+  - given-names: Max
+    family-names: Vanatta
+url: 'https://www.nrel.gov/analysis/reeds/index.html'
+abstract: >-
+  The Regional Energy Deployment System (ReEDS) is
+  NLR's flagship capacity planning model for the
+  power sector. The model simulates the evolution of
+  the bulk power system—generation and
+  transmission—from present day through 2050 or
+  later.
+keywords:
+  - capacity expansion model
+  - power system planning
+  - electricity sector
+  - renewable energy

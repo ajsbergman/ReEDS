@@ -1,0 +1,4 @@
+﻿file,i,Scenario,DisplayName
+battery_ATB_2024_moderate,battery_li,Moderate,Utility-Scale Battery Storage
+battery_ATB_2024_advanced,battery_li,Advanced,Utility-Scale Battery Storage
+battery_ATB_2024_conservative,battery_li,Conservative,Utility-Scale Battery Storage

@@ -1,0 +1,4 @@
+machine_readable_scenario_name,Transmission Framework,Demand,Policy,Sensitivity,Scenario Name
+Main,Reference transmission,Mid demand,Reference policy,Core,Main
+HighLoad,Reference transmission,High demand,Reference policy,Sensitivity,High Load
+LowGasPrice,Reference transmission,Mid demand,Reference policy,Sensitivity,Low Gas Price
