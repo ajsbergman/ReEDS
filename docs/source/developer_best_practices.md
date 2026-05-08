@@ -281,11 +281,12 @@ This section outlines the recommended testing that should be performed on ReEDS 
 #### Regular Test (Full U.S. Runs)
 **This testing should be performed for all other cases not covered by the post-process or light test**
 
-1. Do a comparison run of either USA_defaults or Mid_Case and a comparison of USA_decarb in cases_test.csv against equivalent runs from main. 
+1. Do a comparison run of either USA_defaults or Mid_Case (if you are unsure of which to use, then use USA_defaults) in cases_test.csv against equivalent runs from main. 
    - You should be able to reasonably explain changes in capacity, generation, transmission capacity, bulk system electricity price, system cost, and runtime
    - The comparison report should be included in the pull request
-   - In most cases, you should run both the Mid_Case and USA_decarb.  Some simpler changes might only need a single scenario to provide enough confidence that the changes are operating as planned.  If you are unsure, just ask.
+   - In many cases, you should run both the USA_defaults/Mid_Case and USA_decarb.  Some simpler changes might only need a single scenario to provide enough confidence that the changes are operating as planned.  If you are unsure, just ask.
 2. Verify that the GitHub runner tests pass
+3. If your changes are more substantial (adjust many parts of the codebase, or introduce a significant new method or procedure), then test additional relevant cases in cases_test.csv.
 
 #### New Version Test
 **This testing is required for a new tagged and released version**
@@ -511,6 +512,7 @@ Please follow these guidelines when planning and opening a pull request (PR):
       - This is crucial, as the title of your pull request will be used in the summary of changes for each new version of ReEDS
     - The description should be clear enough for someone not directly involved in your work to grasp the changes being proposed
     - If you used an LLM-based coding assistant or chatbot in the preparation of the pull request, make sure to describe how in the appropriate section of the pull request template
+      - If you used one of these tools to draft the pull request text, you must review and edit it before submitting the pull request. LLM tools are often verbose, so take responsibility for cutting out text that is not necessary
     - Assign and contact reviewers.
     If you have a charge code for your project, share it with the reviewers to cover their time.
 
@@ -568,8 +570,10 @@ The following are best practices that should be considered when reviewing pull r
   - Request changes as necessary and explain your reasoning
   - Remember that the PR submitter is ultimately responsible for the changes in the PR, not you, so give the PR review a good effort, but don't agonize over every detail. 
     - If reviewing a PR becomes too large of a chore, feel free to reach out to others on the team to be able to tackle the PR review jointly
+    - It is ok to ask that a PR be separated into smaller PRs for review
   - If necessary, make sure the [ReEDS documentation](https://reeds-model.github.io/ReEDS/index.html) was updated to reflect the code changes
     - Instructions for how to update the documentation can be found [here](#updating-the-reeds-documentation)
+  - Autonomous submissions from bots or agents are not allowed. If a pull requests looks to have been autonomously created, you can ask the author for clarification on its creation before proceeding with the review
 
 
 ## ReEDS Development Tips
