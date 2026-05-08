@@ -13,7 +13,20 @@ import reeds
 
 
 #%% Functions
-def read_inputs(case):
+def read_inputs(case:str|Path) -> tuple:
+    """
+    Read a ReEDS-formatted inputs.h5 file
+
+    Args:
+        case: Path to a ReEDS case
+    
+    Returns:
+        tuple of 3 dictionaries, where the keys of each are the names of the elements
+        read from the inputs.h5 file:
+        - dictin (first element of tuple): pd.DataFrame of contents
+        - gamstypes (second element of tuple): 'set' or 'parameter'
+        - comments (third element of tuple): string to be used as comment in GAMS
+    """
     ## Allow either a ReEDS case or a .h5 path to be provided
     if Path(case).suffix == '.h5':
         h5path = case
@@ -92,13 +105,13 @@ def write_declaration(
     print(f'Wrote {fpath}')
 
 
-def write_load(
+def write_gdxread(
     case:str|Path,
     declarations:list,
     gamstype:Literal['set','parameter'],
 ):
     """
-    Write GAMS code to load sets/parameters from .gdx file
+    Write GAMS code to read sets/parameters from .gdx file
     """
     ## Need to write primary sets before subsets
     if gamstype == 'set':
@@ -154,8 +167,8 @@ def main(case, overwrite=True, verbose=1):
     ## Write GAMS code to declare and load the sets/parameters
     write_declaration(case, declare_sets, 'set')
     write_declaration(case, declare_parameters, 'parameter')
-    write_load(case, declare_sets, 'set')
-    write_load(case, declare_parameters, 'parameter')
+    write_gdxread(case, declare_sets, 'set')
+    write_gdxread(case, declare_parameters, 'parameter')
 
 
 #%% Procedure
