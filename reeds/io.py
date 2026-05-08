@@ -1111,9 +1111,13 @@ def get_site_cf_hourly(tech, year, case=None, sites=None, **kwargs):
             .decode('utf-8')
         )
         all_columns = f['columns'][:]
-        if sites is not None:
-            sites_array = np.asarray(sites)
-            col_indices = np.where(np.isin(all_columns, sites_array))[0]
+        col_indices = (
+            np.where(np.isin(all_columns, np.asarray(sites)))[0]
+            if sites is not None else None
+        )
+        if col_indices is not None and len(col_indices) < len(all_columns):
+            # Only use fancy indexing when genuinely filtering — for nearly-full
+            # selections (e.g. national runs) a full read is faster on chunked HDF5
             cf_values = (
                 f[f'cf_profile_{year}'][:, col_indices]
                 * f[f'cf_profile_{year}'].attrs['scale']
