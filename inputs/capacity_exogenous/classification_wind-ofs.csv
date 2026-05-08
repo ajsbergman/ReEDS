@@ -24,8 +24,8 @@ class,min_reV_cf_ac,max_reV_cf_ac,subtech,access_case
 3,0.3644,0.4325,fixed,limited
 4,0.4325,0.4976,fixed,limited
 5,0.4976,0.5404,fixed,limited
-6,0.0887,0.2916,floating,limited
-7,0.2916,0.3546,floating,limited
-8,0.3546,0.4294,floating,limited
+6,0.0887,0.2923,floating,limited
+7,0.2923,0.355,floating,limited
+8,0.355,0.4294,floating,limited
 9,0.4294,0.4951,floating,limited
 10,0.4951,0.6,floating,limited

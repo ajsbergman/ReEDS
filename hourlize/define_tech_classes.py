@@ -61,7 +61,6 @@ def main(rev_file):
 
     ## One-off modification to supplycurve_egs/geohydro-reference.csv to add resource temp column
     # Can remove the next time running hourlize
-
     for tech in ['geohydro','egs']:
         rev_file = pd.read_csv(os.path.join(reeds_path,'inputs/supply_curve/rev_paths.csv'))
         rev_file_part_geo=rev_file[(rev_file['tech'] == tech) & (rev_file['access_case'] == 'reference')]
@@ -81,7 +80,9 @@ def main(rev_file):
             df_sc = df_sc.rename(columns={'capacity_factor_ac':'cf'})
             geo_sc = pd.read_csv(os.path.join(reeds_path,'inputs','supply_curve','supplycurve_egs-reference.csv'))
             geo_sc = geo_sc.merge(df_sc, on='sc_point_gid', how='left', indicator=True)
-            geo_sc = geo_sc.rename(columns={'class_x':'class','cf_x':'cf','capacity_x':'capacity','capital_adder_per_mw_x':'capital_adder_per_mw'})
+            geo_sc = geo_sc.rename(columns={'class_x':'class','cf_x':'cf','capacity_x':'capacity',
+                                            'capital_adder_per_mw_x':'capital_adder_per_mw',
+                                            'mean_resource_temp_x':'mean_resource_temp'})
             geo_sc = geo_sc[df_sc.columns.to_list()]
         
         # Round mean resource temp to 0 decimal (as int)
@@ -96,27 +97,24 @@ def main(rev_file):
 # and return a DataFrame with class id, min/max of the selected metric, and
 # the access case.
 def prep_supply_curve(tech, access_type, subtech):
-
-    rev_file_part = rev_file[(rev_file['tech'] == tech) & (rev_file['access_case'] == access_type)]
-    class_def = 'capacity_factor_ac'
     class_def_name = 'reV_cf_ac'
 
     # Load the supply curve raw file produced by reV
     df = pd.read_csv(os.path.join(
-        remotepath,rev_file_part['sc_path'].iloc[0],
-        f"{tech}_{rev_file_part['access_case'].iloc[0]}_ba","results",
-        f"{tech}_supply_curve_raw.csv" ),
-        on_bad_lines='skip',low_memory=False)
+        reeds_path,'inputs','supply_curve',
+        'supplycurve_'+tech+'-'+access_type+'.csv'))
 
     # Aggregate min/max by class and attach access_case
     if tech == 'wind-ofs':
-        df_sub = df[df['technology']==subtech]
-        summary_df = df_sub.groupby('class')[class_def].agg(['min', 'max']).reset_index()
+        df['subtech'] = 'fixed'
+        df.loc[df['class']>=6,'subtech'] = 'floating'
+        df_sub = df[df['subtech']==subtech]
+        summary_df = df_sub.groupby('class')['cf'].agg(['min', 'max']).reset_index()
         summary_df['subtech'] = subtech
         summary_df['access_case'] = access_type
         summary_df.columns = ['class', f'min_{class_def_name}', f'max_{class_def_name}', 'subtech', 'access_case']
     else:
-        summary_df = df.groupby('class')[class_def].agg(['min', 'max']).reset_index()
+        summary_df = df.groupby('class')['cf'].agg(['min', 'max']).reset_index()
         summary_df['access_case'] = access_type
         summary_df.columns = ['class', f'min_{class_def_name}', f'max_{class_def_name}', 'access_case']
     
