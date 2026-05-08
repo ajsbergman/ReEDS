@@ -225,7 +225,7 @@ def assign_representative_days(profiles_day, rweights):
 
     ### Collect assignments
     assignments = pd.Series(
-        {(a,r):WEIGHT[a,r].varValue for a in actualdays for r in repdays}).astype(int)
+        {(a,r):round(WEIGHT[a,r].varValue) for a in actualdays for r in repdays}).astype(int)
     assignments.index = assignments.index.rename(['act','rep'])
     a2r = assignments.replace(0,np.nan).dropna().reset_index(level='rep').rep
 
