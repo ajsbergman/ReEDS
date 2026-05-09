@@ -591,21 +591,26 @@ def solvestring_sequential(
 def setup_sequential_year(
         cur_year, prev_year, next_year,
         caseSwitches, hpc,
-        solveyears, casedir, batch_case, toLogGamsString, OPATH, logger,
+        solveyears, casedir, batch_case, toLogGamsString, OPATH, logger, resource_stats,
     ):
     ## Get save file (for this year) and restart file (from previous year)
     savefile = f"{batch_case}_{cur_year}i0"
     restartfile = batch_case if cur_year == min(solveyears) else f"{batch_case}_{prev_year}i0"
 
+    resource_stats = os.path.join(casedir, 'resource_stats.log')
     ## Run the ReEDS LP
     if (cur_year >= min(solveyears)):
         ## solve one year
+        solve_cmd = solvestring_sequential(
+            batch_case, caseSwitches,
+            cur_year, next_year, prev_year, restartfile,
+            toLogGamsString, hpc,
+        ).strip()
         OPATH.writelines(
-            solvestring_sequential(
-                batch_case, caseSwitches,
-                cur_year, next_year, prev_year, restartfile,
-                toLogGamsString, hpc,
-            ))
+            f"/usr/bin/time -a -o {resource_stats} "
+            f"-f 'script=gams_solve_{cur_year} memory_KB=%M runtime=%E' "
+            f"{solve_cmd}\n"
+        )
         OPATH.writelines(writescripterrorcheck(f"d_solveoneyear.gms_{cur_year}"))
         OPATH.writelines(f'python {logger} --year={cur_year}\n')
 
@@ -621,7 +626,10 @@ def setup_sequential_year(
         and (next_year > int(caseSwitches['GSw_SkipAugurYear']))
     ) or (cur_year == max(solveyears))):
         OPATH.writelines(
-            f"\npython Augur.py {next_year} {cur_year} {casedir}\n")
+            f"/usr/bin/time -a -o {resource_stats} "
+            f"-f 'script=augur_{cur_year} memory_KB=%M runtime=%E' "
+            f"python Augur.py {next_year} {cur_year} {casedir}\n"
+        )
         ## Check to make sure Augur ran successfully; quit otherwise
         OPATH.writelines(
             writeerrorcheck(os.path.join(
@@ -640,6 +648,7 @@ def setup_sequential(
         caseSwitches, reeds_path, hpc,
         solveyears, casedir, batch_case, toLogGamsString, OPATH, logger,
     ):
+    resource_stats = os.path.join(casedir, 'resource_stats.log')
     ### loop over solve years
     for i in range(len(solveyears)):
         ## current year is the value in solveyears
@@ -663,6 +672,8 @@ def setup_sequential(
         ### Write the GAMS LP and Augur calls
         if int(caseSwitches['GSw_PRM_StressIterateMax']):
             OPATH.writelines(
+                f"/usr/bin/time -a -o {resource_stats} "
+                f"-f 'script=d_solve_iterate_{cur_year} memory_KB=%M runtime=%E' "
                 f"python d_solve_iterate.py {casedir} {cur_year}\n"
             )
             OPATH.writelines(writescripterrorcheck(f"d_solve_iterate.py_{cur_year}"))
@@ -670,7 +681,7 @@ def setup_sequential(
             setup_sequential_year(
                 cur_year, prev_year, next_year,
                 caseSwitches, hpc,
-                solveyears, casedir, batch_case, toLogGamsString, OPATH, logger,
+                solveyears, casedir, batch_case, toLogGamsString, OPATH, logger, resource_stats,
             )
 
         if int(caseSwitches['GSw_CheckInputs']):
@@ -1390,10 +1401,16 @@ def write_batch_script(
 
         big_comment('Compile model', OPATH)
 
-        OPATH.writelines(
-            "\ngams createmodel.gms gdxcompress=1 xs="+os.path.join("g00files",batch_case)
+        createmodel_cmd = (
+            "gams createmodel.gms gdxcompress=1 xs=" + os.path.join("g00files", batch_case)
             + (' license=gamslice.txt' if hpc else '')
-            + " o="+os.path.join("lstfiles","1_Inputs.lst") + options + " " + toLogGamsString + '\n')
+            + " o=" + os.path.join("lstfiles", "1_Inputs.lst") + options + " " + toLogGamsString
+        )
+        OPATH.writelines(
+            f"/usr/bin/time -a -o {resource_stats} "
+            f"-f 'script=gams_createmodel memory_KB=%M runtime=%E' "
+            f"{createmodel_cmd}\n"
+        )
         OPATH.writelines(f'python {logger}\n')
         restartfile = batch_case
         OPATH.writelines(writeerrorcheck(os.path.join('g00files', restartfile + '.g*')))
@@ -1438,7 +1455,7 @@ def write_batch_script(
                 if LINUXORMAC else
                 f'for %%i in (g00files\{batch_case}_*.g00) do (set "r=%%i")\n'
             )
-        OPATH.writelines(
+        ereport_cmd = (
             "gams e_report.gms"
             + f" o={os.path.join('lstfiles',f'report_{batch_case}.lst')}"
             + (' license=gamslice.txt' if hpc else '')
@@ -1446,7 +1463,12 @@ def write_batch_script(
             + ' gdxcompress=1'
             + toLogGamsString
             + f"--fname={batch_case}"
-            + f" --GSw_calc_powfrac={caseSwitches['GSw_calc_powfrac']} \n"
+            + f" --GSw_calc_powfrac={caseSwitches['GSw_calc_powfrac']}"
+        )
+        OPATH.writelines(
+            f"/usr/bin/time -a -o {resource_stats} "
+            f"-f 'script=gams_e_report memory_KB=%M runtime=%E' "
+            f"{ereport_cmd}\n"
         )
         OPATH.writelines(writescripterrorcheck("e_report.gms"))
         if not LINUXORMAC:

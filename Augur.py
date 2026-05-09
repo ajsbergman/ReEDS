@@ -84,7 +84,13 @@ def run_pras(
     print(command)
     print(f'vvvvvvvvvvvvvvv run_pras.jl {t}i{iteration} vvvvvvvvvvvvvvv')
     log = open(os.path.join(casedir, 'gamslog.txt'), 'a')
-    result = subprocess.run(command, stdout=log, stderr=log, text=True, shell=True)
+    resource_stats = os.path.join(casedir, 'resource_stats.log')
+    timed_command = (
+        f"/usr/bin/time -a -o {resource_stats} "
+        f"-f 'script=pras_{t}i{iteration} memory_KB=%M runtime=%E' "
+        f"{command}"
+    )
+    result = subprocess.run(timed_command, stdout=log, stderr=log, text=True, shell=True)
     log.close()
     print(f'^^^^^^^^^^^^^^^ run_pras.jl {t}i{iteration} ^^^^^^^^^^^^^^^')
 
