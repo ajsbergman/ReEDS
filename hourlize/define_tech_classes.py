@@ -21,12 +21,14 @@ Run this script after updates of reV supply curves to regenerate
 ### --- MAIN DATA ---
 ### ===========================================================================
 
+# Only used for one-off modification of geothermal supply curves
+# Remove after hourlize is rerun and resource temp is added to geothermal supply curve
 if sys.platform == 'win32':
     remotepath = '/nrelnas01/ReEDS/Supply_Curve_Data'
 elif sys.platform == 'darwin':
-    remotepath = '/Volumes/ReEDS/Supply_Curve_Data'         #TODO: Move supply curves to zenodo
+    remotepath = '/Volumes/ReEDS/Supply_Curve_Data'         
 
-reeds_path = os.path.expanduser('~/Documents/Github/ReEDS/public_ReEDS/ReEDS')
+reeds_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(reeds_path)
 
 rev_file = pd.read_csv(os.path.join(reeds_path,'inputs/supply_curve/rev_paths.csv'))
