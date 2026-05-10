@@ -117,7 +117,7 @@ def add_intermediate_switches(dfcases:pd.DataFrame) -> pd.DataFrame:
     for case in cases:
         sw = dfcases[case]
         new_switches[case] = {}
-        # Establish startyear based on yearset
+        # Add startyear switch as the first year in yearset
         new_switches[case]['startyear'] = parse_yearset(sw['yearset'])[0]
         ### TEMPORARY 20260402: The GSw_RegionResolution switch is deprecated;
         ### for now, hardcode its value for the region resolutions that use it
