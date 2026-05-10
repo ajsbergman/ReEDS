@@ -37,7 +37,7 @@ rev_file = pd.read_csv(os.path.join(reeds_path,'inputs/supply_curve/rev_paths.cs
 tech_list = ['upv','wind-ons','wind-ofs'] 
 
 # for offshore wind
-sub_tech_list = ['fixed','floating']
+subtech_list = ['fixed','floating']
 
 
 def main(rev_file):
@@ -49,7 +49,7 @@ def main(rev_file):
             print(access_type)
             if tech == 'wind-ofs':
                 all_supply_curve_sub_dfs = []
-                for subtech in sub_tech_list:
+                for subtech in subtech_list:
                     supply_curve_sub_df = prep_supply_curve(tech, access_type, subtech)
                     all_supply_curve_sub_dfs.append(supply_curve_sub_df)
                 supply_curve_df = pd.concat(all_supply_curve_sub_dfs, ignore_index=True)    
@@ -59,7 +59,9 @@ def main(rev_file):
             all_supply_curve_dfs.append(supply_curve_df)
         df = pd.concat(all_supply_curve_dfs, ignore_index=True)
 
-        df.to_csv(os.path.join(reeds_path,'inputs','capacity_exogenous','classification_'+tech+'.csv'),index=False)
+        df.to_csv(os.path.join(reeds_path,'inputs',
+                               'capacity_exogenous',
+                               'classification_'+tech+'.csv'),index=False)
 
     ## One-off modification to supplycurve_egs/geohydro-reference.csv to add resource temp column
     # Can remove the next time running hourlize
@@ -75,12 +77,15 @@ def main(rev_file):
         df['longitude'] = df['longitude'].abs() * -1  # Convert longitude to negative if needed
         # resource temp to geothermal supply curves in ReEDS
         if tech == 'geohydro':
-            geo_sc = df[['sc_point_gid','class','capacity','capital_adder_per_mw','mean_cf','mean_resource_temp']].copy()
+            geo_sc = df[['sc_point_gid','class','capacity','capital_adder_per_mw',
+                         'mean_cf','mean_resource_temp']].copy()
             geo_sc = geo_sc.rename(columns={'mean_cf':'cf'})
         elif tech == 'egs':
-            df_sc = df[['sc_point_gid','class','capacity','capital_adder_per_mw','capacity_factor_ac','mean_resource_temp']].copy()
+            df_sc = df[['sc_point_gid','class','capacity','capital_adder_per_mw',
+                        'capacity_factor_ac','mean_resource_temp']].copy()
             df_sc = df_sc.rename(columns={'capacity_factor_ac':'cf'})
-            geo_sc = pd.read_csv(os.path.join(reeds_path,'inputs','supply_curve','supplycurve_egs-reference.csv'))
+            geo_sc = pd.read_csv(os.path.join(reeds_path,'inputs','supply_curve',
+                                              'supplycurve_egs-reference.csv'))
             geo_sc = geo_sc.merge(df_sc, on='sc_point_gid', how='left', indicator=True)
             geo_sc = geo_sc.rename(columns={'class_x':'class','cf_x':'cf','capacity_x':'capacity',
                                             'capital_adder_per_mw_x':'capital_adder_per_mw',
@@ -89,7 +94,8 @@ def main(rev_file):
         
         # Round mean resource temp to 0 decimal (as int)
         geo_sc['mean_resource_temp'] = round(geo_sc['mean_resource_temp'])
-        geo_sc.to_csv(os.path.join(reeds_path,'inputs', 'supply_curve','supplycurve_'+tech+'-reference.csv'),index=False)
+        geo_sc.to_csv(os.path.join(reeds_path,'inputs', 'supply_curve',
+                                   'supplycurve_'+tech+'-reference.csv'),index=False)
 
 #%% ===========================================================================
 ### --- FUNCTIONS ---
@@ -114,18 +120,21 @@ def prep_supply_curve(tech, access_type, subtech):
         summary_df = df_sub.groupby('class')['cf'].agg(['min', 'max']).reset_index()
         summary_df['subtech'] = subtech
         summary_df['access_case'] = access_type
-        summary_df.columns = ['class', f'min_{class_def_name}', f'max_{class_def_name}', 'subtech', 'access_case']
+        summary_df.columns = ['class', f'min_{class_def_name}', 
+                              f'max_{class_def_name}', 'subtech', 'access_case']
     else:
         summary_df = df.groupby('class')['cf'].agg(['min', 'max']).reset_index()
         summary_df['access_case'] = access_type
-        summary_df.columns = ['class', f'min_{class_def_name}', f'max_{class_def_name}', 'access_case']
+        summary_df.columns = ['class', f'min_{class_def_name}',
+                               f'max_{class_def_name}', 'access_case']
     
     # Only use max capacity factors as class cut offs to avoid gaps
     summary_df = summary_df.sort_values(by=['class',f'min_{class_def_name}'])
     for c in summary_df['class'].unique().tolist():
         if c > min(summary_df['class'].unique().tolist()):
-            summary_df.loc[summary_df['class']==c,
-                           f'min_{class_def_name}'] = summary_df.loc[summary_df['class']==c-1][f'max_{class_def_name}'].iloc[0]
+            summary_df.loc[
+                summary_df['class']==c,f'min_{class_def_name}'
+                ] = summary_df.loc[summary_df['class']==c-1][f'max_{class_def_name}'].iloc[0]
 
     # Round values to 4 decimal places
     summary_df[f'min_{class_def_name}'] = summary_df[f'min_{class_def_name}'].round(4)
