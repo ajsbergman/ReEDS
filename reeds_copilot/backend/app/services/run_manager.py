@@ -43,10 +43,17 @@ class RunRecord:
     finished_at: float | None = None
     error: str | None = None
     extra_args: dict[str, Any] = field(default_factory=dict)
+    slurm_job_ids: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict:
         d = asdict(self)
         d["status"] = self.status.value
+        # Never expose password in API responses
+        if "extra_args" in d and "hpc_password" in d.get("extra_args", {}):
+            d["extra_args"] = {
+                k: v for k, v in d["extra_args"].items()
+                if k != "hpc_password"
+            }
         return d
 
 
@@ -56,11 +63,19 @@ _run_lock = threading.Lock()
 
 
 def _persist_run(repo_root: Path, rec: RunRecord):
-    """Save run metadata to a JSON file so the UI can reload after restart."""
+    """Save run metadata to a JSON file so the UI can reload after restart.
+    SECURITY: Never persist passwords/secrets to disk."""
     run_dir = repo_root / "reeds_copilot" / "run_history"
     run_dir.mkdir(parents=True, exist_ok=True)
+    data = rec.to_dict()
+    # Strip any sensitive fields before writing to disk
+    if "extra_args" in data:
+        data["extra_args"] = {
+            k: v for k, v in data["extra_args"].items()
+            if k != "hpc_password"
+        }
     (run_dir / f"{rec.id}.json").write_text(
-        json.dumps(rec.to_dict(), indent=2), encoding="utf-8"
+        json.dumps(data, indent=2), encoding="utf-8"
     )
 
 
@@ -75,6 +90,8 @@ def _load_persisted_runs(repo_root: Path):
             rid = data["id"]
             if rid not in _runs:
                 data["status"] = RunStatus(data["status"])
+                # Ensure backwards compatibility with records before HPC support
+                data.setdefault("slurm_job_ids", [])
                 _runs[rid] = RunRecord(**data)
         except Exception:
             log.warning("Skipping corrupt run record %s", p.name)
@@ -419,8 +436,455 @@ def start_local_run(
     return rec
 
 
+# ── HPC / Slurm support (via SSH / paramiko) ─────────────────────────────────
+
+import paramiko
+
+_SAFE_SSH_RE = re.compile(r'^[a-zA-Z0-9._\-]+$')
+
+# Reuse the SSH connection pool from the files module so the file browser and
+# run manager share authenticated sessions.
+from ..api.files import _get_ssh_client, _ssh_pool, _ssh_lock
+
+
+def _ssh_run(
+    hpc_host: str,
+    hpc_user: str,
+    command: str,
+    timeout: int = 60,
+    password: str = "",
+) -> subprocess.CompletedProcess:
+    """Run a command on a remote HPC node via paramiko.
+
+    Returns a subprocess.CompletedProcess-like object for backwards compat.
+    Supports password auth via the shared paramiko connection pool.
+    """
+    if not _SAFE_SSH_RE.match(hpc_host):
+        raise ValueError(f"Invalid SSH hostname: {hpc_host!r}")
+    if not _SAFE_SSH_RE.match(hpc_user):
+        raise ValueError(f"Invalid SSH username: {hpc_user!r}")
+
+    client = _get_ssh_client(hpc_host, hpc_user, password)
+    try:
+        _, stdout, stderr = client.exec_command(command, timeout=timeout)
+        out = stdout.read().decode("utf-8", errors="replace")
+        err = stderr.read().decode("utf-8", errors="replace")
+        rc = stdout.channel.recv_exit_status()
+    except Exception as exc:
+        # Connection may have died — evict from pool
+        with _ssh_lock:
+            _ssh_pool.pop((hpc_host, hpc_user), None)
+        raise exc
+
+    return subprocess.CompletedProcess(
+        args=command, returncode=rc, stdout=out, stderr=err,
+    )
+
+
+def _check_ssh_connection(hpc_host: str, hpc_user: str, password: str = "") -> bool:
+    """Verify we can SSH to the login node."""
+    try:
+        proc = _ssh_run(hpc_host, hpc_user, "echo OK", timeout=20, password=password)
+        return proc.returncode == 0 and "OK" in proc.stdout
+    except Exception:
+        return False
+
+
+def _parse_slurm_job_ids(output: str) -> list[str]:
+    """Extract Slurm job IDs from sbatch output.
+    sbatch typically prints 'Submitted batch job 12345'."""
+    ids = []
+    for line in output.splitlines():
+        m = re.search(r'Submitted batch job\s+(\d+)', line)
+        if m:
+            ids.append(m.group(1))
+    return ids
+
+
+def _query_slurm_status_ssh(
+    hpc_host: str, hpc_user: str, job_ids: list[str],
+    password: str = "",
+) -> dict[str, str]:
+    """Query sacct/squeue via SSH for job states. Returns {job_id: state}."""
+    if not job_ids:
+        return {}
+    result = {}
+    try:
+        proc = _ssh_run(
+            hpc_host, hpc_user,
+            f"sacct -j {','.join(job_ids)} --format=JobID,State --noheader --parsable2",
+            timeout=30, password=password,
+        )
+        if proc.returncode == 0:
+            for line in proc.stdout.strip().splitlines():
+                parts = line.split("|")
+                if len(parts) >= 2:
+                    jid = parts[0].strip()
+                    state = parts[1].strip()
+                    if "." not in jid and jid in job_ids:
+                        result[jid] = state
+    except Exception:
+        pass
+
+    missing = [j for j in job_ids if j not in result]
+    if missing:
+        try:
+            proc = _ssh_run(
+                hpc_host, hpc_user,
+                f"squeue -j {','.join(missing)} --format='%i %T' --noheader",
+                timeout=30, password=password,
+            )
+            if proc.returncode == 0:
+                for line in proc.stdout.strip().splitlines():
+                    parts = line.split()
+                    if len(parts) >= 2:
+                        result[parts[0]] = parts[1]
+        except Exception:
+            pass
+
+    return result
+
+
+def _tail_slurm_logs_ssh(
+    hpc_host: str, hpc_user: str,
+    hpc_reeds_path: str, batch_name: str, cases: list[str],
+    n: int = 50, password: str = "",
+) -> str:
+    """Read recent slurm-*.out and gamslog.txt via SSH."""
+    # Build a remote shell command that tails the relevant log files
+    runs_dir = f"{hpc_reeds_path}/runs"
+    cmd_parts = []
+
+    # Per-case logs
+    for c in cases:
+        case_dir = f"{runs_dir}/{batch_name}_{c}"
+        cmd_parts.append(
+            f'for f in $(ls -t {case_dir}/slurm-*.out 2>/dev/null | head -1); do '
+            f'echo "── {batch_name}_{c}/$(basename $f) ──"; tail -n {n} "$f"; done'
+        )
+        cmd_parts.append(
+            f'if [ -f {case_dir}/gamslog.txt ]; then '
+            f'echo "── {batch_name}_{c}/gamslog.txt ──"; '
+            f'tail -n {n} {case_dir}/gamslog.txt; fi'
+        )
+
+    # Batch-level logs
+    cmd_parts.append(
+        f'for f in $(ls -t {runs_dir}/{batch_name}/slurm-*.out 2>/dev/null | head -2); do '
+        f'echo "── $(basename $f) ──"; tail -n {n} "$f"; done'
+    )
+
+    remote_cmd = " ; ".join(cmd_parts)
+    try:
+        proc = _ssh_run(hpc_host, hpc_user, remote_cmd, timeout=30, password=password)
+        return proc.stdout if proc.returncode == 0 else ""
+    except Exception:
+        return ""
+
+
+def start_hpc_run(
+    repo_root: Path,
+    batch_name: str,
+    cases_suffix: str,
+    cases: list[str] | None = None,
+    simult_runs: int = 1,
+    conda_env: str = "reeds2",
+    overwrite: bool = False,
+    hpc_host: str = "",
+    hpc_user: str = "",
+    hpc_password: str = "",
+    hpc_reeds_path: str = "",
+    slurm_account: str = "",
+    slurm_walltime: str = "2-00:00:00",
+    slurm_partition: str = "",
+    slurm_memory: str = "246000",
+    slurm_mail_user: str = "",
+    slurm_mail_type: str = "",
+    extra_args: dict[str, Any] | None = None,
+) -> RunRecord:
+    """Submit a ReEDS run to Slurm on a remote HPC cluster via SSH."""
+    if not hpc_host or not hpc_user:
+        raise RuntimeError("HPC host and username are required for HPC runs.")
+    if not hpc_reeds_path:
+        raise RuntimeError("Remote ReEDS path on the HPC is required.")
+
+    # Validate SSH connectivity
+    if not _check_ssh_connection(hpc_host, hpc_user, password=hpc_password):
+        raise RuntimeError(
+            f"Cannot SSH to {hpc_user}@{hpc_host}. "
+            "Ensure SSH keys are configured and the login node is reachable."
+        )
+
+    if not _SAFE_ENV_NAME.match(conda_env):
+        raise ValueError(f"Invalid conda environment name: {conda_env!r}")
+
+    rid = uuid.uuid4().hex[:12]
+    hpc_extra = {
+        "hpc_host": hpc_host,
+        "hpc_user": hpc_user,
+        "hpc_password": hpc_password,
+        "hpc_reeds_path": hpc_reeds_path,
+        "slurm_account": slurm_account,
+        "slurm_walltime": slurm_walltime,
+        "slurm_partition": slurm_partition,
+        "slurm_memory": slurm_memory,
+        "slurm_mail_user": slurm_mail_user,
+        "slurm_mail_type": slurm_mail_type,
+        **(extra_args or {}),
+    }
+    rec = RunRecord(
+        id=rid,
+        batch_name=batch_name,
+        cases_suffix=cases_suffix,
+        cases=cases or [],
+        simult_runs=simult_runs,
+        target="hpc",
+        status=RunStatus.QUEUED,
+        created_at=time.time(),
+        extra_args=hpc_extra,
+    )
+
+    with _run_lock:
+        _runs[rid] = rec
+    _persist_run(repo_root, rec)
+
+    # Build the remote runbatch.py command
+    cases_str = ",".join(cases) if cases else ""
+    suffix_arg = f"--cases_suffix={cases_suffix}" if cases_suffix else ""
+    single_arg = f"--single={cases_str}" if cases_str else ""
+
+    # Build sed commands to patch srun_template.sh on the remote
+    sed_parts = []
+    if slurm_account:
+        sed_parts.append(f"sed -i 's/^#SBATCH --account=.*/#SBATCH --account={slurm_account}/' srun_template.sh")
+    if slurm_walltime:
+        sed_parts.append(f"sed -i 's/^#SBATCH --time=.*/#SBATCH --time={slurm_walltime}/' srun_template.sh")
+    if slurm_memory:
+        sed_parts.append(f"sed -i 's/^#SBATCH --mem=.*/#SBATCH --mem={slurm_memory}/' srun_template.sh")
+    if slurm_partition:
+        sed_parts.append(
+            f"sed -i '/#SBATCH --account=/a #SBATCH --partition={slurm_partition}' srun_template.sh"
+        )
+    if slurm_mail_user:
+        sed_parts.append(
+            f"sed -i '/#SBATCH --account=/a #SBATCH --mail-user={slurm_mail_user}' srun_template.sh"
+        )
+    if slurm_mail_type:
+        sed_parts.append(
+            f"sed -i '/#SBATCH --account=/a #SBATCH --mail-type={slurm_mail_type}' srun_template.sh"
+        )
+
+    # Delete old run folders if overwrite
+    overwrite_cmds = []
+    if overwrite and cases:
+        for c in cases:
+            overwrite_cmds.append(f"rm -rf {hpc_reeds_path}/runs/{batch_name}_{c}")
+
+    # Full remote command
+    remote_parts = [
+        f"cd {hpc_reeds_path}",
+        # Back up and patch srun_template
+        "cp srun_template.sh srun_template.sh.bak",
+        *sed_parts,
+        *overwrite_cmds,
+        # Load HPC modules and activate conda
+        "module load gams",
+        "module load anaconda3",
+        f"conda activate {conda_env}",
+        f"REEDS_USE_SLURM=1 python runbatch.py "
+        f"--BatchName={batch_name} "
+        f"--simult_runs={simult_runs} "
+        f"--skip_checks "
+        f"{suffix_arg} {single_arg}".strip(),
+        # Restore srun_template
+        "mv srun_template.sh.bak srun_template.sh",
+    ]
+    remote_cmd = " && ".join(remote_parts)
+
+    log.info("Launching HPC run %s via SSH to %s@%s", rid, hpc_user, hpc_host)
+
+    def _run_hpc_thread():
+        try:
+            rec.status = RunStatus.RUNNING
+            _persist_run(repo_root, rec)
+
+            # Submit via SSH (runbatch.py will internally call sbatch)
+            proc = _ssh_run(hpc_host, hpc_user, remote_cmd, timeout=600,
+                            password=hpc_password)
+
+            combined_output = (proc.stdout or "") + "\n" + (proc.stderr or "")
+            job_ids = _parse_slurm_job_ids(combined_output)
+
+            if proc.returncode != 0 and not job_ids:
+                rec.status = RunStatus.FAILED
+                rec.error = (
+                    f"Remote runbatch.py exited with code {proc.returncode}:\n"
+                    + combined_output[-2000:]
+                )
+                rec.finished_at = time.time()
+                _persist_run(repo_root, rec)
+                return
+
+            rec.slurm_job_ids = job_ids
+            if job_ids:
+                rec.log_tail = f"Submitted Slurm jobs: {', '.join(job_ids)}\n"
+            else:
+                rec.log_tail = "runbatch.py completed on HPC. Monitoring Slurm output...\n"
+            _persist_run(repo_root, rec)
+
+            # Monitor via SSH
+            _monitor_slurm_jobs_ssh(repo_root, rec, hpc_host, hpc_user, hpc_reeds_path,
+                                    password=hpc_password)
+
+        except subprocess.TimeoutExpired:
+            rec.status = RunStatus.FAILED
+            rec.error = "SSH command timed out during HPC submission (10 min limit)"
+            rec.finished_at = time.time()
+        except Exception as exc:
+            rec.status = RunStatus.FAILED
+            rec.error = str(exc)
+            rec.finished_at = time.time()
+        finally:
+            _persist_run(repo_root, rec)
+
+    t = threading.Thread(target=_run_hpc_thread, daemon=True)
+    t.start()
+    return rec
+
+
+def _check_report_exists_ssh(
+    hpc_host: str, hpc_user: str,
+    hpc_reeds_path: str, batch_name: str, cases: list[str],
+    password: str = "",
+) -> tuple[bool, list[str]]:
+    """Check via SSH whether report.xlsx exists for all cases.
+    Returns (all_done, list_of_missing_case_names)."""
+    checks = []
+    for c in cases:
+        checks.append(
+            f'[ -f {hpc_reeds_path}/runs/{batch_name}_{c}/outputs/reeds-report/report.xlsx ] '
+            f'&& echo "OK:{c}" || echo "MISSING:{c}"'
+        )
+    try:
+        proc = _ssh_run(hpc_host, hpc_user, " ; ".join(checks), timeout=30,
+                        password=password)
+        missing = []
+        for line in proc.stdout.splitlines():
+            if line.startswith("MISSING:"):
+                missing.append(line.split(":", 1)[1])
+        return len(missing) == 0, missing
+    except Exception:
+        return False, list(cases)
+
+
+def _monitor_slurm_jobs_ssh(
+    repo_root: Path, rec: RunRecord,
+    hpc_host: str, hpc_user: str, hpc_reeds_path: str,
+    password: str = "",
+):
+    """Poll Slurm via SSH and read remote logs until all jobs complete."""
+    max_poll_time = 72 * 3600  # 72h
+    start_time = time.time()
+    poll_interval = 30
+
+    while (time.time() - start_time) < max_poll_time:
+        time.sleep(poll_interval)
+
+        # Check report.xlsx on remote
+        all_done, missing = _check_report_exists_ssh(
+            hpc_host, hpc_user, hpc_reeds_path, rec.batch_name, rec.cases,
+            password=password,
+        )
+        if all_done and rec.cases:
+            rec.status = RunStatus.COMPLETED
+            rec.finished_at = time.time()
+            rec.log_tail = _tail_slurm_logs_ssh(
+                hpc_host, hpc_user, hpc_reeds_path, rec.batch_name, rec.cases,
+                password=password,
+            )
+            _persist_run(repo_root, rec)
+            return
+
+        # Check Slurm job statuses
+        if rec.slurm_job_ids:
+            statuses = _query_slurm_status_ssh(hpc_host, hpc_user, rec.slurm_job_ids,
+                                               password=password)
+            status_lines = [f"  Job {jid}: {st}" for jid, st in statuses.items()]
+            log_tail = _tail_slurm_logs_ssh(
+                hpc_host, hpc_user, hpc_reeds_path, rec.batch_name, rec.cases,
+                password=password,
+            )
+            rec.log_tail = (
+                "── Slurm Job Status ──\n"
+                + "\n".join(status_lines)
+                + "\n\n" + log_tail
+            )
+
+            terminal = {"COMPLETED", "FAILED", "CANCELLED", "TIMEOUT",
+                        "OUT_OF_MEMORY", "NODE_FAIL", "PREEMPTED"}
+            active = {"PENDING", "RUNNING", "CONFIGURING", "COMPLETING",
+                      "SUSPENDED", "REQUEUED"}
+
+            all_states = set(statuses.values())
+            if all_states and not all_states.intersection(active):
+                rec.finished_at = time.time()
+                if all(s == "COMPLETED" for s in statuses.values()):
+                    all_done2, missing2 = _check_report_exists_ssh(
+                        hpc_host, hpc_user, hpc_reeds_path, rec.batch_name, rec.cases,
+                        password=password,
+                    )
+                    if all_done2:
+                        rec.status = RunStatus.COMPLETED
+                    else:
+                        rec.status = RunStatus.FAILED
+                        rec.error = f"Slurm jobs completed but no report.xlsx: {', '.join(missing2)}"
+                else:
+                    rec.status = RunStatus.FAILED
+                    failed_jobs = {jid: st for jid, st in statuses.items() if st != "COMPLETED"}
+                    rec.error = f"Slurm jobs failed: {failed_jobs}"
+                _persist_run(repo_root, rec)
+                return
+        else:
+            rec.log_tail = _tail_slurm_logs_ssh(
+                hpc_host, hpc_user, hpc_reeds_path, rec.batch_name, rec.cases,
+                password=password,
+            )
+
+        _persist_run(repo_root, rec)
+
+    rec.status = RunStatus.FAILED
+    rec.error = "Monitoring timed out after 72 hours"
+    rec.finished_at = time.time()
+    _persist_run(repo_root, rec)
+
+
+def cancel_hpc_run(repo_root: Path, run_id: str) -> bool:
+    """Cancel Slurm jobs via SSH + scancel."""
+    rec = _runs.get(run_id)
+    if not rec:
+        return False
+    hpc_host = rec.extra_args.get("hpc_host", "")
+    hpc_user = rec.extra_args.get("hpc_user", "")
+    hpc_password = rec.extra_args.get("hpc_password", "")
+    if not hpc_host or not hpc_user:
+        return False
+    cancelled = False
+    for jid in rec.slurm_job_ids:
+        try:
+            _ssh_run(hpc_host, hpc_user, f"scancel {jid}", timeout=30,
+                     password=hpc_password)
+            cancelled = True
+        except Exception as exc:
+            log.warning("Failed to scancel job %s: %s", jid, exc)
+    if cancelled or not rec.slurm_job_ids:
+        rec.status = RunStatus.CANCELLED
+        rec.finished_at = time.time()
+        _persist_run(repo_root, rec)
+    return cancelled
+
+
 def cancel_run(repo_root: Path, run_id: str) -> bool:
-    """Cancel a running process."""
+    """Cancel a running local process."""
     rec = _runs.get(run_id)
     if not rec or not rec.pid:
         return False

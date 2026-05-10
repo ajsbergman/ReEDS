@@ -36,6 +36,18 @@ class StartRunRequest(BaseModel):
     target: Literal["local", "hpc"] = "local"
     conda_env: str = "reeds2"
     overwrite: bool = False
+    # HPC connection fields
+    hpc_host: str = ""       # e.g. "kestrel.hpc.nrel.gov"
+    hpc_user: str = ""       # SSH username
+    hpc_password: str = ""   # SSH password (optional if key auth)
+    hpc_reeds_path: str = "" # Absolute path to ReEDS on remote HPC
+    # Slurm fields
+    slurm_account: str = ""
+    slurm_walltime: str = "2-00:00:00"
+    slurm_partition: str = ""
+    slurm_memory: str = "246000"
+    slurm_mail_user: str = ""
+    slurm_mail_type: str = ""  # comma-separated: BEGIN,END,FAIL
 
 
 # ── Endpoints ────────────────────────────────────────────────────────────────
@@ -109,7 +121,35 @@ def get_cases_detail(suffix: str, settings: Settings = Depends(get_settings)):
 def start_run(body: StartRunRequest, settings: Settings = Depends(get_settings)):
     """Start a new ReEDS run."""
     if body.target == "hpc":
-        raise HTTPException(status_code=501, detail="HPC runs not yet implemented")
+        if not body.hpc_host:
+            raise HTTPException(status_code=400, detail="HPC login node (hpc_host) is required")
+        if not body.hpc_user:
+            raise HTTPException(status_code=400, detail="HPC username (hpc_user) is required")
+        if not body.hpc_reeds_path:
+            raise HTTPException(status_code=400, detail="Remote ReEDS path (hpc_reeds_path) is required")
+        try:
+            rec = run_manager.start_hpc_run(
+                repo_root=settings.repo_root,
+                batch_name=body.batch_name,
+                cases_suffix=body.cases_suffix,
+                cases=body.cases or None,
+                simult_runs=body.simult_runs,
+                conda_env=body.conda_env,
+                overwrite=body.overwrite,
+                hpc_host=body.hpc_host,
+                hpc_user=body.hpc_user,
+                hpc_password=body.hpc_password,
+                hpc_reeds_path=body.hpc_reeds_path,
+                slurm_account=body.slurm_account,
+                slurm_walltime=body.slurm_walltime,
+                slurm_partition=body.slurm_partition,
+                slurm_memory=body.slurm_memory,
+                slurm_mail_user=body.slurm_mail_user,
+                slurm_mail_type=body.slurm_mail_type,
+            )
+        except RuntimeError as e:
+            raise HTTPException(status_code=400, detail=str(e))
+        return rec.to_dict()
 
     rec = run_manager.start_local_run(
         repo_root=settings.repo_root,
@@ -799,7 +839,13 @@ def get_run(run_id: str):
 @router.post("/{run_id}/cancel")
 def cancel_run(run_id: str, settings: Settings = Depends(get_settings)):
     """Cancel a running ReEDS run."""
-    ok = run_manager.cancel_run(settings.repo_root, run_id)
+    rec = run_manager.get_run(run_id)
+    if not rec:
+        raise HTTPException(status_code=404, detail="Run not found")
+    if rec.get("target") == "hpc":
+        ok = run_manager.cancel_hpc_run(settings.repo_root, run_id)
+    else:
+        ok = run_manager.cancel_run(settings.repo_root, run_id)
     if not ok:
         raise HTTPException(status_code=400, detail="Run not found or not running")
     return {"success": True}

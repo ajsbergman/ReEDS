@@ -166,6 +166,43 @@ export function rawFileURL(path: string): string {
   return `${BASE}/files/raw?path=${encodeURIComponent(path)}`;
 }
 
+/* ── HPC remote file browsing ──────────────────────────────────────────────── */
+
+export function listHpcFilesAPI(
+  host: string,
+  user: string,
+  path: string,
+  password: string = "",
+): Promise<FileListResponse> {
+  return post<FileListResponse>("/files/hpc/list", { host, user, path, password });
+}
+
+export function previewHpcFileAPI(
+  host: string,
+  user: string,
+  path: string,
+  password: string = "",
+  lines: number = 200,
+): Promise<FilePreviewResponse> {
+  return post<FilePreviewResponse>("/files/hpc/preview", { host, user, path, password, lines });
+}
+
+export function disconnectHpcAPI(
+  host: string,
+  user: string,
+): Promise<{ disconnected: boolean }> {
+  return post<{ disconnected: boolean }>("/files/hpc/disconnect", { host, user });
+}
+
+export function listHpcCasesFilesAPI(
+  host: string,
+  user: string,
+  reeds_path: string,
+  password: string = "",
+): Promise<CasesFile[]> {
+  return post<CasesFile[]>("/files/hpc/cases-files", { host, user, reeds_path, password });
+}
+
 export function healthAPI(): Promise<HealthResponse> {
   return request<HealthResponse>("/health");
 }
@@ -262,6 +299,7 @@ export interface RunRecord {
   log_tail: string;
   finished_at: number | null;
   error: string | null;
+  slurm_job_ids: string[];
 }
 
 export function listCasesFilesAPI(): Promise<CasesFile[]> {
@@ -291,6 +329,16 @@ export function startRunAPI(body: {
   target?: "local" | "hpc";
   conda_env?: string;
   overwrite?: boolean;
+  hpc_host?: string;
+  hpc_user?: string;
+  hpc_password?: string;
+  hpc_reeds_path?: string;
+  slurm_account?: string;
+  slurm_walltime?: string;
+  slurm_partition?: string;
+  slurm_memory?: string;
+  slurm_mail_user?: string;
+  slurm_mail_type?: string;
 }): Promise<RunRecord> {
   return post<RunRecord>("/runs", body);
 }

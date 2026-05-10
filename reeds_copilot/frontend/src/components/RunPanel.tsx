@@ -76,6 +76,18 @@ export default function RunPanel() {
   const [licenseText, setLicenseText] = useState("");
   const [licenseSaving, setLicenseSaving] = useState(false);
 
+  /* HPC connection */
+  const [hpcCluster, setHpcCluster] = useState<"kestrel" | "eagle" | "custom">("kestrel");
+  const [hpcHost, setHpcHost] = useState("kestrel.hpc.nrel.gov");
+  const [hpcUser, setHpcUser] = useState("");
+  const [hpcReedsPath, setHpcReedsPath] = useState("");
+
+  /* HPC / Slurm config */
+  const [slurmAccount, setSlurmAccount] = useState("");
+  const [slurmWalltime, setSlurmWalltime] = useState("2-00:00:00");
+  const [slurmPartition, setSlurmPartition] = useState("");
+  const [slurmMemory, setSlurmMemory] = useState("246000");
+
   /* Runs list & detail */
   const [runs, setRuns] = useState<RunRecord[]>([]);
   const [expandedRun, setExpandedRun] = useState<string | null>(null);
@@ -205,8 +217,20 @@ export default function RunPanel() {
       setError("Batch name is required");
       return;
     }
-    if (target === "hpc") {
-      setError("HPC runs are not yet supported. Coming soon!");
+    if (target === "hpc" && !slurmAccount.trim()) {
+      setError("Slurm account (allocation) is required for HPC runs");
+      return;
+    }
+    if (target === "hpc" && !hpcHost.trim()) {
+      setError("HPC login node is required");
+      return;
+    }
+    if (target === "hpc" && !hpcUser.trim()) {
+      setError("HPC username is required");
+      return;
+    }
+    if (target === "hpc" && !hpcReedsPath.trim()) {
+      setError("Remote ReEDS path on the HPC is required");
       return;
     }
     setError("");
@@ -220,6 +244,15 @@ export default function RunPanel() {
         target,
         conda_env: selectedEnv,
         overwrite,
+        ...(target === "hpc" && {
+          hpc_host: hpcHost.trim(),
+          hpc_user: hpcUser.trim(),
+          hpc_reeds_path: hpcReedsPath.trim(),
+          slurm_account: slurmAccount.trim(),
+          slurm_walltime: slurmWalltime.trim(),
+          slurm_partition: slurmPartition.trim() || undefined,
+          slurm_memory: slurmMemory.trim(),
+        }),
       });
       refreshRuns();
     } catch (e: any) {
@@ -260,26 +293,6 @@ export default function RunPanel() {
       {/* ── Launch form ───────────────────────────────────────────────────── */}
       <section className="run-form">
         <h2>Launch ReEDS Run</h2>
-
-        {/* Target selector */}
-        <div className="run-field">
-          <label>Run Target</label>
-          <div className="run-target-toggle">
-            <button
-              className={target === "local" ? "active" : ""}
-              onClick={() => setTarget("local")}
-            >
-              💻 Local
-            </button>
-            <button
-              className={target === "hpc" ? "active" : ""}
-              onClick={() => setTarget("hpc")}
-            >
-              🖥️ HPC
-              <span className="coming-soon">soon</span>
-            </button>
-          </div>
-        </div>
 
         {/* Conda environment */}
         <div className="run-field">
@@ -369,7 +382,7 @@ export default function RunPanel() {
           )}
         </div>
 
-        {/* Batch name */}
+        {/* Batch name (original) */}
         <div className="run-field">
           <label>Batch Name</label>
           <input
@@ -450,7 +463,7 @@ export default function RunPanel() {
         <button
           className="run-launch-btn"
           onClick={handleLaunch}
-          disabled={launching || target === "hpc"}
+          disabled={launching}
         >
           {launching ? "Launching…" : "🚀 Launch Run"}
         </button>
@@ -479,6 +492,12 @@ export default function RunPanel() {
                 </span>
               </div>
               <div className="run-card-meta">
+                {r.target === "hpc" && (
+                  <span style={{
+                    fontSize: "0.7rem", padding: "1px 6px", borderRadius: 3,
+                    background: "#7c4dff", color: "#fff", fontWeight: 600, marginRight: 4,
+                  }}>HPC</span>
+                )}
                 {statusBadge(r.status)}
                 <span className="run-card-time">{fmtTime(r.created_at)}</span>
               </div>
@@ -515,6 +534,18 @@ export default function RunPanel() {
                   <span>Workers:</span>
                   <span>{expandedDetail.simult_runs}</span>
                 </div>
+                {expandedDetail.target === "hpc" && expandedDetail.slurm_job_ids?.length > 0 && (
+                  <div className="run-detail-row">
+                    <span>Slurm Jobs:</span>
+                    <span>{expandedDetail.slurm_job_ids.join(", ")}</span>
+                  </div>
+                )}
+                {expandedDetail.target === "hpc" && (
+                  <div className="run-detail-row">
+                    <span>Target:</span>
+                    <span>HPC (Slurm)</span>
+                  </div>
+                )}
                 {expandedDetail.error && (
                   <div className="run-detail-row error">
                     <span>Error:</span>

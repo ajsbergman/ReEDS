@@ -1089,6 +1089,21 @@ body,
   letter-spacing: 0.04em;
 }
 
+/* Slurm / HPC config */
+.slurm-config {
+  margin-bottom: 16px;
+  padding: 12px;
+  background: rgba(124, 77, 255, 0.06);
+  border: 1px solid rgba(124, 77, 255, 0.25);
+  border-radius: var(--radius);
+}
+.slurm-config .run-field {
+  margin-bottom: 10px;
+}
+.slurm-config .run-field:last-child {
+  margin-bottom: 0;
+}
+
 /* Case chips */
 .case-chips {
   display: flex;
@@ -1453,6 +1468,278 @@ body,
 .env-fix-btn:disabled {
   opacity: 0.5;
   cursor: wait;
+}
+
+/* ── HPC Browser ──────────────────────────────────────────────────────────── */
+
+.hpc-browser {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+.hpc-connection-bar {
+  padding: 12px 16px;
+  background: var(--bg-elevated);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.hpc-connection-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.hpc-connection-row label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.hpc-connection-row select,
+.hpc-connection-row input {
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-surface);
+  color: var(--text);
+  font-size: 0.82rem;
+}
+.hpc-connection-row select { width: 110px; }
+.hpc-connection-row input { flex: 1; min-width: 120px; }
+
+.btn-connect {
+  padding: 5px 14px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+.btn-connect:hover:not(:disabled) { background: var(--accent-hover); }
+.btn-connect:disabled { opacity: 0.6; cursor: default; }
+
+.btn-disconnect {
+  padding: 5px 14px;
+  border: 1px solid var(--danger);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--danger);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+.btn-disconnect:hover { background: rgba(224, 82, 82, 0.12); }
+
+.hpc-path-input-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+}
+.hpc-path-input-row label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+.hpc-path-input-row input {
+  flex: 1;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-surface);
+  color: var(--text);
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+}
+.hpc-path-input-row button {
+  padding: 5px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+  color: var(--text);
+  font-size: 0.82rem;
+  cursor: pointer;
+}
+.hpc-path-input-row button:hover { background: var(--bg-surface); }
+
+.hpc-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  padding: 3rem;
+  text-align: center;
+  color: var(--text-muted);
+}
+.hpc-empty-state p:first-child {
+  font-size: 1.1rem;
+  margin-bottom: 8px;
+}
+
+.hpc-view-toggle {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.hpc-view-toggle button {
+  flex: 1;
+  padding: 8px 16px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  border-bottom: 2px solid transparent;
+}
+.hpc-view-toggle button.active {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+  background: rgba(44, 134, 184, 0.06);
+}
+.hpc-view-toggle button:hover:not(.active) {
+  background: rgba(44, 134, 184, 0.04);
+}
+
+.hpc-content-split {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.hpc-file-list {
+  flex: 1;
+  overflow-y: auto;
+  border-right: 1px solid var(--border);
+  min-width: 0;
+}
+
+.hpc-file-list .file-entry.selected {
+  background: rgba(44, 134, 184, 0.15);
+  border-left: 3px solid var(--accent);
+}
+
+.hpc-preview-pane {
+  width: 45%;
+  min-width: 300px;
+  overflow-y: auto;
+  background: var(--bg-surface);
+}
+
+.hpc-preview-content {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.hpc-preview-header {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-elevated);
+  font-size: 0.85rem;
+}
+
+.hpc-preview-text {
+  padding: 12px 14px;
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-all;
+  overflow-y: auto;
+  flex: 1;
+  margin: 0;
+  color: var(--text);
+}
+
+/* HPC Run Launcher */
+.hpc-launcher-section {
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.hpc-launcher-toggle {
+  width: 100%;
+  padding: 8px 16px;
+  border: none;
+  background: rgba(44, 134, 184, 0.08);
+  color: var(--accent);
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.hpc-launcher-toggle:hover { background: rgba(44, 134, 184, 0.15); }
+
+.hpc-launcher-body {
+  padding: 12px 16px;
+  background: var(--bg-surface);
+}
+
+.hpc-launcher-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 16px;
+}
+.hpc-launcher-grid .run-field:first-child {
+  grid-column: 1 / -1;
+}
+
+.hpc-launcher-grid .run-field label {
+  display: block;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+  font-weight: 600;
+  margin-bottom: 3px;
+}
+.hpc-launcher-grid .run-field input {
+  width: 100%;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+  color: var(--text);
+  font-size: 0.82rem;
+}
+
+.btn-set-path {
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+  color: var(--text);
+  font-size: 0.78rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-set-path:hover { background: var(--bg-surface); }
+
+.hpc-launch-msg {
+  margin-top: 8px;
+  padding: 6px 10px;
+  border-radius: var(--radius);
+  font-size: 0.82rem;
+}
+.hpc-launch-msg.success {
+  background: rgba(76, 175, 80, 0.12);
+  color: var(--success);
+}
+.hpc-launch-msg.error {
+  background: rgba(224, 82, 82, 0.12);
+  color: var(--danger);
 }
 
 /* GAMS license input */
