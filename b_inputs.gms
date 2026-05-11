@@ -5072,7 +5072,7 @@ parameter egs_cap_cost_mult(i,r) "EGS capital cost multipliers [fraction]"
 /
 $offlisting
 $ondelim
-$include inputs_case%ds%egs_cap_cost_diff.csv
+$include inputs_case%ds%egs_cap_cost_mult.csv
 $offdelim
 $onlisting
 / ;
