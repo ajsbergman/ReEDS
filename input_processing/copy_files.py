@@ -1231,6 +1231,17 @@ def write_region_indexed_file(
                             regions_and_agglevel=regions_and_agglevel,
                             aggfunc=region_file_entry.aggfunc
                         )
+            case 'unitdata.csv':
+                fips_ba_map = regions_and_agglevel['ba_county'].dropna().set_index('county')['ba']
+                df['reeds_ba'] = df['FIPS'].map(fips_ba_map)
+                ## If using offshore zones, map offshore wind units from land to offshore zones
+                if int(sw.GSw_OffshoreZones):
+                    df = reeds.spatial.assign_to_offshore_zones(df)
+                num_units_missing_bas = len(df.loc[df.reeds_ba.isna()])
+                if num_units_missing_bas > 0:
+                    raise ValueError(
+                        f"{num_units_missing_bas} units were not mapped to any BAs."
+                    )            
             case _:
                 pass
 

@@ -13,10 +13,6 @@ import argparse
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import reeds
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..','input_processing')))
-from copy_files import get_regions_and_agglevel
-
-
 #%% ===========================================================================
 ### --- General Read Functions---
 ### ===========================================================================
@@ -84,35 +80,10 @@ def assign_gids_to_unitdata(df, offland_gdf, land_gdf):
 #%% ===========================================================================
 ### --- PROCEDURE ---
 ### ===========================================================================
-def main(reeds_path, casepath, inputs_case):
+def main(inputs_case):
     
-    # Read in switch setting
-    sw = reeds.io.get_switches(casepath)
-
-    # Read raw NEMS database
-    unitdata = pd.read_csv(
-        os.path.join(
-            reeds_path, 'inputs', 'capacity_exogenous',
-            f'ReEDS_generator_database_final_{sw.unitdata}.csv'
-            ),
-            low_memory=False
-            )
-    
-    # Filter and process raw NEMS database to defined model resolution
-    regions_and_agglevel = get_regions_and_agglevel(reeds_path, inputs_case)
-
-    fips_ba_map = regions_and_agglevel['ba_county'].dropna().set_index('county')['ba']
-    unitdata['reeds_ba'] = unitdata['FIPS'].map(fips_ba_map)
-    unitdata = unitdata.dropna(subset=["reeds_ba"])
-
-    ## If using offshore zones, map offshore wind units from land to offshore zones
-    if int(sw.GSw_OffshoreZones):
-        unitdata = reeds.spatial.assign_to_offshore_zones(unitdata)
-    num_units_missing_bas = len(unitdata.loc[unitdata.reeds_ba.isna()])
-    if num_units_missing_bas > 0:
-        raise ValueError(
-            f"{num_units_missing_bas} units were not mapped to any BAs."
-        )
+    # Read unitdata
+    unitdata = pd.read_csv(os.path.join(inputs_case, 'unitdata.csv'))
     
     ## Assign sc_point_gids and pv, wind capacity factors, and geothermal resource temperature to NEMS unit
     # Using 'EPSG:5070' projection for nearest distance calculation
@@ -168,13 +139,11 @@ if __name__ == '__main__':
     # reeds_path = os.path.expanduser('~/Documents/GitHub/ReEDS/public_ReEDS/ReEDS')
     # inputs_case = os.path.join(reeds_path,'runs','test_Pacific','inputs_case')
 
-    casepath = os.path.dirname(inputs_case)
-
     #%% Set up logger
     log = reeds.log.makelog(
         scriptname=__file__,
         logpath=os.path.join(inputs_case,'..','gamslog.txt'),
     )
-    print('Starting generate_unitdata.py')
-    main(reeds_path, casepath, inputs_case)
-    print('Complete processsing generate_unitdata.py')
+    print('Starting process_unitdata.py')
+    main(inputs_case)
+    print('Complete processsing process_unitdata.py')

@@ -1345,7 +1345,7 @@ def write_batch_script(
         big_comment('Input processing', OPATH)
         for s in [
             'copy_files',
-            'generate_unitdata',
+            'process_unitdata',
             'mcs_sampler',
             'aggregate_regions',
             'hydcf',
