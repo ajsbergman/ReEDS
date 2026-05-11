@@ -771,12 +771,6 @@ def save_sc_outputs(
     df_sc.to_csv(os.path.join(outpath, 'results', tech + '_supply_curve_raw.csv'), index=False)
     #Round now to prevent infeasibility in model because existing (pre-2010 + prescribed) capacity is slightly higher than supply curve capacity
     df_sc[['capacity','existing_capacity']] = df_sc[['capacity','existing_capacity']].round(decimals)
-    if existing_sites:
-        #Reduce supply curve based on exogenous (pre-start-year) capacity
-        if subtract_exog:
-            criteria = (df_sc['online_year'] > 0) & (df_sc['online_year'] < start_year)
-            df_sc.loc[criteria, 'capacity'] = (
-                df_sc.loc[criteria, 'capacity'] - df_sc.loc[criteria, 'existing_capacity'])
 
     cfcol = 'capacity_factor_ac' if 'capacity_factor_ac' in df_sc else 'mean_cf'
     df_sc_out = (
