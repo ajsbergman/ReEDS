@@ -8,7 +8,6 @@ import ctypes
 import numpy as np
 import pandas as pd
 import geopandas as gpd
-from glob import glob
 from pathlib import Path
 from pandas.api.types import is_float_dtype
 
@@ -1271,15 +1270,21 @@ def get_last_iteration(case, year=2050, datum=None, samples=None):
     """Get the last iteration of PRAS for a given case/year"""
     if datum not in [None,'flow','energy']:
         raise ValueError(f"datum must be in [None,'flow','energy'] but is {datum}")
-    infile = sorted(glob(
-        os.path.join(
-            case, 'handoff', 'PRAS',
-            f"PRAS_{year}i*"
-            + (f'-{samples}' if samples is not None else '')
-            + (f'-{datum}' if datum is not None else '')
-            + '.h5'
-        )
-    ))[-1]
+    pattern = (
+        f"PRAS_{year}i*"
+        + (f'-{samples}' if samples is not None else '')
+        + (f'-{datum}' if datum is not None else '')
+        + '.h5'
+    )
+    matches = list(Path(case, 'handoff', 'PRAS').glob(pattern))
+    if not matches:
+        raise ValueError(f"{case} has not solved year {year}")
+    infile = max(
+        matches,
+        ## File names are formatted as 'PRAS_{year}i{iteration}.h5' or
+        ## 'PRAS_{year}i{iteration}-{other_identifiers}.h5'; keep the largest iteration
+        key=lambda f: int(f.stem[f.stem.rfind('i')+1:].split('-')[0])
+    )
     iteration = int(
         os.path.splitext(os.path.basename(infile))[0]
         .split('-')[0].split('_')[1].split('i')[1]

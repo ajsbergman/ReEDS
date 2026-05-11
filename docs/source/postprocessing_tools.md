@@ -82,7 +82,7 @@ The first case in the list is treated as the base case, and other cases are all 
 Example for two cases:
 
 ```bash
-python postprocessing/compare_cases.py /Users/username/github/ReEDS-2.0/runs/v20250310_main_USA /Users/username/github/ReEDS-2.0/runs/v20250310_newthing_USA
+python postprocessing/compare_cases.py /Users/username/github/ReEDS/runs/v20250310_main_USA /Users/username/github/ReEDS/runs/v20250310_newthing_USA
 ```
 
 Example for three cases:
