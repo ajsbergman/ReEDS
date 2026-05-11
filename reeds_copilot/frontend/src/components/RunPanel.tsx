@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   listCasesFilesAPI,
+  listHpcCasesFilesAPI,
   listCondaEnvsAPI,
   envCheckAPI,
   envFixAPI,
@@ -80,7 +81,10 @@ export default function RunPanel() {
   const [hpcCluster, setHpcCluster] = useState<"kestrel" | "eagle" | "custom">("kestrel");
   const [hpcHost, setHpcHost] = useState("kestrel.hpc.nrel.gov");
   const [hpcUser, setHpcUser] = useState("");
+  const [hpcPassword, setHpcPassword] = useState("");
   const [hpcReedsPath, setHpcReedsPath] = useState("");
+  const [hpcConnected, setHpcConnected] = useState(false);
+  const [hpcLoading, setHpcLoading] = useState(false);
 
   /* HPC / Slurm config */
   const [slurmAccount, setSlurmAccount] = useState("");
@@ -247,6 +251,7 @@ export default function RunPanel() {
         ...(target === "hpc" && {
           hpc_host: hpcHost.trim(),
           hpc_user: hpcUser.trim(),
+          hpc_password: hpcPassword,
           hpc_reeds_path: hpcReedsPath.trim(),
           slurm_account: slurmAccount.trim(),
           slurm_walltime: slurmWalltime.trim(),
@@ -290,10 +295,59 @@ export default function RunPanel() {
   /* ── Render ─────────────────────────────────────────────────────────────── */
   return (
     <div className="run-panel">
+      {/* ── Local / HPC tab toggle ────────────────────────────────────────── */}
+      <div style={{ display: "flex", gap: 0, marginBottom: 10 }}>
+        <button
+          onClick={() => {
+            setTarget("local");
+            // Reload local cases
+            listCasesFilesAPI().then((files) => {
+              setCasesFiles(files);
+              const small = files.find((f) => f.suffix === "small");
+              if (small) { setSelectedSuffix(small.suffix); setAvailableCases(small.cases); setSelectedCases(small.cases); }
+              else if (files.length > 0) { setSelectedSuffix(files[0].suffix); setAvailableCases(files[0].cases); setSelectedCases(files[0].cases); }
+            }).catch(() => {});
+          }}
+          style={{
+            flex: 1, padding: "10px 0", fontSize: "0.9rem", fontWeight: 600,
+            border: "1px solid var(--border)", cursor: "pointer",
+            borderRadius: "6px 0 0 6px",
+            background: target === "local" ? "var(--accent)" : "var(--bg-secondary)",
+            color: target === "local" ? "#fff" : "var(--text-muted)",
+          }}
+        >
+          💻 Local
+        </button>
+        <button
+          onClick={() => {
+            setTarget("hpc");
+            // Clear cases until user connects
+            if (!hpcConnected) {
+              setCasesFiles([]);
+              setAvailableCases([]);
+              setSelectedCases([]);
+              setSelectedSuffix("");
+            }
+          }}
+          style={{
+            flex: 1, padding: "10px 0", fontSize: "0.9rem", fontWeight: 600,
+            border: "1px solid var(--border)", borderLeft: "none", cursor: "pointer",
+            borderRadius: "0 6px 6px 0",
+            background: target === "hpc" ? "var(--accent)" : "var(--bg-secondary)",
+            color: target === "hpc" ? "#fff" : "var(--text-muted)",
+          }}
+        >
+          🖥️ HPC
+        </button>
+      </div>
+
       {/* ── Launch form ───────────────────────────────────────────────────── */}
       <section className="run-form">
         <h2>Launch ReEDS Run</h2>
 
+        {/* ── Local-only: Conda environment + env checks ── */}
+        {target === "local" && (
+          <>
         {/* Conda environment */}
         <div className="run-field">
           <label>Conda Environment</label>
@@ -381,6 +435,98 @@ export default function RunPanel() {
             </div>
           )}
         </div>
+          </>
+        )}
+
+        {/* ── HPC-only: connection + Slurm config ── */}
+        {target === "hpc" && (
+          <>
+            <div className="run-field">
+              <label>HPC Cluster</label>
+              <div style={{ display: "flex", gap: 6 }}>
+                <select value={hpcCluster} onChange={(e) => {
+                  const v = e.target.value as "kestrel" | "eagle" | "custom";
+                  setHpcCluster(v);
+                  if (v === "kestrel") setHpcHost("kestrel.hpc.nrel.gov");
+                  else if (v === "eagle") setHpcHost("eagle.hpc.nrel.gov");
+                }} style={{ width: 120 }}>
+                  <option value="kestrel">Kestrel</option>
+                  <option value="eagle">Eagle</option>
+                  <option value="custom">Custom</option>
+                </select>
+                <input type="text" value={hpcHost} onChange={(e) => setHpcHost(e.target.value)}
+                  placeholder="hostname" style={{ flex: 1 }} />
+              </div>
+            </div>
+            <div className="run-field">
+              <label>Username</label>
+              <input type="text" value={hpcUser} onChange={(e) => setHpcUser(e.target.value)}
+                placeholder="HPC username" />
+            </div>
+            <div className="run-field">
+              <label>Password</label>
+              <input type="password" value={hpcPassword} onChange={(e) => setHpcPassword(e.target.value)}
+                placeholder="password" />
+            </div>
+            <div className="run-field">
+              <label>Remote ReEDS Path</label>
+              <input type="text" value={hpcReedsPath} onChange={(e) => setHpcReedsPath(e.target.value)}
+                placeholder="/projects/reeds/ReEDS" />
+            </div>
+
+            {/* Connect & load cases */}
+            <button
+              className="run-launch-btn"
+              style={{ marginBottom: 12, background: hpcConnected ? "#4caf50" : undefined }}
+              disabled={hpcLoading || !hpcHost || !hpcUser || !hpcPassword || !hpcReedsPath}
+              onClick={() => {
+                setHpcLoading(true);
+                setError("");
+                listHpcCasesFilesAPI(hpcHost, hpcUser, hpcReedsPath, hpcPassword)
+                  .then((files) => {
+                    setCasesFiles(files);
+                    setHpcConnected(true);
+                    const small = files.find((f) => f.suffix === "small");
+                    if (small) {
+                      setSelectedSuffix(small.suffix);
+                      setAvailableCases(small.cases);
+                      setSelectedCases(small.cases);
+                    } else if (files.length > 0) {
+                      setSelectedSuffix(files[0].suffix);
+                      setAvailableCases(files[0].cases);
+                      setSelectedCases(files[0].cases);
+                    }
+                  })
+                  .catch((e) => setError(e instanceof Error ? e.message : String(e)))
+                  .finally(() => setHpcLoading(false));
+              }}
+            >
+              {hpcLoading ? "Connecting…" : hpcConnected ? "✅ Connected — Reload Cases" : "🔌 Connect & Load Cases"}
+            </button>
+            <div className="run-field">
+              <label>Slurm Account (Allocation)</label>
+              <input type="text" value={slurmAccount} onChange={(e) => setSlurmAccount(e.target.value)}
+                placeholder="e.g. reeds" />
+            </div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <div className="run-field" style={{ flex: 1 }}>
+                <label>Walltime</label>
+                <input type="text" value={slurmWalltime} onChange={(e) => setSlurmWalltime(e.target.value)}
+                  placeholder="2-00:00:00" />
+              </div>
+              <div className="run-field" style={{ flex: 1 }}>
+                <label>Partition</label>
+                <input type="text" value={slurmPartition} onChange={(e) => setSlurmPartition(e.target.value)}
+                  placeholder="(default)" />
+              </div>
+              <div className="run-field" style={{ flex: 1 }}>
+                <label>Memory (MB)</label>
+                <input type="text" value={slurmMemory} onChange={(e) => setSlurmMemory(e.target.value)}
+                  placeholder="246000" />
+              </div>
+            </div>
+          </>
+        )}
 
         {/* Batch name (original) */}
         <div className="run-field">
@@ -478,11 +624,11 @@ export default function RunPanel() {
           </button>
         </div>
 
-        {runs.length === 0 && (
-          <p className="run-empty">No runs yet. Launch one above!</p>
+        {runs.filter((r) => target === "hpc" ? r.target === "hpc" : r.target !== "hpc").length === 0 && (
+          <p className="run-empty">No {target === "hpc" ? "HPC" : "local"} runs yet. Launch one above!</p>
         )}
 
-        {runs.map((r) => (
+        {runs.filter((r) => target === "hpc" ? r.target === "hpc" : r.target !== "hpc").map((r) => (
           <div key={r.id} className={`run-card ${r.status}`}>
             <div className="run-card-header" onClick={() => toggleExpand(r.id)}>
               <div className="run-card-title">

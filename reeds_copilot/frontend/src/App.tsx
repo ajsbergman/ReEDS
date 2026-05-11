@@ -157,9 +157,9 @@ export default function App() {
     { key: "chat", label: "💬  Chat" },
     { key: "search", label: "🔍  Search" },
     { key: "inputs", label: "📥  Inputs Explorer" },
-    { key: "runs", label: "🖥️  Run ReEDS Locally" },
-    { key: "hpc", label: "🚀  Run ReEDS Remotely" },
+    { key: "runs", label: "🚀  Run ReEDS" },
     { key: "outputs", label: "📤  Outputs Explorer" },
+    { key: "hpc", label: "🖥️  HPC Explorer" },
     { key: "settings", label: "⚙️  Settings" },
   ];
 
