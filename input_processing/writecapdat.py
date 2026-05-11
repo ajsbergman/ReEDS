@@ -56,10 +56,12 @@ def create_exog_rsc(reeds_path,inputs_case,gendb,TECH,COLNAMES,sw,startyear):
     # Establish resource classification inputs for technologies (UPV, wind-ons, wind-ofs)
     # from supply curves
 
-    upv_class = prep_supply_curve(reeds_path, tech='upv', 
-                                  access_case=sw.GSw_SitingUPV, subtech='')
-    wind_ons_class = prep_supply_curve(reeds_path, tech='wind-ons', 
-                                       access_case=sw.GSw_SitingWindOns, subtech='')
+
+    rsc_class = {}
+    rsc_class["upv"] = prep_supply_curve(reeds_path, tech='upv', 
+                                         access_case=sw.GSw_SitingUPV, subtech='')
+    rsc_class["wind-ons"]  = prep_supply_curve(reeds_path, tech='wind-ons', 
+                                               access_case=sw.GSw_SitingWindOns, subtech='')
     
     # for offshore wind, specify 'fixed' or 'floating' tech
     wind_ofs_subtech_list = ['fixed','floating']
@@ -69,12 +71,7 @@ def create_exog_rsc(reeds_path,inputs_case,gendb,TECH,COLNAMES,sw,startyear):
                                                    access_case=sw.GSw_SitingWindOfs,
                                                    subtech=wind_ofs_subtech)
         wind_ofs_class_all.append(wind_ofs_class_subtech)
-    wind_ofs_class = pd.concat(wind_ofs_class_all, ignore_index=True) 
-
-    rsc_class = {}
-    rsc_class["upv"] = upv_class
-    rsc_class["wind-ons"]  = wind_ons_class
-    rsc_class["wind-ofs"]  = wind_ofs_class
+    rsc_class["wind-ofs"] = pd.concat(wind_ofs_class_all, ignore_index=True) 
 
     # Read resource classification inputs for geothermal
     rsc_class["geohydro_allkm"]  = pd.read_csv(os.path.join(inputs_case,
