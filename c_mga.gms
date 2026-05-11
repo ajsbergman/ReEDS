@@ -27,6 +27,22 @@ eq_MGA_Objective$Sw_MGA..
 
 * ---------------------------------------------------------------------------
 
+$elseif.mgaobj %GSw_MGA_Objective% == 'generation'
+Equation eq_MGA_Objective "--MW-- Defines generation for MGA" ;
+Variable MGA_OBJ "--MWh-- Generation of technology to be minimized/maximied" ;
+eq_MGA_Objective$Sw_MGA..
+    MGA_OBJ
+    =e=
+    sum{(i,v,r,h,t)
+        $[tmodel(t)
+        $valgen(i,v,r,t)
+        $%GSw_MGA_SubObjective%(i)],
+        GEN(i,v,r,h,t) * hours(h)
+    }
+;
+
+* ---------------------------------------------------------------------------
+
 $elseif.mgaobj %GSw_MGA_Objective% == 'transmission'
 Equation eq_MGA_Objective "--MW-- Defines transmission capacity for MGA" ;
 Variable MGA_OBJ "--MW-- Transmission capacity of all types" ;
@@ -73,5 +89,56 @@ eq_MGA_Objective$Sw_MGA..
 ;
 
 * ---------------------------------------------------------------------------
+
+$elseif.mgaobj %GSw_MGA_Objective% == 'employment'
+Equation eq_MGA_Objective "--job-years-- Defines number of job-years for MGA" ;
+Variable MGA_OBJ "--job-years-- Total job-years to be minimized/maximized" ;
+eq_MGA_Objective$Sw_MGA..
+    MGA_OBJ
+    =e=
+    sum{(i,v,r,t)
+        $[tmodel(t)
+        $valcap(i,v,r,t)],
+        CAP(i,v,r,t) * pvf_onm(t) * employment_factor_plant(i,"fom")
+    }
+    + sum{(i,v,r,h,t)
+          $[tmodel(t)
+          $valgen(i,v,r,t)],
+          GEN(i,v,r,h,t) * pvf_onm(t) * hours(h) * employment_factor_plant(i,"vom")
+    }
+    + sum{(i,v,r,t)
+          $[tmodel(t)
+          $valinv(i,v,r,t)],
+          INV(i,v,r,t) * pvf_capital(t) * employment_factor_plant(i,"construction")
+    }
+    
+    # AC construction employment formula here is slightly different than in
+    # e_report.gms as only cumulative term TRAN_CAPEX_BINS is included here vs
+    # annual term used in e_report.gms
+    + sum{(r,rr,tscbin,t)
+          $[tmodel(t)
+          $routes_inv(r,rr,"AC",t)
+          $tsc_binwidth(r,rr,tscbin)],
+          trans_cost_cap_fin_mult(t) 
+          * ((TRAN_CAPEX_BINS(r,rr,tscbin,t)) 
+          * pvf_capital(t)
+          * employment_factor_inter_transmission("construction"))}
+
+    + sum{trtype
+          $[routes_inv(r,rr,trtype,t)
+          $(not aclike(trtype))],
+          trans_cost_cap_fin_mult(t)
+          * transmission_cost_nonac(r,rr,trtype)
+          * INVTRAN(r,rr,trtype,t)
+          * employment_factor_inter_transmission("construction") / 2 }      
+    
+    + sum{(r,rr,trtype,t)
+          $[tmodel(t)
+          $routes(r,rr,trtype,t)],
+          CAPTRAN_ENERGY(r,rr,trtype,t) 
+          * pvf_onm(t)
+          * employment_factor_inter_transmission("fom")  }
+;
+
 
 $endif.mgaobj

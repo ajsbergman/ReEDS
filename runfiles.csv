@@ -127,6 +127,8 @@ e.csv,inputs/sets/e.csv,1,ignore,ignore,,,,,0,,,,e,,
 eall.csv,inputs/sets/eall.csv,1,ignore,ignore,,,,,,,,,eall,,
 emit_rate.csv,,1,ignore,ignore,,"etype,e,i,v,r",,0,0,,,,,,ReEDS-to-PLEXOS output
 emitrate.csv,inputs/emission_constraints/emitrate.csv,1,ignore,ignore,,,,,0,,,,,,
+employment_factor_plant.csv,inputs/employment/employment_factor_plant_{GSw_EmploymentFactor}.csv,1,ignore,ignore,,,,,0,,,,,,
+employment_factor_inter_transmission.csv,inputs/employment/employment_factor_inter_transmission.csv,1,ignore,ignore,,,,,0,,,,,,
 energy_communities.csv,inputs/financials/energy_communities.csv,1,ignore,ignore,,,,,0,,,,,,region aggregation and filtering is handled in copy_files
 etype.csv,inputs/sets/etype.csv,1,ignore,ignore,,,,,,,,,etype,,
 eval_period_adj_mult.csv,,1,ignore,ignore,,,,,0,,,,,,
@@ -233,6 +235,7 @@ itc_frac_monetized.csv,,1,ignore,ignore,,,,,0,,,,,,
 itc_fractions.csv,,1,ignore,ignore,,"i,country,t",,0,0,,,,,,
 ivt.csv,,1,ignore,ignore,,,,,0,,,,,,created in runbatch.py
 ivt_step.csv,,1,ignore,ignore,,,,,0,,,,,,
+jtype.csv,inputs/sets/jtype.csv,1,ignore,ignore,,,,,,,,,jtype,,
 lcclike.csv,inputs/sets/lcclike.csv,1,ignore,ignore,,,,,0,,,,lcclike,,
 load_2010.csv,,1,sum,ignore,r,wide,,1,0,,1,,,,disaggfunc set to ignore because load will already be in correct spatial resolution
 load_allyear.csv,,1,sum,ignore,*r,"h,t",,0,0,,1,,,,disaggfunc set to ignore because load will already be in correct spatial resolution
@@ -496,6 +499,8 @@ c_supplymodel.gms,c_supplymodel.gms,1,ignore,ignore,,,,,,,,,,,
 c_supplyobjective.gms,c_supplyobjective.gms,1,ignore,ignore,,,,,,,,,,,
 cbc.opt,cbc.opt,1,ignore,ignore,,,,,,,,,,,
 cplex.op2,cplex.op2,1,ignore,ignore,,,,,,,,,,,
+cplex.op3,cplex.op3,1,ignore,ignore,,,,,,,,,,,
+cplex.op4,cplex.op4,1,ignore,ignore,,,,,,,,,,,
 cplex.opt,cplex.opt,1,ignore,ignore,,,,,,,,,,,
 createmodel.gms,createmodel.gms,1,ignore,ignore,,,,,,,,,,,
 d_solveallyears.gms,d_solveallyears.gms,1,ignore,ignore,,,,,,,,,,,

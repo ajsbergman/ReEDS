@@ -160,6 +160,13 @@ $include inputs_case%ds%etype.csv
 $onlisting
 / ;
 
+set jtype "job types used in model (construction and o&m jobs)"
+/
+$offlisting
+$include inputs_case%ds%jtype.csv
+$onlisting
+/ ;
+
 Sets
 nercr "NERC regions"
 * https://www.nerc.com/pa/RAPA/ra/Reliability%20Assessments%20DL/NERC_LTRA_2021.pdf
@@ -408,88 +415,89 @@ $onlisting
 
 set
 *technology-specific subsets
-  battery(i)           "battery storage technologies",
-  beccs(i)             "Bio with CCS",
-  bio(i)               "technologies that use only biofuel",
-  boiler(i)            "technologies that use steam boilers"
-  canada(i)            "Canadian imports",
-  ccs(i)               "CCS technologies",
-  ccs_mod(i)           "CCS technologies with moderate capture rate",
-  ccs_max(i)           "CCS technologies with maximum capture rate",
-  ccsflex_byp(i)       "Flexible CCS technologies with bypass",
-  ccsflex_dac(i)       "Flexible CCS technologies with direct air capture",
-  ccsflex_sto(i)       "Flexible CCS technologies with storage",
-  ccsflex(i)           "Flexible CCS technologies",
-  cf_tech(i)           "technologies that have a specified capacity factor"
-  coal_ccs(i)          "technologies that use coal and have CCS",
-  coal(i)              "technologies that use coal",
-  cofire(i)            "cofire technologies",
-  combined_cycle(i)    "combined cycle technologies",
-  combustion_turbine(i)"combustion turbine technologies",
-  consume(i)           "technologies that consume electricity and add to load",
-  conv(i)              "conventional generation technologies",
-  csp_storage(i)       "csp generation technologies with thermal storage",
-  csp(i)               "csp generation technologies",
-  csp1(i)              "csp-tes generation technologies 1",
-  csp2(i)              "csp-tes generation technologies 2",
-  csp3(i)              "csp-tes generation technologies 3",
-  csp4(i)              "csp-tes generation technologies 4",
-  dac(i)               "direct air capture technologies",
-  distpv(i)            "distpv (i.e., rooftop PV) generation technologies",
-  demand_flex(i)       "demand flexibility technologies (includes DR and EVMC)",
-  dr_shed(i)           "DR shed technologies"
-  evmc(i)              "ev flexibility technologies",
-  evmc_storage(i)      "ev flexibility as direct load control",
-  evmc_shape(i)        "ev flexibility as adoptable change to load from response to pricing",
-  fossil(i)            "fossil technologies"
-  fuel_cell(i)         "fuel cell technologies",
-  gas_cc_ccs(i)        "techs that are gas combined cycle and have CCS",
-  gas_cc(i)            "techs that are gas combined cycle",
-  gas_ct(i)            "techs that are gas combustion turbine",
-  gas(i)               "techs that use gas (but not o-g-s)",
-  geo(i)               "geothermal technologies",
-  geo_base(i)          "geothermal technologies typically considered in model runs",
-  geo_hydro(i)         "geothermal hydrothermal technologies",
-  geo_egs(i)           "geothermal enhanced geothermal systems technologies",
-  geo_extra(i)         "geothermal technologies not typically considered in model runs",
-  geo_egs_allkm(i)     "egs (covering deep egs depths of all km) technologies",
-  geo_egs_nf(i)        "egs (near-field) technologies",
-  h2_combustion(i)     "h2-ct and h2-cc technologies",
-  h2_cc(i)             "h2-cc technologies"
-  h2_ct(i)             "h2-ct technologies",
-  h2(i)                "hydrogen-producing technologies",
-  hyd_add_pump(i)      "hydro techs with an added pump",
-  hydro_d(i)           "dispatchable hydro technologies",
-  hydro_nd(i)          "non-dispatchable hydro technologies",
-  hydro(i)             "hydro technologies",
-  lfill(i)             "land-fill gas technologies",
-  nondispatch(i)       "technologies that are not dispatchable"
-  nuclear(i)           "nuclear technologies",
-  ofswind(i)           "offshore wind technologies",
-  ogs(i)               "oil-gas-steam technologies",
-  onswind(i)           "onshore wind technologies",
-  psh(i)               "pumped hydro storage technologies",
-  pv(i)                "all PV generation technologies",
-  pvb(i)               "hybrid pv+battery technologies",
-  pvb1(i)              "pvb generation technologies 1",
-  pvb2(i)              "pvb generation technologies 2",
-  pvb3(i)              "pvb generation technologies 3",
-  re(i)                "renewable energy technologies",
-  refurbtech(i)        "technologies that can be refurbished",
-  rsc_i(i)             "technologies based on Resource supply curves",
-  smr(i)               "steam methane reforming technologies",
-  storage_hybrid(i)    "hybrid VRE-storage technologies",
+  battery(i)            "battery storage technologies",
+  beccs(i)              "Bio with CCS",
+  bio(i)                "technologies that use only biofuel",
+  boiler(i)             "technologies that use steam boilers"
+  canada(i)             "Canadian imports",
+  ccs(i)                "CCS technologies",
+  ccs_mod(i)            "CCS technologies with moderate capture rate",
+  ccs_max(i)            "CCS technologies with maximum capture rate",
+  ccsflex_byp(i)        "Flexible CCS technologies with bypass",
+  ccsflex_dac(i)        "Flexible CCS technologies with direct air capture",
+  ccsflex_sto(i)        "Flexible CCS technologies with storage",
+  ccsflex(i)            "Flexible CCS technologies",
+  cf_tech(i)            "technologies that have a specified capacity factor"
+  coal_ccs(i)           "technologies that use coal and have CCS",
+  coal(i)               "technologies that use coal",
+  cofire(i)             "cofire technologies",
+  combined_cycle(i)     "combined cycle technologies",
+  combustion_turbine(i) "combustion turbine technologies",
+  consume(i)            "technologies that consume electricity and add to load",
+  conv(i)               "conventional generation technologies",
+  csp_storage(i)        "csp generation technologies with thermal storage",
+  csp(i)                "csp generation technologies",
+  csp1(i)               "csp-tes generation technologies 1",
+  csp2(i)               "csp-tes generation technologies 2",
+  csp3(i)               "csp-tes generation technologies 3",
+  csp4(i)               "csp-tes generation technologies 4",
+  dac(i)                "direct air capture technologies",
+  distpv(i)             "distpv (i.e., rooftop PV) generation technologies",
+  demand_flex(i)        "demand flexibility technologies (includes DR and EVMC)",
+  dr_shed(i)            "DR shed technologies"
+  evmc(i)               "ev flexibility technologies",
+  evmc_storage(i)       "ev flexibility as direct load control",
+  evmc_shape(i)         "ev flexibility as adoptable change to load from response to pricing",
+  fossil(i)             "fossil technologies"
+  fuel_cell(i)          "fuel cell technologies",
+  gas_cc_ccs(i)         "techs that are gas combined cycle and have CCS",
+  gas_cc(i)             "techs that are gas combined cycle",
+  gas_ct(i)             "techs that are gas combustion turbine",
+  gas(i)                "techs that use gas (but not o-g-s)",
+  gentech(i)            "generation technologies",
+  geo(i)                "geothermal technologies",
+  geo_base(i)           "geothermal technologies typically considered in model runs",
+  geo_hydro(i)          "geothermal hydrothermal technologies",
+  geo_egs(i)            "geothermal enhanced geothermal systems technologies",
+  geo_extra(i)          "geothermal technologies not typically considered in model runs",
+  geo_egs_allkm(i)      "egs (covering deep egs depths of all km) technologies",
+  geo_egs_nf(i)         "egs (near-field) technologies",
+  h2_combustion(i)      "h2-ct and h2-cc technologies",
+  h2_cc(i)              "h2-cc technologies"
+  h2_ct(i)              "h2-ct technologies",
+  h2(i)                 "hydrogen-producing technologies",
+  hyd_add_pump(i)       "hydro techs with an added pump",
+  hydro_d(i)            "dispatchable hydro technologies",
+  hydro_nd(i)           "non-dispatchable hydro technologies",
+  hydro(i)              "hydro technologies",
+  lfill(i)              "land-fill gas technologies",
+  nondispatch(i)        "technologies that are not dispatchable"
+  nuclear(i)            "nuclear technologies",
+  ofswind(i)            "offshore wind technologies",
+  ogs(i)                "oil-gas-steam technologies",
+  onswind(i)            "onshore wind technologies",
+  psh(i)                "pumped hydro storage technologies",
+  pv(i)                 "all PV generation technologies",
+  pvb(i)                "hybrid pv+battery technologies",
+  pvb1(i)               "pvb generation technologies 1",
+  pvb2(i)               "pvb generation technologies 2",
+  pvb3(i)               "pvb generation technologies 3",
+  re(i)                 "renewable energy technologies",
+  refurbtech(i)         "technologies that can be refurbished",
+  rsc_i(i)              "technologies based on Resource supply curves",
+  smr(i)                "steam methane reforming technologies",
+  storage_hybrid(i)     "hybrid VRE-storage technologies",
   storage_standalone(i) "stand alone storage technologies",
-  storage(i)           "storage technologies",
-  storage_interday(i)  "interday storage",
-  thermal_storage(i)   "thermal storage technologies",
-  upgrade(i)           "technologies that are upgrades from other technologies",
-  upv(i)               "upv generation technologies",
-  vre_distributed(i)   "distributed PV technologies",
-  vre_no_csp(i)        "variable renewable energy technologies that are not csp",
-  vre_utility(i)       "utility scale wind and PV technologies",
-  vre(i)               "variable renewable energy technologies",
-  wind(i)              "wind generation technologies",
+  storage(i)            "storage technologies",
+  storage_interday(i)   "interday storage",
+  thermal_storage(i)    "thermal storage technologies",
+  upgrade(i)            "technologies that are upgrades from other technologies",
+  upv(i)                "upv generation technologies",
+  vre_distributed(i)    "distributed PV technologies",
+  vre_no_csp(i)         "variable renewable energy technologies that are not csp",
+  vre_utility(i)        "utility scale wind and PV technologies",
+  vre(i)                "variable renewable energy technologies",
+  wind(i)               "wind generation technologies",
 
 t(allt) "full set of years" /%startyear%*%endyear%/,
 
@@ -980,6 +988,7 @@ gas_cc_ccs(i)$(not ban(i))          = yes$i_subsets(i,'gas_cc_ccs') ;
 gas_cc(i)$(not ban(i))              = yes$i_subsets(i,'gas_cc') ;
 gas_ct(i)$(not ban(i))              = yes$i_subsets(i,'gas_ct') ;
 gas(i)$(not ban(i))                 = yes$i_subsets(i,'gas') ;
+gentech(i)$(not ban(i))             = yes$i_subsets(i,'gentech') ;
 geo(i)$(not ban(i))                 = yes$i_subsets(i,'geo') ;
 geo_base(i)$(not ban(i))            = yes$i_subsets(i,'geo_base') ;
 geo_hydro(i)$(not ban(i))           = yes$i_subsets(i,'geo_hydro') ;
@@ -6596,6 +6605,39 @@ parameter
 ;
 z_rep_inv(t) = 0 ;
 z_rep_op(t) = 0 ;
+
+*====================================
+*     --- Employment Factors ---
+*====================================
+* Employment factors of construction and operation of power plants
+$onempty
+Table employment_factor_plant(i,jtype) "--job-years/MW or job-years/MWh-- employment factors of power plants by technology and job type (construction and o&m jobs)"
+$offlisting
+$ondelim
+$include inputs_case%ds%employment_factor_plant.csv
+$offdelim
+$onlisting
+;
+$offempty
+
+* Employment factors of transmission deployment and flow
+parameter employment_factor_inter_transmission(jtype)  "--job-years/MW or job-years/$M-- employment factors of transmission lines by job type (construction or o&m jobs)"
+/
+$offlisting
+$ondelim
+$include inputs_case%ds%employment_factor_inter_transmission.csv
+$offdelim
+$onlisting
+/ ;
+
+* If upgrade techs, construction employment factor is half
+* Only apply this to non CCS upgrades if using JEDI EFs since JEDI already specifies CCS upgrade EFs
+$ifthen.upgrade_ef %GSw_EmploymentFactor% == "JEDI"
+employment_factor_plant(i,"construction")$[upgrade(i)
+                                         $(not ccs(i))] = employment_factor_plant(i,"construction") * 0.5 ;
+$else.upgrade_ef
+employment_factor_plant(i,"construction")$upgrade(i) = employment_factor_plant(i,"construction") * 0.5 ;
+$endif.upgrade_ef
 
 
 *================================================================================================

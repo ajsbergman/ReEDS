@@ -2072,6 +2072,53 @@ h2_usage(r,h,t)$tmodel_new(t) =
     + sum{(i,v)$[valgen(i,v,r,t)$h2_combustion(i)],
           GEN.l(i,v,r,h,t) * h2_combustion_intensity * heat_rate(i,v,r,t) } ;
 
+*=========================
+* EMPLOYMENT
+*=========================
+* Employment from generators (job-years)
+* Generator O&M job-years
+employment_generator(i,"fom",r,t) = sum{v, CAP.l(i,v,r,t)$valcap(i,v,r,t) 
+                                           * employment_factor_plant(i,"fom")} ;
+employment_generator(i,"vom",r,t) = sum{(v,h), GEN.l(i,v,r,h,t)$valgen(i,v,r,t) 
+                                               * hours(h)* employment_factor_plant(i,"vom")} ;
+* Generator construction job-years
+employment_generator(i,"construction",r,t) = sum{v, INV.l(i,v,r,t)$valinv(i,v,r,t)  
+                                                    * employment_factor_plant(i,"construction")} ;
+
+* Employment from transmission (job-years)
+* Transmission O&M job-years
+parameter employment_transmission_fom(r,rr,t) "Transmission FO&M job-years by line and solveyear" ;
+employment_transmission_fom(r,rr,t) = sum{trtype
+                                          $[routes(r,rr,trtype,t)],
+                                          CAPTRAN_ENERGY.l(r,rr,trtype,t) 
+                                          * employment_factor_inter_transmission("fom") } ;
+* Transmission FO&M job-years by region and solveyear
+employment_transmission("fom",r,t) = sum{rr,(employment_transmission_fom(r,rr,t)) / 2} ;
+* Transmission construction job-years
+parameter employment_transmission_construction(r,rr,t) "Transmission construction job-years by line and solveyear" ;
+employment_transmission_construction(r,rr,t) = 
+* AC lines
+sum{tscbin
+    $[routes_inv(r,rr,"AC",t)
+    $tsc_binwidth(r,rr,tscbin)],
+    trans_cost_cap_fin_mult(t) 
+    * ((TRAN_CAPEX_BINS.l(r,rr,tscbin,t) - sum{tt$tprev(t,tt), TRAN_CAPEX_BINS.l(r,rr,tscbin,tt)}) 
+    * employment_factor_inter_transmission("construction")) }
+* non AC lines
++ sum{trtype
+      $[routes_inv(r,rr,trtype,t)
+      $(not aclike(trtype))],
+      trans_cost_cap_fin_mult(t)
+      * transmission_cost_nonac(r,rr,trtype)
+      * INVTRAN.l(r,rr,trtype,t)
+      * employment_factor_inter_transmission("construction") / 2 } ;
+* Transmission construction job-years by region and solveyear
+employment_transmission("construction",r,t) = sum{rr,(employment_transmission_construction(r,rr,t)) / 2} ;
+
+* Total employment (generator + transmission) by region and solveyear
+employment_tot(r,t) = sum{(i,jtype), employment_generator(i,jtype,r,t) } 
+                      + sum{jtype, employment_transmission(jtype,r,t) } ;
+
 *========================================
 * Calculate powfrac
 *========================================
