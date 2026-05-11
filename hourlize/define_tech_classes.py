@@ -39,6 +39,50 @@ tech_list = ['upv','wind-ons','wind-ofs']
 # for offshore wind
 subtech_list = ['fixed','floating']
 
+#%% ===========================================================================
+### --- FUNCTIONS ---
+### ===========================================================================
+
+# Load a supply-curve CSV for `tech` and `access_type`, compute class ranges,
+# and return a DataFrame with class id, min/max of the selected metric, and
+# the access case.
+def prep_supply_curve(tech, access_type, subtech):
+    class_def_name = 'reV_cf_ac'
+
+    # Load the supply curve raw file produced by reV
+    df = pd.read_csv(os.path.join(
+        reeds_path,'inputs','supply_curve',
+        'supplycurve_'+tech+'-'+access_type+'.csv'))
+
+    # Aggregate min/max by class and attach access_case
+    if tech == 'wind-ofs':
+        df['subtech'] = 'fixed'
+        df.loc[df['class']>=6,'subtech'] = 'floating'
+        df_sub = df[df['subtech']==subtech]
+        summary_df = df_sub.groupby('class')['cf'].agg(['min', 'max']).reset_index()
+        summary_df['subtech'] = subtech
+        summary_df['access_case'] = access_type
+        summary_df.columns = ['class', f'min_{class_def_name}', 
+                              f'max_{class_def_name}', 'subtech', 'access_case']
+    else:
+        summary_df = df.groupby('class')['cf'].agg(['min', 'max']).reset_index()
+        summary_df['access_case'] = access_type
+        summary_df.columns = ['class', f'min_{class_def_name}',
+                               f'max_{class_def_name}', 'access_case']
+    
+    # Only use max capacity factors as class cut offs to avoid gaps
+    summary_df = summary_df.sort_values(by=['class',f'min_{class_def_name}'])
+    for c in summary_df['class'].unique().tolist():
+        if c > min(summary_df['class'].unique().tolist()):
+            summary_df.loc[
+                summary_df['class']==c,f'min_{class_def_name}'
+                ] = summary_df.loc[summary_df['class']==c-1][f'max_{class_def_name}'].iloc[0]
+
+    # Round values to 4 decimal places
+    summary_df[f'min_{class_def_name}'] = summary_df[f'min_{class_def_name}'].round(4)
+    summary_df[f'max_{class_def_name}'] = summary_df[f'max_{class_def_name}'].round(4)
+
+    return summary_df
 
 def main(rev_file):
     for tech in tech_list:
@@ -97,49 +141,6 @@ def main(rev_file):
         geo_sc.to_csv(os.path.join(reeds_path,'inputs', 'supply_curve',
                                    'supplycurve_'+tech+'-reference.csv'),index=False)
 
-#%% ===========================================================================
-### --- FUNCTIONS ---
-### ===========================================================================
 
-# Load a supply-curve CSV for `tech` and `access_type`, compute class ranges,
-# and return a DataFrame with class id, min/max of the selected metric, and
-# the access case.
-def prep_supply_curve(tech, access_type, subtech):
-    class_def_name = 'reV_cf_ac'
-
-    # Load the supply curve raw file produced by reV
-    df = pd.read_csv(os.path.join(
-        reeds_path,'inputs','supply_curve',
-        'supplycurve_'+tech+'-'+access_type+'.csv'))
-
-    # Aggregate min/max by class and attach access_case
-    if tech == 'wind-ofs':
-        df['subtech'] = 'fixed'
-        df.loc[df['class']>=6,'subtech'] = 'floating'
-        df_sub = df[df['subtech']==subtech]
-        summary_df = df_sub.groupby('class')['cf'].agg(['min', 'max']).reset_index()
-        summary_df['subtech'] = subtech
-        summary_df['access_case'] = access_type
-        summary_df.columns = ['class', f'min_{class_def_name}', 
-                              f'max_{class_def_name}', 'subtech', 'access_case']
-    else:
-        summary_df = df.groupby('class')['cf'].agg(['min', 'max']).reset_index()
-        summary_df['access_case'] = access_type
-        summary_df.columns = ['class', f'min_{class_def_name}',
-                               f'max_{class_def_name}', 'access_case']
-    
-    # Only use max capacity factors as class cut offs to avoid gaps
-    summary_df = summary_df.sort_values(by=['class',f'min_{class_def_name}'])
-    for c in summary_df['class'].unique().tolist():
-        if c > min(summary_df['class'].unique().tolist()):
-            summary_df.loc[
-                summary_df['class']==c,f'min_{class_def_name}'
-                ] = summary_df.loc[summary_df['class']==c-1][f'max_{class_def_name}'].iloc[0]
-
-    # Round values to 4 decimal places
-    summary_df[f'min_{class_def_name}'] = summary_df[f'min_{class_def_name}'].round(4)
-    summary_df[f'max_{class_def_name}'] = summary_df[f'max_{class_def_name}'].round(4)
-
-    return summary_df
-
-main(rev_file)
+if __name__ == '__main__':
+    main(rev_file)
