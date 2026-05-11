@@ -87,11 +87,11 @@
 <h1>How to Use Sources Documentation<a class="headerlink" href="#how-to-use-sources-documentation" title="Link to this heading"></a></h1>
 <ol class="arabic simple">
 <li><p>Before running the .bat script, please ensure the sources.csv file is closed. If open, the script will be unable to replace the file and will throw an error.</p></li>
-<li><p>Run <strong>generate_sources_md_file.bat</strong> script (for Mac and Linux users <strong>generate_sources_md_file.sh</strong>)located within the documentation_tools folder (ReEDS-2.0/docs/source/documentation_tools). You will need navigate to that directory prior to running.</p></li>
+<li><p>Run <strong>generate_sources_md_file.bat</strong> script (for Mac and Linux users <strong>generate_sources_md_file.sh</strong>)located within the documentation_tools folder (ReEDS/docs/source/documentation_tools). You will need navigate to that directory prior to running.</p></li>
 <li><p>This will run the first script <strong>generate_new_sources.py</strong>. generating a new <strong>sources.csv</strong> file at the top directory of the repository, please note,the existing sources.csv in your Repository root will be renamed to sources_{timestamp}.csv format. This can be deleted manually if no longer required; or can be held on to if required for comparison. Tree change files are generated in the documentations_tools folder to indicate files not included in the prior sources file (<strong>sources_files_added.csv</strong>), files removed from the prior sources file (<strong>sources_files_deleted.csv</strong>), and files not included in the sources file because they aren’t committed (<strong>sources_untracked_files.csv</strong>). These change files should not be committed and can be deleted when no longer needed.</p></li>
 <li><p>Once this has finished running, please proceed to update relevant fields in the <em>sources.csv</em> file</p></li>
 <li><p>Once relevant fields have been updated, please save sources.csv and close it.</p></li>
-<li><p>Run <strong>generate_markdown.bat</strong> (for Mac and Linux users <strong>generate_markdown.sh</strong>)located within the documentation_tools folder. This will generate a README file <em>sources_documentation.md</em> with all the Source files and their details for the Repository by running the script <strong>generate_markdown.py</strong>. The markdown file will be generated in the ReEDS-2.0/docs/source/ location.</p></li>
+<li><p>Run <strong>generate_markdown.bat</strong> (for Mac and Linux users <strong>generate_markdown.sh</strong>)located within the documentation_tools folder. This will generate a README file <em>sources_documentation.md</em> with all the Source files and their details for the Repository by running the script <strong>generate_markdown.py</strong>. The markdown file will be generated in the ReEDS/docs/source/ location.</p></li>
 <li><p>Commit and push the updated <strong>sources.csv</strong> and <strong>sources_documentation.md</strong> files.</p></li>
 </ol>
 <hr class="docutils" />
@@ -114,7 +114,7 @@
 
   <div role="contentinfo">
     <p>&#169; Copyright 2024, NREL.
-      <span class="lastupdated">Last updated on May 08, 2026.
+      <span class="lastupdated">Last updated on May 11, 2026.
       </span></p>
   </div>
 

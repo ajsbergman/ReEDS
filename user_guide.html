@@ -1167,7 +1167,7 @@ temporally and spatially.</p>
 <li><p>Update settings in <code class="docutils literal notranslate"><span class="pre">config_base.json</span></code> as needed (<a class="reference internal" href="#config-jsons"><span class="xref myst">details</span></a>), including <code class="docutils literal notranslate"><span class="pre">load_source</span></code>.</p></li>
 <li><p>If running on the HPC, specify run allocation or other submission settings in <code class="docutils literal notranslate"><span class="pre">inputs/configs/srun_template.sh</span></code> (<a class="reference internal" href="#config-jsons"><span class="xref myst">details</span></a>).</p></li>
 <li><p>Run using <code class="docutils literal notranslate"><span class="pre">run_hourlize.py</span> <span class="pre">load</span></code> (<a class="reference internal" href="#running-hourlize"><span class="xref myst">details</span></a>).</p></li>
-<li><p>Outputs are written to <code class="docutils literal notranslate"><span class="pre">ReEDS-2.0/inputs/load</span></code>.</p>
+<li><p>Outputs are written to <code class="docutils literal notranslate"><span class="pre">ReEDS/inputs/load</span></code>.</p>
 <ol class="arabic simple">
 <li><p>If the results are intended to be used on the main branch, then after testing and quality control, upload the new profiles to the remote host as described in <code class="docutils literal notranslate"><span class="pre">preprocessing/README.md</span></code>.</p></li>
 <li><p>If the results are not intended for general use, they can still be used locally in ReEDS by setting the <code class="docutils literal notranslate"><span class="pre">GSw_LoadProfiles</span></code> switch to the absolute filepath of the resulting hourly demand file.</p></li>
@@ -1195,7 +1195,7 @@ temporally and spatially.</p>
 </section>
 <section id="update-the-rev-paths-files">
 <h4>2. Update the rev_paths files<a class="headerlink" href="#update-the-rev-paths-files" title="Link to this heading"></a></h4>
-<p>Update the reV paths file at <code class="docutils literal notranslate"><span class="pre">ReEDS-2.0/inputs/supply_curve/rev_paths.csv</span></code>. Typically this means updating the information for whichever techs (e.g., upv, wind-ons, wind-ofs) and access cases (e.g., reference, open, limited) you want to run.</p>
+<p>Update the reV paths file at <code class="docutils literal notranslate"><span class="pre">ReEDS/inputs/supply_curve/rev_paths.csv</span></code>. Typically this means updating the information for whichever techs (e.g., upv, wind-ons, wind-ofs) and access cases (e.g., reference, open, limited) you want to run.</p>
 <p>Some details on the additional columns to update:</p>
 <ul class="simple">
 <li><p><code class="docutils literal notranslate"><span class="pre">sc_path</span></code>: path to the supply curve folder on the shared drive; should be of the format tech/update_name (e.g. UPV/2023_06_06_Update, ONSHORE/2023_07_28_Update).</p></li>
@@ -1272,7 +1272,7 @@ python<span class="w"> </span>run_hourlize.py<span class="w"> </span>resource<sp
 <li><p>Supported values for <code class="docutils literal notranslate"><span class="pre">tech</span></code>: upv, wind-ofs, wind-ons.</p></li>
 <li><p>Typical values for <code class="docutils literal notranslate"><span class="pre">access_case</span></code>: reference, open, or limited.</p>
 <ul>
-<li><p>Other values allowed but must match values in <code class="docutils literal notranslate"><span class="pre">access_case</span></code> column of the rev_paths file (typically at <code class="docutils literal notranslate"><span class="pre">ReEDS-2.0/inputs/supply_curve/rev_paths.csv</span></code> but can be specified in <code class="docutils literal notranslate"><span class="pre">config_base.json</span></code>).</p></li>
+<li><p>Other values allowed but must match values in <code class="docutils literal notranslate"><span class="pre">access_case</span></code> column of the rev_paths file (typically at <code class="docutils literal notranslate"><span class="pre">ReEDS/inputs/supply_curve/rev_paths.csv</span></code> but can be specified in <code class="docutils literal notranslate"><span class="pre">config_base.json</span></code>).</p></li>
 </ul>
 </li>
 </ul>
@@ -1766,7 +1766,7 @@ These characteristics include:</p>
 
   <div role="contentinfo">
     <p>&#169; Copyright 2024, NREL.
-      <span class="lastupdated">Last updated on May 08, 2026.
+      <span class="lastupdated">Last updated on May 11, 2026.
       </span></p>
   </div>
 
