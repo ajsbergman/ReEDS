@@ -399,7 +399,7 @@ export default function HpcBrowser() {
             placeholder="username" />
           <label>Password</label>
           <input type="password" value={hpcPassword} onChange={(e) => setHpcPassword(e.target.value)}
-            placeholder="optional if SSH key set" />
+            placeholder="password" />
           <button className="btn-connect" onClick={handleConnect} disabled={loading}>
             {loading && !connected ? "Connecting…" : connected ? "🟢 Connected" : "Connect"}
           </button>
