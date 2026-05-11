@@ -2115,12 +2115,14 @@ capacity_exog(i,"init-1",r,t)$geo_egs(i) = geo_cap_exog(i,r) ;
 * do NOT have their capacity binned by heat rates (this include distpv for reasons explained below)
 capacity_exog(i,v,r,t)${[yeart(t)-sum{tt$tfirst(tt),yeart(tt) }<maxage(i)]$sameas(v,'init-1')} =
                                  max(0,capnonrsc(i,r)
-                                       - sum{(allt,alltt)$[allt.val <= t.val],  prescribedretirements(i,v,r,allt,alltt,"existing") }
+                                       - sum{(allt,alltt)$[allt.val <= t.val],
+                                       prescribedretirements(i,v,r,allt,alltt,"existing") }
                                     ) ;
 
 capacity_exog_energy(i,v,r,t)${[yeart(t)-sum{tt$tfirst(tt),yeart(tt) }<maxage(i)]$sameas(v,'init-1')} =
                                  max(0,capnonrsc_energy(i,r)
-                                       - sum{(allt,alltt)$[allt.val <= t.val],  prescribedretirements_energy(v,r,i,allt,alltt,"existing") }
+                                       - sum{(allt,alltt)$[allt.val <= t.val],
+                                       prescribedretirements_energy(v,r,i,allt,alltt,"existing") }
                                     ) ;
 
 

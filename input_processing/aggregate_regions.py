@@ -1028,7 +1028,8 @@ if 'aggreg' in agglevel:
               'summer_power_capacity_MW'] *= scalars['ilr_utility']
     startyear = int(sw.startyear)
     rsc_wsc = writecapdat.create_rsc_wsc(gendb, TECH=writecapdat.TECH,startyear=startyear)
-    exog_rsc = writecapdat.create_exog_rsc(
+    exog_rsc, *_ = writecapdat.create_exog_rsc(
+        reeds_path,
         inputs_case,
         gendb,
         TECH=writecapdat.TECH,

@@ -51,14 +51,34 @@ def create_rsc_wsc(gendb,TECH,startyear):
 
     return rsc_wsc
 
-def create_exog_rsc(inputs_case,gendb,TECH,COLNAMES,sw,startyear):
+def create_exog_rsc(reeds_path,inputs_case,gendb,TECH,COLNAMES,sw,startyear):
     # Mappings to resource class are based on the resource quality of the technology as it comes from reV
-    # Reading resource classification inputs for technologies (UPV, wind-ons, wind-ofs, and geohydro)
+    # Establish resource classification inputs for technologies (UPV, wind-ons, wind-ofs)
+    # from supply curves
+
+    upv_class = prep_supply_curve(reeds_path, tech='upv', 
+                                  access_case=sw.GSw_SitingUPV, subtech='')
+    wind_ons_class = prep_supply_curve(reeds_path, tech='wind-ons', 
+                                       access_case=sw.GSw_SitingWindOns, subtech='')
+    
+    # for offshore wind, specify 'fixed' or 'floating' tech
+    wind_ofs_subtech_list = ['fixed','floating']
+    wind_ofs_class_all = []
+    for wind_ofs_subtech in wind_ofs_subtech_list:
+        wind_ofs_class_subtech = prep_supply_curve(reeds_path, tech='wind-ofs', 
+                                                   access_case=sw.GSw_SitingWindOfs,
+                                                   subtech=wind_ofs_subtech)
+        wind_ofs_class_all.append(wind_ofs_class_subtech)
+    wind_ofs_class = pd.concat(wind_ofs_class_all, ignore_index=True) 
+
     rsc_class = {}
-    rsc_class["upv"] = pd.read_csv(os.path.join(inputs_case,'classification_upv.csv')).query(f"access_case == '{sw.GSw_SitingUPV}'")
-    rsc_class["wind-ons"]  = pd.read_csv(os.path.join(inputs_case,'classification_wind-ons.csv')).query(f"access_case == '{sw.GSw_SitingWindOns}'")
-    rsc_class["wind-ofs"]  = pd.read_csv(os.path.join(inputs_case,'classification_wind-ofs.csv')).query(f"access_case == '{sw.GSw_SitingWindOfs}'")
-    rsc_class["geohydro_allkm"]  = pd.read_csv(os.path.join(inputs_case,'classification_geothermal.csv')).query(f"access_case == '{sw.GSw_SitingGeo}'")
+    rsc_class["upv"] = upv_class
+    rsc_class["wind-ons"]  = wind_ons_class
+    rsc_class["wind-ofs"]  = wind_ofs_class
+
+    # Read resource classification inputs for geothermal
+    rsc_class["geohydro_allkm"]  = pd.read_csv(os.path.join(inputs_case,
+                                                            'classification_geothermal.csv')).query(f"access_case == '{sw.GSw_SitingGeo}'")
     
     cap_exog = {}
     for tech in TECH['rsc_wsc']:
@@ -95,7 +115,46 @@ def create_exog_rsc(inputs_case,gendb,TECH,COLNAMES,sw,startyear):
         cap_exog["upv"] = pd.concat([cap_exog[tech] for tech in TECH["rsc_all"] 
                                     if tech in cap_exog and not cap_exog[tech].empty],ignore_index=True)
 
-    return cap_exog
+    return cap_exog, rsc_class
+
+# Establish class cut offs based on capacity factors
+def prep_supply_curve(reeds_path, tech, access_case, subtech):
+    class_def_name = 'reV_cf_ac'
+
+    # Load the supply curve raw file produced by reV
+    df = pd.read_csv(os.path.join(
+        reeds_path,'inputs','supply_curve',
+        'supplycurve_'+tech+'-'+access_case+'.csv'))
+
+    # Aggregate min/max by class and attach access_case
+    if tech == 'wind-ofs':
+        df['subtech'] = 'fixed'
+        df.loc[df['class']>=6,'subtech'] = 'floating'
+        df_sub = df[df['subtech']==subtech]
+        summary_df = df_sub.groupby('class')['cf'].agg(['min', 'max']).reset_index()
+        summary_df['subtech'] = subtech
+        summary_df['access_case'] = access_case
+        summary_df.columns = ['class', f'min_{class_def_name}', 
+                              f'max_{class_def_name}', 'subtech', 'access_case']
+    else:
+        summary_df = df.groupby('class')['cf'].agg(['min', 'max']).reset_index()
+        summary_df['access_case'] = access_case
+        summary_df.columns = ['class', f'min_{class_def_name}',
+                               f'max_{class_def_name}', 'access_case']
+    
+    # Only use max capacity factors as class cut offs to avoid gaps
+    summary_df = summary_df.sort_values(by=['class',f'min_{class_def_name}'])
+    for c in summary_df['class'].unique().tolist():
+        if c > min(summary_df['class'].unique().tolist()):
+            summary_df.loc[
+                summary_df['class']==c,f'min_{class_def_name}'
+                ] = summary_df.loc[summary_df['class']==c-1][f'max_{class_def_name}'].iloc[0]
+
+    # Round values to 4 decimal places
+    summary_df[f'min_{class_def_name}'] = summary_df[f'min_{class_def_name}'].round(4)
+    summary_df[f'max_{class_def_name}'] = summary_df[f'max_{class_def_name}'].round(4)
+
+    return summary_df
 
 # Assign each wind, solar and geothermal unit in unit database to a class
 def assign_class(cf, tech, df_class):
@@ -561,7 +620,7 @@ def main(reeds_path, inputs_case, agglevel, regions):
     #    -- RSC Exogenous Capacity --    #
     ######################################
 
-    cap_exog = create_exog_rsc(inputs_case, gdb_use, TECH, COLNAMES, sw, startyear)
+    (cap_exog, rsc_class) = create_exog_rsc(reeds_path, inputs_case, gdb_use, TECH, COLNAMES, sw, startyear)
     
     
     #%%####################################
@@ -569,12 +628,6 @@ def main(reeds_path, inputs_case, agglevel, regions):
     #######################################
 
     print('Gathering RSC Prescribed Capacity...')
-    rsc_class = {}
-    rsc_class["upv"] = pd.read_csv(os.path.join(inputs_case,'classification_upv.csv')).query(f"access_case == '{sw.GSw_SitingUPV}'")
-    rsc_class["wind-ons"]  = pd.read_csv(os.path.join(inputs_case, 'classification_wind-ons.csv')).query(f"access_case == '{sw.GSw_SitingWindOns}'")
-    rsc_class["wind-ofs"]  = pd.read_csv(os.path.join(inputs_case,'classification_wind-ofs.csv')).query(f"access_case == '{sw.GSw_SitingWindOfs}'")
-    rsc_class["geohydro_allkm"]  = pd.read_csv(os.path.join(inputs_case,'classification_geothermal.csv')).query(f"access_case == '{sw.GSw_SitingGeo}'")
-
     cap_pres = {}
     for tech in TECH['rsc_wsc']:
         cap_pres[tech]= gdb_use.loc[(gdb_use['tech']==tech) &

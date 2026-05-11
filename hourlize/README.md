@@ -116,9 +116,6 @@ After setting up the run, if specified `run_hourlize.py` will launch the .sh or 
 python resource.py --config /path/to/hourlize/[casename]/inputs/config.json
 ```
 
-### define_tech_classes.py
-Run this scrip after `run_hourlize.py` to generate classification of UPV and wind technologies (`classification_upv.csv`, `classification_wind-ofs.csv`, and `classification_wind-ons.csv`)
-
 ### Config jsons
 
 Hourlize uses a set of json config files to provide information on how to process the supply curves. These files are located in `hourlize/inputs/configs`:

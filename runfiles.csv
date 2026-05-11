@@ -59,10 +59,7 @@ cendivweights.csv,inputs/fuelprices/cendivweights.csv,1,mean,ignore,r_cendiv,wid
 ces_fraction.csv,inputs/state_policies/ces_fraction.csv,int(sw.GSw_StateRPS) != 0,ignore,ignore,st,st,,1,0,,,,,,
 cf_hyd.csv,,1,mean,uniform,r,"*i,szn,t",,0,0,,1,,,,
 cf_vre.csv,,1,mean_cap,ignore,r,"*i,h",*i,0,0,,1,,,,disaggfunc set to ignore because data will be written in correct spatial resolution by hourly_writetimeseries in hourly_repperiods.py
-classification_geothermal.csv,inputs/capacity_exogenous/classification_geothermal.csv,1,ignore,ignore,,,,,,,,,,,
-classification_upv.csv,inputs/capacity_exogenous/classification_upv.csv,1,ignore,ignore,,,,,,,,,,,
-classification_wind-ofs.csv,inputs/capacity_exogenous/classification_wind-ofs.csv,1,ignore,ignore,,,,,,,,,,,
-classification_wind-ons.csv,inputs/capacity_exogenous/classification_wind-ons.csv,1,ignore,ignore,,,,,,,,,,,
+classification_geothermal.csv,inputs/supply_curve/classification_geothermal.csv,1,ignore,ignore,,,,,,,,,,,
 climate_UnappWaterMult.csv,,1,ignore,ignore,,,,,0,,1,,,,created by hourly_writetimeseries.py from temp_UnappWaterMult.csv data
 climate_UnappWaterMultAnn.csv,,1,ignore,ignore,,,,,0,,1,,,,created by climateprep.py
 climate_UnappWaterSeaAnnDistr.csv,,1,ignore,ignore,,,,,0,,1,,,,created by hourly_writetimeseries.py from temp_UnappWaterSeaAnnDistr.csv data
