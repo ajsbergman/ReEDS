@@ -19,10 +19,10 @@ postprocessing/tableau/out/*
 
 # pyc files
 *.pyc
-*__pycache__
+__pycache__/
 
 # jupyter notebook checkpoints
-*.ipynb_checkpoints*/
+.ipynb_checkpoints/
 
 # lst and g00 files
 *.lst
@@ -51,14 +51,11 @@ inputs/remote
 inputs/shapefiles/cache
 
 # IDE stuff
-*.vscode
+.vscode/
 
 # GAMS project files
 *.gpr
 gamslice.txt
-
-# IDE files
-*.vscode
 
 # HPC files
 slurm*.out
@@ -66,3 +63,10 @@ slurm_parallel_runs/
 
 # documentation files 
 docs/build/*
+
+# ReEDS-Copilot generated files
+node_modules/
+.vite/
+reeds_copilot/chat_history/
+reeds_copilot/run_history/
+reeds_copilot/pp_job_history/
