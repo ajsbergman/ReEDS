@@ -6,7 +6,7 @@
 # ]
 #
 # [tool.uv.sources]
-# arco = { git = "https://github.com/NatLabRockies/arco.git", rev = "88e1369a8857779a987d58aa88d521aee8634d79", subdirectory = "bindings/python" }
+# arco = { git = "https://github.com/NatLabRockies/arco.git", rev = "main", subdirectory = "bindings/python" }
 # ///
 
 """
