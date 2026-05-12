@@ -57,6 +57,17 @@
 <li class="toctree-l1"><a class="reference internal" href="developer_best_practices.html">Developer Resources</a></li>
 <li class="toctree-l1"><a class="reference internal" href="model_documentation.html">Model Documentation</a></li>
 <li class="toctree-l1 current"><a class="current reference internal" href="#">User guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#general-suggestions">General Suggestions</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#document-and-communicate-inputs">Document and Communicate Inputs</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#emphasize-aggregated-results">Emphasize Aggregated Results</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#emphasize-trends-or-scenario-differences">Emphasize Trends or Scenario Differences</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#understand-calculations-behind-reported-numbers">Understand Calculations Behind Reported Numbers</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#employ-scenario-sensitivity-analysis">Employ Scenario Sensitivity Analysis</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#deliberately-choose-model-inputs">Deliberately Choose Model Inputs</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#keep-questions-within-model-s-scope">Keep Questions Within Model’s Scope</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#cautiously-use-near-term-results">Cautiously Use Near-Term Results</a></li>
+</ul>
+</li>
 <li class="toctree-l2"><a class="reference internal" href="#large-input-files">Large input files</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#temporal-resolution">Temporal resolution</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#temporal-resolution-switches">Temporal resolution switches</a></li>
@@ -152,6 +163,46 @@
              
   <section class="tex2jax_ignore mathjax_ignore" id="user-guide">
 <h1>User guide<a class="headerlink" href="#user-guide" title="Link to this heading"></a></h1>
+<section id="general-suggestions">
+<h2>General Suggestions<a class="headerlink" href="#general-suggestions" title="Link to this heading"></a></h2>
+<section id="document-and-communicate-inputs">
+<h3>Document and Communicate Inputs<a class="headerlink" href="#document-and-communicate-inputs" title="Link to this heading"></a></h3>
+<p>Document and communicate inputs used and any changes made to the model. For example, published reports or journal articles should include enough information so that others can reproduce your work.</p>
+</section>
+<section id="emphasize-aggregated-results">
+<h3>Emphasize Aggregated Results<a class="headerlink" href="#emphasize-aggregated-results" title="Link to this heading"></a></h3>
+<p>Emphasize aggregated results rather than results for a specific region or year, given that aggregate results will be more robust.  For example, the magnitude of new wind builds identified across a multistate region will be substantially more robust result than wind builds in a single ReEDS region. Similarly, the magnitude of natural gas combined cycle capacity additions across a multiyear period (e.g., 2030-2040) will be more robust result than the amount added in a single year (e.g., 2032).</p>
+<p>We recommend this practice because:</p>
+<ul class="simple">
+<li><p>ReEDS results at their finest resolution can be sensitive to small changes in assumptions. For example, small differences in natural gas prices between two adjacent regions could lead to large disparities in gas-based capacity expansion in those regions that ignore practical constraints that might produce more even deployment.</p></li>
+<li><p>ReEDS was designed as a national-scale model. That level of geographic scope means that many local conditions important to power plant build decisions might not be captured.</p></li>
+</ul>
+</section>
+<section id="emphasize-trends-or-scenario-differences">
+<h3>Emphasize Trends or Scenario Differences<a class="headerlink" href="#emphasize-trends-or-scenario-differences" title="Link to this heading"></a></h3>
+<p>Emphasize trends or scenario differences over absolute results.  For example, the result that photovoltaic (PV) deployment is highly sensitive to natural gas price is more robust than the specific amounts of PV capacity deployed under high and low gas price scenarios.</p>
+</section>
+<section id="understand-calculations-behind-reported-numbers">
+<h3>Understand Calculations Behind Reported Numbers<a class="headerlink" href="#understand-calculations-behind-reported-numbers" title="Link to this heading"></a></h3>
+<p>Do not rely on parameter names or labels alone when interpreting results. Explore the underlying calculations to ensure a robust understanding of the parameter and what it means. For example, reported electricity prices represent the marginal cost of meeting an additional infinitesimally small amount of load. They do not consider existing real-world market structure, rate design, or distribution costs, and thus should not be interpreted as estimates of retail rates.</p>
+</section>
+<section id="employ-scenario-sensitivity-analysis">
+<h3>Employ Scenario Sensitivity Analysis<a class="headerlink" href="#employ-scenario-sensitivity-analysis" title="Link to this heading"></a></h3>
+<p>Always employ scenario sensitivity analysis. ReEDS is a deterministic model, so uncertainties are not captured in individual model runs.</p>
+</section>
+<section id="deliberately-choose-model-inputs">
+<h3>Deliberately Choose Model Inputs<a class="headerlink" href="#deliberately-choose-model-inputs" title="Link to this heading"></a></h3>
+<p>Be deliberate in how you choose model inputs.  The ReEDS default values are not necessarily “most likely,” and “high” and “low” input options are not based on specific probabilities of occurrence.</p>
+</section>
+<section id="keep-questions-within-model-s-scope">
+<h3>Keep Questions Within Model’s Scope<a class="headerlink" href="#keep-questions-within-model-s-scope" title="Link to this heading"></a></h3>
+<p>Ensure that your questions are within the scope of the model. ReEDS is primarily meant to inform decisions at the investment or planning timescales in the bulk power sector.  For other questions at different timescales (such as unit commitment questions) or touching other sectors (such as distributed generation adoption), other models should be used.  However, ReEDS might be used to inform inputs or identify analysis questions for these other models.</p>
+</section>
+<section id="cautiously-use-near-term-results">
+<h3>Cautiously Use Near-Term Results<a class="headerlink" href="#cautiously-use-near-term-results" title="Link to this heading"></a></h3>
+<p>Use near-term results with caution.  We have designed ReEDS primarily to consider long-term questions, and as such, not all near-term power sector changes are represented.</p>
+</section>
+</section>
 <section id="large-input-files">
 <h2>Large input files<a class="headerlink" href="#large-input-files" title="Link to this heading"></a></h2>
 <p>Large input files,

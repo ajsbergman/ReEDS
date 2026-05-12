@@ -1,5 +1,34 @@
 # User guide
 
+## General Suggestions
+### Document and Communicate Inputs
+Document and communicate inputs used and any changes made to the model. For example, published reports or journal articles should include enough information so that others can reproduce your work.
+
+### Emphasize Aggregated Results
+Emphasize aggregated results rather than results for a specific region or year, given that aggregate results will be more robust.  For example, the magnitude of new wind builds identified across a multistate region will be substantially more robust result than wind builds in a single ReEDS region. Similarly, the magnitude of natural gas combined cycle capacity additions across a multiyear period (e.g., 2030-2040) will be more robust result than the amount added in a single year (e.g., 2032).
+
+We recommend this practice because:
+- ReEDS results at their finest resolution can be sensitive to small changes in assumptions. For example, small differences in natural gas prices between two adjacent regions could lead to large disparities in gas-based capacity expansion in those regions that ignore practical constraints that might produce more even deployment.
+- ReEDS was designed as a national-scale model. That level of geographic scope means that many local conditions important to power plant build decisions might not be captured.
+
+### Emphasize Trends or Scenario Differences
+Emphasize trends or scenario differences over absolute results.  For example, the result that photovoltaic (PV) deployment is highly sensitive to natural gas price is more robust than the specific amounts of PV capacity deployed under high and low gas price scenarios.
+
+### Understand Calculations Behind Reported Numbers
+Do not rely on parameter names or labels alone when interpreting results. Explore the underlying calculations to ensure a robust understanding of the parameter and what it means. For example, reported electricity prices represent the marginal cost of meeting an additional infinitesimally small amount of load. They do not consider existing real-world market structure, rate design, or distribution costs, and thus should not be interpreted as estimates of retail rates.
+
+### Employ Scenario Sensitivity Analysis
+Always employ scenario sensitivity analysis. ReEDS is a deterministic model, so uncertainties are not captured in individual model runs.
+
+### Deliberately Choose Model Inputs
+Be deliberate in how you choose model inputs.  The ReEDS default values are not necessarily “most likely,” and “high” and “low” input options are not based on specific probabilities of occurrence.
+
+### Keep Questions Within Model's Scope
+Ensure that your questions are within the scope of the model. ReEDS is primarily meant to inform decisions at the investment or planning timescales in the bulk power sector.  For other questions at different timescales (such as unit commitment questions) or touching other sectors (such as distributed generation adoption), other models should be used.  However, ReEDS might be used to inform inputs or identify analysis questions for these other models.
+
+### Cautiously Use Near-Term Results
+Use near-term results with caution.  We have designed ReEDS primarily to consider long-term questions, and as such, not all near-term power sector changes are represented.
+
 ## Large input files
 
 Large input files,
