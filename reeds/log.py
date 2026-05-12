@@ -259,4 +259,3 @@ if __name__ == '__main__':
     except Exception:
         print('meta.csv not found or not writeable:')
         print(traceback.format_exc())
-        
