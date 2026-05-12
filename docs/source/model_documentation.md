@@ -2908,7 +2908,7 @@ We do not model banking of allowances, emissions offsets, or recycling of initia
 #### Federal tax credits for clean electricity and captured carbon
 
 Existing federal tax incentives are included in ReEDS, aligned with the One Big Beautiful Bill Act (OBBBA) passed in the summer of 2025.
-These include the production tax credit (PTC) and the ITC for several electricity generation technologies, the 45Q credit for capturing and storing carbon, the 45U credits for existing nuclear generation, the 45V credit for producing hydrogen, and the Modified Accelerated Cost Recovery System (MACRS) depreciation schedules.
+These include the production tax credit (PTC) and the ITC for several electricity generation technologies, the 45Q credit for capturing and storing carbon, the 45U credits for existing nuclear generation, the 45V credit for producing hydrogen, and the Modified Accelerated Cost Recovery System (MACRS) depreciation schedules.[^ref52]
 
 [^ref52]: Note the eligible cost basis for MACRS is reduced by one-half the value of the tax credit.
 
@@ -3139,7 +3139,7 @@ For these states, the nuclear power plants are not allowed to retire until after
 The policy end dates are taken from EIA {cite:year}`eiaElectricPowerMonthly2019a`.
 
 In addition, there are [several states that do not allow new nuclear power](https://www.ncsl.org/environment-and-natural-resources/states-restrictions-on-new-nuclear-power-facility-construction).
-These states include California, Connecticut, Illinois, Maine, Massachusetts, Minnesota, New Jersey, New York (Long Island only), Oregon, Rhode Island, and Vermont.
+These states include California, Illinois, Maine, Massachusetts, Minnesota, New York (Long Island only), Oregon, Rhode Island, and Vermont. Nuclear ban is not imposed for Connecticut since Act25-127 allows construction of advanced nuclear facilities in municipalities with referendums.
 
 
 ### Other Policy Capabilities
@@ -3854,7 +3854,7 @@ In the example in {numref}`figure-energy-capacity-requirements-for-storage`, 5,0
 
 We repeat this process in each region for each season over a large range of storage power capacities (from 0% to 90% of peak demand in 100-MW increments).
 The result of each dispatch is used to produce the "power-energy curve" in {numref}`figure-storage-peak-capacity-determination`, which allows us to calculate the marginal capacity credit for additional storage.
-The curve gives storage energy capacity that is required for full capacity credit as a function of total storage capacity.[^ref45]
+The curve gives storage energy capacity that is required for full capacity credit as a function of total storage capacity.
 At any point along the curve, the slope of the tangent to the curve represents the number of hours needed for marginal storage to receive full capacity credit.
 The incremental capacity credit of an additional unit of storage is equal to the duration of the additional unit installed divided by the duration requirement (slope) at the point on the curve corresponding to the installed storage capacity.
 

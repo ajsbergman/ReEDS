@@ -61,7 +61,7 @@ Sources
 Method derived from:
 [1] Sullivan, P.; Colman, J.; Kalendra, E. "Predicting the response of electricity load to
 climate change". Technical Report, National Renewable Energy Laboratory,
-NREL/TP-6A20-64297. https://www.nrel.gov/docs/fy15osti/64297.pdf
+NREL/TP-6A20-64297. https://www.nlr.gov/docs/fy15osti/64297.pdf
 """
 
 #%% ===========================================================================
@@ -89,9 +89,9 @@ reeds_path = args.reeds_path
 inputs_case = args.inputs_case
 
 # #%% Settings for testing ###
-# reeds_path = os.path.expanduser('~/github/ReEDS-2.0/')
+# reeds_path = os.path.expanduser('~/github/ReEDS/')
 # inputs_case = os.path.expanduser(
-#     '~/github/ReEDS-2.0/runs/v20201208_beyond2050_Climate2100step5/inputs_case/')
+#     '~/github/ReEDS/runs/v20201208_beyond2050_Climate2100step5/inputs_case/')
 
 #%%#################
 ### FIXED INPUTS ###
