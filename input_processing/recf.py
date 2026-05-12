@@ -590,7 +590,7 @@ def main(reeds_path, inputs_case):
     )[['i','r']].drop_duplicates()
 
     # Identify missing technology-class - region combinations in resources
-    missing_class_resource = get_missing_class_resource(existing_techs, resources)
+    #missing_class_resource = get_missing_class_resource(existing_techs, resources)
     
     #%% Check for errors
     nulls = recf.isnull().sum()
@@ -614,7 +614,7 @@ def main(reeds_path, inputs_case):
         os.path.join(inputs_case, 'hierarchy.csv'), index=True, header=True)
     pd.Series(hierarchy.ccreg.unique()).to_csv(
         os.path.join(inputs_case,'ccreg.csv'), index=False, header=False)
-    missing_class_resource.to_csv(os.path.join(inputs_case,'missing_class_resource.csv'), index=False)
+    #missing_class_resource.to_csv(os.path.join(inputs_case,'missing_class_resource.csv'), index=False)
 
 
 #%% ===========================================================================

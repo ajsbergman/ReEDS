@@ -18,7 +18,8 @@ import reeds
 ### ===========================================================================
 # Function to merge NEMS unitdata with interconnection_land/offshore data by 
 # mapping each unit in NEMS by lon/lat to its closest sc_point_gid
-def assign_gids_to_unitdata(df, offland_gdf, land_gdf):
+def assign_gids_to_unitdata(df, offland_gdf, land_gdf, upv_access_case, 
+                            wind_ons_access_case, wind_ofs_access_case):
     offland_gdf['sc_point_gid'] = offland_gdf.index
     #offland_gdf = offland_gdf[['sc_point_gid','latitude','longitude']]
 
@@ -42,8 +43,15 @@ def assign_gids_to_unitdata(df, offland_gdf, land_gdf):
             supply_curve = pd.read_csv(os.path.join(reeds_path,'inputs','supply_curve',
                                                     'supplycurve_'+geo_tech+'-'+'reference'+'.csv'))
         else:
+            if tech == 'upv':
+                access_case = upv_access_case
+            elif tech == 'wind-ons':
+                access_case = wind_ons_access_case
+            elif tech == 'wind-ofs':
+                access_case = wind_ofs_access_case
+
             supply_curve = pd.read_csv(os.path.join(reeds_path,'inputs','supply_curve',
-                                                    'supplycurve_'+tech+'-'+'open'+'.csv'))    
+                                                    'supplycurve_'+tech+'-'+access_case+'.csv'))    
         
         # Only consider the sc_point_pids that are in supply curves:
         # (to avoid unmatched units later)
@@ -80,8 +88,16 @@ def assign_gids_to_unitdata(df, offland_gdf, land_gdf):
 #%% ===========================================================================
 ### --- PROCEDURE ---
 ### ===========================================================================
-def main(inputs_case):
+def main(inputs_case, casepath):
     
+    # Read in switch settings
+    sw = reeds.io.get_switches(casepath)
+
+    # Obtain pv and wind access_case
+    upv_access_case = sw.GSw_SitingUPV
+    wind_ons_access_case = sw.GSw_SitingWindOns
+    wind_ofs_access_case = sw.GSw_SitingWindOfs
+
     # Read unitdata
     unitdata = pd.read_csv(os.path.join(inputs_case, 'unitdata.csv'))
     
@@ -103,7 +119,8 @@ def main(inputs_case):
     
     # Merge NEMS unitdata with interconnection_land/offshore data by 
     # mapping each unit in NEMS by lon/lat to its closest sc_point_gid  
-    df_rev = assign_gids_to_unitdata(unitdata, offland_gdf, land_gdf)
+    df_rev = assign_gids_to_unitdata(unitdata, offland_gdf, land_gdf, upv_access_case, 
+                                     wind_ons_access_case, wind_ofs_access_case)
         
     # Clean up merged data    
     if 'reV_mean_resource_temp' in df_rev.columns:
@@ -135,9 +152,11 @@ if __name__ == '__main__':
     reeds_path = args.reeds_path
     inputs_case = args.inputs_case
     
+    
     # for testing
     # reeds_path = os.path.expanduser('~/Documents/GitHub/ReEDS/public_ReEDS/ReEDS')
     # inputs_case = os.path.join(reeds_path,'runs','test_Pacific','inputs_case')
+    casepath = os.path.dirname(inputs_case)
 
     #%% Set up logger
     log = reeds.log.makelog(
@@ -145,5 +164,5 @@ if __name__ == '__main__':
         logpath=os.path.join(inputs_case,'..','gamslog.txt'),
     )
     print('Starting process_unitdata.py')
-    main(inputs_case)
+    main(inputs_case, casepath)
     print('Complete processsing process_unitdata.py')

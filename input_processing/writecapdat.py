@@ -156,16 +156,24 @@ def prep_supply_curve(reeds_path, tech, access_case, subtech):
 # Assign each wind, solar and geothermal unit in unit database to a class
 def assign_class(cf, tech, df_class):
     # Each geothermal unit is assigned to the class associated with the min and max temperatures its mean temperature falls between
-    if tech not in ['geohydro_allkm', 'egs_allkm']:
-        row = df_class[(df_class['min_reV_cf_ac'] <= cf) & (cf < df_class['max_reV_cf_ac'])]
+    if tech in ['geohydro_allkm', 'egs_allkm']:
+        row = df_class[(df_class['min_reV_mean_temp'] <= cf) & (cf < df_class['max_reV_mean_temp'])]
+        # Handle max cutoff point
+        if cf == df_class['max_reV_mean_temp'].max():
+            row = df_class[cf == df_class['max_reV_mean_temp']]
     # Each wind or solar unit is assigned to the class associated with the min and max capacity factors its capacity factor falls between
     else:
-        row = df_class[(df_class['min_reV_mean_temp'] <= cf) & (cf < df_class['max_reV_mean_temp'])]
+        row = df_class[(df_class['min_reV_cf_ac'] <= cf) & (cf < df_class['max_reV_cf_ac'])]
+        # Handle max cutoff point
+        if cf == df_class['max_reV_cf_ac'].max():
+            row = df_class[cf == df_class['max_reV_cf_ac']]    
+    
     if not row.empty:
         return row.iloc[0]['class']
     else:
         # If a unit's capacity factor/mean temp does not fall between any two max and min values specified in the classificalion file, it is unclassified and gives an error
-        raise ValueError('Unclassified ' + tech + ' technology, check capacity factor/mean temperature values in unitdata.csv and classification files.')
+        raise ValueError('Unclassified ' + tech + ' technology with cf= ' + cf + 
+                         ', check capacity factor/mean temperature values in unitdata.csv and classification files.')
 
 # Expand each row into multiple rows (startyear → retirement_year)
 def expand_exog_cap(row, start_year):
