@@ -154,15 +154,15 @@ export default function App() {
     setSelectedFile(path);
   }
 
-  const sidebarItems: { key: Tab; label: string }[] = [
-    { key: "chat", label: "💬  Chat" },
-    { key: "search", label: "🔍  Search" },
-    { key: "setup", label: "🧰  Setup Wizard" },
-    { key: "inputs", label: "📥  Inputs Explorer" },
-    { key: "runs", label: "🚀  Run ReEDS" },
-    { key: "outputs", label: "📤  Outputs Explorer" },
-    { key: "hpc", label: "🖥️  HPC Explorer" },
-    { key: "settings", label: "⚙️  Settings" },
+  const sidebarItems: { key: Tab; label: string; tooltip: string }[] = [
+    { key: "chat", label: "💬  Chat", tooltip: "Ask the AI assistant questions about ReEDS" },
+    { key: "search", label: "🔍  Search", tooltip: "Search through ReEDS source code and documentation" },
+    { key: "setup", label: "🧰  Setup Wizard", tooltip: "Check and install all prerequisites to run ReEDS" },
+    { key: "inputs", label: "📥  Inputs Explorer", tooltip: "Browse and edit ReEDS input files and scenarios" },
+    { key: "runs", label: "🚀  Run ReEDS", tooltip: "Launch ReEDS model runs locally or on HPC" },
+    { key: "outputs", label: "📤  Outputs Explorer", tooltip: "View and analyze results from completed runs" },
+    { key: "hpc", label: "🖥️  HPC Explorer", tooltip: "Connect to HPC clusters and manage remote files" },
+    { key: "settings", label: "⚙️  Settings", tooltip: "Configure backend, theme, and preferences" },
   ];
 
   return (
@@ -178,6 +178,7 @@ export default function App() {
             key={item.key}
             className={tab === item.key ? "active" : ""}
             onClick={() => setTab(item.key)}
+            title={item.tooltip}
           >
             {item.label}
           </button>

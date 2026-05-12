@@ -146,6 +146,7 @@ export default function SetupWizard() {
           className={`setup-recheck-all ${recheckSpinning ? "spinning" : ""}`}
           onClick={refresh}
           disabled={loading && steps.length === 0}
+          title="Re-run all environment checks to see if anything has changed"
         >
           <span className="setup-recheck-all-icon">↻</span>
           Re-check All
@@ -176,6 +177,7 @@ export default function SetupWizard() {
               <div
                 className="setup-step-header"
                 onClick={() => setActiveStep(expanded ? null : step.id)}
+                title={expanded ? "Click to collapse" : "Click to expand and see details"}
               >
                 <div className="setup-step-left">
                   <span className="setup-step-icon">{stepIcon(step.status)}</span>
@@ -232,6 +234,7 @@ export default function SetupWizard() {
                       target="_blank"
                       rel="noopener noreferrer"
                       className="setup-link"
+                      title={`Opens the official ${step.title} download page in your browser`}
                     >
                       📥 Open download page →
                     </a>
@@ -251,6 +254,7 @@ export default function SetupWizard() {
                         className="setup-fix-btn"
                         onClick={handleSaveLicense}
                         disabled={licenseSaving || !licenseText.trim()}
+                        title="Save the license text above as gamslice.txt in your ReEDS folder"
                       >
                         {licenseSaving ? "Saving…" : "💾 Save License"}
                       </button>
@@ -264,11 +268,16 @@ export default function SetupWizard() {
                         className="setup-fix-btn"
                         onClick={() => handleFix(step)}
                         disabled={fixing === step.id}
+                        title={`Automatically install or configure ${step.title} — this may take several minutes`}
                       >
                         {fixing === step.id ? "⏳ Working…" : "🔧 Fix it automatically"}
                       </button>
                     )}
-                    <button className="setup-recheck-btn" onClick={refresh}>
+                    <button
+                      className="setup-recheck-btn"
+                      onClick={refresh}
+                      title="Re-run all checks to verify this step after you've made changes"
+                    >
                       ↻ Re-check
                     </button>
                   </div>
