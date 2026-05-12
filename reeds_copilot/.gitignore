@@ -9,6 +9,7 @@ __pycache__/
 .env.local
 dist/
 build/
+.vite/
 *.log
 .DS_Store
 Thumbs.db
