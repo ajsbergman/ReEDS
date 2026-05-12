@@ -311,6 +311,8 @@ def get_missing_class_resource(existing_techs, resources):
         # If there are existing tech classes with missing resources,
         # assign them to the nearest resources of same techs with similar classes
         missing_class_resource = existing_tech_resource_match[existing_tech_resource_match['_merge'] == 'left_only'].copy()
+        # Exclude geothermal
+        missing_class_resource = missing_class_resource[missing_class_resource['i'].str.contains("upv|wind")]
         
         if len(missing_class_resource) > 0:
             missing_class_resource_nearest = gpd.sjoin_nearest(missing_class_resource, 
