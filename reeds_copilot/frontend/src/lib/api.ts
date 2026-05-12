@@ -533,3 +533,33 @@ export function getGamsLicenseAPI(): Promise<{ exists: boolean; content: string 
 export function saveGamsLicenseAPI(content: string): Promise<{ ok: boolean; detail: string }> {
   return post<{ ok: boolean; detail: string }>("/runs/gams-license", { content });
 }
+
+/* ── Setup Wizard ─────────────────────────────────────────────────────────── */
+
+export interface SetupStep {
+  id: string;
+  order: number;
+  title: string;
+  description: string;
+  status: "pass" | "fail" | "running" | "skip";
+  detail: string;
+  auto_fixable: boolean;
+  guide_url?: string;
+  guide_steps?: string[];
+}
+
+export function setupCheckAllAPI(condaEnv: string = "reeds2"): Promise<SetupStep[]> {
+  return request<SetupStep[]>(`/setup/check-all?conda_env=${encodeURIComponent(condaEnv)}`);
+}
+
+export function setupFixAPI(
+  step: string,
+  condaEnv: string = "reeds2",
+  gamsLicense: string = "",
+): Promise<{ ok: boolean; detail: string }> {
+  return post<{ ok: boolean; detail: string }>("/setup/fix", {
+    step,
+    conda_env: condaEnv,
+    gams_license: gamsLicense,
+  });
+}

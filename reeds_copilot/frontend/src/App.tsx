@@ -10,6 +10,7 @@ import WelcomeScreen from "./components/WelcomeScreen";
 import RunPanel from "./components/RunPanel";
 import OutputExplorer from "./components/OutputExplorer";
 import HpcBrowser from "./components/HpcBrowser";
+import SetupWizard from "./components/SetupWizard";
 import {
   healthAPI,
   createSessionAPI,
@@ -19,7 +20,7 @@ import {
   type HealthResponse,
 } from "./lib/api";
 
-type Tab = "chat" | "search" | "runs" | "inputs" | "outputs" | "hpc" | "settings";
+type Tab = "chat" | "search" | "setup" | "runs" | "inputs" | "outputs" | "hpc" | "settings";
 type Mode = "general" | "docs" | "code" | "inputs" | "outputs";
 
 const MODES: { value: Mode; label: string }[] = [
@@ -156,6 +157,7 @@ export default function App() {
   const sidebarItems: { key: Tab; label: string }[] = [
     { key: "chat", label: "💬  Chat" },
     { key: "search", label: "🔍  Search" },
+    { key: "setup", label: "🧰  Setup Wizard" },
     { key: "inputs", label: "📥  Inputs Explorer" },
     { key: "runs", label: "🚀  Run ReEDS" },
     { key: "outputs", label: "📤  Outputs Explorer" },
@@ -241,6 +243,7 @@ export default function App() {
             />
           )}
           {tab === "search" && <SearchPanel onSelectFile={handleSelectFile} />}
+          {tab === "setup" && <SetupWizard />}
           {tab === "runs" && <RunPanel />}
           {tab === "inputs" && (
             <FileBrowser rootPath="inputs" onSelectFile={handleSelectFile} />
@@ -251,8 +254,8 @@ export default function App() {
           {tab === "hpc" && <HpcBrowser />}
           {tab === "settings" && <SettingsPanel />}
 
-          {/* Right panel – always visible except on settings */}
-          {tab !== "settings" && tab !== "runs" && tab !== "hpc" && (
+          {/* Right panel – always visible except on settings/setup */}
+          {tab !== "settings" && tab !== "runs" && tab !== "hpc" && tab !== "setup" && (
             <>
               <ResizeHandle direction="horizontal" onResize={handleRightResize} />
               <RightPanel

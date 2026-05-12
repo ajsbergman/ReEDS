@@ -11,7 +11,7 @@ from .core.config import get_settings
 from .services.llm import build_llm_provider
 from .services.repo_index import RepoIndex
 from .services.run_manager import init_run_manager
-from .api import chat, search, files, health, sessions, runs
+from .api import chat, search, files, health, sessions, runs, setup
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s  %(name)s  %(message)s")
 log = logging.getLogger(__name__)
@@ -69,6 +69,7 @@ def create_app() -> FastAPI:
     app.include_router(files.router)
     app.include_router(sessions.router)
     app.include_router(runs.router)
+    app.include_router(setup.router)
 
     return app
 

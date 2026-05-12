@@ -1715,6 +1715,501 @@ body,
   font-size: 0.82rem;
 }
 
+/* ── Setup Wizard ──────────────────────────────────────────────────────────── */
+
+.setup-wizard {
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 24px 28px;
+  overflow-y: auto;
+  height: 100%;
+}
+
+.setup-header {
+  margin-bottom: 24px;
+}
+
+.setup-header h2 {
+  font-size: 1.5rem;
+  margin-bottom: 8px;
+  letter-spacing: -0.02em;
+}
+
+.setup-subtitle {
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  line-height: 1.55;
+  margin-bottom: 16px;
+}
+
+/* ── Progress bar ── */
+
+.setup-progress {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.setup-progress-bar {
+  flex: 1;
+  height: 10px;
+  background: var(--bg-elevated);
+  border-radius: 5px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+}
+
+.setup-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #43a047, #66bb6a);
+  border-radius: 5px;
+  transition: width 0.5s ease;
+}
+
+.setup-progress-label {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+/* ── Status banners ── */
+
+.setup-all-pass {
+  background: rgba(76, 175, 80, 0.12);
+  border: 1px solid rgba(76, 175, 80, 0.35);
+  border-radius: 10px;
+  padding: 14px 18px;
+  font-size: 0.9rem;
+  margin-bottom: 12px;
+  color: var(--success);
+  line-height: 1.5;
+}
+
+.setup-action-needed {
+  background: rgba(255, 152, 0, 0.1);
+  border: 1px solid rgba(255, 152, 0, 0.3);
+  border-radius: 10px;
+  padding: 12px 18px;
+  font-size: 0.88rem;
+  margin-bottom: 12px;
+  color: #ffb74d;
+  line-height: 1.5;
+}
+
+/* ── Re-check All button ── */
+
+.setup-recheck-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 22px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  background: rgba(44, 134, 184, 0.1);
+  color: var(--accent);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-top: 4px;
+}
+
+.setup-recheck-all:hover {
+  background: rgba(44, 134, 184, 0.2);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(44, 134, 184, 0.15);
+}
+
+.setup-recheck-all:active {
+  transform: translateY(0);
+}
+
+.setup-recheck-all:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.setup-recheck-all-icon {
+  display: inline-block;
+  font-size: 1.1rem;
+  transition: transform 0.6s ease;
+}
+
+.setup-recheck-all.spinning .setup-recheck-all-icon {
+  animation: setup-spin 0.6s ease;
+}
+
+@keyframes setup-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* ── Loading ── */
+
+.setup-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 20px 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+
+.setup-loading-spinner {
+  display: inline-block;
+  font-size: 1.2rem;
+  animation: setup-spin 1s linear infinite;
+}
+
+/* ── Steps list ── */
+
+.setup-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.setup-step {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg-surface);
+  overflow: hidden;
+  transition: border-color 0.25s, box-shadow 0.25s;
+}
+
+.setup-step.pass {
+  border-left: 4px solid var(--success);
+}
+
+.setup-step.fail {
+  border-left: 4px solid var(--danger);
+}
+
+.setup-step.running {
+  border-left: 4px solid #ff9800;
+}
+
+.setup-step.expanded {
+  border-color: var(--accent);
+  box-shadow: 0 2px 12px rgba(44, 134, 184, 0.1);
+}
+
+/* ── Step header ── */
+
+.setup-step-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 18px;
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.15s;
+}
+
+.setup-step-header:hover {
+  background: var(--bg-elevated);
+}
+
+.setup-step-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.setup-step-icon {
+  font-size: 1.15rem;
+  flex-shrink: 0;
+}
+
+.setup-step-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.setup-step-number {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.setup-step-title {
+  font-weight: 600;
+  font-size: 0.95rem;
+  line-height: 1.3;
+}
+
+.setup-step-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+/* ── Badges ── */
+
+.setup-badge {
+  font-size: 0.68rem;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.setup-badge.pass {
+  background: rgba(76, 175, 80, 0.18);
+  color: var(--success);
+}
+
+.setup-badge.fail {
+  background: rgba(224, 82, 82, 0.18);
+  color: var(--danger);
+}
+
+.setup-badge.running {
+  background: rgba(255, 152, 0, 0.18);
+  color: #ff9800;
+}
+
+.setup-chevron {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-left: 2px;
+  transition: transform 0.2s;
+}
+
+/* ── Step body ── */
+
+.setup-step-body {
+  padding: 0 18px 18px;
+  border-top: 1px solid var(--border);
+}
+
+.setup-step-desc {
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin: 14px 0 10px;
+  line-height: 1.55;
+}
+
+.setup-detail {
+  font-size: 0.85rem;
+  padding: 10px 14px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+  line-height: 1.45;
+  word-break: break-word;
+  font-family: "Segoe UI", system-ui, sans-serif;
+}
+
+.setup-detail.pass {
+  background: rgba(76, 175, 80, 0.08);
+  border: 1px solid rgba(76, 175, 80, 0.2);
+  color: #81c784;
+}
+
+.setup-detail.fail {
+  background: rgba(224, 82, 82, 0.08);
+  border: 1px solid rgba(224, 82, 82, 0.2);
+  color: #f5a0a0;
+}
+
+.setup-detail.running {
+  background: rgba(255, 152, 0, 0.08);
+  border: 1px solid rgba(255, 152, 0, 0.2);
+  color: #ffcc80;
+}
+
+.setup-fix-msg {
+  font-size: 0.84rem;
+  padding: 8px 12px;
+  background: rgba(33, 150, 243, 0.08);
+  border: 1px solid rgba(33, 150, 243, 0.2);
+  border-radius: 6px;
+  margin-bottom: 10px;
+  color: var(--text);
+  line-height: 1.4;
+}
+
+/* ── Guide ── */
+
+.setup-guide {
+  margin: 12px 0;
+  font-size: 0.85rem;
+  line-height: 1.65;
+  background: var(--bg-elevated);
+  border-radius: 8px;
+  padding: 12px 16px;
+  border: 1px solid var(--border);
+}
+
+.setup-guide strong {
+  color: var(--accent);
+}
+
+.setup-guide ol {
+  margin: 8px 0 0 20px;
+  padding: 0;
+}
+
+.setup-guide li {
+  margin-bottom: 6px;
+  color: var(--text);
+  padding-left: 4px;
+}
+
+.setup-guide li code,
+.setup-guide li .code {
+  background: rgba(255, 255, 255, 0.06);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-family: monospace;
+  font-size: 0.82rem;
+}
+
+.setup-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 4px 0 12px;
+  color: var(--accent);
+  font-size: 0.85rem;
+  text-decoration: none;
+  font-weight: 600;
+  padding: 6px 14px;
+  border: 1px solid rgba(44, 134, 184, 0.3);
+  border-radius: 6px;
+  background: rgba(44, 134, 184, 0.06);
+  transition: all 0.2s;
+}
+
+.setup-link:hover {
+  background: rgba(44, 134, 184, 0.15);
+  border-color: var(--accent);
+  transform: translateY(-1px);
+}
+
+/* ── License box ── */
+
+.setup-license-box {
+  margin: 12px 0;
+}
+
+.setup-license-label {
+  display: block;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+
+.setup-license-box textarea {
+  width: 100%;
+  min-height: 110px;
+  padding: 10px 12px;
+  font-family: "Cascadia Code", "Fira Code", monospace;
+  font-size: 0.82rem;
+  background: var(--bg-elevated);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  resize: vertical;
+  margin-bottom: 8px;
+  transition: border-color 0.2s;
+}
+
+.setup-license-box textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(44, 134, 184, 0.15);
+}
+
+/* ── Action buttons ── */
+
+.setup-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.setup-fix-btn {
+  background: linear-gradient(135deg, var(--accent), #3498db);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 2px 6px rgba(44, 134, 184, 0.2);
+}
+
+.setup-fix-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(44, 134, 184, 0.3);
+}
+
+.setup-fix-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.setup-fix-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.setup-recheck-btn {
+  background: var(--bg-elevated);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 20px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-weight: 500;
+}
+
+.setup-recheck-btn:hover {
+  background: var(--bg-surface);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* ── Tips ── */
+
+.setup-tips {
+  margin-top: 24px;
+  padding: 16px 20px;
+  background: rgba(44, 134, 184, 0.06);
+  border: 1px solid rgba(44, 134, 184, 0.15);
+  border-radius: 10px;
+  font-size: 0.85rem;
+  line-height: 1.65;
+}
+
+.setup-tips strong {
+  font-size: 0.9rem;
+}
+
+.setup-tips ul {
+  margin: 8px 0 0 18px;
+  padding: 0;
+}
+
+.setup-tips li {
+  margin-bottom: 4px;
+}
+
 .btn-set-path {
   padding: 5px 10px;
   border: 1px solid var(--border);
