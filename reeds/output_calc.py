@@ -18,13 +18,17 @@ import reeds
 reeds_path = reeds.io.reeds_path  
 
 sys.path.append(os.path.join(reeds_path, 'postprocessing', 'bokehpivot'))
-import reeds2
 from defaults import DEFAULT_DOLLAR_YEAR, DEFAULT_PV_YEAR, DEFAULT_DISCOUNT_RATE
 
 
 #%% ===========================================================================
 ### --- Postprocessing tools --- Based on bokeh
 ### ===========================================================================
+def scale_column(df, **kw):
+    df[kw['column']] = df[kw['column']] * kw['scale_factor']
+    return df
+
+
 def calc_cap(case):
     """
     Calculate capacity from ReEDS output.
@@ -51,7 +55,7 @@ def calc_cap(case):
     df = df.groupby(['i', 'r', 't'], as_index=False).sum()
 
     # convert MW to GW
-    df = reeds2.scale_column(df,**{'scale_factor': .001, 'column':'Value'})
+    df = scale_column(df,**{'scale_factor': .001, 'column':'Value'})
     
     return df
 
@@ -80,7 +84,7 @@ def calc_gen(case):
     df = df.groupby(['i', 'r', 't'], as_index=False).sum()
 
     # convert MWh to TWh
-    df = reeds2.scale_column(df,**{'scale_factor': 1e-6, 'column':'Value'})
+    df = scale_column(df,**{'scale_factor': 1e-6, 'column':'Value'})
 
     return df
 
@@ -133,7 +137,7 @@ def calc_emissions(case):
         )
 
     # convert tonnes to million metric tonnes
-    df = reeds2.scale_column(df,**{'scale_factor': 1e-6, 'column':'Value'})
+    df = scale_column(df,**{'scale_factor': 1e-6, 'column':'Value'})
 
     return df
 
@@ -177,7 +181,7 @@ def calc_annualload(case,scalars):
     df_out = pd.concat([df_out, df_total], axis=0)
 
     # convert MWh to TWh for national data
-    df_out = reeds2.scale_column(df_out,**{'scale_factor': 1e-6, 'column':'Value'})
+    df_out = scale_column(df_out,**{'scale_factor': 1e-6, 'column':'Value'})
 
     return df_out
 
@@ -206,7 +210,7 @@ def calc_h2prod(case):
     df = df.groupby(['i', 'r', 't'], as_index=False).sum()
 
     # convert tonnes to million metric tonnes
-    df = reeds2.scale_column(df,**{'scale_factor': .000001, 'column':'Value'})
+    df = scale_column(df,**{'scale_factor': .000001, 'column':'Value'})
     
     return df
 
@@ -715,7 +719,7 @@ def calc_transmission_capacity(case,levels):
     return intraregional, interregional
 
 def get_level_map(case):
-    # for all regions available in ReEDS-2.0/inputs/hierarchy.csv, map them to a clean display name
+    # for all regions available in ReEDS/inputs/hierarchy.csv, map them to a clean display name
     level_map = pd.read_csv(
         os.path.join(reeds_path, 'postprocessing', 'plots', 'level_map.csv'), 
         index_col='raw').squeeze(1)

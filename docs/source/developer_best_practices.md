@@ -3,7 +3,7 @@
 
 The following naming, rounding, and coding conventions apply to all new code contributed to ReEDS. Because these conventions were established after initial development, you may notice inconsistencies in the existing codebase--that's expected. The goal is consistency going forward, not comprehensiveness.
 
-Using the Ruff Python linter is recommended to improve code quality. To get started with Ruff, see the guide on [Installing Ruff](https://docs.astral.sh/ruff/installation/). Once installed, you can check for errors using the following command from the base ReEDS-2.0 directory: `ruff check`. If you need more information on a specific error, see the [Ruff Rules](https://docs.astral.sh/ruff/rules/).
+Using the Ruff Python linter is recommended to improve code quality. To get started with Ruff, see the guide on [Installing Ruff](https://docs.astral.sh/ruff/installation/). Once installed, you can check for errors using the following command from the base ReEDS directory: `ruff check`. If you need more information on a specific error, see the [Ruff Rules](https://docs.astral.sh/ruff/rules/).
 
 Since we have not yet adopted strict formatting guidelines, do not make code *formatting* changes to existing scripts using Ruff; use only the linter.
 
@@ -227,7 +227,7 @@ The goal is to keep ReEDS as lightweight as possible to facilitate faster clonin
 
 ## Version Control and Testing
 ### ReEDS Versioning & Releases
-This section outlines the current ReEDS approach to versioning. You can find current and past ReEDS versions here: {{ '[ReEDS-2.0 Releases]({}/releases)'.format(base_github_url) }}
+This section outlines the current ReEDS approach to versioning. You can find current and past ReEDS versions here: {{ '[ReEDS Releases]({}/releases)'.format(base_github_url) }}
 
 #### Versioning overview
 
@@ -332,7 +332,7 @@ If you would like to see what the documentation will look like when developing l
 2. Run the command `make html` to build the documentation locally
    - Ensure you have the 'reeds2' environment activated
   
-3. Open `/ReEDS-2.0/docs/build/html/index.html` to view the documentation.
+3. Open `/ReEDS/docs/build/html/index.html` to view the documentation.
    - If you make changes and wish to see how they are reflected in the documentation, you can run the `make html` command again and refresh the window you already have open
 
 4. If you would like to remove the generated html files, you can run the command `make clean` from the "docs/" folder
@@ -341,14 +341,14 @@ If you would like to see what the documentation will look like when developing l
 
 1. Download Zotero: [https://www.zotero.org/](https://www.zotero.org/)
    a. Install the "Better BibTeX for Zotero" plugin: [https://retorque.re/zotero-better-bibtex/](https://retorque.re/zotero-better-bibtex/)
-   b. Turn on "Automatic export" under (Better BibTeX preferences)/(Automatic export) and adjust the filepath to {your filepath}
-   c. Under (Better BibTeX preferences)/Export/BibTeX or Edit->Preferences->Better BibTex, set "Add URLs to BibTeX export" to "in the 'url' field"
-   d. Under (Better BibTeX preferences)/Export/Fields or Edit->Preferences->Better BibTex, enter the following in "Fields to omit from export (comma-separated)": `file,keywords`
+   b. In Zotero, navigate to Edit -> Settings then select the "Better BibTeX" tab. (On Mac: Zotero -> Settings -> Better BibTeX -> Open Better BibTeX Preferences...)
+   c. Under Export/BibTeX or Edit->Preferences->Better BibTeX, set "Add URLs to BibTeX export" to "in the 'url' field"
+   d. Under Export/Fields or Edit->Preferences->Better BibTeX, enter the following in "Fields to omit from export (comma-separated)": `file,keywords`
 
 2. Request access to the ReEDS Zotero library from Brian, Patrick, or Wesley
 
 3. If you add any new references to the ReEDS Zotero library and cite them in the ReEDS docs, you'll need to:
-   a. Replace the contents of ReEDS-2.0/docs/source/references.bib with the contents of the .bib file at {your path}. Make sure to export your .bib file in a "Better BibTex" format.
+   a. Replace the contents of ReEDS/docs/source/references.bib with the contents of the .bib file at {your path}. Make sure to export your .bib file in a "Better BibTex" format.
 
 
 To add an in-text citation, find the citation key of the citation you would like to add in Zotero.
@@ -509,8 +509,8 @@ Please follow these guidelines when planning and opening a pull request (PR):
       - This is crucial, as the title of your pull request will be used in the summary of changes for each new version of ReEDS
     - The description should be clear enough for someone not directly involved in your work to grasp the changes being proposed
     - If you used an LLM-based coding assistant or chatbot in the preparation of the pull request, make sure to describe how in the appropriate section of the pull request template
-    - If you have a charge code for your project, provide it in the PR text to cover reviewers' time
-    - Assign and contact reviewers
+    - Assign and contact reviewers.
+    If you have a charge code for your project, share it with the reviewers to cover their time.
 
 - After opening the pull request, monitor the status of the automated tests (which run a few full test cases and the R2X translation) and fix any failed tests
 
@@ -566,7 +566,7 @@ The following are best practices that should be considered when reviewing pull r
   - Request changes as necessary and explain your reasoning
   - Remember that the PR submitter is ultimately responsible for the changes in the PR, not you, so give the PR review a good effort, but don't agonize over every detail. 
     - If reviewing a PR becomes too large of a chore, feel free to reach out to others on the team to be able to tackle the PR review jointly
-  - If necessary, make sure the [ReEDS documentation](https://pages.github.nrel.gov/ReEDS/ReEDS-2.0/index.html) was updated to reflect the code changes
+  - If necessary, make sure the [ReEDS documentation](https://reeds-model.github.io/ReEDS/index.html) was updated to reflect the code changes
     - Instructions for how to update the documentation can be found [here](#updating-the-reeds-documentation)
 
 
@@ -596,8 +596,8 @@ When using the python debugger, you will need to set a configuration. Here's an 
             "program": "${file}",
             "console": "integratedTerminal",
             "args": [
-                "/Users/kminderm/ReEDS-2.0",
-                "/Users/kminderm/ReEDS-2.0/runs/main_Pacific/inputs_case"
+                "/Users/kminderm/ReEDS",
+                "/Users/kminderm/ReEDS/runs/main_Pacific/inputs_case"
             ],
             "purpose": ["debug-in-terminal"]
         },

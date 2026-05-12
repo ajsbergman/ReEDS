@@ -7,7 +7,6 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from matplotlib import patheffects as pe
 import geopandas as gpd
-import mapclassify
 import shapely
 import argparse
 import traceback
@@ -45,36 +44,6 @@ def get_bokeh_colors():
         index_col='order',
     ).squeeze(1)
     return bokehcolors
-
-
-def map_regions(case):
-    """
-    Plot map of model regions.
-    """
-    dfmap = reeds.io.get_dfmap(case)
-    dfregion = dfmap['r'].dissolve(by='r')
-    colors = 'C' + mapclassify.greedy(dfregion, strategy='smallest_last').astype(str)
-    alpha_region = 0.4
-    
-    plt.close()
-    f,ax = plt.subplots(figsize=(6,4))
-    dfregion.plot(
-        ax=ax, facecolor='none', edgecolor='k', lw=0.5,
-    )
-    for r, row in dfregion.iterrows():
-        dfregion.loc[[r]].plot(ax=ax, color=colors[r], alpha=alpha_region, lw=0, zorder=1)
-        # add labels
-        x, y = (np.array([row.geometry.centroid.x, row.geometry.centroid.y]))
-        ax.annotate(
-            r.replace('_','\n'),
-            (x, y),
-            ha='center', va='center', weight='bold',
-            size=4,
-            color='k', zorder=1e11,
-            path_effects=[pe.withStroke(linewidth=1.5, foreground='w', alpha=1)]
-        )
-    ax.axis('off')
-    return f, ax, dfmap
 
 
 def plot_outage_scheduled(case, f=None, ax=None, color='C0', aspect=1):
@@ -988,7 +957,7 @@ if __name__ == '__main__':
         description='Check inputs.gdx parameters against objective_function_params.yaml',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    parser.add_argument('case', help='ReEDS-2.0/runs/{case} directory')
+    parser.add_argument('case', help='ReEDS/runs/{case} directory')
     parser.add_argument(
         '--write', '-w', choices=['png', 'ppt', 'pptx'], default='png',
         help='Output format (png or pptx)')
@@ -1024,14 +993,6 @@ if __name__ == '__main__':
 
     #%% Plots
     sw = reeds.io.get_switches(case)
-
-    ### Region map
-    try:
-        f, ax, df = map_regions(case)
-        saveit('region_map')
-    except Exception:
-        print(traceback.format_exc())
-
 
     ### Scheduled outage rates
     try:

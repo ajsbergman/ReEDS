@@ -2,15 +2,7 @@
 import os
 import sys
 import pandas as pd
-import numpy as np
-import matplotlib as mpl
-import matplotlib.pyplot as plt
-from matplotlib import patheffects as pe
 import geopandas as gpd
-from glob import glob
-import traceback
-import gdxpds
-import cmocean
 from tqdm import tqdm
 import time
 import datetime
@@ -21,22 +13,12 @@ pd.options.display.max_columns = 200
 
 import warnings
 warnings.filterwarnings("ignore")
-## trying to get rid of the Fiona messages whenever I read in the .gpkg file
-import logging
-# Set the logging level for Fiona to WARNING or ERROR
-logging.getLogger("fiona").setLevel(logging.WARNING)
-logging.disable(logging.CRITICAL)
 
 ### Local imports
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 import reeds
 from reeds import plots
 plots.plotparams()
-from reeds import reedsplots
-
-## read in bokeh functionality
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..','postprocessing/bokehpivot')))
-import reeds2
 
 #%%### GENERAL FUNCTIONS
 
@@ -77,7 +59,7 @@ def create_scenarios_csv(output_dir,cases):
             # Assign a Load Profile
             try:
                 df.loc[df['machine_readable_scenario_name'] == scenario, 'Demand'] = sw.GSw_LoadProfiles
-            except:
+            except Exception:
                 df.loc[df['machine_readable_scenario_name'] == scenario, 'Demand'] = sw.GSw_EFS1_AllYearLoad
             
             # Assign a Policy
@@ -148,10 +130,7 @@ def produce_shapefiles():
     try:
         for x in ['US_PCA']:
             os.mkdir(os.path.join(output_dir,'shapefiles',x))
-            src_file  = os.path.join(reeds_path,'inputs','shapefiles',x,f'{x}.shp')
             # read in the source file and check its columns
-            x_cols = gpd.read_file(src_file).columns.tolist()
-
             dst_file  = os.path.join(output_dir,'shapefiles',x,f'{x}.shp')
             # Read the shapefile
             gdf = reeds.io.get_zonemap(cases[basecase])
@@ -251,7 +230,7 @@ def add_custom_palette(file_path, palette_name, color_list, overwrite):
     Adds a custom color palette to a Tableau Preferences.tps file.
     """
     # If the Prefences.tps file has not already been created, create a new one with a basic structure
-    file_path = os.path.join(output_dir, f'Preferences.tps')
+    file_path = os.path.join(output_dir, 'Preferences.tps')
     if not os.path.exists(file_path):
         root = ET.Element('workbook')
         tree = ET.ElementTree(root)
@@ -446,7 +425,7 @@ def calc_peakload(
     df = pd.concat(dictout.values(), axis=0, ignore_index=True) 
 
     # # convert MW to GW for national data
-    df = reeds2.scale_column(df,**{'scale_factor': 1e-3, 'column':'Value'})
+    df = reeds.output_calc.scale_column(df,**{'scale_factor': 1e-3, 'column':'Value'})
 
     return df
 
@@ -497,7 +476,7 @@ def calc_transmission_map(case,level='transgrp'):
     trans_total_new = pd.concat([trans_total_new, tran_new], axis=0)
 
     # convert MW to GW
-    trans_total_new = reeds2.scale_column(trans_total_new,**{'scale_factor': 1e-3, 'column':'Value'})   
+    trans_total_new = reeds.output_calc.scale_column(trans_total_new,**{'scale_factor': 1e-3, 'column':'Value'})   
 
     return trans_total_new
     
@@ -511,7 +490,7 @@ def export(dictin,output_dir):
         try:
             df = pd.concat(dictin_data.values(), axis=0, ignore_index=True)
             df.to_csv(os.path.join(output_dir,'data',f'{metric}.csv'),index=False)
-        except Exception as error:
+        except Exception:
             print(f'{metric} is empty, not printing this to csv.')
             # create a blank df to export so that the csv still gets created and Tableau does not break when trying to read in the data
             df_blank = pd.DataFrame(columns=['Metric','Scenario','County','BA','Year','Value'])
@@ -530,10 +509,10 @@ if __name__ == '__main__':
         description='Create the necessary csv files for Tableau to ingest and visualize from ReEDS outputs')
     parser.add_argument(
         '--reeds_path', default=os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')), 
-        help='ReEDS-2.0 directory')
+        help='ReEDS directory')
     parser.add_argument(
         '--tableau_path', default=os.path.expanduser('~\Documents\My Tableau Repository'), 
-        help='ReEDS-2.0 directory')    
+        help='ReEDS directory')    
     parser.add_argument(
         'caselist', type=str, nargs='+',
         help=('space-delimited list of cases to plot, OR shared casename prefix, '
@@ -581,9 +560,9 @@ if __name__ == '__main__':
 
     #%%### Inputs for debugging
     # reeds_path = os.path.abspath(os.path.join(os.path.dirname(__file__), '../..'))
-    # caselist = r'C:\Users\ahamilto\Documents\GitHub\ReEDS-2.0\postprocessing\example.csv'
+    # caselist = r'C:\Users\ahamilto\Documents\GitHub\ReEDS\postprocessing\example.csv'
     # years = list(range(2025-2050))
-    # python tableau_viz_suite.py C:\Users\ahamilto\Documents\GitHub\ReEDS-2.0\postprocessing\example.csv --reeds_path C:\Users\ahamilto\Documents\GitHub\ReEDS-2.0
+    # python tableau_viz_suite.py C:\Users\ahamilto\Documents\GitHub\ReEDS\postprocessing\example.csv --reeds_path C:\Users\ahamilto\Documents\GitHub\ReEDS
     
     #%%###os globals
     this_dir_path = os.path.dirname(os.path.realpath(__file__))
@@ -599,7 +578,7 @@ if __name__ == '__main__':
     os.mkdir(os.path.join(output_dir,'shapefiles'))
 
     # copy this script, the inputs cases .csv file (if applicable) to the output directory
-    shutil.copy2(os.path.join(this_dir_path, f'tableau_viz_suite.py'), os.path.join(output_dir))
+    shutil.copy2(os.path.join(this_dir_path, 'tableau_viz_suite.py'), os.path.join(output_dir))
     shutil.copy2(caselist[0], os.path.join(output_dir))
 
     #%%### formatting
