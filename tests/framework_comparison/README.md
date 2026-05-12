@@ -56,6 +56,7 @@ approximately matching ReEDS's sequential-myopic solve structure.
 | `linopy` | `solve_linopy.py` | HiGHS (via linopy) |
 | `pyomo` | `solve_pyomo.py` | HiGHS (via highspy) |
 | `pyoptinterface` | `solve_pyoptinterface.py` | HiGHS (via pyoptinterface) |
+| `arco` | `solve_arco.py` | HiGHS (via Arco Python bindings) |
 | `gams_highs` | `solve_gams.py` | HiGHS (via GAMS subprocess) |
 | `gams_cplex` | `solve_gams.py` | CPLEX (via GAMS subprocess) |
 | `gamspy_highs` | `solve_gamspy.py` | HiGHS (via GAMSPy) |
@@ -84,6 +85,14 @@ python tests/framework_comparison/benchmark.py --frameworks gamspy_cplex --size 
 ```
 
 Results are printed to the terminal and saved as CSV in `results/`.
+
+### Running Arco standalone with `uv --script`
+
+`solve_arco.py` includes inline `uv` metadata and pins Arco to the current PR commit. You can compile/install the bindings directly from that source with:
+
+```bash
+uv run --script tests/framework_comparison/solve_arco.py
+```
 
 ### CLI options
 
@@ -139,6 +148,7 @@ To install the GAMSPy license:
 | `solve_linopy.py` | linopy implementation |
 | `solve_pyomo.py` | Pyomo implementation |
 | `solve_pyoptinterface.py` | pyoptinterface implementation |
+| `solve_arco.py` | Arco Python implementation (includes `uv --script` metadata) |
 | `solve_gams.py` | Writes a `.gms` file and invokes GAMS via subprocess |
 | `solve_gamspy.py` | GAMSPy implementation |
 | `verify_env.py` | Lightweight import and solve check (older, pre-ramping/storage version) |
