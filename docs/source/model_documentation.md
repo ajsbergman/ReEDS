@@ -3499,7 +3499,7 @@ P_{r,t} = \alpha + \alpha_r + \alpha_t + \alpha_{r,t} + \beta_{\text{nat}}Q_{\te
 where $P_{r,t}$ is the price of natural gas (in \$/MMBtu) in region $r$ and year $t$; the $\alpha$ parameters are the intercept terms of the supply curves with adjustments made based on region ($\alpha_r$), year ($\alpha_t$), and the region-year interaction ($\alpha_{r,t}$); $\beta_{\text{nat}}$ is the coefficient for the national NG demand ($Q_{\text{nat}}$, in quads); and $\beta_r$ is the coefficient for the regional NG demand ($Q_{r,t}$) in region $r$.
 Note that the four $\alpha$ parameters in {eq}`ng-price-consumption` can in practice be represented using only $\alpha_{r,t}$.
 
-The $\beta$ terms are regressed from AEO scenarios using a demeaned fixed-effects OLS approach in two stages.
+The $\beta$ terms are regressed from AEO scenarios using a demeaned fixed-effects ordinary least squares approach in two stages.
 
 **Stage 1 — Beta regression.** The price-consumption relationship is modeled as:
 
