@@ -274,7 +274,10 @@ def calculate_regional_distpv_cf(inputs_case, cap_min=0.0001):
 
     return regional_distpv_cf
 
+# Identify resources with missing classes and assign them to 
+# closest resources of similar classes
 def get_missing_class_resource(existing_techs, resources):
+    # Use zone map to across walk between existing_techs and resources
     crs = 'EPSG:5070'
     dfr = reeds.io.get_zonemap(reeds.io.standardize_case(inputs_case))
     dfr['r'] = dfr.index
@@ -299,44 +302,51 @@ def get_missing_class_resource(existing_techs, resources):
         resource_tech = resources[resources['i']==tech]
         resource_tech_cat = resources[resources['i'].str.contains(tech_cat)]
 
-        # First merge existing techs to resource by tech class and exact location
+        # First map existing techs to resources by tech class and exact location
         existing_tech_resource_match = existing_tech.merge(resource_tech[['i','r']],
                                                            on=['i','r'],
                                                            how='left',
                                                            indicator=True)
         
         # If there are existing tech classes with missing resources,
-        # assign them to the nearest resource of the same tech
+        # assign them to the nearest resources of same techs with similar classes
         missing_class_resource = existing_tech_resource_match[existing_tech_resource_match['_merge'] == 'left_only'].copy()
-        missing_class_resource = missing_class_resource[missing_class_resource['i'].str.contains("upv|wind")]
         
         if len(missing_class_resource) > 0:
-            if tech in resource_tech['i'].unique().tolist():
-                missing_class_resource_nearest = gpd.sjoin_nearest(missing_class_resource, 
-                                                        resource_tech, 
-                                                        distance_col='distance', 
-                                                        how='left')
-            else:
-                missing_class_resource_nearest = gpd.sjoin_nearest(missing_class_resource, 
-                                                        resource_tech_cat, 
-                                                        distance_col='distance', 
-                                                        how='left')
-            
-            missing_class_resource_nearest['i'] = missing_class_resource_nearest['i_left']
-            missing_class_resource_nearest['ii'] = missing_class_resource_nearest['i_right']
-            missing_class_resource_nearest = missing_class_resource_nearest[['i','ii','r_left']].rename(
-                columns={'i': '*i','r_left':'r'})
+            missing_class_resource_nearest = gpd.sjoin_nearest(missing_class_resource, 
+                                                               resource_tech_cat, 
+                                                               distance_col='distance', 
+                                                               how='left')
+            for idx, row in missing_class_resource.iterrows():
+                tech = row['i']
+                region = row['r']
+                missing_class_resource_match = missing_class_resource_nearest.loc[(missing_class_resource_nearest['i_left']==tech) &
+                                                                                  (missing_class_resource_nearest['r_left']==region)]
+                missing_class_resource_match['class'] = missing_class_resource_match['i_left'].str.split("_").str[1].astype(int)
+                missing_class_resource_match['num'] = missing_class_resource_match['i_right'].str.split("_").str[1].astype(int)
+                missing_class_resource_match['diff'] = missing_class_resource_match['class'] - missing_class_resource_match['num']
+                if (missing_class_resource_match['diff'] > 0).any():
+                    missing_class_resource_match = missing_class_resource_match[missing_class_resource_match['diff']>0]
+                    missing_class_resource_match = missing_class_resource_match.nsmallest(1, 'diff')
+                else:
+                    missing_class_resource_match = missing_class_resource_match.nlargest(1, 'diff')
+
+                missing_class_resource.loc[idx, "ii"] = missing_class_resource_match['i_right'].iloc[0]  
+                
+                missing_class_resource = missing_class_resource[['i','ii','r']]  
+
         else:
-            missing_class_resource_nearest = pd.DataFrame(columns=['*i','ii','r'])
-        
-        existing_techs_list = existing_techs_list + [missing_class_resource_nearest]
+            missing_class_resource = pd.DataFrame(columns=['i','ii','r'])
+
+        missing_class_resource = missing_class_resource.rename(columns={'i':'*i'})
+        existing_techs_list = existing_techs_list + [missing_class_resource]
         
     missing_class_resource_match = pd.concat(existing_techs_list, 
                                              ignore_index=False,
                                              sort=False)
-    missing_class_resource_match = missing_class_resource_match.drop_duplicates(subset=['*i','ii','r'],
-                                                                                keep='first')
+
     return missing_class_resource_match
+
 
 #%% ===========================================================================
 ### --- MAIN FUNCTION ---
@@ -627,7 +637,7 @@ if __name__ == '__main__':
 
     # #%% Settings for testing
     # reeds_path = os.path.realpath(os.path.join(os.path.dirname(__file__),'..'))
-    # inputs_case = os.path.join(reeds_path,'runs','test_Pacific','inputs_case')
+    # inputs_case = os.path.join(reeds_path,'runs','test_github_MA_county_CC','inputs_case')
     
     log = reeds.log.makelog(
         scriptname=__file__,
