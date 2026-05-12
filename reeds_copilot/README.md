@@ -56,6 +56,7 @@ ReEDS-Copilot uses commercial LLM APIs for its chat functionality. You need an A
 
 ## What Can It Do?
 
+- **Setup Wizard** — Step-by-step guided setup for first-time users. Checks all prerequisites (Conda, GAMS, Julia, etc.) and offers one-click fixes for what's missing.
 - **AI Chat** — Ask questions about ReEDS in plain English. The AI reads the actual repo files and gives grounded answers with source citations.
 - **Search** — Full-text search across all ReEDS code, documentation, and input files.
 - **Browse Files** — Explore the repository structure, preview CSVs and text files directly in the browser.

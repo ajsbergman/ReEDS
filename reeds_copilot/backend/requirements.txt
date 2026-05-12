@@ -7,3 +7,4 @@ anthropic>=0.40
 openai>=1.30
 google-genai>=1.0
 gdxpds>=1.4
+paramiko>=3.0
