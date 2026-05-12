@@ -335,12 +335,12 @@ def get_missing_class_resource(existing_techs, resources):
 
                 missing_class_resource.loc[idx, "ii"] = missing_class_resource_match['i_right'].iloc[0]  
                 
-                missing_class_resource = missing_class_resource[['i','ii','r']]  
+                missing_class_resource = missing_class_resource[['i','ii','r_right']]  
 
         else:
-            missing_class_resource = pd.DataFrame(columns=['i','ii','r'])
+            missing_class_resource = pd.DataFrame(columns=['i','ii','r_right'])
 
-        missing_class_resource = missing_class_resource.rename(columns={'i':'*i'})
+        missing_class_resource = missing_class_resource.rename(columns={'i':'*i','r_right':'r'})
         existing_techs_list = existing_techs_list + [missing_class_resource]
         
     missing_class_resource_match = pd.concat(existing_techs_list, 
