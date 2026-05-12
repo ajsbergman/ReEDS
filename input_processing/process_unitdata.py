@@ -43,11 +43,11 @@ def assign_gids_to_unitdata(df, offland_gdf, land_gdf):
                                                     'supplycurve_'+geo_tech+'-'+'reference'+'.csv'))
         else:
             if tech == 'upv':
-                supply_curve = pd.read_csv(os.path.join('inputs_case','supply_curve','supplycurve_upv.csv'))
+                supply_curve = pd.read_csv(os.path.join('inputs_case','supplycurve_upv.csv'))
             elif tech == 'wind-ons':
-                supply_curve = pd.read_csv(os.path.join('inputs_case','supply_curve','supplycurve_wind-ons.csv'))
+                supply_curve = pd.read_csv(os.path.join('inputs_case','supplycurve_wind-ons.csv'))
             elif tech == 'wind-ofs':
-                supply_curve = pd.read_csv(os.path.join('inputs_case','supply_curve','supplycurve_wind-ofs.csv'))
+                supply_curve = pd.read_csv(os.path.join('inputs_case','supplycurve_wind-ofs.csv'))
         
         # Only consider the sc_point_pids that are in supply curves:
         # (to avoid unmatched units later)
