@@ -79,7 +79,7 @@ def get_solve_times(path=''):
         'start': {},
         'stop': {},
     }
-    with open(os.path.join(path, 'gamslog.txt'), 'r') as f:  
+    with open(os.path.join(path, 'gamslog.txt'), 'r') as f:
         for _line in f:
             line = _line.strip()
             ## Get the year/iteration
@@ -259,3 +259,4 @@ if __name__ == '__main__':
     except Exception:
         print('meta.csv not found or not writeable:')
         print(traceback.format_exc())
+        
