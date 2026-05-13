@@ -21,6 +21,7 @@ reeds_path = os.path.dirname(__file__)
 
 # %% Default inputs
 switch_mods_default = {
+    'GSw_gopt': 4,
     'GSw_HourlyClusterAlgorithm': 'hierarchical',
     'GSw_HourlyNumClusters': 365,
     'GSw_HourlyType': 'day',

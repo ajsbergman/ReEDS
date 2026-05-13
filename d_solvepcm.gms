@@ -17,6 +17,8 @@ $include d1_temporal_params.gms
 $offMulti
 
 *** Solve it
+OPTION lp = %solver% ;
+ReEDSmodel.optfile = %GSw_gopt% ;
 solve ReEDSmodel minimizing Z using lp ;
 
 *** Abort if the solver returns an error
