@@ -157,16 +157,16 @@ def prep_supply_curve(reeds_path, tech, access_case, subtech):
 def assign_class(cf, tech, df_class):
     # Each geothermal unit is assigned to the class associated with the min and max temperatures its mean temperature falls between
     if tech in ['geohydro_allkm', 'egs_allkm']:
-        row = df_class[(df_class['min_reV_mean_temp'] <= cf) & (cf < df_class['max_reV_mean_temp'])]
-        # Handle max cutoff point
-        if cf == df_class['max_reV_mean_temp'].max():
-            row = df_class[cf == df_class['max_reV_mean_temp']]
+        row = df_class[(df_class['min_reV_mean_temp'] < cf) & (cf <= df_class['max_reV_mean_temp'])]
+        # Handle min cutoff point
+        if cf == df_class['min_reV_mean_temp'].min():
+            row = df_class[cf == df_class['min_reV_mean_temp']]
     # Each wind or solar unit is assigned to the class associated with the min and max capacity factors its capacity factor falls between
     else:
-        row = df_class[(df_class['min_reV_cf_ac'] <= cf) & (cf < df_class['max_reV_cf_ac'])]
-        # Handle max cutoff point
-        if cf == df_class['max_reV_cf_ac'].max():
-            row = df_class[cf == df_class['max_reV_cf_ac']]    
+        row = df_class[(df_class['min_reV_cf_ac'] < cf) & (cf <= df_class['max_reV_cf_ac'])]
+        # Handle min cutoff point
+        if cf == df_class['min_reV_cf_ac'].min():
+            row = df_class[cf == df_class['min_reV_cf_ac']]    
     
     if not row.empty:
         return row.iloc[0]['class']
