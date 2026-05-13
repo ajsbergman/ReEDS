@@ -1176,36 +1176,8 @@ $onlisting
  / ;
 
 
-set prescriptivelink0(pcat,ii) "initial set of prescribed categories and their technologies - used in assigning prescribed builds"
-/
-$offlisting
-$ondelim
-$include inputs_case%ds%prescriptivelink0.csv
-$offdelim
-$onlisting
-/ ;
-
-*include non-numeraire CSPs and then exclude numeraire CSPs in ii dimension of
-*prescriptivelink0(pcat,ii) set when Sw_WaterMain is ON
-prescriptivelink0("csp-ws",ii)$[(csp1(ii) or csp2(ii) or csp3(ii) or csp4(ii))$Sw_WaterMain] = yes ;
-prescriptivelink0("csp-ws",ii)$[csp(ii)$i_numeraire(ii)$Sw_WaterMain] = no ;
-
-set prescriptivelink(pcat,i) "final set of prescribed categories and their technologies - used in the model" ;
-
-prescriptivelink(pcat,i)$prescriptivelink0(pcat,i) = yes ;
-
 alias(pcat,ppcat) ;
 
-* active prescriptivelink for all techs not included in the table above
-* but restrict out csp techs in this calculation - since they
-* are indexed by a separate pcat (csp-ws) and have special considerations
-prescriptivelink(pcat,i)$[sameas(pcat,i)$(not sum{ppcat, prescriptivelink(ppcat,i) })$(not csp1(i))] = yes ;
-*only geo_hydro techs are considered to meet geothermal prescriptions
-prescriptivelink(pcat,i)$[geo_extra(i)] = no ;
-
-
-*upgrades have no prescriptions
-prescriptivelink(pcat,i)$[upgrade(i)] = no ;
 
 set rsc_agg(i,ii)   "rsc technologies that belong to the same class" ;
 
@@ -2491,7 +2463,6 @@ valcap(i,v,r,t)$[sum{tt$[tt.val = Sw_UpgradeYear], m_capacity_exog(i,v,r,tt) }
 *and if it is not in ban or bannew
 *the year also needs to be greater than the first year indicated
 *for that specific class (this is the summing over tt portion)
-*or it needs to be specified in prescriptivelink
 valcap(i,newv,r,t)$[(not rsc_i(i))$tmodel_new(t)$(not ban(i))$(not bannew(i))
                     $(sum{tt$(yeart(tt)<=yeart(t)), ivt(i,newv,tt) })$(not upgrade(i))
                     ]  = yes ;
