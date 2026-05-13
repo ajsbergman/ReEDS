@@ -71,9 +71,9 @@ def assign_gids_to_unitdata(df, offland_gdf, land_gdf):
 
         # Update ba since FIPS have been updated
         df_county = pd.read_csv(os.path.join(inputs_case,'county2zone.csv'))
-        df_county = df_county[['FIPS','r']]
+        df_county = df_county[['FIPS','ba']]
         df_county['FIPS'] = 'p' + df_county['FIPS'].astype(str)
-        df_county = df_county.rename(columns={'r':'reeds_ba_nearest'})
+        df_county = df_county.rename(columns={'ba':'reeds_ba_nearest'})
 
         gdf_joined = gdf_joined.merge(df_county, on='FIPS', how='left')
         gdf_joined['reeds_ba'] = gdf_joined['reeds_ba_nearest']

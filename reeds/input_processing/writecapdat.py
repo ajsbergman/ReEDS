@@ -330,11 +330,6 @@ TECH = {
 
 def main(reeds_path, inputs_case, agglevel, regions):
     
-    # #%% Settings for testing
-    #reeds_path = "/Users/apham/Documents/GitHub/ReEDS/ReEDS/"
-    #inputs_case = os.path.join(reeds_path,'runs','test_newNEMS_OR_water','inputs_case')
-
-
     #########################
     ### SUPPLEMENTAL DATA ###
     
@@ -1060,8 +1055,8 @@ if __name__ == '__main__':
     inputs_case = args.inputs_case
 
     # #%% Settings for testing
-    #reeds_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    #inputs_case = os.path.join(reeds_path,'runs','test_Ref','inputs_case')
+    #reeds_path = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)),'..','..'))
+    #inputs_case = os.path.join(reeds_path,'runs','test_github_Everything','inputs_case')
 
     #%% Set up logger
     log = reeds.log.makelog(
