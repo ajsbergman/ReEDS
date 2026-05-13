@@ -15,20 +15,21 @@ import traceback
 #%% FUNCTION DEFINITION
 
 def main(inputs_case, plantchar_geo, tech_type=None, output_multipliers=True):
-    tech_types = [tech_type] if tech_type else ['egs', 'geohydro']
 
-    try:
-        sw = reeds.io.get_switches(inputs_case)
-        if int(sw.get('numbins_egs_depth', 1)) <= 1 and (tech_type is None or tech_type == 'egs'):
-            if output_multipliers:
-                print("numbins_egs_depth <= 1: writing zero-filled egs_cap_cost_mult.csv")
-                # Create a minimal zero-filled DF with required columns
-                zero_df = pd.DataFrame([{'*i': 'egs1_1', 'r': 'p1', 'value': 0.0}])
-                out_file = os.path.join(inputs_case, f'{tech_type}_cap_cost_mult.csv' if tech_type else 'geo_cap_cost_mult.csv')
-                zero_df.to_csv(out_file, index=False)
-            return None
-    except Exception:
-        pass
+    sw = reeds.io.get_switches(inputs_case)
+    tech_types = [tech_type] if tech_type else ['egs', 'geohydro']
+    active_tech_types = []
+    for tech in tech_types:
+        numbins = int(sw.get(f'numbins_{tech}_depth', 1))
+        if numbins <= 1:
+            out_path = os.path.join(inputs_case, f'{tech}_cap_cost_mult.csv')
+            pd.DataFrame(columns=['*i','r','value']).to_csv(out_path, index=False)
+            print(f"numbins_{tech}_depth=1: skipping cost adjustment, writing empty {tech}_cap_cost_mult.csv")
+        else:
+            active_tech_types.append(tech)
+    if not active_tech_types:
+        return None
+    tech_types = active_tech_types
 
     ## load drilling cost curves
     geo_cost_curves = pd.read_csv(os.path.join(inputs_case, 'geo_cost_curves.csv'))
@@ -60,153 +61,60 @@ def main(inputs_case, plantchar_geo, tech_type=None, output_multipliers=True):
             continue
         class_to_ref_depth = tech_ref_data.set_index('geo_class')['ref_depth'].to_dict()
         ## calculate cost multipliers for each depth record
-        for _, row in depths_data.iterrows():
-            class_val = row['class']
-            if class_val not in class_to_ref_depth: ## fix for class 10 edge cases
-                continue
-            ref_depth = class_to_ref_depth[class_val]
-            act_depth = row['rep_depth']
-            
-            ## calculate drilling cost ratio
-            drilling_cost_ratio = calc_drilling_cost(act_depth) / calc_drilling_cost(ref_depth)
-            
-            ## calculate occ multiplier
-            pct = drilling_percent.get(class_val, 50)  ## using 50% as default value if drilling percent value is not found
-            occ_mult = 1 + (pct/100) * (drilling_cost_ratio - 1)
+        # drop rows whose class has no ATB reference depth
+        depths_data = depths_data[depths_data['class'].isin(class_to_ref_depth)].copy()
 
-            ## plant_type (flash vs. binary) multiplier calculation
-            binary_cost_conv = 1.0
-            flash_fraction = row.get('flash_fraction', np.nan)
-            if np.isnan(flash_fraction):
-                plant_cost_mult = 1.0
-            else:
-                # for class <= 6 base is flash; for >6 base is binary (match original plantcostprep logic)
-                if class_val <= 6:
-                    plant_cost_mult = flash_fraction + (1 - flash_fraction) * binary_cost_conv
-                else:
-                    plant_cost_mult = flash_fraction / binary_cost_conv + (1 - flash_fraction)
-            
-            all_multipliers.append({
-                'r': row['r'], 'tech': row['tech'], 'bin': row['bin'],
-                'ref_depth': ref_depth, 'act_depth': act_depth,
-                'occ_mult': round(occ_mult, 4), 'plant_cost_mult': round(plant_cost_mult, 6),
-                'capacity': row.get('capacity', np.nan)
-            })
+        # vectorized multiplier calculation
+        depths_data['ref_depth']       = depths_data['class'].map(class_to_ref_depth)
+        depths_data['drill_ratio']     = (
+            calc_drilling_cost(depths_data['rep_depth']) /
+            calc_drilling_cost(depths_data['ref_depth'])
+        )
+        depths_data['drill_pct']       = depths_data['class'].map(lambda c: drilling_percent.get(c, 50))
+        depths_data['occ_mult']        = (
+            1 + (depths_data['drill_pct'] / 100) * (depths_data['drill_ratio'] - 1)
+        ).round(4)
+
+        binary_cost_conv = 1.0
+        ff = depths_data['flash_fraction'].fillna(np.nan)
+        depths_data['plant_cost_mult'] = np.where(
+            ff.isna(), 1.0,
+            np.where(
+                depths_data['class'] <= 6,
+                ff + (1 - ff) * binary_cost_conv,
+                ff / binary_cost_conv + (1 - ff)
+            )
+        ).round(6)
+
+        all_multipliers.append(depths_data[['r','tech','bin','ref_depth','rep_depth',
+                                            'occ_mult','plant_cost_mult','capacity']])
     
     if not all_multipliers:
-        return None
-        
-    cost_multipliers = pd.DataFrame(all_multipliers)
-
-    ### write out and save for reference
-    if output_multipliers:
-        out_detailed = os.path.join(inputs_case, f'{tech_type}_cost_multipliers_detailed.csv' if tech_type else 'geo_cost_multipliers_detailed.csv')
-        out_agg = os.path.join(inputs_case, f'{tech_type}_cost_multipliers.csv' if tech_type else 'geo_cost_multipliers.csv')
-        cost_multipliers.to_csv(out_detailed, index=False)
+        return None  
+    cost_multipliers = pd.concat(all_multipliers, ignore_index=True)
 
     # aggregate to one occ_mult & plant_cost_mult per (r,tech) using capacity weights when available
-    if 'capacity' in cost_multipliers.columns and cost_multipliers['capacity'].notnull().any():
-        cost_multipliers['capacity'] = cost_multipliers['capacity'].fillna(0.0)
-        agg_occ = (
-            cost_multipliers
-            .groupby(['r','tech'])
-            .apply(lambda g: np.average(g['occ_mult'].astype(float), weights=g['capacity'].astype(float)) )
-            .reset_index(name='occ_mult')
-        )
-        agg_plant = (
-            cost_multipliers
-            .groupby(['r','tech'])
-            .apply(lambda g: np.average(g['plant_cost_mult'].astype(float), weights=g['capacity'].astype(float)) )
-            .reset_index(name='plant_cost_mult')
-        )
-        agg = agg_occ.merge(agg_plant, on=['r','tech'])
-    else:
-        agg = cost_multipliers.groupby(['r','tech']).agg({
-            'occ_mult': 'mean',
-            'plant_cost_mult': 'mean'
-        }).reset_index()
+    cost_multipliers['capacity'] = cost_multipliers['capacity'].fillna(0.0)
+    use_weights = cost_multipliers['capacity'].sum() > 0
+
+    def wavg(g, col):
+        return (np.average(g[col], weights=g['capacity'])
+                if use_weights else g[col].mean())
+
+    agg = (
+        cost_multipliers.groupby(['r','tech'])
+        .apply(lambda g: pd.Series({
+            'occ_mult':        wavg(g, 'occ_mult'),
+            'plant_cost_mult': wavg(g, 'plant_cost_mult'),
+        }))
+        .reset_index()
+    )
 
     # combine into a single total multiplier if you prefer
     agg['total_mult'] = (agg['occ_mult'].astype(float) * agg['plant_cost_mult'].astype(float))
 
     # write fractional diff values for egs_cost_cap_mult.csv
     agg['value'] = agg['total_mult'] - 1.0
-
-    # write out aggregated file with both components and combined total
-    if output_multipliers:
-        cost_multipliers.to_csv(out_detailed, index=False)
-        agg.to_csv(out_agg, index=False)
-
-        # expand aggregated multipliers to county-level using county2zone.csv
-        try:
-            county_path = os.path.join(inputs_case, 'county2zone.csv')
-            hierarchy_path = os.path.join(inputs_case, 'hierarchy.csv')
-            
-            if os.path.exists(county_path) and os.path.exists(hierarchy_path):
-                # 1. Load county map (FIPS -> BA)
-                county_df = pd.read_csv(county_path, dtype=str).fillna('')
-                
-                # Detect columns
-                fips_col = next((c for c in county_df.columns if 'fips' in c.lower()), None)
-                ba_col = next((c for c in county_df.columns if c.lower() in ['ba', 'rb', 'zone', 'p']), None)
-
-                # 2. Load hierarchy to map BA -> Model Region (r)
-                # hierarchy.csv typically has columns like [*r, ba, ...] or [r, ba, ...]
-                # We need the mapping from the base 'ba' (p28) to the solved 'r' (z28)
-                hier = pd.read_csv(hierarchy_path)
-                # Standardize column names for mapping
-                if '*r' in hier.columns: hier = hier.rename(columns={'*r': 'r'})
-                
-                # Create dictionary: ba -> r
-                # If 'ba' column exists, use it. If not, assume 'r' is the lowest level or check hierarchy_original
-                if 'ba' in hier.columns and 'r' in hier.columns:
-                    ba_to_r = hier.set_index('ba')['r'].to_dict()
-                else:
-                    # if hierarchy doesn't have 'ba', try hierarchy_original for aggreg mapping
-                    hier_org_path = os.path.join(inputs_case, 'hierarchy_original.csv')
-                    if os.path.exists(hier_org_path):
-                        hier_org = pd.read_csv(hier_org_path)
-                        # In hierarchy_original, 'ba' is base, 'aggreg' is the aggregated zone (z28)
-                        # If 'aggreg' column exists, map ba -> aggreg
-                        # Note: For non-aggregated regions, 'aggreg' might be NaN or same as 'ba'.
-                        # We need a map that covers ALL BAs.
-                        if 'aggreg' in hier_org.columns:
-                            # fillna in 'aggreg' with 'ba' values for regions that aren't aggregated
-                            hier_org['aggreg'] = hier_org['aggreg'].fillna(hier_org['ba'])
-                            ba_to_r = hier_org.set_index('ba')['aggreg'].to_dict()
-                        else:
-                            ba_to_r = {r: r for r in county_df[ba_col].unique()}
-                    else:
-                        ba_to_r = {r: r for r in county_df[ba_col].unique()}
-
-                if fips_col and ba_col:
-                    # 3. Map county BAs to Model Regions
-                    # Create a new column 'r' in county_df representing the model region (z28, p1, etc.)
-                    county_df['r'] = county_df[ba_col].map(ba_to_r)
-                    
-                    # Handle cases where mapping failed (e.g. if county2zone has BAs not in hierarchy)
-                    # Fill NAs with the original BA code if map failed (fallback)
-                    county_df['r'] = county_df['r'].fillna(county_df[ba_col])
-
-                    # 4. Merge multipliers onto counties based on Model Region 'r'
-                    # agg has columns ['r', 'tech', 'occ_mult', ...]
-                    merged = county_df[['r', fips_col]].merge(agg, on='r', how='inner')
-                    
-                    # 5. Format output
-                    # Rename FIPS to 'r' for the output file format (standard ReEDS spatial format)
-                    merged = merged.rename(columns={fips_col: 'r'})
-                    
-                    out_county = os.path.join(inputs_case, f'{tech_type}_cost_multipliers_county.csv' if tech_type else 'geo_cost_multipliers_county.csv')
-                    cols_to_write = [c for c in ['r','tech','occ_mult','plant_cost_mult','total_mult', 'value'] if c in merged.columns]
-                    merged[cols_to_write].to_csv(out_county, index=False)
-                    print(f"Wrote county-level aggregated multipliers to {out_county}")
-                else:
-                    print("Warning: could not detect FIPS/BA columns in county2zone.csv")
-            else:
-                print("Warning: county2zone.csv or hierarchy.csv not found")
-        except Exception as ex:
-            print(f"Warning: failed to create county-level multipliers: {ex}")
-            traceback.print_exc()
     
     ret = agg.copy()
     # rename tech -> *i

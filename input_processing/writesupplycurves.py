@@ -135,9 +135,7 @@ def bin_geo_depth(dfin, bin_num, tech, bin_method='equal_cap_cut',
             continue
 
         if bin_num == 1:
-            group = group.copy()
-            group['depth_bin'] = 1
-            group_depth_binned = group
+            group_depth_binned = group.assign(depth_bin=1)
         else:
             ## perform depth binning
             group_depth_binned = reeds.inputs.get_bin(
@@ -157,7 +155,7 @@ def bin_geo_depth(dfin, bin_num, tech, bin_method='equal_cap_cut',
             'supply_curve_cost_per_mw': lambda x: wm_avg(x, group_depth_binned.loc[x.index, 'capacity']),
             'lcoe_all_in_usd_per_mwh': lambda x: wm_avg(x, group_depth_binned.loc[x.index, 'capacity']),
             'sc_point_gid': list,
-            **{col: lambda x: wm_avg(x, group_depth_binned.loc[x.index, 'capacity']) for col in distance_cols}
+            **{col: (lambda x, c=col: wm_avg(x, group_depth_binned.loc[x.index, 'capacity'])) for col in distance_cols}
         }
         
         dfout_depth = group_depth_binned.groupby('depth_bin').agg(agg_dict).assign(
@@ -165,17 +163,14 @@ def bin_geo_depth(dfin, bin_num, tech, bin_method='equal_cap_cut',
         ).reset_index()
 
         #calculate flash_fraction
-        flash_fractions = []
-        for depth_bin in dfout_depth['depth_bin']:
-            depth_group = group_depth_binned[group_depth_binned['depth_bin'] == depth_bin]
-            if 'plant_type' in depth_group.columns:
-                flash_cap = depth_group.loc[depth_group['plant_type'] == 'flash', 'capacity'].sum()
-                total_cap = depth_group['capacity'].sum()
-                flash_fraction = flash_cap / total_cap if total_cap > 0 else 0
-            else:
-                flash_fraction = 0
-            flash_fractions.append(flash_fraction)
-        dfout_depth['flash_fraction'] = flash_fractions
+        if 'plant_type' in group_depth_binned.columns:
+            flash_cap = group_depth_binned[group_depth_binned['plant_type'] == 'flash'].groupby('depth_bin')['capacity'].sum()
+            total_cap = group_depth_binned.groupby('depth_bin')['capacity'].sum()
+            dfout_depth['flash_fraction'] = dfout_depth['depth_bin'].map(
+                (flash_cap / total_cap).fillna(0)
+            )
+        else:
+            dfout_depth['flash_fraction'] = 0.0
 
         dfout_list.append(dfout_depth)
     

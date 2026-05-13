@@ -65,7 +65,6 @@ def calc_financial_inputs(inputs_case):
     scen_settings = reeds.financials.scen_settings(
         dollar_year=int(sw['dollar_year']), tech_groups=tech_groups, inputs_case=inputs_case,
         sw=sw)
-    pd.DataFrame([(k, v) for k, vals in scen_settings.tech_groups.items() for v in vals], columns=['group','tech']).to_csv(os.path.join(inputs_case, 'tech_groups_expanded.csv'), index=False)
 
 
     #%% Ingest data, determine what regions have been specified, and build df_ivt
