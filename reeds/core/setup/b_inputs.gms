@@ -1680,31 +1680,6 @@ $onlisting
 / ;
 $offempty
 
-$onempty
-*For onshore and offshore wind, use outputs of hourlize to override what is in prescribedrsc
-table prescribed_wind_ons(r,allt,*) "--MW-- prescribed wind capacity, created by hourlize"
-$offlisting
-$ondelim
-$include inputs_case%ds%prescribed_builds_wind-ons.csv
-$offdelim
-$onlisting
-;
-$offempty
-
-prescribedrsc(allt,"wind-ons",r,"value") = prescribed_wind_ons(r,allt,"capacity") ;
-
-$onempty
-table prescribed_wind_ofs(r,allt,*) "--MW-- prescribed wind capacity, created by hourlize"
-$offlisting
-$ondelim
-$include inputs_case%ds%prescribed_builds_wind-ofs.csv
-$offdelim
-$onlisting
-;
-$offempty
-
-prescribedrsc(allt,"wind-ofs",r,"value") = prescribed_wind_ofs(r,allt,"capacity") ;
-
 *created by /input_processing/writecapdat.py
 *following does not include wind
 *Retirements for techs binned by heatrates are handled in hintage_data.csv
