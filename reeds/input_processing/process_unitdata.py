@@ -10,7 +10,7 @@ import geopandas as gpd
 import argparse
 
 # Local Imports
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)),'..','..')))
 import reeds
 
 #%% ===========================================================================
