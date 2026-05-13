@@ -172,13 +172,6 @@ def calculate_class_region_cf_hourly(
         ['capacity']
         .sum()
     )
-    # Precompute weight matrix (sites × class_regions) once outside the year loop.
-    # W[j, k] = capacity[site_j] / total_capacity[class_region_k] for sites in k, else 0.
-    normalized_caps = (df_sc['capacity'] / df_sc['class_region'].map(class_region_cap)).values
-    class_region_categorical = pd.Categorical(df_sc['class_region'])
-    class_region_list = list(class_region_categorical.categories)
-    W = np.zeros((len(df_sc), len(class_region_list)))
-    W[np.arange(len(df_sc)), class_region_categorical.codes] = normalized_caps
     # Note we calculate on a per-year basis to avoid loading
     # all of the site-level hourly data in memory at once
     df_list = []
@@ -196,13 +189,14 @@ def calculate_class_region_cf_hourly(
                 year=year,
                 case=inputs_case,
             )
-        # Reorder columns to match df_sc.index for consistent matrix multiplication
+        # Downselect to relevant sites
         weather_year_site_cf_hourly = weather_year_site_cf_hourly[df_sc.index]
-        # Capacity-weighted aggregation to class-region via matrix multiply
-        weather_year_class_region_cf_hourly = pd.DataFrame(
-            weather_year_site_cf_hourly.values @ W,
-            index=weather_year_site_cf_hourly.index,
-            columns=class_region_list,
+        # Calculate the capacity-weighted average CF for each class-region pair
+        weather_year_class_region_cf_hourly = (
+            weather_year_site_cf_hourly.mul(df_sc['capacity'])
+            .rename(columns=df_sc['class_region'])
+            .T.groupby(level=0).sum().T
+            .div(class_region_cap)
         )
         # For timezone conversion, we need a few hours of CF data for the next
         # year. If we don't have data for the next year, assume the profile
