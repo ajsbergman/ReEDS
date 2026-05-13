@@ -4992,8 +4992,7 @@ def plot_seed_stressperiods(
 ):
     """
     """
-    sys.path.append(os.path.join(reeds.io.reeds_path, 'input_processing'))
-    import hourly_repperiods
+    from reeds.input_processing import hourly_repperiods
 
     sw = reeds.io.get_switches(case)
     hierarchy = reeds.io.get_hierarchy(case)
@@ -6207,21 +6206,20 @@ def map_stressors(
     dflevel = dfmap[level].copy()
 
     ### Get the data
-    augur_files = {
-        'vre_gen': os.path.join(case, 'ReEDS_Augur', 'augur_data', f'pras_vre_gen_{t}.h5'),
-        'load': os.path.join(case, 'ReEDS_Augur', 'augur_data', f'pras_load_{t}.h5'),
+    ra_files = {
+        'vre_gen': os.path.join(case, 'handoff', 'reeds_data', f'pras_vre_gen_{t}.h5'),
+        'load': os.path.join(case, 'handoff', 'reeds_data', f'pras_load_{t}.h5'),
     }
-    if any([not os.path.exists(fpath) for fpath in augur_files.values()]):
-        import ReEDS_Augur.prep_data as prep_data
-        prep_data.main(t, case, iteration)
+    if any([not os.path.exists(fpath) for fpath in ra_files.values()]):
+        reeds.resource_adequacy.prep_data.main(t, case, iteration)
 
-    vre_gen = reeds.io.read_file(augur_files['vre_gen'], parse_timestamps=True)
+    vre_gen = reeds.io.read_file(ra_files['vre_gen'], parse_timestamps=True)
     vre_gen.columns = pd.MultiIndex.from_tuples(
         vre_gen.columns.map(lambda x: tuple(x.split('|'))),
         names=['i','r'],
     )
 
-    load = reeds.io.read_file(augur_files['load'], parse_timestamps=True)
+    load = reeds.io.read_file(ra_files['load'], parse_timestamps=True)
 
     recf = reeds.io.read_file(
         os.path.join(case, 'inputs_case', 'recf.h5'),

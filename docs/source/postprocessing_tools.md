@@ -103,10 +103,10 @@ The PRAS model is typically run multiple times during each ReEDS case (as long a
 This script reruns PRAS on a finished ReEDS case (provided by the single required command-line argument) and allows the settings to be changed.
 For example, to use a different number of samples than are specified by the default `pras_samples` switch, use the `-s/--samples` command-line argument.
 
-### Run a dispatch model: `run_pcm.py`
+### Run a dispatch model: `postprocessing/run_pcm.py`
 
 This script reruns a completed ReEDS case as a dispatch simulation at higher time resolution.
-The operational constraints in `c_supplymodel.gms` are used directly, but the investment and capacity variables are fixed to their previously optimized values; only the operational variables are re-optimized.
+The operational constraints in `c_model.gms` are used directly, but the investment and capacity variables are fixed to their previously optimized values; only the operational variables are re-optimized.
 365 representative 1-day periods at 1-hour resolution are used by default, but these settings can be changed using the `-s/--switch_mods` switch.
 
 This approach is distinct from the [R2X](https://github.com/NatLabRockies/R2X) tool, which formats the results of a ReEDS case as inputs to a separate production cost modeling tool such as [Sienna](https://github.com/NREL-Sienna) or [PLEXOS](https://www.energyexemplar.com/plexos).
