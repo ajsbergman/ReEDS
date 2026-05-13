@@ -1231,7 +1231,7 @@ def write_region_indexed_file(
                             regions_and_agglevel=regions_and_agglevel,
                             aggfunc=region_file_entry.aggfunc
                         )
-            case 'unitdata.csv':
+            case 'unitdata_orig.csv':
                 fips_ba_map = regions_and_agglevel['ba_county'].dropna().set_index('county')['ba']
                 df['reeds_ba'] = df['FIPS'].map(fips_ba_map)
                 ## If using offshore zones, map offshore wind units from land to offshore zones
@@ -1241,7 +1241,7 @@ def write_region_indexed_file(
                 if num_units_missing_bas > 0:
                     raise ValueError(
                         f"{num_units_missing_bas} units were not mapped to any BAs."
-                    )            
+                    )
             case _:
                 pass
 
@@ -1664,7 +1664,7 @@ if __name__ == '__main__' and not hasattr(sys, 'ps1'):
 
     # #%% Settings for testing ###
     # reeds_path = reeds.io.reeds_path
-    # inputs_case = os.path.join(reeds_path,'runs','v20260305_itlM0_USA_defaults','inputs_case')
+    # inputs_case = os.path.join(reeds_path,'runs','test_github_MA_county_CC','inputs_case')
 
 
     # ---- Set up logger ----
