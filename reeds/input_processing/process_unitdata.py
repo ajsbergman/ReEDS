@@ -68,6 +68,16 @@ def assign_gids_to_unitdata(df, offland_gdf, land_gdf):
         gdf_joined['T_LONG'] = gdf_joined['T_LONG_nearest']
         gdf_joined['T_LAT'] = gdf_joined['T_LAT_nearest']
         gdf_joined['FIPS'] = gdf_joined['FIPS_nearest']
+
+        # Update ba since FIPS have been updated
+        df_county = pd.read_csv(os.path.join(inputs_case,'county2zone.csv'))
+        df_county = df_county[['FIPS','r']]
+        df_county['FIPS'] = 'p' + df_county['FIPS'].astype(str)
+        df_county = df_county.rename(columns={'r':'reeds_ba_nearest'})
+
+        gdf_joined = gdf_joined.merge(df_county, on='FIPS', how='left')
+        gdf_joined['reeds_ba'] = gdf_joined['reeds_ba_nearest']
+
         # Merge unit database with VRE supply curves to assign AC capacity factors to VRE units
         # and mean resource temp for geothermal units
         df_rev = gdf_joined[['sc_point_gid'] + df.drop(columns=['geometry']).columns.to_list()]
@@ -119,22 +129,26 @@ def main(inputs_case):
     # Clean up merged data
     unitdata = unitdata.rename(columns={'FIPS':'FIPS_org',
                                         'T_LONG':'T_LONG_org',
-                                        'T_LAT':'T_LAT_org'})   
+                                        'T_LAT':'T_LAT_org',
+                                        'reeds_ba':'reeds_ba_org'})   
     if 'reV_mean_resource_temp' in df_rev.columns:
         unitdata = unitdata.merge(df_rev[['sc_point_gid','temp_id',
                                           'reV_capacity_factor_ac',
                                           'reV_mean_resource_temp',
-                                          'T_LONG','T_LAT','FIPS']],
+                                          'T_LONG','T_LAT','FIPS',
+                                          'reeds_ba']],
                                           on = 'temp_id',how = 'left') 
     else:
         unitdata = unitdata.merge(df_rev[['sc_point_gid','temp_id',
                                           'reV_capacity_factor_ac',
-                                          'T_LONG','T_LAT','FIPS']],
+                                          'T_LONG','T_LAT','FIPS',
+                                          'reeds_ba']],
                                           on = 'temp_id',how = 'left') 
     
     unitdata['FIPS'] = unitdata['FIPS'].fillna(unitdata['FIPS_org'])
     unitdata['T_LONG'] = unitdata['T_LONG'].fillna(unitdata['T_LONG_org'])
     unitdata['T_LAT'] = unitdata['T_LAT'].fillna(unitdata['T_LAT_org'])
+    unitdata['reeds_ba'] = unitdata['reeds_ba'].fillna(unitdata['reeds_ba_org'])
 
     # Rearrange column orders
     cols = df_rev.columns.to_list()
@@ -157,8 +171,8 @@ if __name__ == '__main__':
     inputs_case = args.inputs_case
     
     # for testing
-    # reeds_path = os.path.realpath(os.path.join(os.path.dirname(__file__),'..'))
-    # inputs_case = os.path.join(reeds_path,'runs','test_github_MA_county_CC','inputs_case')
+    # reeds_path = os.path.abspath(os.path.join(os.path.dirname(os.path.realpath(__file__)),'..','..'))
+    # inputs_case = os.path.join(reeds_path,'runs','test_Ref','inputs_case')
 
     #%% Set up logger
     log = reeds.log.makelog(
