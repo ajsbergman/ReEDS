@@ -173,7 +173,7 @@ def assign_class(cf, tech, df_class):
         return row.iloc[0]['class']
     else:
         # If a unit's capacity factor/mean temp does not fall between any two max and min values specified in the classificalion file, it is unclassified and gives an error
-        raise ValueError('Unclassified ' + tech + ' technology with cf= ' + cf + 
+        raise ValueError('Unclassified ' + tech + ' technology with cf= ' + str(cf) + 
                          ', check capacity factor/mean temperature values in unitdata.csv and classification files.')
 
 # Expand each row into multiple rows (startyear → retirement_year)
@@ -1060,8 +1060,8 @@ if __name__ == '__main__':
     inputs_case = args.inputs_case
 
     # #%% Settings for testing
-    # reeds_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    # inputs_case = os.path.join(reeds_path,'runs','test_Pacific','inputs_case')
+    #reeds_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    #inputs_case = os.path.join(reeds_path,'runs','test_Ref','inputs_case')
 
     #%% Set up logger
     log = reeds.log.makelog(
