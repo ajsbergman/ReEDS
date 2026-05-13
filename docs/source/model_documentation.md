@@ -3139,7 +3139,7 @@ For these states, the nuclear power plants are not allowed to retire until after
 The policy end dates are taken from EIA {cite:year}`eiaElectricPowerMonthly2019a`.
 
 In addition, there are [several states that do not allow new nuclear power](https://www.ncsl.org/environment-and-natural-resources/states-restrictions-on-new-nuclear-power-facility-construction).
-These states include California, Connecticut, Illinois, Maine, Massachusetts, Minnesota, New Jersey, New York (Long Island only), Oregon, Rhode Island, and Vermont.
+These states include California, Illinois, Maine, Massachusetts, Minnesota, New York (Long Island only), Oregon, Rhode Island, and Vermont. Nuclear ban is not imposed for Connecticut since Act25-127 allows construction of advanced nuclear facilities in municipalities with referendums.
 
 
 ### Other Policy Capabilities

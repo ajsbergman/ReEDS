@@ -1347,12 +1347,15 @@ def write_batch_script(
                 if LINUXORMAC else
                 f'set "r={os.path.join("g00files", f"{batch_case}_{max(solveyears)}i0")}"\n'
             )
-        ### Otherwise, run for the last iteration (lexicographically sorted)
+        ### Otherwise, run for the last iteration (selected numerically)
         else:
+            fpath = os.path.join(casedir, "reeds", "core", "terminus", "get_last_iter.py")
             OPATH.writelines(
-                f"for r in g00files/{batch_case}_*.g00; do true; done\n"
+                f'r=$(python {fpath} {batch_case} {max(solveyears)})\n'
                 if LINUXORMAC else
-                f'for %%i in (g00files\{batch_case}_*.g00) do (set "r=%%i")\n'
+                f'for /f "delims=" %%i in '
+                f'(\'python {fpath} {batch_case} {max(solveyears)}\')'
+                f' do set "r=%%i"\n'
             )
         OPATH.writelines(
             f"gams {Path('reeds','core','terminus','report.gms')}"
@@ -1466,7 +1469,7 @@ def write_batch_script(
             r2xpath = os.path.join(casedir, 'outputs', 'r2x')
             os.makedirs(r2xpath, exist_ok=True)
             OPATH.writelines(
-                "uvx --python 3.11 --from git+https://github.com/nrel/r2x@main r2x -vv run "
+                "uvx --python 3.11 --from git+https://github.com/natlabrockies/r2x@main r2x -vv run "
                 f"-i {casedir} "
                 f"-o {r2xpath} "
                 "--input-model=reeds-US "

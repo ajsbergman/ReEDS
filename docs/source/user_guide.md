@@ -1,5 +1,34 @@
 # User guide
 
+## General Suggestions
+### Document and Communicate Inputs
+Document and communicate inputs used and any changes made to the model. For example, published reports or journal articles should include enough information so that others can reproduce your work.
+
+### Emphasize Aggregated Results
+Emphasize aggregated results rather than results for a specific region or year, given that aggregate results will be more robust.  For example, the magnitude of new wind builds identified across a multistate region will be substantially more robust result than wind builds in a single ReEDS region. Similarly, the magnitude of natural gas combined cycle capacity additions across a multiyear period (e.g., 2030-2040) will be more robust result than the amount added in a single year (e.g., 2032).
+
+We recommend this practice because:
+- ReEDS results at their finest resolution can be sensitive to small changes in assumptions. For example, small differences in natural gas prices between two adjacent regions could lead to large disparities in gas-based capacity expansion in those regions that ignore practical constraints that might produce more even deployment.
+- ReEDS was designed as a national-scale model. That level of geographic scope means that many local conditions important to power plant build decisions might not be captured.
+
+### Emphasize Trends or Scenario Differences
+Emphasize trends or scenario differences over absolute results.  For example, the result that photovoltaic (PV) deployment is highly sensitive to natural gas price is more robust than the specific amounts of PV capacity deployed under high and low gas price scenarios.
+
+### Understand Calculations Behind Reported Numbers
+Do not rely on parameter names or labels alone when interpreting results. Explore the underlying calculations to ensure a robust understanding of the parameter and what it means. For example, reported electricity prices represent the marginal cost of meeting an additional infinitesimally small amount of load. They do not consider existing real-world market structure, rate design, or distribution costs, and thus should not be interpreted as estimates of retail rates.
+
+### Employ Scenario Sensitivity Analysis
+Always employ scenario sensitivity analysis. ReEDS is a deterministic model, so uncertainties are not captured in individual model runs.
+
+### Deliberately Choose Model Inputs
+Be deliberate in how you choose model inputs.  The ReEDS default values are not necessarily “most likely,” and “high” and “low” input options are not based on specific probabilities of occurrence.
+
+### Keep Questions Within Model's Scope
+Ensure that your questions are within the scope of the model. ReEDS is primarily meant to inform decisions at the investment or planning timescales in the bulk power sector.  For other questions at different timescales (such as unit commitment questions) or touching other sectors (such as distributed generation adoption), other models should be used.  However, ReEDS might be used to inform inputs or identify analysis questions for these other models.
+
+### Cautiously Use Near-Term Results
+Use near-term results with caution.  We have designed ReEDS primarily to consider long-term questions, and as such, not all near-term power sector changes are represented.
+
 ## Large input files
 
 Large input files,
@@ -81,13 +110,13 @@ The `GSw_LoadProfiles` switch corresponds to a file saved to `inputs/remote/dema
 | Switch Name    | Description of Profile | Origin | Weather year included |
 | ------------- | ------------- | ------------- | ------------- |
 | historic | Detrended historic demand from 2007-2013 and 2016-2023. This is multiplied by annual growth factors from AEO to forecast load growth. | Produced by the ReEDS team from a compilation of data sources. More detail can be found in the [hourlize readme](https://github.com/ReEDS-Model/ReEDS/tree/main/hourlize). | 2007-2013 & 2016-2023 |
-| EFS_Clean2035_LTS | Net-zero emissions, economy wide, by 2050 based on the White House's Long Term Strategy as shown here: <https://www.whitehouse.gov/wp-content/uploads/2021/10/US-Long-Term-Strategy.pdf> | Developed for the 100% Clean Electricity by 2035 study: <https://www.nrel.gov/docs/fy22osti/81644.pdf> |  2007-2013 |
-| EFS_Clean2035    | Accelerated Demand Electrification (ADE) profile. This profile was custom made for the 100% Clean Electricity by 2035 study. More information about how it was formed can be found in <https://www.nrel.gov/docs/fy22osti/81644.pdf> Appendix C. | Developed for the 100% Clean Electricity by 2035 study: <https://www.nrel.gov/docs/fy22osti/81644.pdf> |  2007-2013 |
-| EFS_Clean2035clip1pct | Same as Clean2035 but clips off the top 1% of load hours. | Developed for the 100% Clean Electricity by 2035 study: <https://www.nrel.gov/docs/fy22osti/81644.pdf> |  2007-2013 |
-| EFS_HIGH | Features a combination of technology advancements, policy support and consumer enthusiasm that enables transformational change in electrification.   | Developed for the Electrification Futures Study <https://www.nrel.gov/docs/fy18osti/71500.pdf>. | 2007-2013 |
+| EFS_Clean2035_LTS | Net-zero emissions, economy wide, by 2050 based on the White House's Long Term Strategy as shown here: <https://www.whitehouse.gov/wp-content/uploads/2021/10/US-Long-Term-Strategy.pdf> | Developed for the 100% Clean Electricity by 2035 study: <https://www.nlr.gov/docs/fy22osti/81644.pdf> |  2007-2013 |
+| EFS_Clean2035    | Accelerated Demand Electrification (ADE) profile. This profile was custom made for the 100% Clean Electricity by 2035 study. More information about how it was formed can be found in <https://www.nlr.gov/docs/fy22osti/81644.pdf> Appendix C. | Developed for the 100% Clean Electricity by 2035 study: <https://www.nlr.gov/docs/fy22osti/81644.pdf> |  2007-2013 |
+| EFS_Clean2035clip1pct | Same as Clean2035 but clips off the top 1% of load hours. | Developed for the 100% Clean Electricity by 2035 study: <https://www.nlr.gov/docs/fy22osti/81644.pdf> |  2007-2013 |
+| EFS_HIGH | Features a combination of technology advancements, policy support and consumer enthusiasm that enables transformational change in electrification.   | Developed for the Electrification Futures Study <https://www.nlr.gov/docs/fy18osti/71500.pdf>. | 2007-2013 |
 | EFS_MEDIUMStretch2046 | An average of the EFS_MEDIUM profile and the AEO reference trajectory. This was created to very roughly simulate the EV and broader electrification incentives in IRA, before we had better estimates of the actual effects of IRA. | NLR researchers combined the EFS_MEDIUM profile and the AEO reference trajectory. |  2007-2013 |
-| EFS_MEDIUM | Features a future with widespread electrification among the “low-hanging fruit” opportunities in electric vehicles, heat pumps and select industrial applications, but one that does not result in transformational change. | Developed for the Electrification Futures Study <https://www.nrel.gov/docs/fy18osti/71500.pdf>. | 2007-2013 |
-| EFS_REFERENCE | Features the least incremental change in electrification through 2050, which serves as a baseline of comparison to the other scenarios.| Developed for the Electrification Futures Study <https://www.nrel.gov/docs/fy18osti/71500.pdf>. | 2007-2013 |
+| EFS_MEDIUM | Features a future with widespread electrification among the “low-hanging fruit” opportunities in electric vehicles, heat pumps and select industrial applications, but one that does not result in transformational change. | Developed for the Electrification Futures Study <https://www.nlr.gov/docs/fy18osti/71500.pdf>. | 2007-2013 |
+| EFS_REFERENCE | Features the least incremental change in electrification through 2050, which serves as a baseline of comparison to the other scenarios.| Developed for the Electrification Futures Study <https://www.nlr.gov/docs/fy18osti/71500.pdf>. | 2007-2013 |
 | EER2023_Baseline_AEO2022  | Business as usual load growth. Based on the service demand projections from AEO 2022. This does not include the impacts of the Inflation Reduction Act.   | Purchased from Evolved Energy Research in June 2023 for the National Transmission Planning Study and to update our load profiles in general. More information can be found in [EER's 2022 Annual Decarbonization Report](https://www.evolved.energy/post/adp2022). This is the "Baseline" scenario in EER's 2022 ADP. | 2007-2013 |
 | EER2023_IRAlow  | Modeling load change under conservative assumptions about the Inflation Reduction Act | Purchased from Evolved Energy Research in June 2023 for the National Transmission Planning Study and to update our load profiles in general. This scenario is unfortunately not described in EER's 2022 ADP. It was originally prepared for the Princeton REPEAT project. Please cite the [Princeton REPEAT project](https://repeatproject.org/) when using this profile. | 2007-2013 |
 | EER2023_IRAmoderate  |  Modeling load change under moderate assumptions about the Inflation Reduction Act | Purchased from Evolved Energy Research in June 2023 for the National Transmission Planning Study and to update our load profiles in general. This scenario is unfortunately not described in EER's 2022 ADP. It was originally prepared for the Princeton REPEAT project. Please cite the [Princeton REPEAT project](https://repeatproject.org/) when using this profile. | 2007-2013 |
@@ -99,7 +128,7 @@ The `GSw_LoadProfiles` switch corresponds to a file saved to `inputs/remote/dema
 
 ### Resources for more info about ReEDS's load profiles
 
-- [Standard Scenarios 2024](https://docs.nrel.gov/docs/fy25osti/92256.pdf) has a appendix that synthesizes what is included in these demand profiles in more detail. See pg 37-45 for more information. Note that this describes the previous batch of EER profiles from June 2023; however, the high level trends will be largely consistent between the previous and current profiles.
+- [Standard Scenarios 2024](https://docs.nlr.gov/docs/fy25osti/92256.pdf) has a appendix that synthesizes what is included in these demand profiles in more detail. See pg 37-45 for more information. Note that this describes the previous batch of EER profiles from June 2023; however, the high level trends will be largely consistent between the previous and current profiles.
 - [ADP 2024's Technical Documentation](https://www.evolved.energy/us-adp-2024) lists many of their underlying stock assumptions.
 - [EER's docs page](https://energypathways.readthedocs.io/en/latest/) if you want a deeper look into their modeling.
 
