@@ -475,6 +475,7 @@ UnappWaterMultAnn.csv,.csv,1,None,9999,None,9999,0,constant,None,None,"new; inpu
 UnappWaterSeaAnnDistr.csv,.csv,1,None,9999,None,9999,0,constant,None,None,"new; input data extends to 2098, and interpolation between data years occurs in climateprep.py",
 unbundled_limit_ces.csv,.csv,0,None,wide,st,1,0,constant,None,None,new,
 unbundled_limit_rps.csv,.csv,0,None,wide,st,1,0,constant,None,None,new,
+unitdata_orig.csv,.csv,1,None,9999,None,9999,0,constant,None,None,new,
 unitdata.csv,.csv,1,None,9999,None,9999,0,constant,None,None,new,
 unitsize.csv,.csv,1,None,9999,None,9999,0,constant,None,None,new,
 unitspec_upgrades.csv,.csv,1,None,9999,None,9999,0,constant,None,None,new,
