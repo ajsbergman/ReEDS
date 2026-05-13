@@ -820,7 +820,7 @@ def save_sc_outputs(
                 df_sc.loc[criteria, 'capacity'] - df_sc.loc[criteria, 'existing_capacity'])
 
     cfcol = 'capacity_factor_ac' if 'capacity_factor_ac' in df_sc else 'mean_cf'
-    keepcols = ['mean_resource_depth', 'plant_type', 'total_lcoe'] if (tech == 'egs' or tech == 'geohydro') else []
+    keepcols = ['mean_resource_depth', 'plant_type', 'lcoe_all_in_usd_per_mwh'] if (tech == 'egs' or tech == 'geohydro') else []
     df_sc_out = (
         df_sc[[profile_id_col, 'class', 'capacity', 'capital_adder_per_mw', cfcol] + keepcols]
         .sort_values(profile_id_col)
