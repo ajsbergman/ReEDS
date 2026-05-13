@@ -5780,7 +5780,9 @@ For all ReEDS system cost results, we assume the operational costs for the nonmo
 <p>The marginal electricity prices in ReEDS are taken as the shadow prices from the constraints in the model that are directly impacted by the need to serve electricity. These include the load balance constraint, the operating reserve requirement, the RPS and CES requirements, and the planning reserve margin requirement (applied either in stress periods or seasonally via capacity credits). Taken together, these values show the total marginal cost of serving electricity in a given region and time slice. Weighted average versions are also calculated to report national annual marginal electricity prices. These marginal prices are most analogous to wholesale electricity prices but within a model that has full coordination and foresight.</p>
 <div class="admonition-marginal-price-outputs admonition">
 <p class="admonition-title">Marginal Price Outputs</p>
-<p>Marginal electricity price outputs are calculated with <code class="docutils literal notranslate"><span class="pre">reqt_price</span></code> in <code class="docutils literal notranslate"><span class="pre">e_report.gms</span></code> and are outputs in <code class="docutils literal notranslate"><span class="pre">reqt_price.csv</span></code>. The quantity required by the model is reported in the <code class="docutils literal notranslate"><span class="pre">reqt_quant.csv</span></code> output. These two taken together can be used to calculate a $/MWh electricity price, which is done in make of the ReEDS outputs and reported as “Bulk System Electricity Price” in bokehpivot HTML outputs and in other output locations.</p>
+<p>Marginal electricity price outputs are recorded in <code class="docutils literal notranslate"><span class="pre">reqt_price.csv</span></code>.
+The quantity required by the model is reported in <code class="docutils literal notranslate"><span class="pre">reqt_quant.csv</span></code>.
+These two can be combined to calculate a $/MWh electricity price.</p>
 </div>
 </section>
 <section id="average-electricity-prices">
@@ -6448,7 +6450,7 @@ Prescribed retirements are power plant retirements that are forced into the mode
 
   <div role="contentinfo">
     <p>&#169; Copyright 2024, NREL.
-      <span class="lastupdated">Last updated on May 12, 2026.
+      <span class="lastupdated">Last updated on May 13, 2026.
       </span></p>
   </div>
 

@@ -74,7 +74,6 @@
 <li class="toctree-l3"><a class="reference internal" href="#conventions">Conventions</a></li>
 </ul>
 </li>
-<li class="toctree-l2"><a class="reference internal" href="#hourly-resolution">Hourly Resolution</a></li>
 <li class="toctree-l2"><a class="reference internal" href="#electricity-demand-profiles">Electricity Demand Profiles</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#switch-options-for-gsw-loadprofiles">Switch options for GSw_LoadProfiles</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#resources-for-more-info-about-reeds-s-load-profiles">Resources for more info about ReEDS’s load profiles</a></li>
@@ -295,70 +294,6 @@ More detail can be found in the <a href="postprocessing_tools.html#fix-represent
 </li>
 </ul>
 </section>
-</section>
-<section id="hourly-resolution">
-<h2>Hourly Resolution<a class="headerlink" href="#hourly-resolution" title="Link to this heading"></a></h2>
-<p>The model can be run at hourly resolution using the following switch settings:</p>
-<ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">GSw_Hourly</span> <span class="pre">=</span> <span class="pre">1</span></code></p>
-<ul>
-<li><p>Turn on hourly resolution</p></li>
-</ul>
-</li>
-<li><p><code class="docutils literal notranslate"><span class="pre">GSw_Canada</span> <span class="pre">=</span> <span class="pre">2</span></code></p>
-<ul>
-<li><p>Turn on hourly resolution for Canadian imports/exports</p></li>
-</ul>
-</li>
-<li><p><code class="docutils literal notranslate"><span class="pre">GSw_AugurCurtailment</span> <span class="pre">=</span> <span class="pre">0</span></code></p>
-<ul>
-<li><p>Turn off the Augur calculation of curtailment</p></li>
-</ul>
-</li>
-<li><p><code class="docutils literal notranslate"><span class="pre">GSw_StorageArbitrageMult</span> <span class="pre">=</span> <span class="pre">0</span></code></p>
-<ul>
-<li><p>Turn off the Augur calculation of storage arbitrage value</p></li>
-</ul>
-</li>
-<li><p><code class="docutils literal notranslate"><span class="pre">GSw_Storage_in_Min</span> <span class="pre">=</span> <span class="pre">0</span></code></p>
-<ul>
-<li><p>Turn off the Augur calculation of storage charging</p></li>
-</ul>
-</li>
-<li><p><code class="docutils literal notranslate"><span class="pre">capcredit_szn_hours</span> <span class="pre">=</span> <span class="pre">3</span></code></p>
-<ul>
-<li><p>The current default hourly representation is 18 representative 5-day weeks. Each representative period is treated as a ‘season’ and is thus active in the planning-reserve margin constraint. In h17 ReEDS we set <code class="docutils literal notranslate"><span class="pre">capcredit_szn_hours</span> <span class="pre">=</span> <span class="pre">10</span></code>, giving 40 total hours considered for planning reserves (the top 10 hours in each of the 4 quarterly seasons). 18 ‘seasons’ with 10 hours each would give 180 hours, so we switch to 3 hours per ‘season’ (for 54 hours total).</p></li>
-</ul>
-</li>
-</ul>
-<p>To further reduce solve time, you can make the following changes:</p>
-<ul class="simple">
-<li><p><code class="docutils literal notranslate"><span class="pre">yearset</span> <span class="pre">=</span> <span class="pre">2010_2015_2020_2025_2030_2035_2040_2045_2050</span></code></p>
-<ul>
-<li><p>Solve in 5-year steps</p></li>
-</ul>
-</li>
-<li><p><code class="docutils literal notranslate"><span class="pre">GSw_OpRes</span> <span class="pre">=</span> <span class="pre">0</span></code></p>
-<ul>
-<li><p>Turn off operating reserves</p></li>
-</ul>
-</li>
-<li><p><code class="docutils literal notranslate"><span class="pre">GSw_MinLoading</span> <span class="pre">=</span> <span class="pre">0</span></code></p>
-<ul>
-<li><p>Turn off the sliding-window representation of minimum-generation limits</p></li>
-</ul>
-</li>
-<li><p><code class="docutils literal notranslate"><span class="pre">GSw_PVB</span> <span class="pre">=</span> <span class="pre">0</span></code></p>
-<ul>
-<li><p>Turn off PV-battery hybrids</p></li>
-</ul>
-</li>
-<li><p><code class="docutils literal notranslate"><span class="pre">GSw_calc_powfrac</span> <span class="pre">=</span> <span class="pre">0</span></code></p>
-<ul>
-<li><p>Turn off a post-processing calculation of power flows</p></li>
-</ul>
-</li>
-</ul>
 </section>
 <section id="electricity-demand-profiles">
 <h2>Electricity Demand Profiles<a class="headerlink" href="#electricity-demand-profiles" title="Link to this heading"></a></h2>
@@ -1068,7 +1003,7 @@ Options are <code class="docutils literal notranslate"><span class="pre">capacit
 <li><p><code class="docutils literal notranslate"><span class="pre">GSw_MGA_SubObjective</span></code> (default <code class="docutils literal notranslate"><span class="pre">fossil</span></code>): Technology subset to minimize or maximize the capacity of (only used for <code class="docutils literal notranslate"><span class="pre">GSw_MGA_Objective</span> <span class="pre">=</span> <span class="pre">capacity</span></code>).
 Options are the column names in the <code class="docutils literal notranslate"><span class="pre">inputs/tech-subset-table.csv</span></code> file.</p></li>
 </ul>
-<p>Users familiar with GAMS can add alternative objective functions to the <code class="docutils literal notranslate"><span class="pre">c_mga.gms</span></code> file and associated options to the <code class="docutils literal notranslate"><span class="pre">GSw_MGA_Objective</span></code> switch in <code class="docutils literal notranslate"><span class="pre">cases.csv</span></code>.</p>
+<p>Users familiar with GAMS can add alternative objective functions to the <code class="docutils literal notranslate"><span class="pre">d_mga.gms</span></code> file and associated options to the <code class="docutils literal notranslate"><span class="pre">GSw_MGA_Objective</span></code> switch in <code class="docutils literal notranslate"><span class="pre">cases.csv</span></code>.</p>
 </section>
 <section id="uncertainty-plots">
 <h2>Uncertainty Plots<a class="headerlink" href="#uncertainty-plots" title="Link to this heading"></a></h2>
@@ -1704,7 +1639,6 @@ python<span class="w"> </span>run_hourlize.py<span class="w"> </span>resource<sp
 <ul>
 <li><p><code class="docutils literal notranslate"><span class="pre">1_inputs.lst</span></code>: errors will be preceded by <code class="docutils literal notranslate"><span class="pre">****</span></code></p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">{batch_prefix}_{case}_{year}i0.lst</span></code>: there should be one file for each year of the model run</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">Augur_errors_{year}</span></code>: this file will appear in the event that there is an augur-related issue</p></li>
 </ul>
 </li>
 </ul>
@@ -1736,12 +1670,12 @@ python<span class="w"> </span>run_hourlize.py<span class="w"> </span>resource<sp
 </li>
 </ul>
 </li>
-<li><p>Augur Data</p>
+<li><p>Resource adequacy data</p>
 <ul>
-<li><p>Path: <code class="docutils literal notranslate"><span class="pre">/runs/{batch_prefix}_{case}/ReEDS_Augur/augur_data/</span></code></p></li>
+<li><p>Path: <code class="docutils literal notranslate"><span class="pre">/runs/{batch_prefix}_{case}/handoff/reeds_data/</span></code></p></li>
 <li><p>What to look for:</p>
 <ul>
-<li><p><code class="docutils literal notranslate"><span class="pre">ReEDS_Augur_{year}.gdx</span></code>: there should be a file for each year of the model run =</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">ccdata_{year}.gdx</span></code>: there should be a file for each year of the model run =</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">reeds_data_{year}.gdx</span></code>: there should be a file for each year of the model run</p></li>
 </ul>
 </li>
@@ -1817,7 +1751,7 @@ These characteristics include:</p>
 
   <div role="contentinfo">
     <p>&#169; Copyright 2024, NREL.
-      <span class="lastupdated">Last updated on May 12, 2026.
+      <span class="lastupdated">Last updated on May 13, 2026.
       </span></p>
   </div>
 

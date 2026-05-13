@@ -153,7 +153,7 @@
 </tr>
 <tr class="row-even"><td><p>GAMS Files</p></td>
 <td><p>letter-underscore prefix by category, alpha-ordered; numbering can help communicate ordering when multiple files share a category</p></td>
-<td><p><code class="docutils literal notranslate"><span class="pre">d1_financials.gms</span></code>, <code class="docutils literal notranslate"><span class="pre">d2_varfix.gms</span></code></p></td>
+<td><p><code class="docutils literal notranslate"><span class="pre">2_financials.gms</span></code>, <code class="docutils literal notranslate"><span class="pre">5_varfix.gms</span></code></p></td>
 </tr>
 <tr class="row-odd"><td><p>Parameters</p></td>
 <td><p>lowercase with underscores, noun first; costs prefixed with “cost”</p></td>
@@ -293,7 +293,7 @@
 <li><p>GAMS functions such as sum, max, smax, etc. should use {}; Example: avg_outage(i) = sum{h,hours(h)*outage(i,h)} / 8760 ;</p></li>
 <li><p>When including the semicolon on the end of a line there should be a space between the semicolon and the last character of the line (see previous example)</p></li>
 <li><p>When using <code class="docutils literal notranslate"><span class="pre">/</span> <span class="pre">/</span></code> for a parameter declaration, place the closing semicolon on the same line as the final slash: <code class="docutils literal notranslate"><span class="pre">/</span> <span class="pre">;</span></code></p></li>
-<li><p>Sums outside of equations (e.g., in e_reports) need not be split over multiple lines if they do not exceed the line limit</p></li>
+<li><p>Sums outside of equations (e.g., in <code class="docutils literal notranslate"><span class="pre">report.gms</span></code>) need not be split over multiple lines if they do not exceed the line limit</p></li>
 <li><p>Do not use hard-coded numbers in equations or calculations. Values should be assigned to an appropriate parameter name that is subsequently used in the code.</p></li>
 <li><p>Large input data tables should be loaded from individual data files for each table, preferably in *.csv format. Large data tables should not be manually written into the code but can be written dynamically by scripts or inserted with a $include statement.</p></li>
 <li><p>Compile-time conditionals should always use a tag (period + tag name) to clearly define the relationships between compile-time conditional statements. Failure to do so hurts readability sometimes leads to compilation errors. Example:</p>
@@ -358,21 +358,22 @@ $onlisting
 </ul>
 </li>
 <li><p>If preprocessing is needed to create an input file that is placed in the ReEDS repository, the preprocessing scripts or workbooks should be included in the <a class="reference external" href="https://github.com/ReEDS-Model/ReEDS_Input_Processing">ReEDS_Input_Processing repository</a>. Data from external sources should be downloaded programmatically when possible.</p></li>
-<li><p>Any scripts that preprocess data after a ReEDS run is started should be placed in the input_processing folder.</p>
+<li><p>Any scripts that preprocess data after a ReEDS run is started should be placed in the <code class="docutils literal notranslate"><span class="pre">reeds/input_processing</span></code> folder.</p>
 <ul class="simple">
 <li><p>Input processing scripts should start with a block of descriptive comments describing the purpose and methodology, and internal functions should use docstrings and liberal comments on functionality and assumptions.</p></li>
 </ul>
 </li>
 <li><p>Any costs read into b_inputs should already be in 2004$.  Cost adjustments in preprocessing scripts should rely on the deflator.csv file rather than have hard-coded conversions.</p></li>
 <li><p>In general, if inputs require calculations before they are ingested into b_inputs, those calculations should be done in Python rather than in GAMS. GAMS can be used for calculations where the GAMS syntax simplifies the calculation or where upstream dependencies make it challenging for the calculations to happen in Python preprocessing scripts.</p></li>
-<li><p>In Python, file paths should be added using os.path.join() rather than writing out the filepath with slashes.</p></li>
+<li><p>In Python, file paths should be specified using <code class="docutils literal notranslate"><span class="pre">from</span> <span class="pre">pathlib</span> <span class="pre">import</span> <span class="pre">Path</span></code> and <code class="docutils literal notranslate"><span class="pre">Path(reeds.io.reeds_path,</span> <span class="pre">'foldername',</span> <span class="pre">'maybe_more_foldernames',</span> <span class="pre">'filename.extension')</span></code> instead of writing out the filepath as a string with slashes.
+Use absolute filepaths whenever possible.</p></li>
 <li><p>Data column headers should use the ReEDS set names when practical.</p>
 <ul class="simple">
 <li><p>Example: data that include regions should use “r” for the column name rather than “ba”, “reeds_ba”, or “region”.</p></li>
 </ul>
 </li>
 <li><p>Preprocessing scripts in input_processing should not change the working directory or use relative filepaths; absolute filepaths should be used wherever possible.</p></li>
-<li><p>When feasible, inputs used in the objective function (c_supplyobjective.gms) should be included in tests/objective_function_params.yaml. Inputs included in this .yaml file will be checked for missing values using input_processing/check_inputs.py.</p></li>
+<li><p>When feasible, inputs used in the objective function (<code class="docutils literal notranslate"><span class="pre">d_objective.gms</span></code>) should be included in tests/objective_function_params.yaml. Inputs included in this .yaml file will be checked for missing values using input_processing/check_inputs.py.</p></li>
 </ul>
 </section>
 <section id="input-data">
@@ -980,7 +981,7 @@ If you have a charge code for your project, share it with the reviewers to cover
 <ul class="simple">
 <li><p>The following example runs the scenarios in cases_test.csv with the batch name ‘20240717_test’. The ‘-r -1’ means that all cases will run simultaneously.</p></li>
 </ul>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="n">runbatch</span><span class="o">.</span><span class="n">py</span> <span class="o">-</span><span class="n">c</span> <span class="n">test</span> <span class="o">-</span><span class="n">b</span> <span class="mi">20240717</span><span class="n">_test</span> <span class="o">-</span><span class="n">r</span> <span class="o">-</span><span class="mi">1</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="n">runreeds</span><span class="o">.</span><span class="n">py</span> <span class="o">-</span><span class="n">c</span> <span class="n">test</span> <span class="o">-</span><span class="n">b</span> <span class="mi">20240717</span><span class="n">_test</span> <span class="o">-</span><span class="n">r</span> <span class="o">-</span><span class="mi">1</span>
 </pre></div>
 </div>
 <ul>
@@ -1049,7 +1050,7 @@ If you have a charge code for your project, share it with the reviewers to cover
 
   <div role="contentinfo">
     <p>&#169; Copyright 2024, NREL.
-      <span class="lastupdated">Last updated on May 12, 2026.
+      <span class="lastupdated">Last updated on May 13, 2026.
       </span></p>
   </div>
 
