@@ -15,10 +15,10 @@ ReEDSmodel.optfile = %GSw_gopt% ;
 *treat fixed variables as parameters
 ReEDSmodel.holdfixed = 1 ;
 
-$ifthen %solver%==CBC
-* adjust the GAMS infeasibility tolerance to handle empty rows when using CBC
-ReEDSmodel.tolinfeas = 1e-15 ;
-$endif
+*$ifthen %solver%==CBC
+** adjust the GAMS infeasibility tolerance to handle empty rows when using CBC
+*ReEDSmodel.tolinfeas = 1e-15 ;
+*$endif
 
 
 $if not set loadgdx $setglobal loadgdx 0

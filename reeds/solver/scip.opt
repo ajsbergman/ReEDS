@@ -1,0 +1,8 @@
+lp/threads 8
+lp/initalgorithm b
+limits/time 172800
+lp/scaling 5
+presolving/maxrounds 5
+numerics/feastol 1e-5
+numerics/dualfeastol 1e-6
+lp/barrierconvtol 1e-8

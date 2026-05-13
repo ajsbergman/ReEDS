@@ -1,4 +1,10 @@
-objscale = 1e9
-ScaleFlag = 2
-Threads = 4
-method = 2
+Threads 8
+Method 2
+TimeLimit 172800
+ScaleFlag 2
+Aggregate 1
+PrePasses 5
+IISMethod 1
+FeasibilityTol 1e-5
+OptimalityTol 1e-6
+BarConvTol 1e-8

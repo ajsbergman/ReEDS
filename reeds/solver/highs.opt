@@ -1,0 +1,12 @@
+threads 8
+solver ipm
+run_crossover on
+time_limit 172800
+simplex_scale_strategy 3
+presolve on
+iis_strategy 1
+primal_feasibility_tolerance 1e-5
+dual_feasibility_tolerance 1e-6
+ipm_optimality_tolerance 1e-8
+* Skip crossover (equivalent to solutiontype 2):
+* run_crossover off
