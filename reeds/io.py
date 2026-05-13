@@ -1059,7 +1059,7 @@ def get_temperatures(case, tz_in='UTC', tz_out='Etc/GMT+6', subset_years=True):
     return temperatures
 
 
-def get_site_cf_hourly(tech, year, case=None, sites=None, **kwargs):
+def get_site_cf_hourly(tech, year, case=None, **kwargs):
     """
     Get hourly site-level capacity factor profiles for the given tech and year
     in UTC. Note that "distpv" is not a valid input to the "tech" parameter for
@@ -1074,11 +1074,6 @@ def get_site_cf_hourly(tech, year, case=None, sites=None, **kwargs):
     determines which CF profiles are retrieved, with the former taking
     precedence. If {case} is None and a keyword argument is not provided
     for a switch, the default switch values specified in cases.csv are used.
-
-    Args:
-        sites: optional array-like of sc_point_gids to read; if provided, only
-            those columns are loaded from the (large) national HDF5 file, which
-            can reduce I/O dramatically for regional runs.
     """
     sw = reeds.io.get_switches(case, **kwargs)
     match tech:
@@ -1110,29 +1105,13 @@ def get_site_cf_hourly(tech, year, case=None, sites=None, **kwargs):
             .str
             .decode('utf-8')
         )
-        all_columns = f['columns'][:]
-        col_indices = (
-            np.where(np.isin(all_columns, np.asarray(sites)))[0]
-            if sites is not None else None
-        )
-        if col_indices is not None and len(col_indices) < len(all_columns):
-            # Only use fancy indexing when genuinely filtering — for nearly-full
-            # selections (e.g. national runs) a full read is faster on chunked HDF5
-            cf_values = (
-                f[f'cf_profile_{year}'][:, col_indices]
-                * f[f'cf_profile_{year}'].attrs['scale']
-            )
-            columns = all_columns[col_indices]
-        else:
-            cf_values = (
+        cf_hourly = pd.DataFrame(
+            index=time_index,
+            columns=f['columns'],
+            data=(
                 f[f'cf_profile_{year}'][:]
                 * f[f'cf_profile_{year}'].attrs['scale']
             )
-            columns = all_columns
-        cf_hourly = pd.DataFrame(
-            index=time_index,
-            columns=columns,
-            data=cf_values
         )
 
     return cf_hourly

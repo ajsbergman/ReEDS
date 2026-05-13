@@ -195,7 +195,6 @@ def calculate_class_region_cf_hourly(
                 tech=tech,
                 year=year,
                 case=inputs_case,
-                sites=df_sc.index,
             )
         # Reorder columns to match df_sc.index for consistent matrix multiplication
         weather_year_site_cf_hourly = weather_year_site_cf_hourly[df_sc.index]
