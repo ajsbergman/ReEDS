@@ -195,7 +195,7 @@ jobs:
       - name: Run ReEDS model
         env:
           SCENARIO: ${{ matrix.scenario }}
-        run: python runbatch.py -b "$batch" -c test -s "$SCENARIO"
+        run: python runreeds.py -b "$batch" -c test -s "$SCENARIO"
 
       - name: Print GAMS log
         if: runner.debug == '1'
@@ -203,7 +203,7 @@ jobs:
 
       - name: Check ReEDS outputs
         if: ${{ hashFiles(format('{0}/outputs/cap_ivrt.csv', env.RUN_FOLDER)) == '' }}
-        uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v7
         with:
           script: |
             core.setFailed('ReEDS run failed. Check log to diagnose.')
@@ -290,7 +290,7 @@ jobs:
           R2X_WEATHER_YEAR: "2012"
           R2X_SYSTEM_JSON: ${{ format('{0}_system.json', matrix.scenario) }}
         run: |
-          uvx --from "r2x-reeds>=0.3.5" python scripts/run_r2x.py \
+          uvx --from "r2x-reeds>=0.3.5" python postprocessing/run_r2x.py \
             --reeds-run-path "$R2X_REEDS_RUN_PATH" \
             --scenario "$R2X_SCENARIO" \
             --solve-year "$R2X_SOLVE_YEAR" \
