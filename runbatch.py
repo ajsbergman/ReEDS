@@ -1399,7 +1399,7 @@ def write_batch_script(
         shutil.copytree(os.path.join(caseSwitches['finito_dir'], 'input_processing'),os.path.join(casedir,'finito', 'input_processing'))
         shutil.copytree(os.path.join(caseSwitches['finito_dir'], 'model'),os.path.join(casedir,'finito', 'model'))
         shutil.copytree(os.path.join(caseSwitches['finito_dir'], 'visualization'),os.path.join(casedir, 'finito', 'visualization'))
-        shutil.copytree(os.path.join(caseSwitches['finito_dir'],'inputs'), os.path.join(casedir,'inputs'), dirs_exist_ok=True)
+        
         ## copy over the FINITO cases files
         shutil.copy2(os.path.join(caseSwitches['finito_dir'], 'cases.csv'), os.path.join(casedir, 'finito'))
         shutil.copy2(os.path.join(caseSwitches['finito_dir'], f"cases_{caseSwitches['finito_cases_file']}.csv"), os.path.join(casedir, 'finito'))
@@ -1427,19 +1427,15 @@ def write_batch_script(
             print("The issue could be due to regionality, focus sector filtering, or file reading errors.") 
             os._exit(1)   
         
-        ## Populate sets for each linked run
+        ## Populate sets for each linked run using autopop_set.py
+        #autopop_args = f" -c {casedir_finito} -d {inputs_case_finito} -a {aeo_year} -s {focus_sectors} -f {caseSwitches['GSw_FixedCostSupply']} -rwf {caseSwitches['GSw_Trade_Partners']} -e {caseSwitches['GSw_ROE_EndUses']}"
+        os.system(
+            'python ' + os.path.join(caseSwitches['finito_dir'], 'input_processing', 'processing', 'autopop_set.py') + 
+            f" -c {casedir_finito} -d {inputs_case_finito} --link"
+        )
 
-        # Pass AEO base year as an argument
-        # NOTE: make this dynamic before merging in?
-        aeo_year = caseSwitches['aeo_year']
-        # Collect all arguments for autopop_set.py 
-        focus_sectors = caseSwitches['focus_sectors'].replace('.', ' ')
-        autopop_args = f" -c {casedir_finito} -d {inputs_case_finito} -a {aeo_year} -s {focus_sectors} -f {caseSwitches['GSw_FixedCostSupply']} -rwf {caseSwitches['GSw_Trade_Partners']} -e {caseSwitches['GSw_ROE_EndUses']}"
-        # Call autopop_set.py file before starting the runs
-        autopop_path = os.path.join(caseSwitches['finito_dir'], 'input_processing','processing','autopop_set.py')
-        os.system('python ' + autopop_path + autopop_args)
         ## Call read_mecs_heat.py to generate heat/nonheat/feedstock ratios for FINITO Rest of Industry (ROI)
-        mecs_sectors = focus_sectors 
+        mecs_sectors = caseSwitches['focus_sectors'].replace('.', ' ') 
         read_mecs_path = os.path.join(caseSwitches['finito_dir'], 'input_processing', 'processing', 'mecs', 'read_mecs_heat.py')
         # Collect all arguments for read_mecs_heat.py
         read_mecs_args = f' -s {mecs_sectors} -d {inputs_case_finito}'
