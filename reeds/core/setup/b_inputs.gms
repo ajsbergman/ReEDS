@@ -1996,11 +1996,12 @@ parameter binned_heatrates(i,v,r,allt) "--MMBtu / MWh-- existing capacity binned
 binned_heatrates(i,v,r,allt) = hintage_data(i,v,r,allt,"wHR") ;
 
 
-*Created by hourlize
-*declared over allt to allow for external data files that extend beyond end_year
+* Created by hourlize
+* Declared over allt to allow for external data files that extend beyond end_year
 * Written by writesupplycurves.py
+* Exogeneous onshore wind cap 
 $onempty
-parameter exog_wind_ons_rsc(i,r,rscbin,allt) "exogenous (pre-tfirst) wind capacity binned by capacity factor and rscbin"
+parameter exog_wind_ons_rsc(i,r,rscbin,allt) "exogenous (pre-tfirst) wind-ons capacity binned by capacity factor and rscbin"
 /
 $offlisting
 $ondelim
@@ -2010,12 +2011,25 @@ $onlisting
 / ;
 $offempty
 
-parameter exog_wind_ons(i,r,allt) "exogenous (pre-tfirst) wind capacity binned by capacity factor" ;
+parameter exog_wind_ons(i,r,allt) "exogenous (pre-tfirst) wind-ons capacity binned by capacity factor" ;
 exog_wind_ons(i,r,t) = sum{rscbin, exog_wind_ons_rsc(i,r,rscbin,t) } ;
 
-*Created by hourlize
-*declared over allt to allow for external data files that extend beyond end_year
-* Written by writesupplycurves.py
+* Exogeneous offshore wind cap 
+$onempty
+parameter exog_wind_ofs_rsc(i,r,rscbin,allt) "exogenous (pre-tfirst) wind-ofs capacity binned by capacity factor and rscbin"
+/
+$offlisting
+$ondelim
+$include inputs_case%ds%exog_wind_ofs_rsc.csv
+$offdelim
+$onlisting
+/ ;
+$offempty
+
+parameter exog_wind_ofs(i,r,allt) "exogenous (pre-tfirst) wind-ofs capacity binned by capacity factor" ;
+exog_wind_ofs(i,r,t) = sum{rscbin, exog_wind_ofs_rsc(i,r,rscbin,t) } ;
+
+* Exogeneous upv cap 
 $onempty
 parameter exog_upv_rsc(i,r,rscbin,allt) "exogenous (pre-tfirst) upv capacity binned by capacity factor and rscbin"
 /
@@ -2117,8 +2131,12 @@ capacity_exog(i,v,r,t)$[sum{allt, binned_capacity(i,v,r,allt) }] =
 *reset all wind exogenous capacity levels
 capacity_exog(i,v,r,t)$wind(i) = 0 ;
 
+*wind-ons
 capacity_exog(i,"init-1",r,t)$onswind(i) = exog_wind_ons(i,r,t) ;
 capacity_exog_rsc(i,"init-1",r,rscbin,t)$onswind(i) = exog_wind_ons_rsc(i,r,rscbin,t) ;
+*wind-ofs
+capacity_exog(i,"init-1",r,t)$ofswind(i) = exog_wind_ofs(i,r,t) ;
+capacity_exog_rsc(i,"init-1",r,rscbin,t)$ofswind(i) = exog_wind_ofs_rsc(i,r,rscbin,t) ;
 
 *reset all upv exogenous capacity levels
 capacity_exog(i,v,r,t)$upv(i) = 0 ;

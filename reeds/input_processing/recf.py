@@ -289,6 +289,8 @@ def check_missing_class_resource(existing_techs, resources):
         
         if len(missing_class_resource) > 0:
             raise ValueError("There are mismatched tech class capacities and resources. Exiting program.")
+        else:
+            print('All capacities and resources are matched.')
             
 
 #%% ===========================================================================
