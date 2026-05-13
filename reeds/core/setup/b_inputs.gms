@@ -1718,28 +1718,6 @@ $onlisting
 / ;
 $offempty
 
-*$onempty
-*set missing_class_resource(i,ii,r) "missing resource class"
-*/
-*$offlisting
-*$ondelim
-*$include inputs_case%ds%missing_class_resource.csv
-*$offdelim
-*$onlisting
-*/ ;
-*$offempty
-
-
-*prescribedrsc(i,v,r,tt)$[sum{ii,missing_class_resource(ii,i,r)}] =
-*    sum{ii$missing_class_resource(ii,i,r), prescribedrsc(ii,v,r,tt)} ;
-                                          
-*prescribedrsc(i,v,r,tt)$[sum{ii,missing_class_resource(i,ii,r)}]=0;
-
-*prescribedretirements(ii,v,r,tt,ttt,captype)$[sum{i,missing_class_resource(i,ii,r)}] =
-*    sum{i$missing_class_resource(ii,i,r), prescribedretirements(i,v,r,tt,ttt,captype)} ;
-*prescribedretirements(i,v,r,tt,ttt,captype)$[sum{ii,missing_class_resource(i,ii,r)}]=0;
-
-
 
 set forced_retire(i,r,t) ;
 
@@ -2172,8 +2150,6 @@ avail_retire_exog_rsc(i,v,r,t)$[refurbtech(i)$(capacity_exog(i,v,r,t-1) > capaci
 avail_retire_exog_rsc(i,v,r,t)$[not initv(v)] = 0 ;
 
 m_capacity_exog(i,v,r,t)$capacity_exog(i,v,r,t) = capacity_exog(i,v,r,t) ;
-*m_capacity_exog(ii,v,r,t)$[sum{i,missing_class_resource(i,ii,r)}] = sum{i$[missing_class_resource(i,ii,r)],m_capacity_exog(i,v,r,t)} ;
-*m_capacity_exog(i,v,r,t)$[sum{ii,missing_class_resource(i,ii,r)}] = 0 ;
 m_capacity_exog_energy(i,v,r,t)$capacity_exog_energy(i,v,r,t) = capacity_exog_energy(i,v,r,t) ;
 m_capacity_exog(i,"init-1",r,t)$geo(i) = geo_cap_exog(i,r) ;
 

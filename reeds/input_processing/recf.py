@@ -277,79 +277,19 @@ def calculate_regional_distpv_cf(inputs_case, cap_min=0.0001):
 
 # Identify resources with missing classes and assign them to 
 # closest resources of similar classes
-def get_missing_class_resource(existing_techs, resources):
-    # Use zone map to across walk between existing_techs and resources
-    crs = 'EPSG:5070'
-    dfr = reeds.io.get_zonemap(reeds.io.standardize_case(inputs_case))
-    dfr['r'] = dfr.index
-    existing_techs = gpd.GeoDataFrame(existing_techs.merge(dfr[['r','geometry']], 
-                                                           on = 'r', how = 'left'), 
-                                                           geometry='geometry').to_crs(crs)
-    resources = gpd.GeoDataFrame(resources.merge(dfr[['r','geometry']], 
-                                                 on = 'r', how = 'left'), 
-                                                 geometry='geometry').to_crs(crs)
-    
-    techs = existing_techs['i'].unique().tolist()
-    existing_techs_list = []
-    for tech in techs:
-        if 'upv' in tech:
-            tech_cat = 'upv'
-        elif 'wind-ons' in tech:
-            tech_cat = 'wind-ons'
-        elif 'wind-ofs' in tech:
-            tech_cat = 'wind-ofs'
-
-        existing_tech = existing_techs[existing_techs['i']==tech]
-        resource_tech = resources[resources['i']==tech]
-        resource_tech_cat = resources[resources['i'].str.contains(tech_cat)]
-
-        # First map existing techs to resources by tech class and exact location
-        existing_tech_resource_match = existing_tech.merge(resource_tech[['i','r']],
-                                                           on=['i','r'],
-                                                           how='left',
-                                                           indicator=True)
-        
-        # If there are existing tech classes with missing resources,
-        # assign them to the nearest resources of same techs with similar classes
-        missing_class_resource = existing_tech_resource_match[existing_tech_resource_match['_merge'] == 'left_only'].copy()
-        # Exclude geothermal
-        missing_class_resource = missing_class_resource[missing_class_resource['i'].str.contains("upv|wind")]
+def check_missing_class_resource(existing_techs, resources):
+        missing_class_resource = existing_techs.merge(resources[['i','r']],
+                                                      on=['i','r'],
+                                                      how='left',
+                                                      indicator=True)
+        missing_class_resource = missing_class_resource[
+            missing_class_resource['i'].str.contains('upv|wind')].reset_index(drop=True)
+        missing_class_resource = missing_class_resource[
+            missing_class_resource['_merge'] == 'left_only'][['i','r']].copy()
         
         if len(missing_class_resource) > 0:
-            missing_class_resource_nearest = gpd.sjoin_nearest(missing_class_resource, 
-                                                               resource_tech_cat, 
-                                                               distance_col='distance', 
-                                                               how='left')
-            for idx, row in missing_class_resource.iterrows():
-                tech = row['i']
-                region = row['r']
-                missing_class_resource_match = missing_class_resource_nearest.loc[(missing_class_resource_nearest['i_left']==tech) &
-                                                                                  (missing_class_resource_nearest['r_left']==region)]
-                missing_class_resource_match['class'] = missing_class_resource_match['i_left'].str.split("_").str[1].astype(int)
-                missing_class_resource_match['num'] = missing_class_resource_match['i_right'].str.split("_").str[1].astype(int)
-                missing_class_resource_match['diff'] = missing_class_resource_match['class'] - missing_class_resource_match['num']
-                if (missing_class_resource_match['diff'] > 0).any():
-                    missing_class_resource_match = missing_class_resource_match[missing_class_resource_match['diff']>0]
-                    missing_class_resource_match = missing_class_resource_match.nsmallest(1, 'diff')
-                else:
-                    missing_class_resource_match = missing_class_resource_match.nlargest(1, 'diff')
-
-                missing_class_resource.loc[idx, "ii"] = missing_class_resource_match['i_right'].iloc[0]  
-                
-                missing_class_resource = missing_class_resource[['i','ii','r_right']]  
-
-        else:
-            missing_class_resource = pd.DataFrame(columns=['i','ii','r_right'])
-
-        missing_class_resource = missing_class_resource.rename(columns={'i':'*i','r_right':'r'})
-        existing_techs_list = existing_techs_list + [missing_class_resource]
-        
-    missing_class_resource_match = pd.concat(existing_techs_list, 
-                                             ignore_index=False,
-                                             sort=False)
-
-    return missing_class_resource_match
-
+            raise ValueError("There are mismatched tech class capacities and resources. Exiting program.")
+            
 
 #%% ===========================================================================
 ### --- MAIN FUNCTION ---
@@ -590,8 +530,8 @@ def main(reeds_path, inputs_case):
         axis=0, ignore_index=True
     )[['i','r']].drop_duplicates()
 
-    # Identify missing technology-class - region combinations in resources
-    #missing_class_resource = get_missing_class_resource(existing_techs, resources)
+    # Check missing technology-class - region combinations in resources
+    check_missing_class_resource(existing_techs, resources)
     
     #%% Check for errors
     nulls = recf.isnull().sum()
