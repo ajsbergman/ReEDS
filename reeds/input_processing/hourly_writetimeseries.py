@@ -60,11 +60,11 @@ def make_8760_map(period_szn, sw):
     hmap_allyrs['actual_period'] = (
         'y' + hmap_allyrs.year.astype(str)
         + ('w' if sw.GSw_HourlyType == 'wek' else 'd')
-        + hmap_allyrs.yearperiod.astype(str).map('{:>03}'.format)
+        + hmap_allyrs.yearperiod.astype(str).str.zfill(3)
     )
     hmap_allyrs['actual_h'] = (
         hmap_allyrs.actual_period
-        + 'h' + hmap_allyrs.periodhour.astype(str).map('{:>03}'.format)
+        + 'h' + hmap_allyrs.periodhour.astype(str).str.zfill(3)
     )
     hmap_allyrs['season'] = hmap_allyrs.actual_period.map(
         period_szn.set_index('actual_period').season)
@@ -74,15 +74,15 @@ def make_8760_map(period_szn, sw):
         ### If using a chronological year (i.e. 8760) the day index uses actual days
         hmap_allyrs['h'] = (
             'y' + hmap_allyrs.year.astype(str)
-            + 'd' + hmap_allyrs.yearperiod.astype(str).map('{:>03}'.format)
-            + 'h' + hmap_allyrs.periodhour.astype(str).map('{:>03}'.format)
+            + 'd' + hmap_allyrs.yearperiod.astype(str).str.zfill(3)
+            + 'h' + hmap_allyrs.periodhour.astype(str).str.zfill(3)
         )
     else:
         ### If using representative periods (days/weks) the period index uses
         ### representative periods, which are in the 'season' column
         hmap_allyrs['h'] = (
             hmap_allyrs.season
-            + 'h' + hmap_allyrs.periodhour.astype(str).map('{:>03}'.format)
+            + 'h' + hmap_allyrs.periodhour.astype(str).str.zfill(3)
         )
     ### hmap_myr (for "model years") only contains the actually-modeled periods
     hmap_myr = hmap_allyrs.dropna(subset=['season']).copy()
@@ -535,7 +535,11 @@ def main(sw, reeds_path, inputs_case, periodtype='rep', make_plots=1, logging=Tr
         os.path.join(inputs_case, 'ccseason_dates.csv'),
         index_col=['month','day'],
     ).squeeze(1)
-    hmap_allyrs['ccseason'] = hmap_allyrs.timestamp.map(lambda x: ccseason_dates[x.month, x.day])
+    _month = hmap_allyrs.timestamp.dt.month
+    _day = hmap_allyrs.timestamp.dt.day
+    hmap_allyrs['ccseason'] = ccseason_dates.loc[
+        pd.MultiIndex.from_arrays([_month, _day])
+    ].values
 
     #%%### Load full hourly RE CF, for downselection below
     #%% VRE
@@ -554,9 +558,7 @@ def main(sw, reeds_path, inputs_case, periodtype='rep', make_plots=1, logging=Tr
     rep_periods = sorted(period_szn.rep_period.unique())
 
     ### Broadcast CSP values for all techs
-    cf_rep = recf.loc[
-        recf.index.map(lambda x: any([x.startswith(i) for i in rep_periods]))
-    ]
+    cf_rep = recf.loc[recf.index.str.startswith(tuple(rep_periods))]
 
     if int(sw["GSw_CSP"]) != 0:
         cf_rep = append_csp_profiles(cf_rep=cf_rep, sw=sw)

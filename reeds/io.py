@@ -1030,7 +1030,7 @@ def get_temperatures(case, tz_in='UTC', tz_out='Etc/GMT+6', subset_years=True):
             )
             _temperatures[year] = pd.DataFrame(
                 index=timeindex,
-                columns=pd.Series(f['columns']).map(lambda x: x.decode()),
+                columns=pd.Series(f['columns']).str.decode('utf-8'),
                 data=f[str(year)],
             )
 
@@ -1128,14 +1128,14 @@ def get_outage_hourly(
         column_levels = [x.decode() for x in list(f['column_levels'])]
         if multilevel:
             columns = {
-                c: pd.Series(f[f'columns_{c}']).map(lambda x: x.decode())
+                c: pd.Series(f[f'columns_{c}']).str.decode('utf-8')
                 for c in column_levels
             }
             columns = pd.MultiIndex.from_arrays(list(columns.values()), names=columns.keys())
         else:
-            columns = pd.Series(f['columns']).map(lambda x: x.decode())
+            columns = pd.Series(f['columns']).str.decode('utf-8')
         dfout = pd.DataFrame(
-            index=pd.to_datetime(pd.Series(f['index']).map(lambda x: x.decode())),
+            index=pd.to_datetime(pd.Series(f['index']).str.decode('utf-8')),
             columns=columns,
             data=f['data'],
         ).tz_localize('UTC').tz_convert(tz)

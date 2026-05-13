@@ -274,6 +274,11 @@ def plot_maps(sw, inputs_case, reeds_path, figpath, periodtype='rep', crs='EPSG:
     ).rename(columns={'*h':'h'}).set_index('h').numhours
     dfcf = pd.read_csv(os.path.join(inputs_case, periodtype, 'cf_vre.csv')).rename(columns={'*i':'i'})
 
+    _sitemaps = {
+        False: reeds.io.get_sitemap(offshore=False),
+        True: reeds.io.get_sitemap(offshore=True),
+    }
+
     for tech in techs:
         ### Get supply curve
         dfsc = pd.read_csv(
@@ -281,7 +286,7 @@ def plot_maps(sw, inputs_case, reeds_path, figpath, periodtype='rep', crs='EPSG:
         ).rename(columns={'region':'r'})
         dfsc['i'] = tech + '_' + dfsc['class'].astype(str)
         ### Add geographic and CF information
-        sitemap = reeds.io.get_sitemap(offshore=(True if tech == 'wind-ofs' else False))
+        sitemap = _sitemaps[tech == 'wind-ofs']
 
         dfsc['latitude'] = dfsc.sc_point_gid.map(sitemap.latitude)
         dfsc['longitude'] = dfsc.sc_point_gid.map(sitemap.longitude)
