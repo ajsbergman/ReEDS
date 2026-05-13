@@ -96,6 +96,10 @@ def calc_financial_inputs(inputs_case):
         sw['financials_sys_suffix'], inflation_df, modeled_years, 
         years, year_map, sw['sys_eval_years'], scen_settings, scalars['co2_capture_incentive_length'],scalars['h2_ptc_length'])
     financials_sys.to_csv(os.path.join(inputs_case,'financials_sys.csv'),index=False)
+   
+    # Calculate the natural gas CRF penalty for states
+    reeds.financials.calc_ng_crf_penalty_st(inputs_case, years, financials_sys, sw)
+
     df_ivt = df_ivt.merge(
         financials_sys[['t', 'pvf_capital', 'crf', 'crf_co2_incentive','crf_h2_incentive','d_real', 'd_nom', 'interest_rate_nom', 
                         'tax_rate', 'debt_fraction', 'rroe_nom']], 
