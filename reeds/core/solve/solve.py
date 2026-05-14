@@ -9,7 +9,6 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent.parent.parent))
 import reeds
 import time
-import tracemalloc
 
 #%% Main function
 def run_reeds(casepath, t, iteration=0, onlygams=False, onlyra=False):
@@ -63,7 +62,7 @@ def run_reeds(casepath, t, iteration=0, onlygams=False, onlyra=False):
         timed_cmd_gams = (
             f"/usr/bin/time -a -o {resource_stats} "
             f"-f 'script=gams_solve_{t}i{iteration} memory_KB=%M runtime=%E' "
-            f"{timed_cmd_gams.strip()}"
+            f"{cmd_gams.strip()}"
         )
         result = subprocess.run(timed_cmd_gams, shell=True)
         if result.returncode:

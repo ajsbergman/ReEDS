@@ -541,7 +541,6 @@ def setup_sequential_year(
     savefile = f"{batch_case}_{cur_year}i0"
     restartfile = batch_case if cur_year == min(solveyears) else f"{batch_case}_{prev_year}i0"
 
-    resource_stats = os.path.join(casedir, 'resource_stats.log')
     ## Run the ReEDS LP
     if (cur_year >= min(solveyears)):
         solve_cmd = reeds.inputs.solvestring_sequential(
@@ -615,11 +614,6 @@ def setup_sequential(
 
         ### Write the GAMS LP and resource adequacy calls
         if int(caseSwitches['GSw_PRM_StressIterateMax']):
-            OPATH.writelines(
-                f"/usr/bin/time -a -o {resource_stats} "
-                f"-f 'script=solve_{cur_year} memory_KB=%M runtime=%E' "
-                f"python {Path('reeds','core','solve','solve.py')} {casedir} {cur_year}\n"
-            )
             OPATH.writelines(
                 f"python {Path('reeds','core','solve','solve.py')} {casedir} {cur_year}\n"
             )
