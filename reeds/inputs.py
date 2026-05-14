@@ -622,27 +622,6 @@ def get_distances(case=None, errors='raise', **kwargs) -> pd.DataFrame:
     return distances_land
 
 
-def get_zones(case=None, crs='ESRI:102008', **kwargs) -> gpd.GeoDataFrame:
-    """
-    Args:
-        case (str, Path, or None): Path to a ReEDS case.
-            If None, uses the default GSw_ZoneSet from cases.csv.
-        crs (str): Coordinate reference system
-        **kwargs: ReEDS switch:value pairs (overrides case argument)
-    """
-    dfcounty = reeds.spatial.get_map('county', source='tiger', crs=crs)
-    dfstates = reeds.spatial.get_map('states', source='census', crs=crs)
-    country = dfstates.dissolve().geometry[0]
-    county2zone = reeds.io.get_county2zone(case, **kwargs)
-
-    dfcounty['r'] = county2zone
-
-    dfzones = dfcounty.dissolve('r')
-    dfzones.geometry = dfzones.intersection(country).buffer(0)
-
-    return dfzones[['geometry']]
-
-
 def _make_line(row):
     return shapely.LineString([[row.from_lon, row.from_lat], [row.to_lon, row.to_lat]])
 
@@ -673,7 +652,7 @@ def map_hvdc_lines_to_interfaces(case=None, filename='hvdc_lines.csv', **kwargs)
         ]:
             map_hvdc_lines_to_interfaces(case=case, filename=filename, kwargs=kwargs)
     """
-    dfzones = get_zones(reeds.io.standardize_case(case), **kwargs)
+    dfzones = reeds.io.get_zones(reeds.io.standardize_case(case), **kwargs)
     dfdc = get_hvdc_lines(filename=filename).to_crs(dfzones.crs)
     for i, side in enumerate(['from', 'to']):
         dfdc[f'zone_{side}'] = gpd.sjoin(

@@ -21,8 +21,6 @@ tscbin.csv,,1,ignore,ignore,,,,,,,1,set,tscbin,transmission upgrade supply curve
 numpartitions.csv,,1,ignore,ignore,,,,,0,,,,,,
 agglevels.csv,,1,ignore,ignore,ignore,,,,0,,,,,,
 aggreg.csv,,1,ignore,ignore,ignore,,,0,0,,,,,,
-aggreg2anchorreg.csv,,1,ignore,ignore,ignore,,,0,0,,,,,,
-anchorreg2aggreg.csv,,1,ignore,ignore,ignore,,,0,0,,,,,,
 allt.csv,inputs/sets/allt.csv,1,ignore,ignore,,,,,,,,,allt,,
 alpha.csv,inputs/fuelprices/alpha_{ngscen}.csv,1,ignore,ignore,wide_cendiv,t,,1,0,,,,,,
 bio_supplycurve.csv,inputs/supply_curve/bio_supplycurve.csv,1,ignore,ignore,usda_region,,,,0,,,,,,

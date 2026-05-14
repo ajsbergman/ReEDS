@@ -1054,56 +1054,6 @@ if any(missingfiles):
             shutil.copy(os.path.join(inputs_case, f), os.path.join(inputs_case, f))
             print(f'copied {f}, which is missing from runfiles.csv')
 
-#%% Maps (special case)
-mapsfile = os.path.join(inputs_case, 'maps.gpkg')
-if os.path.exists(mapsfile):
-    os.remove(mapsfile)
-dfmap = reeds.io.get_dfmap(os.path.dirname(inputs_case))
-for level in dfmap:
-    dfmap[level].rename_axis(level).to_file(mapsfile, layer=level)
-
-dfmap = reeds.io.get_dfmap(os.path.dirname(inputs_case))
-
-### Aggregate or disaggregate the 'r' map; none of the rest should change
-# Mixed resolution maps are patched together in the get_zonemap() function
-if agglevel_variables['lvl'] == 'mult' :
-    pass
-
-#Single resolution procedure
-else:
-    match agglevel:
-        case 'aggreg':
-            r2aggreg = pd.read_csv(
-                os.path.join(inputs_case, 'hierarchy_original.csv')
-            ).rename(columns={'ba':'r'}).set_index('r').aggreg
-        case 'county':
-            aggreg2anchorreg = r2aggreg = r_county.copy()
-
-
-    dfmap_r_agg = dfmap['r'].reset_index().rename(columns={'rb':'r', 'ba':'r'})
-    dfmap_r_agg.r = dfmap_r_agg.r.map(r2aggreg)
-    dfmap_r_agg = dfmap_r_agg.dissolve('r').loc[aggreg2anchorreg.index].copy()
-
-    ## Map endpoints to anchor regions
-    for j in ['x','y']:
-        dfmap_r_agg[j] = dfmap['r'][j].loc[dfmap_r_agg[j].index.map(aggreg2anchorreg)].values
-        dfmap_r_agg[f'centroid_{j}'] = dfmap_r_agg.centroid.x if j == 'x' else dfmap_r_agg.centroid.y
-
-    ## Overwrite the non-aggregated zone map
-    dfmap['r'] = dfmap_r_agg.drop(columns='county', errors='ignore')
-
-    ## Write the aggregated maps
-    mapsfile = os.path.join(inputs_case, 'maps.gpkg')
-    if os.path.exists(mapsfile):
-        os.remove(mapsfile)
-    for level in dfmap:
-        (
-            dfmap[level]
-            .drop(columns='aggreg', errors='ignore')
-            .rename_axis(level)
-            .to_file(mapsfile, layer=level)
-        )
-
 #%%
 if agglevel_variables['lvl'] == 'mult' or agglevel == 'county':
     r2aggreg_glob = None
