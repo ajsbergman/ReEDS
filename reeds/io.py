@@ -1105,13 +1105,14 @@ def get_site_cf_hourly(tech, year, case=None, **kwargs):
             .str
             .decode('utf-8')
         )
+        cf_values = (
+            f[f'cf_profile_{year}'][:]
+            * f[f'cf_profile_{year}'].attrs['scale']
+        )
         cf_hourly = pd.DataFrame(
             index=time_index,
             columns=f['columns'],
-            data=(
-                f[f'cf_profile_{year}'][:]
-                * f[f'cf_profile_{year}'].attrs['scale']
-            )
+            data=cf_values
         )
 
     return cf_hourly
