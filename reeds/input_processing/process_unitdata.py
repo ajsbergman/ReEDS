@@ -39,18 +39,13 @@ def assign_gids_to_unitdata(df, offland_gdf, land_gdf):
 
         df_sub = df[df.tech.isin(tech_sub)]
         # Read supply curves
-        if (tech == 'geohydro') or (tech == 'egs'):
-            # Use egs supply curve for geothermal for now
+        if tech == 'geohydro':
+            # Use egs supply curve for geohydro for now
             geo_tech = 'egs'
             supply_curve = pd.read_csv(os.path.join(inputs_case,'supplycurve_'+geo_tech+'.csv'))
         else:
-            if tech == 'upv':
-                supply_curve = pd.read_csv(os.path.join(inputs_case,'supplycurve_upv.csv'))
-            elif tech == 'wind-ons':
-                supply_curve = pd.read_csv(os.path.join(inputs_case,'supplycurve_wind-ons.csv'))
-            elif tech == 'wind-ofs':
-                supply_curve = pd.read_csv(os.path.join(inputs_case,'supplycurve_wind-ofs.csv'))
-        
+            supply_curve = pd.read_csv(os.path.join(inputs_case,'supplycurve_'+tech+'.csv'))
+
         # Only consider the sc_point_pids that are in supply curves
         # (to avoid unmatched units later)
         if tech == 'wind-ofs':
@@ -101,7 +96,6 @@ def assign_gids_to_unitdata(df, offland_gdf, land_gdf):
 ### --- PROCEDURE ---
 ### ===========================================================================
 def main(inputs_case):
-
 
     # Read unitdata
     unitdata = pd.read_csv(os.path.join(inputs_case, 'unitdata_orig.csv'))

@@ -9,7 +9,6 @@ i_subtech.csv,inputs/sets/i_subtech.csv,1,ignore,ignore,,,,,,,1,set,i_subtech,te
 i_h2_ptc_gen.csv,inputs/sets/i_h2_ptc_gen.csv,1,ignore,ignore,,,,,,,1,set,i_h2_ptc_gen,technology subset category for clean generators which qualify for the hydrogen production tax credit,
 sdbin.csv,inputs/sets/sdbin.csv,1,ignore,ignore,,,,,,,1,set,sdbin,storage duration bins,
 tg.csv,inputs/sets/tg.csv,1,ignore,ignore,,,,,,,1,set,tg,tech groups for growth constraints,
-pcat.csv,inputs/sets/pcat.csv,1,ignore,ignore,,,,,,,1,set,pcat,prescribed capacity categories,
 ccseason.csv,,1,ignore,ignore,,,,,,,1,set,ccseason,seasons used for capacity credit; cold is Oct 15-April 14 and hot is April 15-Oct 14,
 quarter.csv,inputs/sets/quarter.csv,1,ignore,ignore,,,,,,,1,set,quarter,original h17 seasons (four per year),
 month.csv,inputs/sets/month.csv,1,ignore,ignore,,,,,,,1,set,month,calendar months in a year,
@@ -330,7 +329,6 @@ poi_cap_init.csv,,1,sum,ignore,*r,,,0,0,,1,,,,disaggfunc set to ignore because d
 prepost.csv,inputs/sets/prepost.csv,1,ignore,ignore,,,,,,,,,prepost,,
 prescribed_nonRSC.csv,,1,sum,ignore,r,"t,i",,0,0,,1,,,,disaggfunc set to ignore because data will be written at county resolution by writecapdat.py
 prescribed_rsc.csv,,1,sum,ignore,r,"t,i",,0,0,,1,,,,disaggfunc set to ignore because data will be written at county resolution by writecapdat.py
-prescriptivelink0.csv,inputs/sets/prescriptivelink0.csv,1,ignore,ignore,,,,,0,,,,prescriptivelink0,,
 prm_initial.csv,,1,ignore,ignore,*r,,,,0,,1,,,,
 prm.csv,,1,ignore,ignore,*r,,,,0,,1,,,,
 psh_sc_duration.csv,,1,ignore,ignore,,,,,0,,1,,,,Delete once aggregate_regions.py is moved up

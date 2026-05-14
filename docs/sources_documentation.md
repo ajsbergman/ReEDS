@@ -2715,11 +2715,6 @@
     - **Description:** set of products produced
 ---
 
-  - [pcat.csv](/inputs/sets/pcat.csv)
-    - **File Type:** GAMS set
-    - **Description:** set of prescribed technology categories
----
-
   - [plantcat.csv](/inputs/sets/plantcat.csv)
     - **File Type:** GAMS set
     - **Description:** set of categories for plant characteristics
@@ -2727,11 +2722,6 @@
 
   - [prepost.csv](/inputs/sets/prepost.csv)
     - **File Type:** GAMS set
----
-
-  - [prescriptivelink0.csv](/inputs/sets/prescriptivelink0.csv)
-    - **File Type:** GAMS set
-    - **Description:** initial set of prescribed categories and their technologies - used in assigning prescribed builds
 ---
 
   - [pvb_agg.csv](/inputs/sets/pvb_agg.csv)

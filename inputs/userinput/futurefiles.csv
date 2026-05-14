@@ -301,7 +301,6 @@ outage_forced_temperature.csv,.csv,1,None,9999,None,9999,0,constant,None,None,ne
 outage_scheduled_monthly.csv,.csv,1,None,9999,None,9999,0,constant,None,None,new,
 outage_scheduled_static.csv,.csv,1,None,9999,None,9999,0,constant,None,None,done,constant
 p.csv,.csv,1,None,9999,None,9999,0,constant,None,None,new,
-pcat.csv,.csv,1,None,9999,None,9999,0,constant,None,None,new,
 pcm_defaults.json,.json,1,None,9999,None,9999,0,constant,None,None,new,
 peak_ccseason.csv,.csv,2,None,wide,"r,ccseason",1,0,linear_5,None,None,"ignore if not EFS, else apply projection",linear_10
 peak_h.csv,.csv,2,None,wide,"r,h",1,0,linear_5,None,None,"ignore if not EFS, else apply projection",linear_10
@@ -348,7 +347,6 @@ prepost.csv,.csv,1,None,9999,None,9999,0,constant,None,None,new,
 prescribed_nonRSC_energy.csv,.csv,1,None,9999,None,9999,0,constant,None,None,new,
 prescribed_nonRSC.csv,.csv,1,None,9999,None,9999,0,constant,None,None,done,constant
 prescribed_rsc.csv,.csv,1,None,9999,None,9999,0,constant,None,None,done,constant
-prescriptivelink0.csv,.csv,1,None,9999,None,9999,0,constant,None,None,new,
 prm_initial.csv,.csv,0,None,t,*r,0,0,constant,None,None,done,constant
 psh_sc_duration.csv,.csv,1,None,9999,None,9999,0,constant,None,None,new,
 psh_supply_curves_capacity.csv,.csv,1,None,9999,None,9999,0,constant,None,None,new,

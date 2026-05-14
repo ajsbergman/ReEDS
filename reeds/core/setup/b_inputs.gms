@@ -1176,9 +1176,6 @@ $onlisting
  / ;
 
 
-alias(pcat,ppcat) ;
-
-
 set rsc_agg(i,ii)   "rsc technologies that belong to the same class" ;
 
 set tg_rsc_cspagg(i,ii) "csp technologies that belong to the same class"
@@ -2273,8 +2270,7 @@ m_required_prescriptions(i,v,r,t)$[tmodel_new(t)
 m_required_prescriptions_energy(i,v,r,t)$tmodel_new(t)
           = sum{tt$[yeart(t)>=yeart(tt)], prescribednonrsc_energy(i,v,r,tt) } ;
 
-parameter degrade(i,t,tt) "degradation factor by i"
-          degrade_pcat(pcat,t,tt) "degradation factor by pcat" ;
+parameter degrade(i,t,tt) "degradation factor by i" ;
 
 parameter degrade_annual(i) "annual degredation rate"
 /
@@ -2493,11 +2489,11 @@ valcap(i,newv,r,t)$[rsc_i(i)
 valcap(i,newv,r,t)$bannew(i) = no ;
 * Then add back only if they have prescribed capacity in years with the appropriate i/v/t combination
 valcap(i,newv,r,t)
-    $[bannew(i)
-    $(not ban(i))
-    $sum{(tt,pcat)$[ivt(i,newv,tt)],
-         prescribed_build(i,newv,r,tt) }]
-    = yes ;
+       $[bannew(i)
+       $(not ban(i))
+       $ivt(i,newv,t)
+       $prescribed_build(i,newv,r,t)]
+       = yes ;
 
 *NEW capacity only valid in historical years if and only if it has required prescriptions
 *logic here is that we don't want to populate the constraint with CAP <= 0 and instead
@@ -6343,7 +6339,7 @@ m_rsc_dat(r,i,rscbin,"cap")$[rsc_i(i)
 *and prescribed capacity (noncumulative_prescriptions).
 
 *Two types of adjustments:
-*1- If at least one element of m_rsc_dat(r,i,rscbin,"cap") is nonzero within a technology group (pcat), 
+*1- If at least one element of m_rsc_dat(r,i,rscbin,"cap") is nonzero within a technology group, 
 *   apply a multiplier to all associated i-classes so that the total available capacity 
 *   meets or exceeds prescribed capacity.
 *2- If m_rsc_dat(r,i,rscbin,"cap") is zero for all i-classes within the technology group, 
