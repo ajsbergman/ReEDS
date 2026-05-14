@@ -61,7 +61,14 @@ def run_reeds(casepath, t, onlygams=False, iteration=0):
         print(cmd_gams)
 
         ### Run GAMS LP
-        result = subprocess.run(cmd_gams, shell=True)
+        ### Wrap with /usr/bin/time for memory profiling
+        resource_stats = os.path.join(casepath, 'resource_stats.log')
+        timed_cmd_gams = (
+            f"/usr/bin/time -a -o {resource_stats} "
+            f"-f 'script=gams_solve_{t}i{iteration} memory_KB=%M runtime=%E' "
+            f"{cmd_gams.strip()}"
+        )
+        result = subprocess.run(timed_cmd_gams, shell=True)
         if result.returncode:
             raise Exception(f'd_solveoneyear.gms failed with return code {result.returncode}')
 

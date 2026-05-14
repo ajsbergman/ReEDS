@@ -672,8 +672,6 @@ def setup_sequential(
         ### Write the GAMS LP and Augur calls
         if int(caseSwitches['GSw_PRM_StressIterateMax']):
             OPATH.writelines(
-                f"/usr/bin/time -a -o {resource_stats} "
-                f"-f 'script=d_solve_iterate_{cur_year} memory_KB=%M runtime=%E' "
                 f"python d_solve_iterate.py {casedir} {cur_year}\n"
             )
             OPATH.writelines(writescripterrorcheck(f"d_solve_iterate.py_{cur_year}"))
