@@ -1,5 +1,6 @@
 # %% Imports
 import os
+import sys
 import subprocess
 import argparse
 import json
@@ -9,6 +10,7 @@ import pandas as pd
 from pathlib import Path
 
 ## Local imports
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import reeds
 from reeds.input_processing import hourly_repperiods
 from reeds.input_processing import hourly_writetimeseries
@@ -16,11 +18,11 @@ from reeds.core.terminus.report_dump import write_dfdict
 
 
 # %% Inferred inputs
-reeds_path = os.path.dirname(__file__)
+reeds_path = os.path.join(os.path.dirname(__file__), '..')
 
 # %% Default inputs
 switch_mods_default = {
-    'GSw_gopt': 4,
+    'GSw_gopt': 1,
     'GSw_HourlyClusterAlgorithm': 'hierarchical',
     'GSw_HourlyNumClusters': 365,
     'GSw_HourlyType': 'day',
@@ -375,7 +377,7 @@ if __name__ == '__main__':
         main(casepath=casepath, t=t, switch_mods=switch_mods, label=label, overwrite=overwrite)
     else:
         command_string = (
-            f"python run_pcm.py {casepath} "
+            f"python postprocessing/run_pcm.py {casepath} "
             f"--year={t} "
             f"--iteration={iteration} "
             f"--switch_mods='{json.dumps(switch_mods)}' "
