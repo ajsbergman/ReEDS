@@ -297,7 +297,6 @@ period_szn.csv,,1,ignore,ignore,,,,,0,,,,,,
 period_szn_user.csv,inputs/temporal/period_szn_{GSw_HourlyClusterAlgorithm}.csv,sw.GSw_HourlyClusterAlgorithm == 'user*',ignore,ignore,,,,,,,,,,,
 period_weights.csv,,1,ignore,ignore,,,,,0,,,,,,
 periodmap_1yr.csv,,1,ignore,ignore,,,,0,0,,,,,,
-pipeline_cost_mult.csv,,int(sw.GSw_H2) != 0,trans_lookup,uniform,"*r,rr",,,0,0,drop_dup_r,1,,,,
 plantcat.csv,inputs/sets/plantcat.csv,1,ignore,ignore,,,,,,,,,plantcat,,
 plantcharout.csv,,1,ignore,ignore,,"0,2",,0,,,,,,,
 plantchar_beccs.csv,inputs/plant_characteristics/{plantchar_beccs}.csv,int(sw.GSw_BECCS) != 0,ignore,ignore,,,,,0,,,,,,used to define plantcharout.csv
@@ -352,7 +351,6 @@ r_cendiv.csv,,1,ignore,ignore,,,,,,,,,,,
 r_county.csv,,1,ignore,ignore,,,,,,,,,,,
 r_cs.csv,,1,first,ignore,*r,cs,,0,0,,1,,,,disaggfunc set to ignore because the spatial aggregation level of this file is controlled by the agglevel switch
 r_cs_distance_mi.csv,,1,mean,ignore,*r,cs,,0,0,,1,,,,disaggfunc set to ignore because the spatial aggregation level of this file is controlled by the agglevel switch
-routes_adjacent.csv,,1,trans_lookup,ignore,"*r,rr",,,0,0,,1,,,,disaggfunc set to ignore because the spatial aggregation level of this file is controlled by the agglevel switch
 ramprate.csv,inputs/plant_characteristics/ramprate.csv,int(sw.GSw_OpRes) != 0,ignore,ignore,,,,,0,,,,,,
 ramptime.csv,inputs/reserves/ramptime.csv,int(sw.GSw_OpRes) != 0,ignore,ignore,,,,,0,,,,,,
 rb.csv,,1,first,ignore,0,,,0,,,1,,,,disaggfunc set to ignore because this file is specifically a collection of all valid BA regions
@@ -415,15 +413,8 @@ tg_rsc_cspagg.csv,inputs/sets/tg_rsc_cspagg.csv,1,ignore,ignore,,,,,0,,,,tg_rsc_
 tg_rsc_cspagg_tmp.csv,inputs/waterclimate/tg_rsc_cspagg_tmp.csv,(int(sw.GSw_CSP) != 0) and (int(sw.GSw_WaterMain) != 0),ignore,ignore,,,,,0,,,,,,
 tg_rsc_upvagg.csv,inputs/sets/tg_rsc_upvagg.csv,1,ignore,ignore,,,,,0,,,,tg_rsc_upvagg,,
 timestamps.csv,,1,ignore,ignore,,,,,0,,,,,,
-trancap_fut.csv,,1,sum,ignore,"*r,rr","status,trtype,t",,0,0,drop_dup_r,1,,,,disaggfunc set to ignore because all transmisison data will be read into model at the correct spatial resolution
 trancap_fut_cat.csv,inputs/sets/trancap_fut_cat.csv,1,ignore,ignore,,,,,,,,,trancap_fut_cat,,
-trancap_init_energy.csv,,1,ignore,ignore,"*r,rr",trtype,,0,0,drop_dup_r,1,,,,
-trancap_init_prm.csv,,1,ignore,ignore,"*r,rr",trtype,,0,0,drop_dup_r,1,,,,
-trancap_init_transgroup.csv,,1,ignore,ignore,,,,0,0,,,,,,
-trancap_init_itlgrp.csv,,1,ignore,ignore,,,,0,0,,,,,,
-tranloss.csv,,1,trans_lookup,ignore,"*r,rr",trtype,,0,0,drop_dup_r,1,,,,disaggfunc set to ignore because all transmisison data will be read into model at the correct spatial resolution
 trans_itc_fractions.csv,,1,ignore,ignore,,,,,0,,,,,,
-transmission_line_fom.csv,,1,trans_lookup,ignore,"*r,rr",trtype,,0,0,drop_dup_r,1,,,,disaggfunc set to ignore because all transmisison data will be read into model at the correct spatial resolution
 trtype.csv,inputs/sets/trtype.csv,1,ignore,ignore,,,,,,,,,trtype,,
 unapp_water_sea_distr.csv,inputs/waterclimate/unapp_water_sea_distr.csv,int(sw.GSw_WaterMain) != 0,mean,geosize,r,"wst,wide",,1,0,,,,,,
 UnappWaterMult.csv,inputs/climate/{climatescen}/UnappWaterMult.csv,int(sw.GSw_ClimateWater) != 0,mean,uniform,r,"wst,month,t",,0,0,,,,,,

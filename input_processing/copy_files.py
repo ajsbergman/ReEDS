@@ -777,12 +777,6 @@ def filter_data(
             except Exception:
                 df = pd.DataFrame()
 
-    # If there is a region-to-region mapping set
-    elif region_col.strip('*') in ['r,rr','transgrp,transgrpp']:
-        # make sure both the r and rr regions are in val_r
-        r,rr = region_col.split(',')
-        df = df.loc[df[r].isin(val_r_all) & df[rr].isin(val_r_all)]
-
     # Subset on the valid regions except for r regions
     # (r regions might also include s regions, which complicates things...)
     elif ((region_col.strip('*') in levels) & (region_col.strip('*') != 'r')):

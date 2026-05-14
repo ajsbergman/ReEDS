@@ -98,13 +98,6 @@ def aggreg_methods(
             if cost_type in df1:
                 df1[cost_type] = df1[f'cap_times_{cost_type}'] / df1['cap'].fillna(1).replace(0,1)
                 df1.drop([f'cap_times_{cost_type}'], axis=1, inplace=True)
-    elif aggfunc == 'trans_lookup':
-        ## Get data for anchor zones
-        for c in region_cols:
-            df1 = df1.loc[df1[c].isin(aggreg2anchorreg)].copy()
-        ## Map to aggregated regions
-        for c in region_cols:
-            df1[c] = df1[c].map(anchorreg2aggreg)
     elif aggfunc == 'mean_cap':
         df1 = (
             df1.rename(columns={'value':columns[-1]})
@@ -493,11 +486,6 @@ def agg_disagg(filepath, r2aggreg_glob, r_ba_glob, runfiles_row):
     if region_col == 'r_cendiv':
         region_col = 'r'
     region_cols = region_col.split(',')
-    # Assign variable to track if region data exists in two columns
-    two_col = False
-    if region_col == '*r,rr' or region_col =='r,rr' or region_col == 'transgrp,transgrpp':
-        two_col = True
-        region_col = region_col.split(',')
 
     # If solving at mixed resolutions, both disagg and agg functions could be required
     # Check if one of the desired spatial resolutions is county
@@ -588,12 +576,7 @@ def agg_disagg(filepath, r2aggreg_glob, r_ba_glob, runfiles_row):
         for val in agglevel:
             if val in ['ba']:
                 if region_col != 'wide':
-                    if two_col :
-                        df_agg_in = dfin[dfin[region_col[0]].isin(
-                                            agglevel_variables['ba_regions'] + agglevel_variables['ba_transgrp'])]
-                        df_agg_in =  df_agg_in[ df_agg_in[region_col[1]].isin(agglevel_variables['ba_regions'])]
-                    else:
-                        df_agg_in = dfin[dfin[region_col].isin(agglevel_variables['ba_regions'])]
+                    df_agg_in = dfin[dfin[region_col].isin(agglevel_variables['ba_regions'])]
                 else:
                     col_list = row.fix_cols + agglevel_variables['ba_regions']
                     # Check if data exists for all BAs in agglevel_variables['ba_regions'] list
@@ -616,12 +599,7 @@ def agg_disagg(filepath, r2aggreg_glob, r_ba_glob, runfiles_row):
                 # Subset to include regions being solved at Aggreg
                 # If column headers are region names, need to filter after reformatting
                 if region_col != 'wide':
-                    if two_col :
-                        df_agg_in = dfin[dfin[region_col[0]].isin(
-                                            agglevel_variables['ba_regions'] + agglevel_variables['ba_transgrp'])]
-                        df_agg_in =  df_agg_in[ df_agg_in[region_col[1]].isin(agglevel_variables['ba_regions'])]
-                    else:
-                        df_agg_in = dfin[dfin[region_col].isin(agglevel_variables['ba_regions'])]
+                    df_agg_in = dfin[dfin[region_col].isin(agglevel_variables['ba_regions'])]
 
                 # Clause to separate mixed BA and county data in wide format
                 elif region_col == 'wide':
@@ -651,25 +629,7 @@ def agg_disagg(filepath, r2aggreg_glob, r_ba_glob, runfiles_row):
         # Filter county data from BA data that will be aggregated to aggreg
         if aggfunc_disagg == 'ignore':
             if region_col != 'wide':
-                if two_col:
-                    # County transmission data will have county-ba interfaces created in copy_files
-                    # To maintain these interfaces the filtering of the data needs to ensure that BA-BA interfaces
-                    # are dropped but county-county and county-BA interfaces are kept
-                    df_disagg_list = []
-                    for idx, tx_row in dfin.iterrows():
-                        cond1 = ((tx_row[region_col[0]] in agglevel_variables['ba_regions']+agglevel_variables['ba_transgrp'])
-                                    and (tx_row[region_col[1]] in agglevel_variables['county_regions']+agglevel_variables['county_transgrp']))
-                        cond2 = ((tx_row[region_col[1]] in agglevel_variables['ba_regions']+ agglevel_variables['ba_transgrp'])
-                                    and (tx_row[region_col[0]] in agglevel_variables['county_regions']+agglevel_variables['county_transgrp']))
-                        cond3 = ((tx_row[region_col[0]] in agglevel_variables['county_regions']+agglevel_variables['county_transgrp'])
-                                    and (tx_row[region_col[1]] in agglevel_variables['county_regions']+agglevel_variables['county_transgrp']))
-
-                        if cond1 or cond2 or cond3:
-                            df_disagg_list.append(tx_row)
-
-                    df_disagg_in = pd.DataFrame(df_disagg_list).drop_duplicates()
-
-                elif filename == 'county2zone.csv':
+                if filename == 'county2zone.csv':
                     df_disagg_in = dfin[dfin[region_col].isin(agglevel_variables['county_regions2ba'])]
                 else:
                     df_disagg_in = dfin[dfin[region_col].isin(agglevel_variables['county_regions'])]
@@ -694,12 +654,7 @@ def agg_disagg(filepath, r2aggreg_glob, r_ba_glob, runfiles_row):
             # Need to read in input data at BA level to be disaggregated
             # If column headers are region names, need to filter after reformatting
             if region_col != 'wide':
-                if two_col :
-                    df_disagg_in = dfin[dfin[region_col[0]].isin(agglevel_variables['county_regions2ba'])]
-                    df_disagg_in = df_disagg_in[df_disagg_in[region_col[1]]
-                                    .isin(agglevel_variables['county_regions2ba'])]
-                else:
-                    df_disagg_in = dfin[dfin[region_col].isin(agglevel_variables['county_regions2ba'])]
+                df_disagg_in = dfin[dfin[region_col].isin(agglevel_variables['county_regions2ba'])]
             else:
                 col_list = row.fix_cols + agglevel_variables['county_regions2ba']
                 # Check if data exists for all BAs in county_regions2ba list
@@ -997,13 +952,6 @@ if 'aggreg' in agglevel:
     if agglevel_variables['lvl'] == 'mult':
         r_ba = r_aggreg
 
-    # Written in reeds.io.get_zonemap()
-    reeds.io.get_zonemap(reeds.io.standardize_case(inputs_case))
-    aggreg2anchorreg = pd.read_csv(os.path.join(inputs_case, 'aggreg2anchorreg.csv'))
-    aggreg2anchorreg = aggreg2anchorreg.set_index('aggreg')
-    aggreg2anchorreg = aggreg2anchorreg.squeeze()
-    anchorreg2aggreg = pd.Series(index=aggreg2anchorreg.values, data=aggreg2anchorreg.index)    
-    
     ### Get RSC VRE available capacity to use in capacity-weighted averages
     ### We need the original un-aggregated supply curves, so run writesupplycurves again
     # rscweight = pd.read_csv(os.path.join(inputs_case, 'rsc_combined.csv'))
