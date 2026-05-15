@@ -12,107 +12,6 @@ tic = datetime.datetime.now()
 
 
 #%% Functions
-def get_trancap_init(case, interface_params, level='r'):
-    """
-    AC capacity is defined for each direction and calculated using the scripts at
-    https://github.nrel.gov/ReEDS/TSC
-    """
-    sw = reeds.io.get_switches(case)
-    trancap_init_ac = (
-        reeds.inputs.get_itls(case, level=level, GSw_ZoneSet=sw.GSw_ZoneSet)
-        [['r', 'rr', 'MW_forward', 'MW_reverse']]
-        .assign(trtype='AC')
-    )
-    valid_regions = {}
-    for i in ['r', 'itlgrp', 'transgrp']:
-        valid_regions[i] = pd.read_csv(
-            Path(case, 'inputs_case', f'val_{i}.csv'), header=None).squeeze(1).tolist()
-
-    ### DEPRECATED: p19 is islanded with NARIS transmission data, so connect it manually
-    if (
-        (sw.GSw_TransNetworkSource == 'NARIS2024')
-        and (level != 'transgrp')
-        and ('p19' in valid_regions['r'])
-        and ('p20' in valid_regions['r'])
-    ):
-        trancap_init_ac = pd.concat([
-            trancap_init_ac,
-            pd.Series({
-                'r':'p19',
-                'rr':'p20',
-                'MW_forward':0.001,
-                'MW_reverse':0.001,
-                'trtype':'AC',
-            }).to_frame().T
-        ], ignore_index=True)
-
-    ### DC
-    if level == 'r':
-        ## transgrp capacity is only defined for AC
-        hvdc = (
-            reeds.inputs.map_hvdc_lines_to_interfaces(case, filename='hvdc_lines.csv')
-            .reset_index()
-        )
-        b2b = reeds.inputs.get_b2b(case).assign(trtype='B2B')
-        ## DC capacity is only defined in one direction,
-        ## so duplicate it for the opposite direction
-        trancap_init_nonac_undup = pd.concat([hvdc, b2b])[['r', 'rr', 'trtype', 'MW']]
-        trancap_init_nonac = pd.concat([
-            trancap_init_nonac_undup,
-            trancap_init_nonac_undup.rename(columns={'r':'rr', 'rr':'r'})
-        ], axis=0)
-    else:
-        trancap_init_nonac = pd.DataFrame(columns=['r', 'rr', 'trtype', 'MW'])
-
-    ### Initial trading limit, using contingency levels specified by contingency level
-    ### (but assuming full capacity of DC is available for both energy and capcity)
-    dfout = (
-        pd.concat(
-            [
-                ## AC
-                pd.concat([
-                    ## Forward direction
-                    (trancap_init_ac[['r', 'rr', 'trtype', 'MW_forward']]
-                    .rename(columns={'MW_forward':'MW'})),
-                    ## Reverse direction
-                    (trancap_init_ac[['r', 'rr', 'trtype', 'MW_reverse']]
-                    .rename(columns={'r':'rr', 'rr':'r', 'MW_reverse':'MW'}))
-                ], axis=0),
-                ## DC
-                trancap_init_nonac[['r', 'rr', 'trtype', 'MW']]
-            ],
-            axis=0
-        )
-        ## Drop entries with zero capacity
-        .replace(0.,np.nan).dropna()
-        .groupby(['r', 'rr', 'trtype']).sum().reset_index()
-    )
-    dfout = dfout.loc[
-        dfout['r'].isin(valid_regions[level])
-        & dfout['rr'].isin(valid_regions[level])
-    ].copy()
-
-    ### TEMPORARY 20260402: Drop county interfaces with no distance/cost
-    if (level == 'r') and (sw.GSw_RegionResolution in ['county', 'mixed']):
-        transmission_line_fom = get_transmission_fom(case, interface_params)
-        indices = ['r', 'rr', 'trtype']
-        drop = (
-            dfout
-            .merge(transmission_line_fom.reset_index(), on=indices, how='left')
-        )
-        drop = list(drop.loc[drop.USDperMWyear.isnull(), indices].itertuples(index=False))
-        dfout = dfout.set_index(indices).drop(drop).reset_index()
-
-    ## Get alias for level (e.g. rr, transgrpp)
-    levell = level + level[-1]
-    dfout = (
-        dfout
-        .rename(columns={'r':level, 'rr':levell})
-        .round(3)
-    )
-    return dfout
-
-
 def get_interface_params(case):
     """
     """
@@ -257,55 +156,6 @@ def get_trancap_fut(case):
     return trancap_fut
 
 
-def include_reverse_direction(df:pd.Series, indices=['r', 'rr', 'trtype']):
-    """Add duplicate values for (rr,r) direction"""
-    assert (('r' in indices) and ('rr' in indices))
-    reverse = (
-        df.reset_index().rename(columns={'r':'rr', 'rr':'r'})
-        .set_index(indices).squeeze(1)
-    )
-    dfout = pd.concat([df, reverse])
-    return dfout
-
-
-def get_transmission_fom(case, interface_params):
-    """
-    """
-    sw = reeds.io.get_switches(case)
-    scalars = reeds.io.get_scalars(case)
-
-    ### Get the line-specific transmission FOM costs [$/MW/year]
-    trans_fom_frac = scalars['trans_fom_frac']
-
-    ### For simplicity we just take the unweighted average greenfield $/MWmile cost
-    ### across all interfaces.
-    ### Future work should identify a better assumption.
-    transfom_USDperMWmileyear = (
-        interface_params.groupby('trtype')[f'USD{sw.dollar_year}perMWmile'].mean()
-        * trans_fom_frac
-    )
-
-    ### Multiply $/MW/mile/year by distance [miles] to get $/MW/year for ALL lines
-    transmission_line_fom = interface_params.copy()
-    transmission_line_fom['USDperMWyear'] = transmission_line_fom.apply(
-        lambda row: transfom_USDperMWmileyear[row.trtype] * row.miles,
-        axis=1
-    )
-    transmission_line_fom = (
-        transmission_line_fom
-        .set_index(['r','rr','trtype'])
-        .USDperMWyear
-        .round(2)
-    )
-    ## Include both directions
-    transmission_line_fom = include_reverse_direction(transmission_line_fom)
-    dups = transmission_line_fom.index.duplicated()
-    if dups.sum():
-        print(transmission_line_fom.loc[dups])
-        raise ValueError(f'{len(dups)} duplicate values in transmission_line_fom')
-    return transmission_line_fom
-
-
 def get_firm_import_limit(case):
     """Limits on PRMTRADE across nercr boundaries"""
     sw = reeds.io.get_switches(case)
@@ -358,6 +208,156 @@ def get_firm_import_limit(case):
         )
 
     return firm_import_limit.reset_index()
+
+
+def get_trancap_init(case, interface_params, level='r'):
+    """
+    AC capacity is defined for each direction and calculated using the scripts at
+    https://github.nrel.gov/ReEDS/TSC
+    """
+    sw = reeds.io.get_switches(case)
+    trancap_init_ac = (
+        reeds.inputs.get_itls(case, level=level, GSw_ZoneSet=sw.GSw_ZoneSet)
+        [['r', 'rr', 'MW_forward', 'MW_reverse']]
+        .assign(trtype='AC')
+    )
+    valid_regions = {}
+    for i in ['r', 'itlgrp', 'transgrp']:
+        valid_regions[i] = pd.read_csv(
+            Path(case, 'inputs_case', f'val_{i}.csv'), header=None).squeeze(1).tolist()
+
+    ### DEPRECATED: p19 is islanded with NARIS transmission data, so connect it manually
+    if (
+        (sw.GSw_TransNetworkSource == 'NARIS2024')
+        and (level != 'transgrp')
+        and ('p19' in valid_regions['r'])
+        and ('p20' in valid_regions['r'])
+    ):
+        trancap_init_ac = pd.concat([
+            trancap_init_ac,
+            pd.Series({
+                'r':'p19',
+                'rr':'p20',
+                'MW_forward':0.001,
+                'MW_reverse':0.001,
+                'trtype':'AC',
+            }).to_frame().T
+        ], ignore_index=True)
+
+    ### DC
+    if level == 'r':
+        ## transgrp capacity is only defined for AC
+        hvdc = (
+            reeds.inputs.map_hvdc_lines_to_interfaces(case, filename='hvdc_lines.csv')
+            .reset_index()
+        )
+        b2b = reeds.inputs.get_b2b(case).assign(trtype='B2B')
+        ## DC capacity is only defined in one direction,
+        ## so duplicate it for the opposite direction
+        trancap_init_nonac_undup = pd.concat([hvdc, b2b])[['r', 'rr', 'trtype', 'MW']]
+        trancap_init_nonac = pd.concat([
+            trancap_init_nonac_undup,
+            trancap_init_nonac_undup.rename(columns={'r':'rr', 'rr':'r'})
+        ], axis=0)
+    else:
+        trancap_init_nonac = pd.DataFrame(columns=['r', 'rr', 'trtype', 'MW'])
+
+    ### Initial trading limit, using contingency levels specified by contingency level
+    ### (but assuming full capacity of DC is available for both energy and capcity)
+    dfout = (
+        pd.concat(
+            [
+                ## AC
+                pd.concat([
+                    ## Forward direction
+                    (trancap_init_ac[['r', 'rr', 'trtype', 'MW_forward']]
+                    .rename(columns={'MW_forward':'MW'})),
+                    ## Reverse direction
+                    (trancap_init_ac[['r', 'rr', 'trtype', 'MW_reverse']]
+                    .rename(columns={'r':'rr', 'rr':'r', 'MW_reverse':'MW'}))
+                ], axis=0),
+                ## DC
+                trancap_init_nonac[['r', 'rr', 'trtype', 'MW']]
+            ],
+            axis=0
+        )
+        ## Drop entries with zero capacity
+        .replace(0.,np.nan).dropna()
+        .groupby(['r', 'rr', 'trtype']).sum().reset_index()
+    )
+    dfout = dfout.loc[
+        dfout['r'].isin(valid_regions[level])
+        & dfout['rr'].isin(valid_regions[level])
+    ].copy()
+
+    ### TEMPORARY 20260402: Drop county interfaces with no distance/cost
+    if (level == 'r') and (sw.GSw_RegionResolution in ['county', 'mixed']):
+        transmission_line_fom = get_transmission_fom(case, interface_params)
+        indices = ['r', 'rr', 'trtype']
+        drop = (
+            dfout
+            .merge(transmission_line_fom.reset_index(), on=indices, how='left')
+        )
+        drop = list(drop.loc[drop.USDperMWyear.isnull(), indices].itertuples(index=False))
+        dfout = dfout.set_index(indices).drop(drop).reset_index()
+
+    ## Get alias for level (e.g. rr, transgrpp)
+    levell = level + level[-1]
+    dfout = (
+        dfout
+        .rename(columns={'r':level, 'rr':levell})
+        .round(3)
+    )
+    return dfout
+
+
+def include_reverse_direction(df:pd.Series, indices=['r', 'rr', 'trtype']):
+    """Add duplicate values for (rr,r) direction"""
+    assert (('r' in indices) and ('rr' in indices))
+    reverse = (
+        df.reset_index().rename(columns={'r':'rr', 'rr':'r'})
+        .set_index(indices).squeeze(1)
+    )
+    dfout = pd.concat([df, reverse])
+    return dfout
+
+
+def get_transmission_fom(case, interface_params):
+    """
+    """
+    sw = reeds.io.get_switches(case)
+    scalars = reeds.io.get_scalars(case)
+
+    ### Get the line-specific transmission FOM costs [$/MW/year]
+    trans_fom_frac = scalars['trans_fom_frac']
+
+    ### For simplicity we just take the unweighted average greenfield $/MWmile cost
+    ### across all interfaces.
+    ### Future work should identify a better assumption.
+    transfom_USDperMWmileyear = (
+        interface_params.groupby('trtype')[f'USD{sw.dollar_year}perMWmile'].mean()
+        * trans_fom_frac
+    )
+
+    ### Multiply $/MW/mile/year by distance [miles] to get $/MW/year for ALL lines
+    transmission_line_fom = interface_params.copy()
+    transmission_line_fom['USDperMWyear'] = transmission_line_fom.apply(
+        lambda row: transfom_USDperMWmileyear[row.trtype] * row.miles,
+        axis=1
+    )
+    transmission_line_fom = (
+        transmission_line_fom
+        .set_index(['r','rr','trtype'])
+        .USDperMWyear
+        .round(2)
+    )
+    ## Include both directions
+    transmission_line_fom = include_reverse_direction(transmission_line_fom)
+    dups = transmission_line_fom.index.duplicated()
+    if dups.sum():
+        print(transmission_line_fom.loc[dups])
+        raise ValueError(f'{len(dups)} duplicate values in transmission_line_fom')
+    return transmission_line_fom
 
 
 def convert_to_tsc(interface_params, dollar_year=2004):
