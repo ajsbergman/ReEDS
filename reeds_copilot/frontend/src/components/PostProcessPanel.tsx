@@ -19,13 +19,17 @@ import {
 interface Props {
   onClose: () => void;
   onSelectFile: (path: string) => void;
+  /** When provided, only run folders with these names appear in the picker. */
+  filterRunNames?: string[];
+  /** Optional banner shown above the picker. */
+  banner?: string;
 }
 
 const CASE_COLORS = ["#60a5fa", "#4ade80", "#fbbf24", "#f87171", "#c084fc", "#fb923c"];
 
 type Tool = "bokeh_report" | "compare_cases";
 
-export default function PostProcessPanel({ onClose, onSelectFile }: Props) {
+export default function PostProcessPanel({ onClose, onSelectFile, filterRunNames, banner }: Props) {
   const [folders, setFolders] = useState<RunFolder[]>([]);
   const [reports, setReports] = useState<string[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -47,10 +51,19 @@ export default function PostProcessPanel({ onClose, onSelectFile }: Props) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    listRunFoldersAPI().then(setFolders).catch(() => {});
+    listRunFoldersAPI()
+      .then((all) => {
+        if (filterRunNames && filterRunNames.length > 0) {
+          const allow = new Set(filterRunNames);
+          setFolders(all.filter((f) => allow.has(f.name)));
+        } else {
+          setFolders(all);
+        }
+      })
+      .catch(() => {});
     ppListReportsAPI().then((r) => setReports(r.reports)).catch(() => {});
     ppListJobsAPI().then((r) => setJobs(r.jobs)).catch(() => {});
-  }, []);
+  }, [filterRunNames]);
 
   // Poll active job
   useEffect(() => {
@@ -156,6 +169,14 @@ export default function PostProcessPanel({ onClose, onSelectFile }: Props) {
           ✕ Close
         </button>
       </div>
+
+      {banner && (
+        <div style={{
+          background: "var(--bg-elev)", border: "1px solid var(--border)",
+          borderRadius: "var(--radius)", padding: "8px 12px", margin: "8px 0",
+          fontSize: "0.82rem", lineHeight: 1.4,
+        }}>{banner}</div>
+      )}
 
       {error && <div className="error-banner" style={{ margin: "8px 0" }}>{error}</div>}
 

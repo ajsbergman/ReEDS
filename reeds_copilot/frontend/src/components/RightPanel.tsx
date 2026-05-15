@@ -143,7 +143,7 @@ export default function RightPanel({ selectedFile, selectedLine, sources, onSele
   );
 }
 
-function HighlightedPreview({ content, filename, truncated, fullMode, onViewFull, highlightLine }: {
+export function HighlightedPreview({ content, filename, truncated, fullMode, onViewFull, highlightLine }: {
   content: string; filename: string; truncated?: boolean; fullMode: boolean; onViewFull: () => void;
   highlightLine?: number | null;
 }) {
@@ -267,7 +267,7 @@ function CsvPreview({ preview, fullMode, onViewFull }: { preview: FilePreviewRes
 
 /* ── GDX symbol list ─────────────────────────────────────────────────────── */
 
-function GdxSymbolList({ symbols, onSelect }: { symbols: GdxSymbolInfo[]; onSelect: (name: string) => void }) {
+export function GdxSymbolList({ symbols, onSelect }: { symbols: GdxSymbolInfo[]; onSelect: (name: string) => void }) {
   const [filter, setFilter] = useState("");
   const filtered = filter
     ? symbols.filter((s) => s.name.toLowerCase().includes(filter.toLowerCase()))
@@ -329,7 +329,7 @@ function GdxSymbolList({ symbols, onSelect }: { symbols: GdxSymbolInfo[]; onSele
 
 /* ── GDX single-symbol data view ─────────────────────────────────────────── */
 
-function GdxDataView({ preview, onBack }: { preview: FilePreviewResponse; onBack: () => void }) {
+export function GdxDataView({ preview, onBack }: { preview: FilePreviewResponse; onBack: () => void }) {
   if (!preview.columns || !preview.rows) return null;
   return (
     <div>
@@ -376,7 +376,7 @@ function GdxDataView({ preview, onBack }: { preview: FilePreviewResponse; onBack
 
 /* ── HDF5 dataset list ───────────────────────────────────────────────────── */
 
-function H5DatasetList({ datasets, onSelect }: { datasets: H5DatasetInfo[]; onSelect: (name: string) => void }) {
+export function H5DatasetList({ datasets, onSelect }: { datasets: H5DatasetInfo[]; onSelect: (name: string) => void }) {
   const [filter, setFilter] = useState("");
   const filtered = filter
     ? datasets.filter((d) => d.name.toLowerCase().includes(filter.toLowerCase()))
@@ -436,7 +436,7 @@ function H5DatasetList({ datasets, onSelect }: { datasets: H5DatasetInfo[]; onSe
 
 /* ── HDF5 single-dataset data view ───────────────────────────────────────── */
 
-function H5DataView({ preview, onBack }: { preview: FilePreviewResponse; onBack: () => void }) {
+export function H5DataView({ preview, onBack }: { preview: FilePreviewResponse; onBack: () => void }) {
   if (!preview.columns || !preview.rows) return null;
   return (
     <div>

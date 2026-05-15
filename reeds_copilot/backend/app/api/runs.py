@@ -319,7 +319,6 @@ def compare_data(
     runs_dir = settings.repo_root / "runs"
     # Use first case's filename for suffix detection and display
     display_filename = case_filenames[body.cases[0]]
-    suffix = Path(display_filename).suffix.lower()
 
     # Resolve paths
     paths: dict[str, Path] = {}
@@ -335,19 +334,47 @@ def compare_data(
             raise HTTPException(status_code=404, detail=f"{fn} not found in {case}")
         paths[case] = file_path
 
+    def _image_url(case: str, p: Path) -> str:
+        rel = p.relative_to(settings.repo_root)
+        return str(rel).replace("\\", "/")
+
+    return compare_files_core(
+        paths=paths,
+        cases=list(body.cases),
+        display_filename=display_filename,
+        subdir=body.subdir,
+        max_rows_per_case=body.max_rows_per_case,
+        image_url_builder=_image_url,
+    )
+
+
+def compare_files_core(
+    *,
+    paths: dict[str, Path],
+    cases: list[str],
+    display_filename: str,
+    subdir: str,
+    max_rows_per_case: int,
+    image_url_builder,
+) -> dict:
+    """Auto-detect file type and produce a comparison response.
+
+    `paths` maps case name -> local readable Path (HPC callers SFTP-download
+    files to a cache first and pass those local paths in).
+    `image_url_builder(case, local_path) -> str` returns a frontend-loadable
+    URL fragment used in the image_diff branch (local file path or remote
+    path, depending on caller).
+    """
+    suffix = Path(display_filename).suffix.lower()
     base_resp = {
         "filename": display_filename,
-        "subdir": body.subdir,
-        "cases": body.cases,
+        "subdir": subdir,
+        "cases": cases,
     }
 
     # ── Image compare ──
     if suffix in IMAGE_SUFFIXES:
-        # Return relative paths for the raw file endpoint
-        image_paths = {}
-        for case, p in paths.items():
-            rel = p.relative_to(settings.repo_root)
-            image_paths[case] = str(rel).replace("\\", "/")
+        image_paths = {case: image_url_builder(case, p) for case, p in paths.items()}
         return {
             **base_resp,
             "mode": "image_diff",
@@ -363,11 +390,9 @@ def compare_data(
             symbol_lists = {}
             for case, p in paths.items():
                 symbol_lists[case] = _gdx_list_symbols(p)
-            # Find common symbols
             name_sets = [set(s["name"] for s in syms) for syms in symbol_lists.values()]
             common = sorted(set.intersection(*name_sets)) if name_sets else []
-            # Build comparison: for each common symbol, show records per case
-            first_syms = {s["name"]: s for s in symbol_lists[body.cases[0]]}
+            first_syms = {s["name"]: s for s in symbol_lists[cases[0]]}
             case_syms = {
                 case: {s["name"]: s for s in syms}
                 for case, syms in symbol_lists.items()
@@ -375,10 +400,10 @@ def compare_data(
             rows = []
             for name in common:
                 row: dict = {"name": name, "type": first_syms[name]["type"], "dims": first_syms[name]["dims"]}
-                for case in body.cases:
+                for case in cases:
                     row[case] = case_syms[case].get(name, {}).get("records", 0)
                 rows.append(row)
-            columns = ["name", "type", "dims"] + list(body.cases)
+            columns = ["name", "type", "dims"] + list(cases)
             return {
                 **base_resp,
                 "mode": "gdx_diff",
@@ -394,7 +419,7 @@ def compare_data(
             return {
                 **base_resp,
                 "mode": "text_diff",
-                "texts": {case: f"Error reading GDX: {exc}" for case in body.cases},
+                "texts": {case: f"Error reading GDX: {exc}" for case in cases},
                 "columns": [], "rows": [], "total_rows": 0,
                 "index_cols": [], "value_col": None,
             }
@@ -404,17 +429,16 @@ def compare_data(
         frames: dict[str, pd.DataFrame] = {}
         for case, p in paths.items():
             try:
-                df = pd.read_csv(p, nrows=body.max_rows_per_case, low_memory=False)
+                df = pd.read_csv(p, nrows=max_rows_per_case, low_memory=False)
                 frames[case] = df
             except Exception as exc:
-                raise HTTPException(status_code=400, detail=f"Error reading {case}/{body.filename}: {exc}")
+                raise HTTPException(status_code=400, detail=f"Error reading {case}/{display_filename}: {exc}")
 
         sample = next(iter(frames.values()))
         value_cols = [c for c in sample.columns if c.lower() == "value"]
         index_cols = [c for c in sample.columns if c.lower() != "value"]
 
         if value_cols:
-            # Side-by-side merge on index columns
             val_col = value_cols[0]
             case_names = list(frames.keys())
             merged = frames[case_names[0]][index_cols].drop_duplicates()
@@ -449,11 +473,10 @@ def compare_data(
                 "value_col": val_col,
             }
         else:
-            # No Value column — show side-by-side tables per case
             all_cols = list(sample.columns)
             case_tables: dict[str, list[dict]] = {}
-            for case in body.cases:
-                df = frames[case].head(body.max_rows_per_case)
+            for case in cases:
+                df = frames[case].head(max_rows_per_case)
                 clean = df.astype(object).where(df.notna(), None)
                 case_tables[case] = clean.to_dict(orient="records")
             return {
@@ -489,7 +512,7 @@ def compare_data(
         "mode": "unsupported",
         "columns": [], "rows": [], "total_rows": 0,
         "index_cols": [], "value_col": None,
-        "texts": {case: f"(binary file: {suffix})" for case in body.cases},
+        "texts": {case: f"(binary file: {suffix})" for case in cases},
     }
 
 

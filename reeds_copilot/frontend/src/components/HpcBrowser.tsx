@@ -10,12 +10,25 @@ import {
   getRunAPI,
   cancelRunAPI,
   deleteRunAPI,
+  rawHpcURL,
+  downloadHpcURL,
+  pptxHpcViewURL,
+  listHpcRunFoldersAPI,
+  hpcCompareBrowseAPI,
+  hpcCompareCaseFilesAPI,
+  hpcCompareDataAPI,
   type FileEntry,
   type FileListResponse,
   type FilePreviewResponse,
   type CasesFile,
   type RunRecord,
 } from "../lib/api";
+import {
+  GdxSymbolList, GdxDataView, H5DatasetList, H5DataView,
+  HighlightedPreview,
+} from "./RightPanel";
+import HpcPostProcessPanel from "./HpcPostProcessPanel";
+import ComparePanel from "./ComparePanel";
 
 type SortKey = "name" | "type" | "size" | "modified";
 type SortDir = "asc" | "desc";
@@ -82,8 +95,13 @@ type HpcExplorerCache = {
   user: string;
   sessionToken: string;
   connected: boolean;
+  view: "browse" | "runs";
   currentPath: string;
   entries: FileEntry[];
+  preview: FilePreviewResponse | null;
+  selectedFile: string | null;
+  gdxSymbol: string | null;
+  h5Dataset: string | null;
   reedsPath: string;
   selectedSuffix: string;
   selectedCases: string[];
@@ -98,9 +116,29 @@ type HpcExplorerCache = {
   slurmMailBegin: boolean;
   slurmMailEnd: boolean;
   slurmMailFail: boolean;
+  // Active overlay panels (Compare / Post-Process) so leaving and re-entering
+  // the HPC Explorer tab keeps the user where they were.
+  compareMode: boolean;
+  ppMode: boolean;
+  compareTool: "compare_cases" | "bokeh_report";
 };
 
 let hpcExplorerCache: HpcExplorerCache | null = null;
+
+/**
+ * Best-effort: derive the ReEDS root from a browse path.
+ * - "/scratch/me/ReEDS-main/runs/foo/outputs" -> "/scratch/me/ReEDS-main"
+ * - "/scratch/me/ReEDS-main/runs"             -> "/scratch/me/ReEDS-main"
+ * - "/scratch/me/ReEDS-main"                  -> "/scratch/me/ReEDS-main"
+ * Returns null only when given an empty/invalid path.
+ */
+function inferReedsRoot(currentPath: string): string | null {
+  if (!currentPath) return null;
+  const p = currentPath.replace(/\/+$/, "");
+  const m = p.match(/^(.*?)\/runs(\/|$)/);
+  if (m) return m[1] || "/";
+  return p;
+}
 
 export default function HpcBrowser() {
   /* -- Connection state -- */
@@ -115,6 +153,14 @@ export default function HpcBrowser() {
   const [connecting, setConnecting] = useState(false);
   const [connected, setConnected] = useState(() => hpcExplorerCache?.connected ?? false);
 
+  /* -- View toggle (only "browse" remains; runs view was removed) -- */
+  const [view] = useState<"browse" | "runs">("browse");
+
+  /* -- HPC-native compare/bokeh panel state -- */
+  const [compareMode, setCompareMode] = useState(() => hpcExplorerCache?.compareMode ?? false);
+  const [ppMode, setPpMode] = useState(() => hpcExplorerCache?.ppMode ?? false);
+  const [compareTool, setCompareTool] = useState<"compare_cases" | "bokeh_report">(() => hpcExplorerCache?.compareTool ?? "compare_cases");
+
   /* -- File browser state -- */
   const [currentPath, setCurrentPath] = useState(() => hpcExplorerCache?.currentPath ?? "");
   const [entries, setEntries] = useState<FileEntry[]>(() => hpcExplorerCache?.entries ?? []);
@@ -123,10 +169,55 @@ export default function HpcBrowser() {
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
 
-  /* â”€â”€ Preview state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-  const [preview, setPreview] = useState<FilePreviewResponse | null>(null);
+  /* -- Splitter (resizable preview pane) -- */
+  // Width of the preview pane in pixels. Persisted in localStorage so it
+  // survives reloads (the rest of cache state is module-scoped only).
+  const [previewWidth, setPreviewWidth] = useState<number>(() => {
+    const v = parseInt(localStorage.getItem("hpc_preview_width") || "0", 10);
+    return Number.isFinite(v) && v >= 200 ? v : 480;
+  });
+  const splitRef = useRef<HTMLDivElement | null>(null);
+  const draggingRef = useRef(false);
+  // Mirror of draggingRef in React state so we can re-render and disable
+  // pointer-events on the iframe (otherwise the iframe swallows mousemove
+  // events and the splitter gets stuck).
+  const [isDragging, setIsDragging] = useState(false);
+  useEffect(() => {
+    function onMove(e: MouseEvent) {
+      if (!draggingRef.current || !splitRef.current) return;
+      const rect = splitRef.current.getBoundingClientRect();
+      const next = Math.min(
+        Math.max(rect.right - e.clientX, 240),
+        rect.width - 240,
+      );
+      setPreviewWidth(next);
+    }
+    function onUp() {
+      if (draggingRef.current) {
+        draggingRef.current = false;
+        setIsDragging(false);
+        document.body.style.cursor = "";
+        document.body.style.userSelect = "";
+        localStorage.setItem("hpc_preview_width", String(Math.round(previewWidth)));
+      }
+    }
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, [previewWidth]);
+
+  /* -- Preview state -- */
+  const [preview, setPreview] = useState<FilePreviewResponse | null>(() => hpcExplorerCache?.preview ?? null);
   const [previewLoading, setPreviewLoading] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<string | null>(() => hpcExplorerCache?.selectedFile ?? null);
+  // For GDX/HDF5 drill-down: when the user clicks a symbol/dataset we
+  // re-request the preview with the chosen name. Cleared when the file
+  // selection changes.
+  const [gdxSymbol, setGdxSymbol] = useState<string | null>(() => hpcExplorerCache?.gdxSymbol ?? null);
+  const [h5Dataset, setH5Dataset] = useState<string | null>(() => hpcExplorerCache?.h5Dataset ?? null);
 
   /* -- Run form state (mirrors RunPanel) -- */
   const [reedsPath, setReedsPath] = useState(() => hpcExplorerCache?.reedsPath ?? "");
@@ -222,6 +313,8 @@ export default function HpcBrowser() {
     setHpcSessionToken("");
     setError(null);
     setCasesFiles([]);
+    setCompareMode(false);
+    setPpMode(false);
     // Drop cached session so a future tab visit shows the login form,
     // not a "session expired" message.
     hpcExplorerCache = null;
@@ -250,7 +343,29 @@ export default function HpcBrowser() {
   }
 
   function showPreview(entry: FileEntry) {
+    const ext = getExtension(entry.name).toLowerCase();
+    // HTML reports (e.g. bokehpivot output) and PPTX decks are useless as
+    // raw source/binary — render them in an iframe inside the preview pane.
+    // We skip the text fetch and synthesize a minimal preview object; the
+    // render branch keys off file_type to mount the iframe.
+    //   .html/.htm → /files/hpc/raw            (served as text/html)
+    //   .pptx      → /files/hpc/pptx-view      (converted to PDF via soffice)
+    if (ext === "html" || ext === "htm" || ext === "pptx") {
+      setSelectedFile(entry.rel_path);
+      setGdxSymbol(null);
+      setH5Dataset(null);
+      setPreviewLoading(false);
+      setPreview({
+        rel_path: entry.rel_path,
+        file_type: "." + ext,
+        content: "",
+        truncated: false,
+      });
+      return;
+    }
     setSelectedFile(entry.rel_path);
+    setGdxSymbol(null);
+    setH5Dataset(null);
     setPreviewLoading(true);
     previewHpcFileAPI(hpcHost, hpcUser, entry.rel_path, "", 200, hpcSessionToken)
       .then(setPreview)
@@ -264,6 +379,28 @@ export default function HpcBrowser() {
       })
       .finally(() => setPreviewLoading(false));
   }
+
+  /* Re-fetch the preview when the user drills into a GDX symbol or HDF5
+     dataset (drill-back is handled by clearing the state from the child). */
+  useEffect(() => {
+    if (!selectedFile) return;
+    if (!gdxSymbol && !h5Dataset) return;
+    setPreviewLoading(true);
+    previewHpcFileAPI(hpcHost, hpcUser, selectedFile, "", 200,
+                      hpcSessionToken, gdxSymbol, h5Dataset)
+      .then(setPreview)
+      .catch((err) => {
+        setPreview({
+          rel_path: selectedFile,
+          file_type: getExtension(selectedFile),
+          content: `Error loading dataset/symbol: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+          truncated: false,
+        });
+      })
+      .finally(() => setPreviewLoading(false));
+  }, [gdxSymbol, h5Dataset, selectedFile, hpcHost, hpcUser, hpcSessionToken]);
 
   function navigateUp() {
     const parts = currentPath.split("/").filter(Boolean);
@@ -407,20 +544,24 @@ export default function HpcBrowser() {
   useEffect(() => {
     hpcExplorerCache = {
       cluster, host: hpcHost, user: hpcUser,
-      sessionToken: hpcSessionToken, connected,
+      sessionToken: hpcSessionToken, connected, view,
       currentPath, entries,
+      preview, selectedFile, gdxSymbol, h5Dataset,
       reedsPath, selectedSuffix, selectedCases,
       batchName, simultRuns, overwrite,
       slurmAccount, slurmWalltime, slurmPartition, slurmMemory,
       slurmMailUser, slurmMailBegin, slurmMailEnd, slurmMailFail,
+      compareMode, ppMode, compareTool,
     };
   }, [
-    cluster, hpcHost, hpcUser, hpcSessionToken, connected,
+    cluster, hpcHost, hpcUser, hpcSessionToken, connected, view,
     currentPath, entries,
+    preview, selectedFile, gdxSymbol, h5Dataset,
     reedsPath, selectedSuffix, selectedCases,
     batchName, simultRuns, overwrite,
     slurmAccount, slurmWalltime, slurmPartition, slurmMemory,
     slurmMailUser, slurmMailBegin, slurmMailEnd, slurmMailFail,
+    compareMode, ppMode, compareTool,
   ]);
 
   /* On (re)mount: if we have a cached session token, refresh the directory
@@ -541,22 +682,54 @@ export default function HpcBrowser() {
         </div>
       )}
 
-      {/* â”€â”€ File Browser View â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€  */}
-      {connected && (
+      {/* -- File Browser View -- */}
+      {connected && !compareMode && !ppMode && (
         <>
           <div className="hpc-connection-bar" style={{ borderTop: "none" }}>
-            <div className="hpc-path-input-row">
-              <label>Path</label>
-              <input type="text" value={currentPath} onChange={(e) => setCurrentPath(e.target.value)}
-                onKeyDown={(e) => { if (e.key === "Enter") loadDirectory(currentPath); }}
-                placeholder="/home/user/ReEDS" />
-              <button onClick={() => loadDirectory(currentPath)}>Go</button>
+            <div style={{ display: "flex", gap: 6, padding: "6px 12px", alignItems: "center", flexWrap: "wrap" }}>
+              <button
+                className="btn-primary"
+                style={{ padding: "5px 14px", fontWeight: 600 }}>
+                📁 Browse files
+              </button>
+              <div style={{ width: 1, height: 22, background: "var(--border)", margin: "0 6px" }} />
+              <button
+                onClick={() => {
+                  // Always re-derive reedsPath from the current browse path so
+                  // navigating the file browser to a different ReEDS root
+                  // updates which runs Compare picks up.
+                  const inferred = inferReedsRoot(currentPath);
+                  if (inferred) setReedsPath(inferred);
+                  setCompareMode(true);
+                }}
+                title="Compare files across HPC runs (CSV side-by-side, text diff, image diff, GDX symbol diff)"
+                style={{ padding: "5px 14px" }}>
+                ⚖ Compare
+              </button>
+              <button
+                onClick={() => {
+                  const inferred = inferReedsRoot(currentPath);
+                  if (inferred) setReedsPath(inferred);
+                  setCompareTool("compare_cases");
+                  setPpMode(true);
+                }}
+                title="Run post-processing tools directly on the HPC (compare_cases.py, bokehpivot)"
+                style={{ padding: "5px 14px" }}>
+                📊 Post-Process
+              </button>
             </div>
+            <div className="hpc-path-input-row">
+                <label>Path</label>
+                <input type="text" value={currentPath} onChange={(e) => setCurrentPath(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") loadDirectory(currentPath); }}
+                  placeholder="/home/user/ReEDS" />
+                <button onClick={() => loadDirectory(currentPath)}>Go</button>
+              </div>
           </div>
 
-          <div className="hpc-content-split">
+          <div ref={splitRef} className="hpc-content-split" style={{ display: (compareMode || ppMode) ? "none" : "flex" }}>
             {/* Left: file listing */}
-            <div className="hpc-file-list">
+            <div className="hpc-file-list" style={{ flex: "1 1 0", minWidth: 0 }}>
               <div className="breadcrumb">
                 <span onClick={() => navigateTo("/")}>/</span>
                 {pathParts.map((part, i) => {
@@ -598,7 +771,19 @@ export default function HpcBrowser() {
             </div>
 
             {/* Right: inline preview */}
-            <div className="hpc-preview-pane">
+            {/* Draggable splitter */}
+            <div
+              className="hpc-splitter"
+              onMouseDown={(e) => {
+                e.preventDefault();
+                draggingRef.current = true;
+                setIsDragging(true);
+                document.body.style.cursor = "col-resize";
+                document.body.style.userSelect = "none";
+              }}
+              title="Drag to resize"
+            />
+            <div className="hpc-preview-pane" style={{ flex: `0 0 ${previewWidth}px`, minWidth: 0 }}>
               {!preview && !previewLoading && (
                 <div className="hpc-empty-state" style={{ padding: "2rem" }}><p>Select a file to preview</p></div>
               )}
@@ -611,8 +796,97 @@ export default function HpcBrowser() {
                     {preview.truncated && (
                       <span style={{ marginLeft: 8, color: "var(--accent)", fontSize: "0.8rem" }}>(truncated)</span>
                     )}
+                    <a
+                      href={downloadHpcURL(hpcHost, hpcUser, hpcSessionToken, preview.rel_path)}
+                      className="btn btn-outline"
+                      style={{ marginLeft: "auto", fontSize: "0.75rem", padding: "3px 10px", color: "#fff" }}
+                      title="Download the original file from HPC to your computer"
+                      download
+                    >
+                      ⬇ Download
+                    </a>
+                    {preview.file_type === ".pptx" && (
+                      <a
+                        href={pptxHpcViewURL(hpcHost, hpcUser, hpcSessionToken, preview.rel_path)}
+                        target="_blank" rel="noreferrer"
+                        className="btn btn-outline"
+                        style={{ marginLeft: 6, fontSize: "0.75rem", padding: "3px 10px", color: "#fff" }}
+                        title="Convert to PDF and open in browser"
+                      >
+                        Open in browser ↗
+                      </a>
+                    )}
+                    {(preview.file_type === ".html" || preview.file_type === ".htm") && (
+                      <a
+                        href={rawHpcURL(hpcHost, hpcUser, hpcSessionToken, preview.rel_path)}
+                        target="_blank" rel="noreferrer"
+                        className="btn btn-outline"
+                        style={{ marginLeft: 6, fontSize: "0.75rem", padding: "3px 10px", color: "#fff" }}
+                        title="Open the rendered report in a new browser tab"
+                      >
+                        Open in new tab ↗
+                      </a>
+                    )}
                   </div>
-                  {preview.columns && preview.rows ? (
+
+                  {/* ── HTML report (rendered in iframe) ── */}
+                  {preview.file_type === ".html" || preview.file_type === ".htm" ? (
+                    <iframe
+                      src={rawHpcURL(hpcHost, hpcUser, hpcSessionToken, preview.rel_path)}
+                      title={preview.rel_path}
+                      style={{
+                        width: "100%",
+                        height: "calc(100vh - 200px)",
+                        border: "none",
+                        background: "#fff",
+                        // Disable iframe mouse capture while dragging the
+                        // splitter so window-level mousemove events fire.
+                        pointerEvents: isDragging ? "none" : "auto",
+                      }}
+                      sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+                    />
+                  /* ── PPTX preview (converted to PDF on the backend) ── */
+                  ) : preview.file_type === ".pptx" ? (
+                    <iframe
+                      src={pptxHpcViewURL(hpcHost, hpcUser, hpcSessionToken, preview.rel_path)}
+                      title={preview.rel_path}
+                      style={{
+                        width: "100%",
+                        height: "calc(100vh - 200px)",
+                        border: "none",
+                        background: "#fff",
+                        pointerEvents: isDragging ? "none" : "auto",
+                      }}
+                    />
+                  /* ── Image preview ── */
+                  ) : preview.is_image ? (
+                    <div style={{ textAlign: "center", padding: 12, overflow: "auto" }}>
+                      <img
+                        src={rawHpcURL(hpcHost, hpcUser, hpcSessionToken, preview.rel_path)}
+                        alt={preview.rel_path}
+                        style={{ maxWidth: "100%", maxHeight: "70vh", borderRadius: 6, background: "#fff" }}
+                      />
+                    </div>
+                  /* ── GDX: symbol list → drill-down ── */
+                  ) : preview.gdx_symbols && !preview.gdx_symbol ? (
+                    <div style={{ padding: 12 }}>
+                      <GdxSymbolList symbols={preview.gdx_symbols} onSelect={setGdxSymbol} />
+                    </div>
+                  ) : preview.gdx_symbol && preview.columns && preview.rows ? (
+                    <div style={{ padding: 12 }}>
+                      <GdxDataView preview={preview} onBack={() => setGdxSymbol(null)} />
+                    </div>
+                  /* ── HDF5: dataset list → drill-down ── */
+                  ) : preview.h5_datasets && !preview.h5_dataset ? (
+                    <div style={{ padding: 12 }}>
+                      <H5DatasetList datasets={preview.h5_datasets} onSelect={setH5Dataset} />
+                    </div>
+                  ) : preview.h5_dataset && preview.columns && preview.rows ? (
+                    <div style={{ padding: 12 }}>
+                      <H5DataView preview={preview} onBack={() => setH5Dataset(null)} />
+                    </div>
+                  /* ── CSV / table preview ── */
+                  ) : preview.columns && preview.rows ? (
                     <div className="csv-preview-wrapper" style={{ overflow: "auto", maxHeight: "calc(100vh - 200px)" }}>
                       <table className="csv-preview">
                         <thead><tr>{preview.columns.map((col) => <th key={col}>{col}</th>)}</tr></thead>
@@ -629,7 +903,13 @@ export default function HpcBrowser() {
                       )}
                     </div>
                   ) : (
-                    <pre className="hpc-preview-text">{preview.content}</pre>
+                    <HighlightedPreview
+                      content={preview.content || ""}
+                      filename={selectedFile || ""}
+                      truncated={preview.truncated}
+                      fullMode={false}
+                      onViewFull={() => { /* not supported in HPC preview */ }}
+                    />
                   )}
                 </div>
               )}
@@ -637,6 +917,83 @@ export default function HpcBrowser() {
           </div>
         </>
 
+      )}
+
+      {/* -- HPC Compare (direct, mirrors Outputs Explorer) -- */}
+      {connected && compareMode && (
+        <div style={{ flex: 1, overflow: "auto" }}>
+          {!reedsPath && (
+            <div className="hpc-empty-state" style={{ padding: 14 }}>
+              <p>👉 Set a <strong>ReEDS path</strong> first — navigate to your
+                ReEDS root in 📁 Browse files (the path containing <code>runs/</code>),
+                or type it here:</p>
+              <input type="text" value={reedsPath}
+                onChange={(e) => setReedsPath(e.target.value)}
+                placeholder={`/scratch/${hpcUser || "user"}/ReEDS-main`}
+                style={{ width: "100%", padding: "6px 10px", marginTop: 6 }} />
+              <div style={{ marginTop: 10 }}>
+                <button onClick={() => setCompareMode(false)}>Cancel</button>
+              </div>
+            </div>
+          )}
+          {reedsPath && (
+            <ComparePanel
+              onClose={() => setCompareMode(false)}
+              banner={`⚖ Comparing HPC runs at ${hpcHost}:${reedsPath}/runs (files fetched on-demand via SFTP).`}
+              listRunsFn={() => listHpcRunFoldersAPI(hpcHost, hpcUser, reedsPath, hpcSessionToken)}
+              browseFn={(cases, subdir) =>
+                hpcCompareBrowseAPI(
+                  { host: hpcHost, user: hpcUser, session_token: hpcSessionToken, reeds_path: reedsPath },
+                  cases, subdir,
+                )
+              }
+              caseFilesFn={(caseName, subdir) =>
+                hpcCompareCaseFilesAPI(
+                  { host: hpcHost, user: hpcUser, session_token: hpcSessionToken, reeds_path: reedsPath },
+                  caseName, subdir,
+                )
+              }
+              dataFn={(cases, filename, subdir, max, filenames) =>
+                hpcCompareDataAPI(
+                  { host: hpcHost, user: hpcUser, session_token: hpcSessionToken, reeds_path: reedsPath },
+                  cases, filename, subdir, max, filenames,
+                )
+              }
+              imageURLFn={(remotePath) => rawHpcURL(hpcHost, hpcUser, hpcSessionToken, remotePath)}
+            />
+          )}
+        </div>
+      )}
+
+      {/* -- HPC Post-Process (compare_cases.py, bokeh report) -- */}
+      {connected && ppMode && (
+        <div style={{ flex: 1, overflow: "auto", padding: "8px 12px" }}>
+          {!reedsPath && (
+            <div className="hpc-empty-state" style={{ padding: 14 }}>
+              <p>👉 Set a <strong>ReEDS path</strong> first — navigate to your
+                ReEDS root in 📁 Browse files (the path containing <code>runs/</code>),
+                or type it here:</p>
+              <input type="text" value={reedsPath}
+                onChange={(e) => setReedsPath(e.target.value)}
+                placeholder={`/scratch/${hpcUser || "user"}/ReEDS-main`}
+                style={{ width: "100%", padding: "6px 10px", marginTop: 6 }} />
+              <div style={{ marginTop: 10 }}>
+                <button onClick={() => setPpMode(false)}>Cancel</button>
+              </div>
+            </div>
+          )}
+          {reedsPath && (
+            <HpcPostProcessPanel
+              onClose={() => setPpMode(false)}
+              host={hpcHost}
+              user={hpcUser}
+              sessionToken={hpcSessionToken}
+              reedsPath={reedsPath}
+              initialTool={compareTool}
+              onOpenRemotePath={(p) => { setPpMode(false); loadDirectory(p); }}
+            />
+          )}
+        </div>
       )}
     </div>
   );

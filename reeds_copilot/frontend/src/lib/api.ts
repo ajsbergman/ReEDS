@@ -209,9 +209,53 @@ export function previewHpcFileAPI(
   password: string = "",
   lines: number = 200,
   session_token: string = "",
+  gdx_symbol: string | null = null,
+  h5_dataset: string | null = null,
 ): Promise<FilePreviewResponse> {
   return post<FilePreviewResponse>("/files/hpc/preview",
-    { host, user, path, password, lines, session_token });
+    { host, user, path, password, lines, session_token,
+      gdx_symbol, h5_dataset });
+}
+
+/** GET URL that streams a remote file inline (used for image previews). */
+export function rawHpcURL(
+  host: string,
+  user: string,
+  session_token: string,
+  path: string,
+): string {
+  const params = new URLSearchParams({
+    host, user, session_token, path,
+  });
+  return `${BASE}/files/hpc/raw?${params}`;
+}
+
+/** GET URL that forces a browser-side download of the remote file
+ *  (Content-Disposition: attachment). */
+export function downloadHpcURL(
+  host: string,
+  user: string,
+  session_token: string,
+  path: string,
+): string {
+  const params = new URLSearchParams({
+    host, user, session_token, path, download: "1",
+  });
+  return `${BASE}/files/hpc/raw?${params}`;
+}
+
+/** GET URL that downloads a remote .pptx, converts via LibreOffice, and
+ *  serves the PDF inline. Returns 503 if soffice isn't installed. */
+export function pptxHpcViewURL(
+  host: string,
+  user: string,
+  session_token: string,
+  path: string,
+): string {
+  const params = new URLSearchParams({
+    host, user, session_token, path,
+  });
+  return `${BASE}/files/hpc/pptx-view?${params}`;
 }
 
 export function disconnectHpcAPI(
@@ -532,6 +576,79 @@ export function listRunFoldersAPI(): Promise<RunFolder[]> {
   return request<RunFolder[]>("/runs/folders/list");
 }
 
+/** List `runs/` folders on the HPC with the same status flags as the local
+ *  Outputs Explorer. Requires a valid HPC session token. */
+export function listHpcRunFoldersAPI(
+  host: string,
+  user: string,
+  reeds_path: string,
+  session_token: string,
+): Promise<RunFolder[]> {
+  return post<RunFolder[]>("/files/hpc/list-runs",
+    { host, user, reeds_path, session_token, password: "" });
+}
+
+export interface HpcSyncResult {
+  synced: boolean;
+  exists: boolean;
+  local_path: string;
+  files?: number;
+  bytes?: number;
+  message: string;
+}
+
+/** Recursively download a remote runs/<name>/ folder to the local
+ *  repo's runs/ directory so Compare/Post-Process can use it. */
+export function syncHpcRunAPI(
+  host: string,
+  user: string,
+  reeds_path: string,
+  run_name: string,
+  session_token: string,
+  overwrite: boolean = false,
+): Promise<HpcSyncResult> {
+  return post<HpcSyncResult>("/files/hpc/sync-run",
+    { host, user, reeds_path, run_name, session_token,
+      password: "", overwrite });
+}
+
+/* ── HPC-native Post-Process (compare_cases / bokeh on cluster) ─────────── */
+
+export interface HpcPostProcessResult {
+  exit_code: number;
+  stdout: string;
+  stderr: string;
+  output_dir: string;
+  command: string;
+}
+
+export interface HpcScenarioRow {
+  name: string;
+  label: string;
+  color: string;
+}
+
+export function runHpcPostProcessAPI(args: {
+  host: string;
+  user: string;
+  session_token: string;
+  reeds_path: string;
+  tool: "compare_cases" | "bokeh_report";
+  cases: string[];
+  report?: string;
+  bash_prefix?: string;
+  extra_args?: string;
+  timeout_seconds?: number;
+  scenarios?: HpcScenarioRow[];
+}): Promise<HpcPostProcessResult> {
+  return post<HpcPostProcessResult>("/files/hpc/run-postprocess", {
+    password: "",
+    bash_prefix: "module load anaconda3",
+    timeout_seconds: 900,
+    ...args,
+  });
+}
+
 /* ── Compare Cases ────────────────────────────────────────────────────────── */
 
 export interface CompareEntry {
@@ -590,6 +707,50 @@ export function compareDataAPI(
     cases,
     filename,
     subdir,
+    max_rows_per_case: maxRowsPerCase,
+    ...(filenames ? { filenames } : {}),
+  });
+}
+
+/* ── HPC Compare (direct, mirrors local Compare via SFTP) ────────────────── */
+
+export interface HpcCompareCreds {
+  host: string;
+  user: string;
+  session_token: string;
+  reeds_path: string;
+}
+
+export function hpcCompareBrowseAPI(
+  creds: HpcCompareCreds,
+  cases: string[],
+  subdir: string = "",
+): Promise<CompareBrowseResponse> {
+  return post<CompareBrowseResponse>("/files/hpc/compare/common-files", {
+    ...creds, password: "", cases, subdir,
+  });
+}
+
+export function hpcCompareCaseFilesAPI(
+  creds: HpcCompareCreds,
+  caseName: string,
+  subdir: string = "",
+): Promise<CaseFilesResponse> {
+  return post<CaseFilesResponse>("/files/hpc/compare/case-files", {
+    ...creds, password: "", case: caseName, subdir,
+  });
+}
+
+export function hpcCompareDataAPI(
+  creds: HpcCompareCreds,
+  cases: string[],
+  filename: string,
+  subdir: string = "",
+  maxRowsPerCase: number = 5000,
+  filenames?: Record<string, string>,
+): Promise<CompareDataResponse> {
+  return post<CompareDataResponse>("/files/hpc/compare/data", {
+    ...creds, password: "", cases, filename, subdir,
     max_rows_per_case: maxRowsPerCase,
     ...(filenames ? { filenames } : {}),
   });

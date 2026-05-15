@@ -11,10 +11,32 @@ import {
   type RunFolder,
   type CompareDataResponse,
   type CompareEntry,
+  type CompareBrowseResponse,
+  type CaseFilesResponse,
 } from "../lib/api";
 
 interface Props {
   onClose: () => void;
+  /** When provided, only run folders with these names appear in the picker. */
+  filterRunNames?: string[];
+  /** Optional banner text shown at the top (e.g. "HPC runs synced to local"). */
+  banner?: string;
+  /** Custom run-folder lister (e.g. HPC). Defaults to local listRunFoldersAPI. */
+  listRunsFn?: () => Promise<RunFolder[]>;
+  /** Custom common-files lister. Defaults to local compareBrowseAPI. */
+  browseFn?: (cases: string[], subdir: string) => Promise<CompareBrowseResponse>;
+  /** Custom per-case file lister. Defaults to local compareCaseFilesAPI. */
+  caseFilesFn?: (caseName: string, subdir: string) => Promise<CaseFilesResponse>;
+  /** Custom data fetcher. Defaults to local compareDataAPI. */
+  dataFn?: (
+    cases: string[],
+    filename: string,
+    subdir: string,
+    maxRowsPerCase: number,
+    filenames?: Record<string, string>,
+  ) => Promise<CompareDataResponse>;
+  /** Custom URL builder for image_diff mode. Defaults to local rawFileURL. */
+  imageURLFn?: (path: string) => string;
 }
 
 type FileSortKey = "name" | "size";
@@ -22,7 +44,15 @@ type FileSortDir = "asc" | "desc";
 
 const CASE_COLORS = ["#60a5fa", "#4ade80", "#fbbf24", "#f87171", "#c084fc", "#fb923c", "#2dd4bf", "#e879f9"];
 
-export default function ComparePanel({ onClose }: Props) {
+export default function ComparePanel({
+  onClose, filterRunNames, banner,
+  listRunsFn, browseFn, caseFilesFn, dataFn, imageURLFn,
+}: Props) {
+  const _listRuns = listRunsFn ?? listRunFoldersAPI;
+  const _browse = browseFn ?? compareBrowseAPI;
+  const _caseFiles = caseFilesFn ?? compareCaseFilesAPI;
+  const _data = dataFn ?? compareDataAPI;
+  const _imageURL = imageURLFn ?? rawFileURL;
   const [folders, setFolders] = useState<RunFolder[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [confirmed, setConfirmed] = useState(false);
@@ -54,19 +84,28 @@ export default function ComparePanel({ onClose }: Props) {
   const step = data ? 3 : confirmed ? 2 : 1;
 
   useEffect(() => {
-    listRunFoldersAPI().then(setFolders).catch(() => {});
-  }, []);
+    _listRuns()
+      .then((all) => {
+        if (filterRunNames && filterRunNames.length > 0) {
+          const allow = new Set(filterRunNames);
+          setFolders(all.filter((f) => allow.has(f.name)));
+        } else {
+          setFolders(all);
+        }
+      })
+      .catch(() => {});
+  }, [filterRunNames, _listRuns]);
 
   // Browse common entries when subdir changes (standard mode)
   useEffect(() => {
     if (!confirmed || customPick) return;
     setBrowseLoading(true);
     setError(null);
-    compareBrowseAPI(Array.from(selected), browseSubdir)
+    _browse(Array.from(selected), browseSubdir)
       .then((res) => setBrowseEntries(res.entries))
       .catch((e) => setError(e instanceof Error ? e.message : String(e)))
       .finally(() => setBrowseLoading(false));
-  }, [confirmed, browseSubdir, selected, customPick]);
+  }, [confirmed, browseSubdir, selected, customPick, _browse]);
 
   // Browse per-case entries when in custom pick mode
   useEffect(() => {
@@ -75,7 +114,7 @@ export default function ComparePanel({ onClose }: Props) {
     setError(null);
     Promise.all(
       Array.from(selected).map((c) =>
-        compareCaseFilesAPI(c, customSubdir).then((res) => ({ case: c, entries: res.entries }))
+        _caseFiles(c, customSubdir).then((res) => ({ case: c, entries: res.entries }))
       )
     )
       .then((results) => {
@@ -85,7 +124,7 @@ export default function ComparePanel({ onClose }: Props) {
       })
       .catch((e) => setError(e instanceof Error ? e.message : String(e)))
       .finally(() => setCustomLoading(false));
-  }, [confirmed, customPick, customSubdir, selected]);
+  }, [confirmed, customPick, customSubdir, selected, _caseFiles]);
 
   function toggleCase(name: string) {
     setSelected((prev) => {
@@ -116,7 +155,7 @@ export default function ComparePanel({ onClose }: Props) {
       setLoading(true);
       setError(null);
       setDiffOnly(false);
-      compareDataAPI(Array.from(selected), entry.name, browseSubdir)
+      _data(Array.from(selected), entry.name, browseSubdir, 5000)
         .then(setData)
         .catch((e) => setError(e instanceof Error ? e.message : String(e)))
         .finally(() => setLoading(false));
@@ -157,7 +196,7 @@ export default function ComparePanel({ onClose }: Props) {
     setLoading(true);
     setError(null);
     setDiffOnly(false);
-    compareDataAPI(cases, "", customSubdir, 5000, customSelected)
+    _data(cases, "", customSubdir, 5000, customSelected)
       .then(setData)
       .catch((e) => setError(e instanceof Error ? e.message : String(e)))
       .finally(() => setLoading(false));
@@ -224,14 +263,20 @@ export default function ComparePanel({ onClose }: Props) {
       <div className="compare-header">
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           {step > 1 && (
-            <button className="btn btn-outline" onClick={goBack} style={{ fontSize: "0.78rem", padding: "3px 8px" }}>
-              ← Back
+            <button
+              onClick={goBack}
+              title="Go back to the previous step"
+              className="cmp-btn cmp-btn-back">
+              <span style={{ fontSize: "0.95rem", lineHeight: 1 }}>←</span> Back
             </button>
           )}
           <h3 style={{ margin: 0, fontSize: "1rem" }}>Compare Cases</h3>
         </div>
-        <button className="btn btn-outline" onClick={onClose} style={{ fontSize: "0.78rem", padding: "3px 8px" }}>
-          ✕ Close
+        <button
+          onClick={onClose}
+          title="Close the Compare Cases panel and return to the file browser"
+          className="cmp-btn cmp-btn-close">
+          <span style={{ fontSize: "0.95rem", lineHeight: 1 }}>✕</span> Close Compare
         </button>
       </div>
 
@@ -243,6 +288,14 @@ export default function ComparePanel({ onClose }: Props) {
         <span className="step-arrow">→</span>
         <span className={step >= 3 ? "step-active" : ""}>③ Compare</span>
       </div>
+
+      {banner && (
+        <div style={{
+          background: "var(--bg-elev)", border: "1px solid var(--border)",
+          borderRadius: "var(--radius)", padding: "8px 12px", margin: "8px 0",
+          fontSize: "0.82rem", lineHeight: 1.4,
+        }}>{banner}</div>
+      )}
 
       {error && <div className="error-banner" style={{ margin: "8px 0" }}>{error}</div>}
 
@@ -457,15 +510,21 @@ export default function ComparePanel({ onClose }: Props) {
       )}
 
       {/* Step 3: View comparison */}
-      {step === 3 && loading && <div className="loading">Loading comparison…</div>}
-      {step === 3 && data && data.mode === "text_diff" && <TextDiffView data={data} caseColors={CASE_COLORS} />}
-      {step === 3 && data && data.mode === "image_diff" && <ImageDiffView data={data} caseColors={CASE_COLORS} />}
-      {step === 3 && data && data.mode === "gdx_diff" && <GdxDiffView data={data} caseColors={CASE_COLORS} />}
+      {step === 3 && loading && (
+        <div className="loading-block">
+          <div className="spinner-lg" />
+          <div>Comparing files across cases…</div>
+          <div className="hint">This may take a moment for large files or HPC downloads.</div>
+        </div>
+      )}
+      {step === 3 && data && data.mode === "text_diff" && <TextDiffView data={data} caseColors={CASE_COLORS} diffOnly={diffOnly} onToggleDiffOnly={() => setDiffOnly((v) => !v)} />}
+      {step === 3 && data && data.mode === "image_diff" && <ImageDiffView data={data} caseColors={CASE_COLORS} imageURL={_imageURL} />}
+      {step === 3 && data && data.mode === "gdx_diff" && <GdxDiffView data={data} caseColors={CASE_COLORS} diffOnly={diffOnly} onToggleDiffOnly={() => setDiffOnly((v) => !v)} />}
       {step === 3 && data && data.mode === "side_by_side" && (
         <CompareTable data={data} caseColors={CASE_COLORS} diffOnly={diffOnly} onToggleDiffOnly={() => setDiffOnly((v) => !v)} />
       )}
-      {step === 3 && data && data.mode === "csv_table" && <CsvTableView data={data} caseColors={CASE_COLORS} />}
-      {step === 3 && data && data.mode === "unsupported" && <TextDiffView data={data} caseColors={CASE_COLORS} />}
+      {step === 3 && data && data.mode === "csv_table" && <CsvTableView data={data} caseColors={CASE_COLORS} diffOnly={diffOnly} onToggleDiffOnly={() => setDiffOnly((v) => !v)} />}
+      {step === 3 && data && data.mode === "unsupported" && <TextDiffView data={data} caseColors={CASE_COLORS} diffOnly={diffOnly} onToggleDiffOnly={() => setDiffOnly((v) => !v)} />}
     </div>
   );
 }
@@ -495,15 +554,42 @@ function useSyncScroll(count: number) {
   return setRef;
 }
 
-function TextDiffView({ data, caseColors }: { data: CompareDataResponse; caseColors: string[] }) {
+function TextDiffView({ data, caseColors, diffOnly, onToggleDiffOnly }: {
+  data: CompareDataResponse; caseColors: string[];
+  diffOnly?: boolean; onToggleDiffOnly?: () => void;
+}) {
   const { cases, texts, filename, subdir } = data;
   const setRef = useSyncScroll(cases.length);
+  // Pre-compute which line indices differ across cases (raw text comparison).
+  const diffLineSet = useMemo(() => {
+    if (!texts) return new Set<number>();
+    const splits = cases.map((c) => (texts[c] ?? "").split("\n"));
+    const maxLen = Math.max(0, ...splits.map((s) => s.length));
+    const diffs = new Set<number>();
+    for (let i = 0; i < maxLen; i++) {
+      const first = splits[0]?.[i];
+      for (let j = 1; j < splits.length; j++) {
+        if (splits[j]?.[i] !== first) { diffs.add(i); break; }
+      }
+    }
+    return diffs;
+  }, [texts, cases]);
+  const diffCount = diffLineSet.size;
   if (!texts) return null;
   const lang = guessLang(filename ?? "");
   return (
     <div className="compare-data">
-      <div style={{ marginBottom: 8 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8, flexWrap: "wrap" }}>
         <strong style={{ color: "var(--accent)" }}>{subdir ? `${subdir}/` : ""}{filename}</strong>
+        <span style={{ color: "var(--text-muted)", fontSize: "0.82rem" }}>
+          {diffCount.toLocaleString()} differing line{diffCount === 1 ? "" : "s"}
+        </span>
+        {onToggleDiffOnly && (
+          <label style={{ fontSize: "0.8rem", display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}>
+            <input type="checkbox" checked={!!diffOnly} onChange={onToggleDiffOnly} style={{ accentColor: "var(--accent)" }} />
+            Show diffs only
+          </label>
+        )}
       </div>
       <div style={{ display: "flex", gap: 8, overflow: "auto" }}>
         {cases.map((c, i) => {
@@ -527,18 +613,30 @@ function TextDiffView({ data, caseColors }: { data: CompareDataResponse; caseCol
                 border: `1px solid ${caseColors[i % caseColors.length]}30`,
                 fontFamily: "var(--font-mono)", lineHeight: 1.5,
               }}>
-                {lines.map((lineHtml, idx) => (
-                  <div key={idx} style={{ display: "flex", minHeight: "1.5em" }}>
-                    <span style={{
-                      display: "inline-block", width: 40, minWidth: 40, textAlign: "right",
-                      paddingRight: 8, color: "var(--text-muted)", opacity: 0.5,
-                      userSelect: "none", borderRight: "1px solid var(--border)",
-                      marginRight: 8, flexShrink: 0,
-                    }}>{idx + 1}</span>
-                    <span style={{ whiteSpace: "pre-wrap", wordBreak: "break-all" }}
-                      dangerouslySetInnerHTML={{ __html: lineHtml || "&nbsp;" }} />
+                {lines.map((lineHtml, idx) => {
+                  const isDiff = diffLineSet.has(idx);
+                  if (diffOnly && !isDiff) return null;
+                  return (
+                    <div key={idx} style={{
+                      display: "flex", minHeight: "1.5em",
+                      background: isDiff ? "rgba(251, 191, 36, 0.10)" : undefined,
+                    }}>
+                      <span style={{
+                        display: "inline-block", width: 40, minWidth: 40, textAlign: "right",
+                        paddingRight: 8, color: "var(--text-muted)", opacity: 0.5,
+                        userSelect: "none", borderRight: "1px solid var(--border)",
+                        marginRight: 8, flexShrink: 0,
+                      }}>{idx + 1}</span>
+                      <span style={{ whiteSpace: "pre-wrap", wordBreak: "break-all" }}
+                        dangerouslySetInnerHTML={{ __html: lineHtml || "&nbsp;" }} />
+                    </div>
+                  );
+                })}
+                {diffOnly && diffCount === 0 && (
+                  <div style={{ padding: 12, color: "var(--text-muted)", fontSize: "0.8rem" }}>
+                    No differing lines — files are identical.
                   </div>
-                ))}
+                )}
               </div>
             </div>
           );
@@ -548,28 +646,64 @@ function TextDiffView({ data, caseColors }: { data: CompareDataResponse; caseCol
   );
 }
 
-function CsvTableView({ data, caseColors }: { data: CompareDataResponse; caseColors: string[] }) {
+function CsvTableView({ data, caseColors, diffOnly, onToggleDiffOnly }: {
+  data: CompareDataResponse; caseColors: string[];
+  diffOnly?: boolean; onToggleDiffOnly?: () => void;
+}) {
   const { columns, cases, filename, subdir, case_tables, total_rows } = data;
   const setRef = useSyncScroll(cases.length);
+  // Determine which row indices differ across cases. A row index is "diff" if
+  // the row is missing in any case OR any column value disagrees across cases.
+  const diffRowSet = useMemo(() => {
+    const diffs = new Set<number>();
+    if (!case_tables) return diffs;
+    const lengths = cases.map((c) => (case_tables[c] ?? []).length);
+    const maxLen = Math.max(0, ...lengths);
+    for (let i = 0; i < maxLen; i++) {
+      let isDiff = false;
+      const baseRow = case_tables[cases[0]]?.[i];
+      for (let j = 0; j < cases.length; j++) {
+        const row = case_tables[cases[j]]?.[i];
+        if (!row || !baseRow) { isDiff = true; break; }
+        for (const col of columns) {
+          const a = row[col]; const b = baseRow[col];
+          if ((a == null ? "" : String(a)) !== (b == null ? "" : String(b))) { isDiff = true; break; }
+        }
+        if (isDiff) break;
+      }
+      if (isDiff) diffs.add(i);
+    }
+    return diffs;
+  }, [case_tables, cases, columns]);
+  const diffCount = diffRowSet.size;
   if (!case_tables) return null;
   return (
     <div className="compare-data">
-      <div style={{ marginBottom: 8 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8, flexWrap: "wrap" }}>
         <strong style={{ color: "var(--accent)" }}>{subdir ? `${subdir}/` : ""}{filename}</strong>
-        <span style={{ color: "var(--text-muted)", fontSize: "0.82rem", marginLeft: 8 }}>
-          {total_rows} rows
+        <span style={{ color: "var(--text-muted)", fontSize: "0.82rem" }}>
+          {total_rows} rows · {diffCount.toLocaleString()} differing
         </span>
+        {onToggleDiffOnly && (
+          <label style={{ fontSize: "0.8rem", display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}>
+            <input type="checkbox" checked={!!diffOnly} onChange={onToggleDiffOnly} style={{ accentColor: "var(--accent)" }} />
+            Show diffs only
+          </label>
+        )}
       </div>
       <div style={{ display: "flex", gap: 10, overflow: "auto" }}>
         {cases.map((c, i) => {
           const rows = case_tables[c] ?? [];
           const color = caseColors[i % caseColors.length];
+          const visibleRows = diffOnly
+            ? rows.map((row, ri) => ({ row, ri })).filter((x) => diffRowSet.has(x.ri))
+            : rows.map((row, ri) => ({ row, ri }));
           return (
             <div key={c} style={{ flex: 1, minWidth: 300 }}>
               <div style={{
                 color, fontWeight: 600,
                 fontSize: "0.82rem", marginBottom: 4, fontFamily: "var(--font-mono)",
-              }}>{c} ({rows.length} rows)</div>
+              }}>{c} ({visibleRows.length} {diffOnly ? "differing" : "rows"})</div>
               <div ref={setRef(i)} className="csv-table-wrap" style={{
                 maxHeight: "calc(100vh - 320px)",
                 border: `1px solid ${color}30`, borderRadius: 4,
@@ -581,8 +715,8 @@ function CsvTableView({ data, caseColors }: { data: CompareDataResponse; caseCol
                     </tr>
                   </thead>
                   <tbody>
-                    {rows.map((row, ri) => (
-                      <tr key={ri}>
+                    {visibleRows.map(({ row, ri }) => (
+                      <tr key={ri} style={diffRowSet.has(ri) ? { background: "rgba(251, 191, 36, 0.10)" } : undefined}>
                         {columns.map((col) => (
                           <td key={col}>{row[col] != null ? String(row[col]) : ""}</td>
                         ))}
@@ -590,6 +724,11 @@ function CsvTableView({ data, caseColors }: { data: CompareDataResponse; caseCol
                     ))}
                   </tbody>
                 </table>
+                {diffOnly && diffCount === 0 && (
+                  <div style={{ padding: 12, color: "var(--text-muted)", fontSize: "0.8rem" }}>
+                    No differing rows.
+                  </div>
+                )}
               </div>
             </div>
           );
@@ -599,7 +738,7 @@ function CsvTableView({ data, caseColors }: { data: CompareDataResponse; caseCol
   );
 }
 
-function ImageDiffView({ data, caseColors }: { data: CompareDataResponse; caseColors: string[] }) {
+function ImageDiffView({ data, caseColors, imageURL }: { data: CompareDataResponse; caseColors: string[]; imageURL: (p: string) => string }) {
   const { cases, image_paths, filename, subdir } = data;
   if (!image_paths) return null;
   return (
@@ -620,7 +759,7 @@ function ImageDiffView({ data, caseColors }: { data: CompareDataResponse; caseCo
               textAlign: "center",
             }}>
               <img
-                src={rawFileURL(image_paths[c])}
+                src={imageURL(image_paths[c])}
                 alt={`${c} / ${filename}`}
                 style={{ maxWidth: "100%", maxHeight: "60vh" }}
               />
@@ -632,29 +771,44 @@ function ImageDiffView({ data, caseColors }: { data: CompareDataResponse; caseCo
   );
 }
 
-function GdxDiffView({ data, caseColors }: { data: CompareDataResponse; caseColors: string[] }) {
+function GdxDiffView({ data, caseColors, diffOnly, onToggleDiffOnly }: {
+  data: CompareDataResponse; caseColors: string[];
+  diffOnly?: boolean; onToggleDiffOnly?: () => void;
+}) {
   const { columns, rows, cases, filename, subdir, gdx_total_symbols, gdx_common_count } = data;
   const [filter, setFilter] = useState("");
-
-  const filtered = useMemo(() => {
-    if (!filter) return rows;
-    const lower = filter.toLowerCase();
-    return rows.filter((r) => String(r.name ?? "").toLowerCase().includes(lower));
-  }, [rows, filter]);
 
   const rowHasDiff = useCallback((row: Record<string, unknown>): boolean => {
     const vals = cases.map((c) => row[c]);
     return new Set(vals.map(String)).size > 1;
   }, [cases]);
 
+  const filtered = useMemo(() => {
+    let out = rows;
+    if (filter) {
+      const lower = filter.toLowerCase();
+      out = out.filter((r) => String(r.name ?? "").toLowerCase().includes(lower));
+    }
+    if (diffOnly) out = out.filter(rowHasDiff);
+    return out;
+  }, [rows, filter, diffOnly, rowHasDiff]);
+
+  const diffCount = useMemo(() => rows.filter(rowHasDiff).length, [rows, rowHasDiff]);
+
   return (
     <div className="compare-data">
-      <div style={{ marginBottom: 8 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8, flexWrap: "wrap" }}>
         <strong style={{ color: "var(--accent)" }}>{subdir ? `${subdir}/` : ""}{filename}</strong>
-        <span style={{ color: "var(--text-muted)", fontSize: "0.82rem", marginLeft: 8 }}>
-          {gdx_common_count} common symbols
+        <span style={{ color: "var(--text-muted)", fontSize: "0.82rem" }}>
+          {gdx_common_count} common symbols · {diffCount} differing
           {gdx_total_symbols && ` (total: ${cases.map((c) => `${c}=${gdx_total_symbols[c]}`).join(", ")})`}
         </span>
+        {onToggleDiffOnly && (
+          <label style={{ fontSize: "0.8rem", display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}>
+            <input type="checkbox" checked={!!diffOnly} onChange={onToggleDiffOnly} style={{ accentColor: "var(--accent)" }} />
+            Show diffs only
+          </label>
+        )}
       </div>
       <div style={{ display: "flex", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
         {cases.map((c, i) => (
@@ -684,7 +838,7 @@ function GdxDiffView({ data, caseColors }: { data: CompareDataResponse; caseColo
             {filtered.map((row, i) => {
               const hasDiff = rowHasDiff(row);
               return (
-                <tr key={i} style={hasDiff ? { background: "rgba(251, 191, 36, 0.06)" } : undefined}>
+                <tr key={i} style={hasDiff ? { background: "rgba(251, 191, 36, 0.10)" } : undefined}>
                   {columns.map((c) => {
                     const caseIdx = cases.indexOf(c);
                     return (
@@ -699,6 +853,11 @@ function GdxDiffView({ data, caseColors }: { data: CompareDataResponse; caseColo
           </tbody>
         </table>
       </div>
+      {diffOnly && filtered.length === 0 && (
+        <p style={{ color: "var(--text-muted)", fontSize: "0.85rem", marginTop: 10 }}>
+          No differing symbols.
+        </p>
+      )}
     </div>
   );
 }

@@ -628,6 +628,125 @@ body,
   justify-content: space-between;
   margin-bottom: 12px;
 }
+.cmp-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  padding: 5px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-surface, var(--bg));
+  color: var(--text);
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease, box-shadow 0.12s ease;
+  line-height: 1.2;
+}
+.cmp-btn:hover {
+  border-color: var(--accent);
+  background: rgba(80, 130, 220, 0.08);
+}
+.cmp-btn:active {
+  transform: translateY(1px);
+}
+.cmp-btn-back {
+  color: var(--text);
+}
+.cmp-btn-back:hover {
+  color: var(--accent);
+}
+.cmp-btn-close {
+  color: #d24c4c;
+  border-color: rgba(210, 76, 76, 0.45);
+}
+.cmp-btn-close:hover {
+  background: rgba(210, 76, 76, 0.12);
+  border-color: #d24c4c;
+  color: #d24c4c;
+}
+.cmp-btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  padding: 6px 16px;
+}
+.cmp-btn-primary:hover {
+  background: var(--accent-hover, var(--accent));
+  border-color: var(--accent-hover, var(--accent));
+  color: #fff;
+  filter: brightness(1.05);
+}
+.cmp-btn:disabled,
+.cmp-btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background: var(--bg-surface, var(--bg));
+  color: var(--text-muted);
+  border-color: var(--border);
+  filter: none;
+}
+
+/* ── Segmented toggle (e.g. compare_cases / bokeh_report) ─────────────────── */
+.cmp-toggle-group {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--bg-surface, var(--bg));
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.15) inset;
+}
+.cmp-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+  line-height: 1.2;
+}
+.cmp-toggle + .cmp-toggle {
+  border-left: 1px solid var(--border);
+}
+.cmp-toggle:hover:not(.is-active) {
+  background: rgba(80, 130, 220, 0.08);
+  color: var(--text);
+}
+.cmp-toggle.is-active {
+  background: var(--accent);
+  color: #fff;
+  font-weight: 600;
+}
+.cmp-toggle-icon {
+  font-size: 0.95rem;
+  line-height: 1;
+}
+.cmp-toggle-label {
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+}
+.cmp-select {
+  padding: 6px 10px;
+  font-size: 0.82rem;
+  font-family: var(--font-mono);
+  background: var(--bg-surface, var(--bg));
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+.cmp-select:hover,
+.cmp-select:focus {
+  border-color: var(--accent);
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(80, 130, 220, 0.18);
+}
 .compare-steps {
   display: flex;
   align-items: center;
@@ -649,7 +768,8 @@ body,
   display: flex;
   flex-direction: column;
   gap: 4px;
-  max-height: 50vh;
+  /* Fill the available vertical space below header/breadcrumb/banner. */
+  max-height: calc(100vh - 260px);
   overflow-y: auto;
 }
 .compare-case-item {
@@ -776,7 +896,9 @@ body,
   display: flex;
   flex-direction: column;
   gap: 2px;
-  max-height: 50vh;
+  /* Fill available vertical space below the header/breadcrumb/filter row.
+     The Custom-Pick variant overrides this via inline maxHeight. */
+  max-height: calc(100vh - 280px);
   overflow-y: auto;
 }
 .compare-file-item {
@@ -1013,6 +1135,46 @@ details[open] > .settings-api-guide-toggle::before {
   color: var(--text-muted);
   font-size: 0.85rem;
   padding: 12px 24px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.loading::before {
+  content: "";
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  animation: rc-spin 0.7s linear infinite;
+  display: inline-block;
+  flex-shrink: 0;
+}
+.loading-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 32px 24px;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+}
+.loading-block .spinner-lg {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 3px solid var(--border);
+  border-top-color: var(--accent);
+  animation: rc-spin 0.7s linear infinite;
+}
+.loading-block .hint {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  opacity: 0.8;
+}
+@keyframes rc-spin {
+  to { transform: rotate(360deg); }
 }
 
 /* ── Source list (right panel) ────────────────────────────────────────────── */
@@ -1762,8 +1924,19 @@ details[open] > .settings-api-guide-toggle::before {
 .hpc-file-list {
   flex: 1 1 0;
   overflow-y: auto;
-  border-right: 1px solid var(--border);
   min-width: 0;
+}
+
+.hpc-splitter {
+  flex: 0 0 5px;
+  cursor: col-resize;
+  background: var(--border);
+  transition: background 0.15s;
+  position: relative;
+}
+.hpc-splitter:hover,
+.hpc-splitter:active {
+  background: var(--accent);
 }
 
 .hpc-file-list .file-entry.selected {
@@ -1772,8 +1945,8 @@ details[open] > .settings-api-guide-toggle::before {
 }
 
 .hpc-preview-pane {
-  flex: 1 1 0;
-  min-width: 360px;
+  flex: 0 0 480px;
+  min-width: 240px;
   overflow-y: auto;
   background: var(--bg-surface);
 }
