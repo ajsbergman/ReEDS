@@ -190,8 +190,10 @@ export function listHpcFilesAPI(
   user: string,
   path: string,
   password: string = "",
+  session_token: string = "",
 ): Promise<FileListResponse> {
-  return post<FileListResponse>("/files/hpc/list", { host, user, path, password });
+  return post<FileListResponse>("/files/hpc/list",
+    { host, user, path, password, session_token });
 }
 
 export function previewHpcFileAPI(
@@ -200,15 +202,19 @@ export function previewHpcFileAPI(
   path: string,
   password: string = "",
   lines: number = 200,
+  session_token: string = "",
 ): Promise<FilePreviewResponse> {
-  return post<FilePreviewResponse>("/files/hpc/preview", { host, user, path, password, lines });
+  return post<FilePreviewResponse>("/files/hpc/preview",
+    { host, user, path, password, lines, session_token });
 }
 
 export function disconnectHpcAPI(
   host: string,
   user: string,
+  session_token: string = "",
 ): Promise<{ disconnected: boolean }> {
-  return post<{ disconnected: boolean }>("/files/hpc/disconnect", { host, user });
+  return post<{ disconnected: boolean }>("/files/hpc/disconnect",
+    { host, user, session_token });
 }
 
 export function listHpcCasesFilesAPI(
@@ -216,8 +222,10 @@ export function listHpcCasesFilesAPI(
   user: string,
   reeds_path: string,
   password: string = "",
+  session_token: string = "",
 ): Promise<CasesFile[]> {
-  return post<CasesFile[]>("/files/hpc/cases-files", { host, user, reeds_path, password });
+  return post<CasesFile[]>("/files/hpc/cases-files",
+    { host, user, reeds_path, password, session_token });
 }
 
 export interface HpcConnectInfo {
@@ -225,6 +233,7 @@ export interface HpcConnectInfo {
   home: string;
   hostname: string;
   suggested_paths: string[];
+  session_token: string;
 }
 
 export function hpcConnectAPI(
@@ -244,8 +253,10 @@ export function listHpcCondaEnvsAPI(
   host: string,
   user: string,
   password: string = "",
+  session_token: string = "",
 ): Promise<HpcCondaEnv[]> {
-  return post<HpcCondaEnv[]>("/files/hpc/conda-envs", { host, user, password });
+  return post<HpcCondaEnv[]>("/files/hpc/conda-envs",
+    { host, user, password, session_token });
 }
 
 export interface HpcEnvCheck {
@@ -262,9 +273,10 @@ export function hpcEnvCheckAPI(
   reeds_path: string,
   conda_env: string,
   password: string = "",
+  session_token: string = "",
 ): Promise<{ checks: HpcEnvCheck[] }> {
   return post<{ checks: HpcEnvCheck[] }>("/files/hpc/env-check", {
-    host, user, password, reeds_path, conda_env,
+    host, user, password, reeds_path, conda_env, session_token,
   });
 }
 
@@ -281,8 +293,10 @@ export function hpcSqueueAPI(
   host: string,
   user: string,
   password: string = "",
+  session_token: string = "",
 ): Promise<{ jobs: SlurmJob[] }> {
-  return post<{ jobs: SlurmJob[] }>("/files/hpc/squeue", { host, user, password });
+  return post<{ jobs: SlurmJob[] }>("/files/hpc/squeue",
+    { host, user, password, session_token });
 }
 
 export function healthAPI(): Promise<HealthResponse> {

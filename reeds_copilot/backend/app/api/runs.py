@@ -41,6 +41,7 @@ class StartRunRequest(BaseModel):
     hpc_user: str = ""       # SSH username
     hpc_password: str = ""   # SSH password (optional if key auth)
     hpc_reeds_path: str = "" # Absolute path to ReEDS on remote HPC
+    hpc_session_token: str = ""  # Opaque session token from /files/hpc/connect
     # Slurm fields
     slurm_account: str = ""
     slurm_walltime: str = "2-00:00:00"
@@ -121,9 +122,24 @@ def get_cases_detail(suffix: str, settings: Settings = Depends(get_settings)):
 def start_run(body: StartRunRequest, settings: Settings = Depends(get_settings)):
     """Start a new ReEDS run."""
     if body.target == "hpc":
-        if not body.hpc_host:
+        # If a session_token is provided, resolve host/user from it so the
+        # frontend doesn't need to keep the password around.
+        hpc_host = body.hpc_host
+        hpc_user = body.hpc_user
+        hpc_password = body.hpc_password
+        if body.hpc_session_token:
+            from .files import _resolve_session
+            resolved = _resolve_session(body.hpc_session_token)
+            if resolved is None:
+                raise HTTPException(
+                    status_code=401,
+                    detail="HPC session expired. Please reconnect.",
+                )
+            hpc_host, hpc_user = resolved
+            hpc_password = ""  # Pool already has a live client for (host, user)
+        if not hpc_host:
             raise HTTPException(status_code=400, detail="HPC login node (hpc_host) is required")
-        if not body.hpc_user:
+        if not hpc_user:
             raise HTTPException(status_code=400, detail="HPC username (hpc_user) is required")
         if not body.hpc_reeds_path:
             raise HTTPException(status_code=400, detail="Remote ReEDS path (hpc_reeds_path) is required")
@@ -136,9 +152,9 @@ def start_run(body: StartRunRequest, settings: Settings = Depends(get_settings))
                 simult_runs=body.simult_runs,
                 conda_env=body.conda_env,
                 overwrite=body.overwrite,
-                hpc_host=body.hpc_host,
-                hpc_user=body.hpc_user,
-                hpc_password=body.hpc_password,
+                hpc_host=hpc_host,
+                hpc_user=hpc_user,
+                hpc_password=hpc_password,
                 hpc_reeds_path=body.hpc_reeds_path,
                 slurm_account=body.slurm_account,
                 slurm_walltime=body.slurm_walltime,

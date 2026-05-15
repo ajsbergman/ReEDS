@@ -60,9 +60,37 @@ function statusBadge(s: string) {
 
 /* ─── component ───────────────────────────────────────────────────────────── */
 
+/**
+ * Module-level cache of HPC connection state. This persists across mount/unmount
+ * cycles of <RunPanel/> (e.g. user navigates to another sidebar tab and back)
+ * but is cleared on full page reload. Password lives only in JS memory.
+ */
+type HpcCache = {
+  cluster: "kestrel" | "eagle" | "custom";
+  host: string;
+  user: string;
+  // password is intentionally NOT persisted in the cache; after login we keep
+  // only the opaque session_token returned by the backend.
+  sessionToken: string;
+  reedsPath: string;
+  connected: boolean;
+  loginOk: boolean;
+  home: string;
+  suggestedPaths: string[];
+  selectedEnv: string;
+  slurmAccount: string;
+  slurmWalltime: string;
+  slurmPartition: string;
+  slurmMemory: string;
+  slurmMailUser: string;
+  slurmMailType: string;
+  target: "local" | "hpc";
+};
+let hpcCache: HpcCache | null = null;
+
 export default function RunPanel() {
   /* Config form state */
-  const [target, setTarget] = useState<"local" | "hpc">("local");
+  const [target, setTarget] = useState<"local" | "hpc">(() => hpcCache?.target ?? "local");
   const [casesFiles, setCasesFiles] = useState<CasesFile[]>([]);
   const [selectedSuffix, setSelectedSuffix] = useState("");
   const [availableCases, setAvailableCases] = useState<string[]>([]);
@@ -86,21 +114,24 @@ export default function RunPanel() {
   const [licenseSaving, setLicenseSaving] = useState(false);
 
   /* HPC connection */
-  const [hpcCluster, setHpcCluster] = useState<"kestrel" | "eagle" | "custom">("kestrel");
-  const [hpcHost, setHpcHost] = useState("kestrel.hpc.nlr.gov");
-  const [hpcUser, setHpcUser] = useState("");
+  const [hpcCluster, setHpcCluster] = useState<"kestrel" | "eagle" | "custom">(
+    () => hpcCache?.cluster ?? "kestrel");
+  const [hpcHost, setHpcHost] = useState(() => hpcCache?.host ?? "kestrel.hpc.nlr.gov");
+  const [hpcUser, setHpcUser] = useState(() => hpcCache?.user ?? "");
   const [hpcPassword, setHpcPassword] = useState("");
-  const [hpcReedsPath, setHpcReedsPath] = useState("");
-  const [hpcConnected, setHpcConnected] = useState(false);
+  const [hpcSessionToken, setHpcSessionToken] = useState(() => hpcCache?.sessionToken ?? "");
+  const [hpcReedsPath, setHpcReedsPath] = useState(() => hpcCache?.reedsPath ?? "");
+  const [hpcConnected, setHpcConnected] = useState(() => hpcCache?.connected ?? false);
   const [hpcLoading, setHpcLoading] = useState(false);
-  const [hpcLoginOk, setHpcLoginOk] = useState(false);
-  const [hpcHome, setHpcHome] = useState("");
-  const [hpcSuggestedPaths, setHpcSuggestedPaths] = useState<string[]>([]);
+  const [hpcLoginOk, setHpcLoginOk] = useState(() => hpcCache?.loginOk ?? false);
+  const [hpcHome, setHpcHome] = useState(() => hpcCache?.home ?? "");
+  const [hpcSuggestedPaths, setHpcSuggestedPaths] = useState<string[]>(
+    () => hpcCache?.suggestedPaths ?? []);
   const [hpcLoginError, setHpcLoginError] = useState("");
 
   /* HPC conda envs + env checks */
   const [hpcCondaEnvs, setHpcCondaEnvs] = useState<{ name: string; prefix: string }[]>([]);
-  const [hpcSelectedEnv, setHpcSelectedEnv] = useState("reeds2");
+  const [hpcSelectedEnv, setHpcSelectedEnv] = useState(() => hpcCache?.selectedEnv ?? "reeds2");
   const [hpcEnvChecks, setHpcEnvChecks] = useState<HpcEnvCheck[]>([]);
   const [hpcEnvLoading, setHpcEnvLoading] = useState(false);
 
@@ -108,10 +139,13 @@ export default function RunPanel() {
   const [slurmQueue, setSlurmQueue] = useState<SlurmJob[]>([]);
 
   /* HPC / Slurm config */
-  const [slurmAccount, setSlurmAccount] = useState("");
-  const [slurmWalltime, setSlurmWalltime] = useState("2-00:00:00");
-  const [slurmPartition, setSlurmPartition] = useState("");
-  const [slurmMemory, setSlurmMemory] = useState("246000");
+  const [slurmAccount, setSlurmAccount] = useState(() => hpcCache?.slurmAccount ?? "");
+  const [slurmWalltime, setSlurmWalltime] = useState(() => hpcCache?.slurmWalltime ?? "2-00:00:00");
+  const [slurmPartition, setSlurmPartition] = useState(() => hpcCache?.slurmPartition ?? "");
+  const [slurmMemory, setSlurmMemory] = useState(() => hpcCache?.slurmMemory ?? "246000");
+  const [slurmMailUser, setSlurmMailUser] = useState(() => hpcCache?.slurmMailUser ?? "");
+  // Comma-separated subset of: BEGIN, END, FAIL  ("" = NONE)
+  const [slurmMailType, setSlurmMailType] = useState<string>(() => hpcCache?.slurmMailType ?? "");
 
   /* Runs list & detail */
   const [runs, setRuns] = useState<RunRecord[]>([]);
@@ -122,6 +156,34 @@ export default function RunPanel() {
   const [error, setError] = useState("");
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  /* Persist HPC state to module-level cache so it survives unmount */
+  useEffect(() => {
+    hpcCache = {
+      cluster: hpcCluster,
+      host: hpcHost,
+      user: hpcUser,
+      sessionToken: hpcSessionToken,
+      reedsPath: hpcReedsPath,
+      connected: hpcConnected,
+      loginOk: hpcLoginOk,
+      home: hpcHome,
+      suggestedPaths: hpcSuggestedPaths,
+      selectedEnv: hpcSelectedEnv,
+      slurmAccount,
+      slurmWalltime,
+      slurmPartition,
+      slurmMemory,
+      slurmMailUser,
+      slurmMailType,
+      target,
+    };
+  }, [
+    hpcCluster, hpcHost, hpcUser, hpcSessionToken, hpcReedsPath,
+    hpcConnected, hpcLoginOk, hpcHome, hpcSuggestedPaths,
+    hpcSelectedEnv, slurmAccount, slurmWalltime, slurmPartition, slurmMemory,
+    slurmMailUser, slurmMailType, target,
+  ]);
 
   /* Load cases files and conda envs on mount */
   useEffect(() => {
@@ -235,7 +297,7 @@ export default function RunPanel() {
     }
     // Refresh Slurm queue if HPC connected
     if (target === "hpc" && hpcLoginOk && hpcHost && hpcUser) {
-      hpcSqueueAPI(hpcHost, hpcUser, hpcPassword)
+      hpcSqueueAPI(hpcHost, hpcUser, "", hpcSessionToken)
         .then((r) => setSlurmQueue(r.jobs))
         .catch(() => {});
     }
@@ -245,14 +307,14 @@ export default function RunPanel() {
   useEffect(() => {
     if (target !== "hpc" || !hpcLoginOk) return;
     const tick = () => {
-      hpcSqueueAPI(hpcHost, hpcUser, hpcPassword)
+      hpcSqueueAPI(hpcHost, hpcUser, "", hpcSessionToken)
         .then((r) => setSlurmQueue(r.jobs))
         .catch(() => {});
     };
     tick();
     const id = setInterval(tick, 15000);
     return () => clearInterval(id);
-  }, [target, hpcLoginOk, hpcHost, hpcUser, hpcPassword]);
+  }, [target, hpcLoginOk, hpcHost, hpcUser, hpcSessionToken]);
 
   function handleSuffixChange(suffix: string) {
     setSelectedSuffix(suffix);
@@ -303,12 +365,15 @@ export default function RunPanel() {
         ...(target === "hpc" && {
           hpc_host: hpcHost.trim(),
           hpc_user: hpcUser.trim(),
-          hpc_password: hpcPassword,
+          hpc_password: hpcSessionToken ? "" : hpcPassword,
+          hpc_session_token: hpcSessionToken || undefined,
           hpc_reeds_path: hpcReedsPath.trim(),
           slurm_account: slurmAccount.trim(),
           slurm_walltime: slurmWalltime.trim(),
           slurm_partition: slurmPartition.trim() || undefined,
           slurm_memory: slurmMemory.trim(),
+          slurm_mail_user: slurmMailUser.trim() || undefined,
+          slurm_mail_type: slurmMailType || undefined,
         }),
       });
       refreshRuns();
@@ -503,6 +568,7 @@ export default function RunPanel() {
             hpcHost={hpcHost} setHpcHost={setHpcHost}
             hpcUser={hpcUser} setHpcUser={setHpcUser}
             hpcPassword={hpcPassword} setHpcPassword={setHpcPassword}
+            hpcSessionToken={hpcSessionToken} setHpcSessionToken={setHpcSessionToken}
             hpcReedsPath={hpcReedsPath} setHpcReedsPath={setHpcReedsPath}
             hpcLoginOk={hpcLoginOk} setHpcLoginOk={setHpcLoginOk}
             hpcHome={hpcHome} setHpcHome={setHpcHome}
@@ -522,6 +588,8 @@ export default function RunPanel() {
             slurmWalltime={slurmWalltime} setSlurmWalltime={setSlurmWalltime}
             slurmPartition={slurmPartition} setSlurmPartition={setSlurmPartition}
             slurmMemory={slurmMemory} setSlurmMemory={setSlurmMemory}
+            slurmMailUser={slurmMailUser} setSlurmMailUser={setSlurmMailUser}
+            slurmMailType={slurmMailType} setSlurmMailType={setSlurmMailType}
             setError={setError}
           />
         )}
@@ -634,7 +702,7 @@ export default function RunPanel() {
           <SlurmQueueWidget
             jobs={slurmQueue}
             onRefresh={() => {
-              hpcSqueueAPI(hpcHost, hpcUser, hpcPassword)
+              hpcSqueueAPI(hpcHost, hpcUser, "", hpcSessionToken)
                 .then((r) => setSlurmQueue(r.jobs))
                 .catch(() => {});
             }}
@@ -761,6 +829,7 @@ interface HpcConfigBlocksProps {
   hpcHost: string; setHpcHost: (v: string) => void;
   hpcUser: string; setHpcUser: (v: string) => void;
   hpcPassword: string; setHpcPassword: (v: string) => void;
+  hpcSessionToken: string; setHpcSessionToken: (v: string) => void;
   hpcReedsPath: string; setHpcReedsPath: (v: string) => void;
   hpcLoginOk: boolean; setHpcLoginOk: (v: boolean) => void;
   hpcHome: string; setHpcHome: (v: string) => void;
@@ -781,6 +850,8 @@ interface HpcConfigBlocksProps {
   slurmWalltime: string; setSlurmWalltime: (v: string) => void;
   slurmPartition: string; setSlurmPartition: (v: string) => void;
   slurmMemory: string; setSlurmMemory: (v: string) => void;
+  slurmMailUser: string; setSlurmMailUser: (v: string) => void;
+  slurmMailType: string; setSlurmMailType: (v: string) => void;
   setError: (v: string) => void;
 }
 
@@ -794,12 +865,16 @@ function HpcConfigBlocks(p: HpcConfigBlocksProps) {
         p.setHpcLoginOk(true);
         p.setHpcHome(info.home);
         p.setHpcSuggestedPaths(info.suggested_paths);
+        // Save session token & wipe the password from React state so it's no
+        // longer kept in browser memory after a successful login.
+        p.setHpcSessionToken(info.session_token || "");
+        if (info.session_token) p.setHpcPassword("");
         // Auto-fill repo path if empty and we have a candidate
         if (!p.hpcReedsPath && info.suggested_paths[0]) {
           p.setHpcReedsPath(info.suggested_paths[0]);
         }
-        // Also load conda envs
-        listHpcCondaEnvsAPI(p.hpcHost, p.hpcUser, p.hpcPassword)
+        // Also load conda envs (using the new session token)
+        listHpcCondaEnvsAPI(p.hpcHost, p.hpcUser, "", info.session_token || "")
           .then((envs) => p.setHpcCondaEnvs(envs))
           .catch(() => {});
       })
@@ -810,22 +885,42 @@ function HpcConfigBlocks(p: HpcConfigBlocksProps) {
       .finally(() => p.setHpcLoading(false));
   }
 
+  function handleDisconnect() {
+    // Tell backend to close the SSH connection and revoke the token, then
+    // wipe all credential-related state from the browser.
+    const token = p.hpcSessionToken;
+    p.setHpcSessionToken("");
+    p.setHpcPassword("");
+    p.setHpcLoginOk(false);
+    p.setHpcConnected(false);
+    p.setHpcHome("");
+    p.setHpcSuggestedPaths([]);
+    p.setHpcCondaEnvs([]);
+    p.setHpcEnvChecks([]);
+    if (p.hpcHost && p.hpcUser) {
+      // Fire-and-forget; backend will close the SSH client too
+      import("../lib/api").then(({ disconnectHpcAPI }) =>
+        disconnectHpcAPI(p.hpcHost, p.hpcUser, token).catch(() => {}),
+      );
+    }
+  }
+
   function handleLoadRepo() {
     p.setError("");
     p.setHpcLoading(true);
-    listHpcCasesFilesAPI(p.hpcHost, p.hpcUser, p.hpcReedsPath, p.hpcPassword)
+    listHpcCasesFilesAPI(p.hpcHost, p.hpcUser, p.hpcReedsPath, "", p.hpcSessionToken)
       .then((files) => {
         p.setCasesFiles(files);
         p.setHpcConnected(true);
-        const small = files.find((f) => f.suffix === "small");
-        if (small) {
-          p.setSelectedSuffix(small.suffix);
-          p.setAvailableCases(small.cases);
-          p.setSelectedCases(small.cases);
-        } else if (files.length > 0) {
-          p.setSelectedSuffix(files[0].suffix);
-          p.setAvailableCases(files[0].cases);
-          p.setSelectedCases(files[0].cases);
+        // Default to 'test' (cases_test.csv), then 'small', then first
+        const preferred =
+          files.find((f) => f.suffix === "test") ||
+          files.find((f) => f.suffix === "small") ||
+          files[0];
+        if (preferred) {
+          p.setSelectedSuffix(preferred.suffix);
+          p.setAvailableCases(preferred.cases);
+          p.setSelectedCases(preferred.cases);
         }
       })
       .catch((e) => p.setError(e instanceof Error ? e.message : String(e)))
@@ -834,11 +929,19 @@ function HpcConfigBlocks(p: HpcConfigBlocksProps) {
 
   function handleEnvCheck() {
     p.setHpcEnvLoading(true);
-    hpcEnvCheckAPI(p.hpcHost, p.hpcUser, p.hpcReedsPath, p.hpcSelectedEnv, p.hpcPassword)
+    hpcEnvCheckAPI(p.hpcHost, p.hpcUser, p.hpcReedsPath, p.hpcSelectedEnv, "", p.hpcSessionToken)
       .then((r) => p.setHpcEnvChecks(r.checks))
       .catch(() => p.setHpcEnvChecks([]))
       .finally(() => p.setHpcEnvLoading(false));
   }
+
+  // Auto-run env check when Block 3 first becomes available (after the user
+  // loads the repo in Block 2) or whenever they switch conda env.
+  useEffect(() => {
+    if (!p.hpcConnected || !p.hpcReedsPath || !p.hpcSelectedEnv) return;
+    handleEnvCheck();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [p.hpcConnected, p.hpcReedsPath, p.hpcSelectedEnv]);
 
   return (
     <>
@@ -871,23 +974,57 @@ function HpcConfigBlocks(p: HpcConfigBlocksProps) {
         </div>
         <div className="run-field">
           <label>Password</label>
-          <input type="password" value={p.hpcPassword} onChange={(e) => p.setHpcPassword(e.target.value)}
-            placeholder="password" autoComplete="current-password" />
+          <input
+            type="password"
+            value={p.hpcPassword}
+            onChange={(e) => p.setHpcPassword(e.target.value)}
+            placeholder={p.hpcSessionToken
+              ? "(connected — password no longer needed)" : "password"}
+            autoComplete="current-password"
+            disabled={!!p.hpcSessionToken}
+          />
         </div>
-        <button
-          className="run-launch-btn"
-          style={{ background: p.hpcLoginOk ? "#4caf50" : undefined }}
-          disabled={p.hpcLoading || !p.hpcHost || !p.hpcUser || !p.hpcPassword}
-          onClick={handleLogin}
-        >
-          {p.hpcLoading ? "Connecting…" : p.hpcLoginOk ? "✅ Logged in — Reconnect" : "🔌 Connect"}
-        </button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button
+            className="run-launch-btn"
+            style={{ background: p.hpcLoginOk ? "#4caf50" : undefined, flex: 1 }}
+            disabled={p.hpcLoading || !p.hpcHost || !p.hpcUser ||
+              (!p.hpcPassword && !p.hpcSessionToken)}
+            onClick={handleLogin}
+          >
+            {p.hpcLoading ? "Connecting…"
+              : p.hpcLoginOk ? "✅ Logged in — Reconnect" : "🔌 Connect"}
+          </button>
+          {p.hpcLoginOk && (
+            <button
+              type="button"
+              onClick={handleDisconnect}
+              title="Close SSH connection and clear credentials from memory"
+              style={{
+                padding: "0 14px",
+                background: "transparent",
+                border: "1px solid var(--border)",
+                color: "var(--text-muted)",
+                borderRadius: "var(--radius)",
+                cursor: "pointer",
+                fontSize: "0.85rem",
+              }}
+            >
+              🔒 Disconnect
+            </button>
+          )}
+        </div>
         {p.hpcLoginError && (
           <div className="run-error" style={{ marginTop: 8 }}>{p.hpcLoginError}</div>
         )}
         {p.hpcLoginOk && p.hpcHome && (
           <div style={{ marginTop: 8, fontSize: "0.78rem", color: "var(--text-muted)" }}>
             $HOME = <code>{p.hpcHome}</code>
+            {p.hpcSessionToken && (
+              <span style={{ marginLeft: 12, color: "#4caf50" }}>
+                🔐 session active (password not stored)
+              </span>
+            )}
           </div>
         )}
       </div>
@@ -927,7 +1064,7 @@ function HpcConfigBlocks(p: HpcConfigBlocksProps) {
           <MiniHpcExplorer
             host={p.hpcHost}
             user={p.hpcUser}
-            password={p.hpcPassword}
+            sessionToken={p.hpcSessionToken}
             home={p.hpcHome}
             onPick={(path) => p.setHpcReedsPath(path)}
           />
@@ -1015,6 +1152,74 @@ function HpcConfigBlocks(p: HpcConfigBlocksProps) {
               placeholder="246000" disabled={!p.hpcConnected} />
           </div>
         </div>
+
+        {/* Email notifications */}
+        <div className="run-field" style={{ marginTop: 4 }}>
+          <label>Email Notifications</label>
+          <input
+            type="email"
+            value={p.slurmMailUser}
+            onChange={(e) => p.setSlurmMailUser(e.target.value)}
+            placeholder="you@nlr.gov (leave blank for none)"
+            disabled={!p.hpcConnected}
+          />
+          <div style={{
+            display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6,
+          }}>
+            {(() => {
+              const selected = (p.slurmMailType || "")
+                .split(",").map((s) => s.trim()).filter(Boolean);
+              const toggle = (val: string) => {
+                if (val === "") { p.setSlurmMailType(""); return; }
+                const next = selected.includes(val)
+                  ? selected.filter((s) => s !== val)
+                  : [...selected, val];
+                // keep canonical order
+                const order = ["BEGIN", "END", "FAIL"];
+                p.setSlurmMailType(order.filter((k) => next.includes(k)).join(","));
+              };
+              const isActive = (val: string) => {
+                if (val === "") return selected.length === 0;
+                return selected.includes(val);
+              };
+              return ([
+                { label: "None", value: "" },
+                { label: "Start", value: "BEGIN" },
+                { label: "End", value: "END" },
+                { label: "Failed", value: "FAIL" },
+              ] as const).map((opt) => {
+                const active = isActive(opt.value);
+                return (
+                  <button
+                    key={opt.label}
+                    type="button"
+                    onClick={() => toggle(opt.value)}
+                    disabled={!p.hpcConnected || (!p.slurmMailUser.trim() && opt.value !== "")}
+                    style={{
+                      padding: "3px 12px",
+                      border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
+                      borderRadius: 12,
+                      background: active ? "#5b8def1a" : "var(--bg-elevated)",
+                      color: active ? "var(--accent)" : "var(--text-muted)",
+                      fontSize: "0.75rem",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                    }}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              });
+            })()}
+          </div>
+          {!p.slurmMailUser.trim() && (
+            <div style={{
+              fontSize: "0.72rem", color: "var(--text-muted)", marginTop: 4,
+            }}>
+              Enter an email above to enable notification options.
+            </div>
+          )}
+        </div>
       </div>
     </>
   );
@@ -1078,9 +1283,9 @@ function SlurmQueueWidget({ jobs, onRefresh }: { jobs: SlurmJob[]; onRefresh: ()
 /* ─── Mini HPC file explorer (used inside Block 2) ───────────────────────── */
 
 function MiniHpcExplorer({
-  host, user, password, home, onPick,
+  host, user, sessionToken, home, onPick,
 }: {
-  host: string; user: string; password: string; home: string;
+  host: string; user: string; sessionToken: string; home: string;
   onPick: (path: string) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -1100,7 +1305,7 @@ function MiniHpcExplorer({
     if (!open || !host || !user) return;
     setLoading(true);
     setError("");
-    listHpcFilesAPI(host, user, cwd, password)
+    listHpcFilesAPI(host, user, cwd, "", sessionToken)
       .then((r) => {
         // Only show directories (folders) — this is a folder picker
         const dirs = r.entries.filter((e) => e.is_dir);
@@ -1117,7 +1322,7 @@ function MiniHpcExplorer({
         setHasReeds(false);
       })
       .finally(() => setLoading(false));
-  }, [open, cwd, host, user, password]);
+  }, [open, cwd, host, user, sessionToken]);
 
   function goUp() {
     if (cwd === "/" || !cwd) return;

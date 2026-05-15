@@ -1136,8 +1136,10 @@ details[open] > .settings-api-guide-toggle::before {
   flex-direction: column;
   gap: 24px;
   overflow-y: auto;
-  padding: 20px 24px;
-  max-width: 900px;
+  padding: 20px 32px;
+  max-width: 1400px;
+  width: 100%;
+  margin: 0 auto;
 }
 
 .run-form {

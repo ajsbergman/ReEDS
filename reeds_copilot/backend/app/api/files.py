@@ -5,7 +5,9 @@ import csv as csv_mod
 import io
 import logging
 import re
+import secrets
 import threading
+import time
 
 import paramiko
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -110,31 +112,101 @@ _ssh_pool: dict[tuple[str, str], paramiko.SSHClient] = {}
 _ssh_lock = threading.Lock()
 
 
+# ── Session tokens (so the frontend can drop the password after login) ─────
+# Maps an opaque random token to the (host, user) pair whose SSH client
+# lives in _ssh_pool. Tokens expire after IDLE_TIMEOUT_SECS of inactivity.
+_sessions: dict[str, dict] = {}
+_session_lock = threading.Lock()
+SESSION_IDLE_TIMEOUT_SECS = 30 * 60   # 30 minutes
+
+
+def _mint_session(host: str, user: str) -> str:
+    token = secrets.token_urlsafe(32)
+    with _session_lock:
+        _sessions[token] = {
+            "host": host, "user": user, "last_used": time.time(),
+        }
+    return token
+
+
+def _resolve_session(token: str) -> tuple[str, str] | None:
+    """Return (host, user) for a valid token, or None if expired/unknown."""
+    if not token:
+        return None
+    with _session_lock:
+        entry = _sessions.get(token)
+        if entry is None:
+            return None
+        if time.time() - entry["last_used"] > SESSION_IDLE_TIMEOUT_SECS:
+            _sessions.pop(token, None)
+            return None
+        entry["last_used"] = time.time()
+        return (entry["host"], entry["user"])
+
+
+def _revoke_session(token: str) -> None:
+    if not token:
+        return
+    with _session_lock:
+        _sessions.pop(token, None)
+
+
+def _resolve_creds(
+    session_token: str | None,
+    host: str | None,
+    user: str | None,
+    password: str | None,
+) -> tuple[str, str, str]:
+    """Return (host, user, password) using a session token when available.
+
+    If `session_token` is valid, the cached SSH client in _ssh_pool is reused;
+    no password is needed. Otherwise falls back to explicit (host, user, password).
+    """
+    if session_token:
+        resolved = _resolve_session(session_token)
+        if resolved is None:
+            raise HTTPException(
+                status_code=401,
+                detail="Session expired. Please reconnect to the HPC.",
+            )
+        return (resolved[0], resolved[1], "")
+    if not host or not user:
+        raise HTTPException(
+            status_code=400,
+            detail="Either session_token or (host, user) must be provided.",
+        )
+    return (host, user, password or "")
+
+
 class HpcListRequest(BaseModel):
-    host: str = Field(..., description="HPC login node hostname")
-    user: str = Field(..., description="SSH username")
+    host: str = Field(default="", description="HPC login node hostname")
+    user: str = Field(default="", description="SSH username")
     path: str = Field(..., description="Absolute path on HPC")
     password: str = Field(default="", description="SSH password (never logged)")
+    session_token: str = Field(default="", description="Opaque session token from /hpc/connect")
 
 
 class HpcPreviewRequest(BaseModel):
-    host: str = Field(..., description="HPC login node hostname")
-    user: str = Field(..., description="SSH username")
+    host: str = Field(default="", description="HPC login node hostname")
+    user: str = Field(default="", description="SSH username")
     path: str = Field(..., description="Absolute file path on HPC")
     password: str = Field(default="", description="SSH password (never logged)")
+    session_token: str = Field(default="", description="Opaque session token from /hpc/connect")
     lines: int = Field(default=200, ge=1, le=5000)
 
 
 class HpcDisconnectRequest(BaseModel):
-    host: str = Field(..., description="HPC login node hostname")
-    user: str = Field(..., description="SSH username")
+    host: str = Field(default="", description="HPC login node hostname")
+    user: str = Field(default="", description="SSH username")
+    session_token: str = Field(default="", description="Opaque session token from /hpc/connect")
 
 
 class HpcCasesRequest(BaseModel):
-    host: str = Field(..., description="HPC login node hostname")
-    user: str = Field(..., description="SSH username")
+    host: str = Field(default="", description="HPC login node hostname")
+    user: str = Field(default="", description="SSH username")
     reeds_path: str = Field(..., description="Absolute path to ReEDS repo on HPC")
     password: str = Field(default="", description="SSH password (never logged)")
+    session_token: str = Field(default="", description="Opaque session token from /hpc/connect")
 
 
 def _get_ssh_client(
@@ -249,8 +321,10 @@ def list_hpc_files(req: HpcListRequest):
     if not re.match(r'^[a-zA-Z0-9/_\.\-~]+$', req.path):
         raise HTTPException(status_code=400, detail="Invalid path characters")
 
+    host, user, password = _resolve_creds(
+        req.session_token, req.host, req.user, req.password)
     remote_cmd = f'ls -lLA --time-style=+%s {req.path} 2>/dev/null'
-    out = _ssh_exec(req.host, req.user, remote_cmd, password=req.password)
+    out = _ssh_exec(host, user, remote_cmd, password=password)
 
     # Parse `ls -lA --time-style=+%s` output
     # drwxr-xr-x 2 user group 4096 1715270400 dirname
@@ -292,6 +366,8 @@ def preview_hpc_file(req: HpcPreviewRequest):
     if not re.match(r'^[a-zA-Z0-9/_\.\-~]+$', req.path):
         raise HTTPException(status_code=400, detail="Invalid path characters")
 
+    host, user, password = _resolve_creds(
+        req.session_token, req.host, req.user, req.password)
     name = req.path.rsplit("/", 1)[-1] if "/" in req.path else req.path
     dot = name.rfind(".")
     ext = name[dot:].lower() if dot > 0 else ""
@@ -302,9 +378,9 @@ def preview_hpc_file(req: HpcPreviewRequest):
 
     if ext in image_exts or ext in binary_exts:
         try:
-            out = _ssh_exec(req.host, req.user,
+            out = _ssh_exec(host, user,
                             f'stat --format="%s" {req.path} 2>/dev/null',
-                            password=req.password, timeout=10)
+                            password=password, timeout=10)
             fsize = int(out.strip())
         except Exception:
             fsize = 0
@@ -315,9 +391,9 @@ def preview_hpc_file(req: HpcPreviewRequest):
         )
 
     if ext == ".csv":
-        out = _ssh_exec(req.host, req.user,
+        out = _ssh_exec(host, user,
                         f'head -n {req.lines + 1} {req.path} 2>/dev/null',
-                        password=req.password)
+                        password=password)
         if not out.strip():
             return FilePreviewResponse(rel_path=req.path, file_type=ext,
                                        content="(empty file)")
@@ -327,9 +403,9 @@ def preview_hpc_file(req: HpcPreviewRequest):
         rows = [dict(row) for i, row in enumerate(reader) if i < req.lines]
 
         try:
-            wc_out = _ssh_exec(req.host, req.user,
+            wc_out = _ssh_exec(host, user,
                                f'wc -l < {req.path} 2>/dev/null',
-                               password=req.password, timeout=10)
+                               password=password, timeout=10)
             total = int(wc_out.strip()) - 1
         except Exception:
             total = len(rows)
@@ -341,14 +417,14 @@ def preview_hpc_file(req: HpcPreviewRequest):
         )
 
     # Text files
-    out = _ssh_exec(req.host, req.user,
+    out = _ssh_exec(host, user,
                     f'head -n {req.lines} {req.path} 2>/dev/null',
-                    password=req.password)
+                    password=password)
 
     try:
-        wc_out = _ssh_exec(req.host, req.user,
+        wc_out = _ssh_exec(host, user,
                            f'wc -l < {req.path} 2>/dev/null',
-                           password=req.password, timeout=10)
+                           password=password, timeout=10)
         total_lines = int(wc_out.strip())
     except Exception:
         total_lines = 0
@@ -362,15 +438,26 @@ def preview_hpc_file(req: HpcPreviewRequest):
 
 @router.post("/hpc/disconnect")
 def disconnect_hpc(req: HpcDisconnectRequest):
-    """Close SSH connection and clear credentials from memory."""
-    key = (req.host, req.user)
-    with _ssh_lock:
-        client = _ssh_pool.pop(key, None)
-        if client is not None:
-            try:
-                client.close()
-            except Exception:
-                pass
+    """Close SSH connection, revoke session token, and clear credentials."""
+    # Resolve host/user from session_token if provided
+    if req.session_token:
+        resolved = _resolve_session(req.session_token)
+        if resolved is not None:
+            host, user = resolved
+        else:
+            host, user = req.host, req.user
+        _revoke_session(req.session_token)
+    else:
+        host, user = req.host, req.user
+    if host and user:
+        key = (host, user)
+        with _ssh_lock:
+            client = _ssh_pool.pop(key, None)
+            if client is not None:
+                try:
+                    client.close()
+                except Exception:
+                    pass
     return {"disconnected": True}
 
 
@@ -391,9 +478,12 @@ def disconnect_all_hpc():
 def list_hpc_cases_files(req: HpcCasesRequest):
     """List cases_*.csv files from the remote ReEDS repo and parse case names."""
     if not re.match(r'^[a-zA-Z0-9/_.\-~]+$', req.reeds_path):
-        raise HTTPException(status_code=400, detail="Invalid path characters")    # List all cases*.csv files
+        raise HTTPException(status_code=400, detail="Invalid path characters")
+    host, user, password = _resolve_creds(
+        req.session_token, req.host, req.user, req.password)
+    # List all cases*.csv files
     cmd = f'ls -1 {req.reeds_path}/cases*.csv 2>/dev/null'
-    out = _ssh_exec(req.host, req.user, cmd, password=req.password, timeout=15)
+    out = _ssh_exec(host, user, cmd, password=password, timeout=15)
 
     results = []
     for fpath in out.strip().splitlines():
@@ -413,8 +503,8 @@ def list_hpc_cases_files(req: HpcCasesRequest):
         # Read first lines to parse case names
         head_cmd = f'head -n 200 {fpath} 2>/dev/null'
         try:
-            csv_out = _ssh_exec(req.host, req.user, head_cmd,
-                                password=req.password, timeout=15)
+            csv_out = _ssh_exec(host, user, head_cmd,
+                                password=password, timeout=15)
         except Exception:
             csv_out = ""
 
@@ -441,9 +531,10 @@ def list_hpc_cases_files(req: HpcCasesRequest):
 # ── HPC: connection check, conda envs, env health, slurm queue ────────────────
 
 class HpcConnectRequest(BaseModel):
-    host: str = Field(..., description="HPC login node hostname")
-    user: str = Field(..., description="SSH username")
+    host: str = Field(default="", description="HPC login node hostname")
+    user: str = Field(default="", description="SSH username")
     password: str = Field(default="", description="SSH password (never logged)")
+    session_token: str = Field(default="", description="Opaque session token from /hpc/connect")
 
 
 class HpcEnvCheckRequest(HpcConnectRequest):
@@ -453,7 +544,13 @@ class HpcEnvCheckRequest(HpcConnectRequest):
 
 @router.post("/hpc/connect")
 def hpc_connect(req: HpcConnectRequest):
-    """Verify SSH login. Returns home dir and a few suggested ReEDS-repo path candidates."""
+    """Verify SSH login. Returns home dir, suggested ReEDS-repo paths, and a session token.
+
+    The returned `session_token` lets the frontend make subsequent HPC API calls
+    without re-sending the password. Tokens expire after 30 min of inactivity.
+    """
+    if not req.host or not req.user:
+        raise HTTPException(status_code=400, detail="host and user are required")
     out = _ssh_exec(req.host, req.user,
                     "echo HOME=$HOME; echo HOSTNAME=$(hostname);"
                     " for d in $HOME $HOME/* /projects/$USER /scratch/$USER; do"
@@ -476,18 +573,27 @@ def hpc_connect(req: HpcConnectRequest):
             cand = line[5:]
             if cand and cand not in candidates:
                 candidates.append(cand)
-    return {"ok": True, "home": home, "hostname": hostname, "suggested_paths": candidates[:6]}
+    token = _mint_session(req.host, req.user)
+    return {
+        "ok": True,
+        "home": home,
+        "hostname": hostname,
+        "suggested_paths": candidates[:6],
+        "session_token": token,
+    }
 
 
 @router.post("/hpc/conda-envs")
 def hpc_conda_envs(req: HpcConnectRequest):
     """Return the list of conda envs available on the HPC for this user."""
-    out = _ssh_exec(req.host, req.user,
+    host, user, password = _resolve_creds(
+        req.session_token, req.host, req.user, req.password)
+    out = _ssh_exec(host, user,
                     "module load anaconda3 2>/dev/null; "
                     "module load conda 2>/dev/null; "
                     "(conda env list 2>/dev/null || ~/.conda/envs/.. 2>/dev/null) | "
                     "grep -v '^#' | awk 'NF>=1 {print $1}'",
-                    password=req.password, timeout=20)
+                    password=password, timeout=20)
     envs: list[dict] = []
     for line in out.splitlines():
         name = line.strip()
@@ -507,26 +613,68 @@ def hpc_env_check(req: HpcEnvCheckRequest):
         raise HTTPException(status_code=400, detail="Invalid reeds_path characters")
     if not re.match(r'^[a-zA-Z0-9_.\-]+$', req.conda_env):
         raise HTTPException(status_code=400, detail="Invalid conda env name")
+    host, user, password = _resolve_creds(
+        req.session_token, req.host, req.user, req.password)
 
-    # One combined script — minimizes SSH round-trips
+    # One combined script — minimizes SSH round-trips. Loads the typical
+    # NREL HPC modules (anaconda3 + gams) so the checks reflect what
+    # runbatch.py / sbatch jobs will actually see at runtime.
     script = (
         "module load anaconda3 2>/dev/null; module load conda 2>/dev/null; "
+        "module load gams 2>/dev/null; "
         f"source activate {req.conda_env} 2>/dev/null || conda activate {req.conda_env} 2>/dev/null; "
-        f"echo CONDA_OK=$([ \"$CONDA_DEFAULT_ENV\" = \"{req.conda_env}\" ] && echo 1 || echo 0); "
         f"echo CONDA_PREFIX=$CONDA_PREFIX; "
         f"echo PYTHON=$(which python 2>/dev/null); "
         "echo GAMS=$(which gams 2>/dev/null); "
         "echo JULIA=$(which julia 2>/dev/null); "
-        f"echo LICENSE=$([ -f {req.reeds_path}/gamslice.txt ] && echo 1 || echo 0); "
+        # GAMS license: a network/site license is fine; check both
+        # in-repo gamslice.txt AND env vars used by GAMS.
+        f"echo LICENSE_FILE=$([ -f {req.reeds_path}/gamslice.txt ] && echo 1 || echo 0); "
+        "echo GAMS_LICENSE_ENV=$GAMSLICE; "
+        "echo GAMS_LICENSE_ENV2=$GAMS_LICENSE_FILE; "
+        # If gams is on PATH, derive its sysdir and look for gamslice.txt
+        # in the standard system location too.
+        "GBIN=$(command -v gams 2>/dev/null); "
+        "if [ -n \"$GBIN\" ]; then "
+        "  GDIR=$(dirname \"$(readlink -f \"$GBIN\" 2>/dev/null || echo $GBIN)\"); "
+        "  echo GAMS_SYSLIC=$([ -f \"$GDIR/gamslice.txt\" ] && echo 1 || echo 0); "
+        "fi; "
         f"echo REPO=$([ -f {req.reeds_path}/cases.csv ] && [ -f {req.reeds_path}/runbatch.py ] && echo 1 || echo 0); "
         f"echo SLURM=$(which sbatch 2>/dev/null)"
     )
-    out = _ssh_exec(req.host, req.user, script, password=req.password, timeout=25)
+    out = _ssh_exec(host, user, script, password=password, timeout=25)
     info: dict[str, str] = {}
     for line in out.splitlines():
         if "=" in line:
             k, _, v = line.partition("=")
             info[k.strip()] = v.strip()
+
+    # Conda env is "ok" if the prefix points at a directory matching the
+    # env name (basename match) — works whether activation set
+    # CONDA_DEFAULT_ENV or not.
+    conda_prefix = info.get("CONDA_PREFIX", "")
+    conda_ok = bool(conda_prefix) and (
+        conda_prefix.rstrip("/").endswith("/" + req.conda_env)
+        or conda_prefix.rstrip("/").split("/")[-1] == req.conda_env
+    )
+
+    # GAMS license: any of the three signals counts (in-repo file,
+    # env var pointing at a license, or sysdir gamslice.txt — i.e. a
+    # site/network license already configured for this user).
+    license_repo = info.get("LICENSE_FILE") == "1"
+    license_env = bool(info.get("GAMS_LICENSE_ENV") or info.get("GAMS_LICENSE_ENV2"))
+    license_sys = info.get("GAMS_SYSLIC") == "1"
+    license_ok = license_repo or license_env or license_sys
+    if license_repo:
+        license_detail = f"found in repo: {req.reeds_path}/gamslice.txt"
+    elif license_env:
+        license_detail = (
+            f"env var: {info.get('GAMS_LICENSE_ENV') or info.get('GAMS_LICENSE_ENV2')}"
+        )
+    elif license_sys:
+        license_detail = "site license in GAMS sysdir"
+    else:
+        license_detail = "not found (no gamslice.txt and no GAMS_LICENSE_FILE env)"
 
     checks = [
         {
@@ -539,8 +687,8 @@ def hpc_env_check(req: HpcEnvCheckRequest):
         {
             "name": "conda_env",
             "label": f"Conda env ({req.conda_env})",
-            "ok": info.get("CONDA_OK") == "1",
-            "detail": info.get("CONDA_PREFIX") or "not found / activation failed",
+            "ok": conda_ok,
+            "detail": conda_prefix or "not found / activation failed",
             "fixable": False,
         },
         {
@@ -559,9 +707,9 @@ def hpc_env_check(req: HpcEnvCheckRequest):
         },
         {
             "name": "gams_license",
-            "label": "GAMS license (gamslice.txt)",
-            "ok": info.get("LICENSE") == "1",
-            "detail": "found in repo" if info.get("LICENSE") == "1" else "missing in repo root",
+            "label": "GAMS license",
+            "ok": license_ok,
+            "detail": license_detail,
             "fixable": False,
         },
         {
@@ -585,10 +733,12 @@ def hpc_env_check(req: HpcEnvCheckRequest):
 @router.post("/hpc/squeue")
 def hpc_squeue(req: HpcConnectRequest):
     """Return the current Slurm queue for this user."""
-    out = _ssh_exec(req.host, req.user,
-                    f"squeue -u {req.user} -h "
+    host, user, password = _resolve_creds(
+        req.session_token, req.host, req.user, req.password)
+    out = _ssh_exec(host, user,
+                    f"squeue -u {user} -h "
                     "-o '%i|%j|%T|%M|%l|%R' 2>/dev/null",
-                    password=req.password, timeout=15)
+                    password=password, timeout=15)
     jobs = []
     for line in out.splitlines():
         parts = line.split("|")
