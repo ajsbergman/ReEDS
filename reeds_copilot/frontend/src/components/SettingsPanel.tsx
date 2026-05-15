@@ -414,7 +414,7 @@ export default function SettingsPanel() {
               <div className="settings-api-card nlr">
                 <div className="settings-api-card-header">
                   <span>🏢</span>
-                  <strong>NLR Staff (recommended)</strong>
+                  <strong>NLR Staff (LiteLLM)</strong>
                 </div>
                 <p>
                   NLR provides LLM access through its internal LiteLLM proxy.
