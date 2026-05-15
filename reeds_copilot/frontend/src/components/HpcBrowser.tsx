@@ -20,8 +20,8 @@ type SortKey = "name" | "type" | "size" | "modified";
 type SortDir = "asc" | "desc";
 
 const HPC_CLUSTERS: { label: string; host: string }[] = [
-  { label: "Kestrel", host: "kestrel.hpc.nrel.gov" },
-  { label: "Eagle", host: "eagle.hpc.nrel.gov" },
+  { label: "Kestrel", host: "kestrel.hpc.nlr.gov" },
+  { label: "Eagle", host: "eagle.hpc.nlr.gov" },
   { label: "Custom", host: "" },
 ];
 
@@ -72,7 +72,7 @@ function statusBadge(s: string) {
 export default function HpcBrowser() {
   /* ── Connection state ─────────────────────────────── */
   const [cluster, setCluster] = useState("kestrel");
-  const [hpcHost, setHpcHost] = useState("kestrel.hpc.nrel.gov");
+  const [hpcHost, setHpcHost] = useState("kestrel.hpc.nlr.gov");
   const [hpcUser, setHpcUser] = useState("");
   const [hpcPassword, setHpcPassword] = useState("");
   const [connected, setConnected] = useState(false);

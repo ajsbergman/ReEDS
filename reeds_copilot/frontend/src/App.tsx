@@ -38,7 +38,7 @@ export default function App() {
   const [sources, setSources] = useState<SourceSnippet[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [health, setHealth] = useState<HealthResponse | null>(null);
-  const [showWelcome, setShowWelcome] = useState<boolean | null>(true);
+  const [showWelcome, setShowWelcome] = useState<boolean | null>(null);
 
   // Session state
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -60,8 +60,15 @@ export default function App() {
     healthAPI()
       .then((h) => {
         setHealth(h);
+        // Skip welcome screen if a key is already stored or the active
+        // provider has a key configured (env var or otherwise).
+        const hasStored = (h.stored_keys?.length ?? 0) > 0;
+        setShowWelcome(!(hasStored || h.api_key_set));
       })
-      .catch(() => {});
+      .catch(() => {
+        // If health check fails, still show welcome so user can configure.
+        setShowWelcome(true);
+      });
   }, []);
 
   // NOTE: We intentionally do NOT cancel runs on beforeunload.
@@ -89,6 +96,13 @@ export default function App() {
         .catch(() => {});
     }, 500);
   }, [messages, sessionId]);
+
+  // Clean up debounced save timer on unmount
+  useEffect(() => {
+    return () => {
+      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    };
+  }, []);
 
   // Create a new session when user sends the first message (if no active session)
   const ensureSession = useCallback(async (): Promise<string> => {

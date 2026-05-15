@@ -1,6 +1,7 @@
 import { useRef, useEffect, useState, type FormEvent } from "react";
 import ReactMarkdown from "react-markdown";
-import { chatAPI, rawFileURL, type ChatResponse, type SourceSnippet, type ChatAttachment } from "../lib/api";
+import { chatAPI, rawFileURL, switchProviderAPI, healthAPI, type ChatResponse, type SourceSnippet, type ChatAttachment } from "../lib/api";
+import { PROVIDERS } from "../lib/providers";
 
 export interface Message {
   role: "user" | "assistant";
@@ -132,6 +133,18 @@ export default function ChatPanel({ mode, selectedPath, onSources, messages, set
   const [error, setError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
+  // Provider switcher state
+  const [activeProvider, setActiveProvider] = useState("");
+  const [storedKeys, setStoredKeys] = useState<string[]>([]);
+  const [switchingProvider, setSwitchingProvider] = useState(false);
+
+  useEffect(() => {
+    healthAPI().then((h) => {
+      setActiveProvider(h.llm_provider);
+      setStoredKeys(h.stored_keys ?? []);
+    }).catch(() => {});
+  }, []);
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -164,6 +177,28 @@ export default function ChatPanel({ mode, selectedPath, onSources, messages, set
       setLoading(false);
     }
   }
+
+  async function handleSwitchInChat(providerValue: string) {
+    if (providerValue === activeProvider || switchingProvider) return;
+    const prov = PROVIDERS.find((p) => p.value === providerValue);
+    if (!prov) return;
+    setSwitchingProvider(true);
+    try {
+      const res = await switchProviderAPI(providerValue, prov.models[0].value);
+      if (res.success) {
+        setActiveProvider(providerValue);
+      } else {
+        setError(res.message);
+      }
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setSwitchingProvider(false);
+    }
+  }
+
+  const availableProviders = PROVIDERS.filter((p) => storedKeys.includes(p.value));
+  const activeProviderDef = PROVIDERS.find((p) => p.value === activeProvider);
 
   return (
     <div className="center-panel">
@@ -200,6 +235,28 @@ export default function ChatPanel({ mode, selectedPath, onSources, messages, set
         <div ref={bottomRef} />
       </div>
       <form className="chat-input-bar" onSubmit={handleSubmit}>
+        {/* Provider switcher – only shown when 2+ providers have keys */}
+        {availableProviders.length >= 2 && (
+          <select
+            value={activeProvider}
+            onChange={(e) => handleSwitchInChat(e.target.value)}
+            disabled={switchingProvider || loading}
+            title="Switch LLM provider"
+            className="chat-provider-switcher"
+          >
+            {availableProviders.map((p) => (
+              <option key={p.value} value={p.value}>
+                {p.icon} {p.label}
+              </option>
+            ))}
+          </select>
+        )}
+        {/* Show active provider badge if only 1 key */}
+        {availableProviders.length === 1 && activeProviderDef && (
+          <span className="chat-provider-badge" title="Active LLM provider">
+            {activeProviderDef.icon}
+          </span>
+        )}
         <input
           value={input}
           onChange={(e) => setInput(e.target.value)}

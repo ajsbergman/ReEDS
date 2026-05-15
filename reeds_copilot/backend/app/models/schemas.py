@@ -105,3 +105,4 @@ class HealthResponse(BaseModel):
     llm_provider: str
     model_name: str
     api_key_set: bool
+    stored_keys: list[str] = []  # providers that have a saved key on disk

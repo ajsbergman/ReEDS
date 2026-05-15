@@ -31,6 +31,7 @@ export default function SetupWizard() {
   // GAMS license input
   const [licenseText, setLicenseText] = useState("");
   const [licenseSaving, setLicenseSaving] = useState(false);
+  const [licenseMsg, setLicenseMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   // Auto-poll when something is running
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -87,12 +88,17 @@ export default function SetupWizard() {
   async function handleSaveLicense() {
     if (!licenseText.trim()) return;
     setLicenseSaving(true);
+    setLicenseMsg(null);
     try {
-      await setupFixAPI("gams_license", "reeds2", licenseText);
-      setLicenseText("");
-      refresh();
-    } catch {
-      // ignore
+      const res = await setupFixAPI("gams_license", "reeds2", licenseText);
+      setLicenseMsg({ ok: res.ok, text: res.detail || (res.ok ? "Saved." : "Save failed.") });
+      if (res.ok) {
+        setLicenseText("");
+        // Re-check after a short delay so the new license is picked up
+        setTimeout(refresh, 800);
+      }
+    } catch (e: any) {
+      setLicenseMsg({ ok: false, text: e?.message || "Network error while saving license." });
     } finally {
       setLicenseSaving(false);
     }
@@ -215,15 +221,59 @@ export default function SetupWizard() {
                     <div className="setup-fix-msg">{fixMsg}</div>
                   )}
 
+                  {/* Restart notice for system installs */}
+                  {isRunning && (step.id === "conda" || step.id === "julia") && (
+                    <div className="setup-restart-notice">
+                      ⚠️ After installation completes, you'll need to <strong>restart ReEDS-Copilot</strong>{" "}
+                      (close and re-run launch.bat) for the new software to be detected on PATH.
+                    </div>
+                  )}
+
                   {/* Guide steps */}
                   {(isFail || isRunning) && step.guide_steps && step.guide_steps.length > 0 && (
                     <div className="setup-guide">
                       <strong>📋 How to fix:</strong>
                       <ol>
                         {step.guide_steps.map((s, i) => (
-                          <li key={i}>{s}</li>
+                          <li key={i} className={s.startsWith("⚠️") || s.startsWith("🖱️") ? "setup-guide-highlight" : ""}>
+                            {s}
+                          </li>
                         ))}
                       </ol>
+                    </div>
+                  )}
+
+                  {/* GAMS special guidance — the only fully manual install */}
+                  {step.id === "gams" && isFail && (
+                    <div className="setup-gams-help">
+                      <p>
+                        <strong>💡 Why can't this be automatic?</strong>{" "}
+                        GAMS requires a download from their website which needs accepting their license terms.
+                        It only takes a few minutes!
+                      </p>
+                      <div className="setup-gams-steps">
+                        <div className="setup-gams-step">
+                          <span className="setup-gams-step-num">1</span>
+                          <div>
+                            <strong>Download</strong>
+                            <p>Go to <a href="https://www.gams.com/download/" target="_blank" rel="noopener noreferrer">gams.com/download</a> and get the latest version for your OS</p>
+                          </div>
+                        </div>
+                        <div className="setup-gams-step">
+                          <span className="setup-gams-step-num">2</span>
+                          <div>
+                            <strong>Install</strong>
+                            <p>Run the installer. Use defaults, but <strong>check "Add GAMS to PATH"</strong></p>
+                          </div>
+                        </div>
+                        <div className="setup-gams-step">
+                          <span className="setup-gams-step-num">3</span>
+                          <div>
+                            <strong>Restart &amp; Re-check</strong>
+                            <p>Close &amp; reopen ReEDS-Copilot, then click Re-check All</p>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   )}
 
@@ -258,6 +308,27 @@ export default function SetupWizard() {
                       >
                         {licenseSaving ? "Saving…" : "💾 Save License"}
                       </button>
+                      {licenseMsg && (
+                        <pre
+                          style={{
+                            marginTop: 8,
+                            padding: "8px 10px",
+                            borderRadius: 4,
+                            fontSize: "0.78rem",
+                            whiteSpace: "pre-wrap",
+                            wordBreak: "break-word",
+                            background: licenseMsg.ok ? "rgba(74,222,128,0.10)" : "rgba(224,82,82,0.10)",
+                            color: licenseMsg.ok ? "var(--success)" : "var(--danger, #e05252)",
+                            border: `1px solid ${licenseMsg.ok ? "rgba(74,222,128,0.4)" : "rgba(224,82,82,0.4)"}`,
+                          }}
+                        >
+                          {licenseMsg.ok ? "✓ " : "✗ "}{licenseMsg.text}
+                        </pre>
+                      )}
+                      <p className="setup-license-hint">
+                        Don't have a license yet? Email{" "}
+                        <a href="mailto:sales@gams.com">sales@gams.com</a> for a free trial!
+                      </p>
                     </div>
                   )}
 

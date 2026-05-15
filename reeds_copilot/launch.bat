@@ -69,8 +69,9 @@ for /f "tokens=5" %%p in ('netstat -ano ^| findstr "LISTENING" ^| findstr ":%FRO
 )
 timeout /t 1 /nobreak >nul
 
-:: Start backend in a minimized window
-start "ReEDS-Copilot Backend" /min cmd /k "cd /d %COPILOT_DIR% && python -m uvicorn app.main:app --host 127.0.0.1 --port %BACKEND_PORT% --app-dir backend"
+:: Start backend in a minimized window (cmd /c so the window auto-closes
+:: when uvicorn exits — supports the in-app Shutdown button)
+start "ReEDS-Copilot Backend" /min cmd /c "cd /d "%COPILOT_DIR%" && python -m uvicorn app.main:app --host 127.0.0.1 --port %BACKEND_PORT% --app-dir backend"
 
 :: Wait for backend (max 30 seconds)
 echo   Waiting for backend...
@@ -78,7 +79,7 @@ set /a TRIES=0
 :wait_backend
 if !TRIES! geq 30 (
     echo   ERROR: Backend did not start in 30 seconds.
-    goto :fail
+    goto :fail_with_cleanup
 )
 timeout /t 1 /nobreak >nul
 set /a TRIES+=1
@@ -86,8 +87,9 @@ python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:%BACK
 if errorlevel 1 goto :wait_backend
 echo         Backend ready.
 
-:: Start frontend in a minimized window
-start "ReEDS-Copilot Frontend" /min cmd /k "cd /d %COPILOT_DIR%frontend && npm run dev"
+:: Start frontend in a minimized window (cmd /c so the window auto-closes
+:: when vite exits)
+start "ReEDS-Copilot Frontend" /min cmd /c "cd /d "%COPILOT_DIR%frontend" && npm run dev"
 
 :: Wait for frontend (max 30 seconds)
 echo   Waiting for frontend...
@@ -95,7 +97,7 @@ set /a TRIES=0
 :wait_frontend
 if !TRIES! geq 30 (
     echo   ERROR: Frontend did not start in 30 seconds.
-    goto :fail
+    goto :fail_with_cleanup
 )
 timeout /t 1 /nobreak >nul
 set /a TRIES+=1
@@ -126,6 +128,12 @@ taskkill /fi "WINDOWTITLE eq ReEDS-Copilot Frontend*" /f >nul 2>&1
 echo   Done. Goodbye!
 timeout /t 2 /nobreak >nul
 exit /b 0
+
+:fail_with_cleanup
+echo   Cleaning up partial start...
+taskkill /fi "WINDOWTITLE eq ReEDS-Copilot Backend*" /f >nul 2>&1
+taskkill /fi "WINDOWTITLE eq ReEDS-Copilot Frontend*" /f >nul 2>&1
+goto :fail
 
 :fail
 echo.

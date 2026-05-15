@@ -37,7 +37,7 @@ class StartRunRequest(BaseModel):
     conda_env: str = "reeds2"
     overwrite: bool = False
     # HPC connection fields
-    hpc_host: str = ""       # e.g. "kestrel.hpc.nrel.gov"
+    hpc_host: str = ""       # e.g. "kestrel.hpc.nlr.gov"
     hpc_user: str = ""       # SSH username
     hpc_password: str = ""   # SSH password (optional if key auth)
     hpc_reeds_path: str = "" # Absolute path to ReEDS on remote HPC

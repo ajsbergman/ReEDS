@@ -95,7 +95,16 @@ async def chat(body: ChatRequest, request: Request, settings: Settings = Depends
             attachments = []
     except Exception as exc:
         log.error("LLM generation failed: %s", exc, exc_info=True)
-        answer = "**LLM Error:** Could not generate response. Please check your API key and try again."
+        # Surface the actual error so the user can diagnose (auth, model name, network, etc.)
+        err_msg = str(exc).strip() or exc.__class__.__name__
+        # Truncate huge tracebacks
+        if len(err_msg) > 600:
+            err_msg = err_msg[:600] + "…"
+        answer = (
+            f"**LLM Error:** {err_msg}\n\n"
+            "_Check your API key, model name, and network in **Settings**. "
+            "If the error mentions an unknown model, your provider may not support the selected model._"
+        )
         attachments = []
 
     return ChatResponse(answer=answer, sources=sources, attachments=attachments)

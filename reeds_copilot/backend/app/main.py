@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .core.config import get_settings
 from .services.llm import build_llm_provider
+from .services import keystore
 from .services.repo_index import RepoIndex
 from .services.run_manager import init_run_manager
 from .api import chat, search, files, health, sessions, runs, setup
@@ -27,15 +28,28 @@ async def lifespan(app: FastAPI):
     repo_index.build()
     app.state.repo_index = repo_index
 
-    # Build LLM provider
+    # Build LLM provider – prefer stored keys from .user/keys.json, fall back to env vars
+    stored_keys = keystore.load_all_keys()
     key_map = {
-        "anthropic": settings.anthropic_api_key,
-        "openai": settings.openai_api_key,
-        "google": settings.google_api_key,
+        "anthropic": stored_keys.get("anthropic") or settings.anthropic_api_key,
+        "openai": stored_keys.get("openai") or settings.openai_api_key,
+        "google": stored_keys.get("google") or settings.google_api_key,
+        "nlr": stored_keys.get("nlr", ""),
     }
-    api_key = key_map.get(settings.llm_provider, "")
-    app.state.llm = build_llm_provider(settings.llm_provider, api_key, settings.model_name or None)
-    log.info("LLM provider: %s  model: %s  key set: %s", settings.llm_provider, settings.model_name, bool(api_key))
+    # Pick the configured provider, or the first provider that has a key
+    provider_name = settings.llm_provider
+    api_key = key_map.get(provider_name, "")
+    if not api_key:
+        # Auto-select the first provider that has a stored key
+        for pname, pkey in key_map.items():
+            if pkey:
+                provider_name = pname
+                api_key = pkey
+                break
+    app.state.llm = build_llm_provider(provider_name, api_key, settings.model_name or None)
+    app.state.active_provider_name = provider_name
+    app.state.active_model_name = settings.model_name or ""
+    log.info("LLM provider: %s  model: %s  key set: %s", provider_name, settings.model_name, bool(api_key))
 
     # Load persisted run history
     init_run_manager(settings.repo_root)

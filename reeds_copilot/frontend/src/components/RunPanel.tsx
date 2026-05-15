@@ -79,7 +79,7 @@ export default function RunPanel() {
 
   /* HPC connection */
   const [hpcCluster, setHpcCluster] = useState<"kestrel" | "eagle" | "custom">("kestrel");
-  const [hpcHost, setHpcHost] = useState("kestrel.hpc.nrel.gov");
+  const [hpcHost, setHpcHost] = useState("kestrel.hpc.nlr.gov");
   const [hpcUser, setHpcUser] = useState("");
   const [hpcPassword, setHpcPassword] = useState("");
   const [hpcReedsPath, setHpcReedsPath] = useState("");
@@ -107,16 +107,15 @@ export default function RunPanel() {
     listCasesFilesAPI()
       .then((files) => {
         setCasesFiles(files);
-        // Default to 'small' or first
-        const small = files.find((f) => f.suffix === "small");
-        if (small) {
-          setSelectedSuffix(small.suffix);
-          setAvailableCases(small.cases);
-          setSelectedCases(small.cases);
-        } else if (files.length > 0) {
-          setSelectedSuffix(files[0].suffix);
-          setAvailableCases(files[0].cases);
-          setSelectedCases(files[0].cases);
+        // Default to 'test' (cases_test.csv), then 'small', then first
+        const preferred =
+          files.find((f) => f.suffix === "test") ||
+          files.find((f) => f.suffix === "small") ||
+          files[0];
+        if (preferred) {
+          setSelectedSuffix(preferred.suffix);
+          setAvailableCases(preferred.cases);
+          setSelectedCases(preferred.cases);
         }
       })
       .catch(() => {});
@@ -149,7 +148,13 @@ export default function RunPanel() {
       try {
         const lic = await getGamsLicenseAPI();
         setLicenseText(lic.content || "");
-      } catch { /* ignore */ }
+      } catch (e) {
+        // Pre-fill failure is non-fatal — surface in fixMsg
+        setFixMsg(
+          "Could not load existing license: " +
+            (e instanceof Error ? e.message : String(e)),
+        );
+      }
       setShowLicenseInput(true);
       return;
     }
@@ -170,11 +175,18 @@ export default function RunPanel() {
   async function handleSaveLicense() {
     setLicenseSaving(true);
     try {
-      await saveGamsLicenseAPI(licenseText);
-      setShowLicenseInput(false);
-      runEnvChecks(selectedEnv);
-    } catch {
-      // ignore
+      const res = await saveGamsLicenseAPI(licenseText);
+      if (res.ok) {
+        setShowLicenseInput(false);
+        setFixMsg(res.detail || "License saved.");
+        runEnvChecks(selectedEnv);
+      } else {
+        setFixMsg(res.detail || "Failed to save license.");
+      }
+    } catch (e) {
+      setFixMsg(
+        "Failed to save license: " + (e instanceof Error ? e.message : String(e)),
+      );
     } finally {
       setLicenseSaving(false);
     }
@@ -303,9 +315,15 @@ export default function RunPanel() {
             // Reload local cases
             listCasesFilesAPI().then((files) => {
               setCasesFiles(files);
-              const small = files.find((f) => f.suffix === "small");
-              if (small) { setSelectedSuffix(small.suffix); setAvailableCases(small.cases); setSelectedCases(small.cases); }
-              else if (files.length > 0) { setSelectedSuffix(files[0].suffix); setAvailableCases(files[0].cases); setSelectedCases(files[0].cases); }
+              const preferred =
+                files.find((f) => f.suffix === "test") ||
+                files.find((f) => f.suffix === "small") ||
+                files[0];
+              if (preferred) {
+                setSelectedSuffix(preferred.suffix);
+                setAvailableCases(preferred.cases);
+                setSelectedCases(preferred.cases);
+              }
             }).catch(() => {});
           }}
           style={{
@@ -447,8 +465,8 @@ export default function RunPanel() {
                 <select value={hpcCluster} onChange={(e) => {
                   const v = e.target.value as "kestrel" | "eagle" | "custom";
                   setHpcCluster(v);
-                  if (v === "kestrel") setHpcHost("kestrel.hpc.nrel.gov");
-                  else if (v === "eagle") setHpcHost("eagle.hpc.nrel.gov");
+                  if (v === "kestrel") setHpcHost("kestrel.hpc.nlr.gov");
+                  else if (v === "eagle") setHpcHost("eagle.hpc.nlr.gov");
                 }} style={{ width: 120 }}>
                   <option value="kestrel">Kestrel</option>
                   <option value="eagle">Eagle</option>

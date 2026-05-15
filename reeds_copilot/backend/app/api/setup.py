@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 import os
+import platform
 import shutil
 import subprocess
 import threading
@@ -16,6 +17,8 @@ from ..services import env_check
 
 log = logging.getLogger(__name__)
 router = APIRouter(prefix="/setup", tags=["setup"])
+
+_IS_WINDOWS = platform.system() == "Windows"
 
 # ── Background task tracking ──────────────────────────────────────────────────
 _task_status: dict[str, dict] = {}
@@ -55,20 +58,30 @@ def _check_conda(repo_root: Path) -> SetupStep:
             id="conda", order=1, title="Anaconda / Miniconda",
             description="Conda is the package manager that handles all Python dependencies for ReEDS. Without it, none of the other steps will work.",
             status="pass", detail=f"✅ {ver} found at {conda_path}",
-            auto_fixable=False,
+            auto_fixable=_IS_WINDOWS,
+        )
+    task = _task_status.get("conda", {})
+    if task.get("running"):
+        return SetupStep(
+            id="conda", order=1, title="Anaconda / Miniconda",
+            description="Conda is the package manager that handles all Python dependencies for ReEDS. Without it, none of the other steps will work.",
+            status="running",
+            detail="⏳ Downloading and installing Miniconda… This takes 2–5 minutes. Please wait.",
+            auto_fixable=_IS_WINDOWS,
         )
     return SetupStep(
         id="conda", order=1, title="Anaconda / Miniconda",
         description="Conda is the package manager that handles all Python dependencies for ReEDS. Without it, none of the other steps will work.",
         status="fail",
         detail="Conda is not installed or not on your system PATH. ReEDS cannot run without it.",
-        auto_fixable=False,
-        guide_url="https://docs.anaconda.com/anaconda/install/",
+        auto_fixable=_IS_WINDOWS,
+        guide_url="https://docs.conda.io/en/latest/miniconda.html",
         guide_steps=[
-            "Download Miniconda (lightweight, recommended) from https://docs.conda.io/en/latest/miniconda.html — or Anaconda (full) from https://www.anaconda.com/download",
-            "Run the installer. When prompted, CHECK the box 'Add to PATH environment variable' — this is critical!",
-            "If you're on Windows: after installing, open a NEW Command Prompt or PowerShell window",
-            "Verify it works: type `conda --version` in your terminal — you should see something like 'conda 24.x.x'",
+            "🖱️ Easiest: Click 'Fix it automatically' — this downloads and installs Miniconda for you (Windows only)" if _IS_WINDOWS else "Download Miniconda from https://docs.conda.io/en/latest/miniconda.html",
+            "Manual alternative: download Miniconda from https://docs.conda.io/en/latest/miniconda.html",
+            "Run the installer — when prompted, CHECK the box 'Add Miniconda to my PATH environment variable'",
+            "⚠️ After installing, you MUST close and re-open your terminal (or restart ReEDS-Copilot) for conda to be detected",
+            "Verify it works: type  conda --version  in a new terminal — you should see 'conda 24.x.x'",
             "Come back here and click Re-check All to continue",
         ],
     )
@@ -154,7 +167,7 @@ def _check_gams_license(repo_root: Path) -> SetupStep:
         auto_fixable=True,
         guide_steps=[
             "You need a valid GAMS license to run ReEDS at full scale",
-            "If you're at NREL: check the ReEDS Teams channel — there's a shared license file pinned there",
+            "If you're at NLR: check the ReEDS Teams channel — there's a shared license file pinned there",
             "Otherwise: contact your team lead or GAMS (https://www.gams.com/) for a license",
             "Once you have the license text (multi-line block of numbers/text), paste it into the box below and click 'Save License'",
             "The file will be saved as gamslice.txt in your ReEDS root directory",
@@ -170,21 +183,31 @@ def _check_julia(repo_root: Path) -> SetupStep:
             id="julia", order=5, title="Julia",
             description="Julia powers the PRAS capacity credit calculations in ReEDS (Augur module). Version 1.12+ is required.",
             status="pass", detail=f"✅ {result['detail']}",
-            auto_fixable=False,
+            auto_fixable=_IS_WINDOWS,
+        )
+    task = _task_status.get("julia", {})
+    if task.get("running"):
+        return SetupStep(
+            id="julia", order=5, title="Julia",
+            description="Julia powers the PRAS capacity credit calculations in ReEDS (Augur module). Version 1.12+ is required.",
+            status="running",
+            detail="⏳ Installing Julia via winget… This takes 2–5 minutes.",
+            auto_fixable=_IS_WINDOWS,
         )
     return SetupStep(
         id="julia", order=5, title="Julia",
         description="Julia powers the PRAS capacity credit calculations in ReEDS (Augur module). Version 1.12+ is required.",
         status="fail",
         detail=result["detail"],
-        auto_fixable=False,
+        auto_fixable=_IS_WINDOWS,
         guide_url="https://julialang.org/downloads/",
         guide_steps=[
-            "Easiest on Windows: open PowerShell and run `winget install julia -s msstore`",
-            "Alternative: download the installer from https://julialang.org/downloads/ (pick version 1.12+)",
-            "On macOS/Linux: run `curl -fsSL https://install.julialang.org | sh` in your terminal",
-            "After installing, verify: open a NEW terminal and type `julia --version` — you should see 'julia version 1.12.x'",
-            "If `julia` is not found, you may need to add it to PATH or restart your terminal",
+            "🖱️ Easiest: Click 'Fix it automatically' — this installs Julia using winget (Windows only)" if _IS_WINDOWS else "Download Julia from https://julialang.org/downloads/",
+            "Manual on Windows: open PowerShell and run:  winget install julia -s msstore",
+            "Manual download: go to https://julialang.org/downloads/ and pick version 1.12+",
+            "On macOS/Linux: run  curl -fsSL https://install.julialang.org | sh  in your terminal",
+            "⚠️ After installing, you MUST open a NEW terminal for Julia to be on your PATH",
+            "Verify: type  julia --version  — you should see 'julia version 1.12.x'",
             "Click Re-check when done",
         ],
     )
@@ -253,14 +276,110 @@ def fix_step(
     repo = settings.repo_root
     env_name = env_check._validate_env_name(body.conda_env)
 
-    if body.step == "conda_env":
+    if body.step == "conda":
+        return _fix_conda()
+    elif body.step == "conda_env":
         return _fix_conda_env(repo, env_name)
     elif body.step == "gams_license":
         return env_check.save_gamslice(repo, body.gams_license)
+    elif body.step == "julia":
+        return _fix_julia()
     elif body.step == "julia_pkgs":
         return _fix_julia_packages(repo)
     else:
         return {"ok": False, "detail": f"No auto-fix available for step '{body.step}'"}
+
+
+def _fix_conda() -> dict:
+    """Download and silently install Miniconda (Windows only)."""
+    if not _IS_WINDOWS:
+        return {"ok": False, "detail": "Auto-install is only supported on Windows. Please install Miniconda manually."}
+    if _task_status.get("conda", {}).get("running"):
+        return {"ok": False, "detail": "Miniconda installation is already running. Please wait."}
+    if shutil.which("conda"):
+        return {"ok": True, "detail": "Conda is already installed."}
+
+    _task_status["conda"] = {"running": True}
+
+    def _do():
+        import tempfile
+        import urllib.request
+        installer_url = "https://repo.anaconda.com/miniconda/Miniconda3-latest-Windows-x86_64.exe"
+        installer_path = Path(tempfile.gettempdir()) / "Miniconda3-latest-Windows-x86_64.exe"
+        try:
+            log.info("Downloading Miniconda from %s …", installer_url)
+            urllib.request.urlretrieve(installer_url, str(installer_path))
+            log.info("Running Miniconda silent installer …")
+            r = subprocess.run(
+                [
+                    str(installer_path),
+                    "/S",               # Silent
+                    "/AddToPath=1",     # Add to PATH
+                    "/RegisterPython=1",
+                ],
+                capture_output=True, text=True, timeout=600,
+            )
+            if r.returncode == 0:
+                _task_status["conda"] = {"running": False, "ok": True}
+                log.info("Miniconda installed successfully")
+            else:
+                _task_status["conda"] = {
+                    "running": False, "ok": False,
+                    "detail": f"Installer exited with code {r.returncode}. {(r.stderr or r.stdout or '')[-300:]}",
+                }
+        except Exception as exc:
+            _task_status["conda"] = {"running": False, "ok": False, "detail": str(exc)[:500]}
+        finally:
+            try:
+                installer_path.unlink(missing_ok=True)
+            except Exception:
+                pass
+
+    threading.Thread(target=_do, daemon=True).start()
+    return {"ok": False, "detail": "Downloading and installing Miniconda… This takes 2–5 minutes. You'll need to restart ReEDS-Copilot after installation for conda to be detected."}
+
+
+def _fix_julia() -> dict:
+    """Install Julia via winget (Windows only)."""
+    if not _IS_WINDOWS:
+        return {"ok": False, "detail": "Auto-install is only supported on Windows. Please install Julia manually."}
+    if _task_status.get("julia", {}).get("running"):
+        return {"ok": False, "detail": "Julia installation is already running. Please wait."}
+
+    _task_status["julia"] = {"running": True}
+
+    def _do():
+        try:
+            log.info("Installing Julia via winget …")
+            r = subprocess.run(
+                [
+                    "winget", "install",
+                    "--id", "Julialang.Julia",
+                    "--source", "winget",
+                    "--accept-package-agreements",
+                    "--accept-source-agreements",
+                ],
+                capture_output=True, text=True, timeout=600,
+            )
+            output = (r.stdout or "") + (r.stderr or "")
+            if r.returncode == 0 or "successfully installed" in output.lower():
+                _task_status["julia"] = {"running": False, "ok": True}
+                log.info("Julia installed successfully via winget")
+            else:
+                _task_status["julia"] = {
+                    "running": False, "ok": False,
+                    "detail": output[-500:] if output else f"winget exited with code {r.returncode}",
+                }
+        except FileNotFoundError:
+            _task_status["julia"] = {
+                "running": False, "ok": False,
+                "detail": "winget not found. Please install Julia manually from https://julialang.org/downloads/",
+            }
+        except Exception as exc:
+            _task_status["julia"] = {"running": False, "ok": False, "detail": str(exc)[:500]}
+
+    threading.Thread(target=_do, daemon=True).start()
+    return {"ok": False, "detail": "Installing Julia via winget… This takes 2–5 minutes. You'll need to restart ReEDS-Copilot after installation for Julia to be detected on PATH."}
 
 
 def _fix_conda_env(repo_root: Path, env_name: str) -> dict:

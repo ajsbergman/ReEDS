@@ -122,22 +122,25 @@ def _gdx_list_symbols(target: Path) -> list[dict]:
     gdxcc.gdxCreate(H, gdxcc.GMS_SSSIZE)
     rc = gdxcc.gdxOpenRead(H, str(target))
     if rc[0] == 0:
+        gdxcc.gdxClose(H)
         raise RuntimeError(f"Cannot open GDX file: {target.name}")
 
-    _, sym_count, _ = gdxcc.gdxSystemInfo(H)
-    symbols: list[dict] = []
-    for i in range(1, sym_count + 1):
-        _, name, dims, typ = gdxcc.gdxSymbolInfo(H, i)
-        _, records, _, expl = gdxcc.gdxSymbolInfoX(H, i)
-        symbols.append({
-            "name": name,
-            "type": _GDX_TYPE_NAMES.get(typ, str(typ)),
-            "dims": dims,
-            "records": records,
-            "description": expl or "",
-        })
-    gdxcc.gdxClose(H)
-    return symbols
+    try:
+        _, sym_count, _ = gdxcc.gdxSystemInfo(H)
+        symbols: list[dict] = []
+        for i in range(1, sym_count + 1):
+            _, name, dims, typ = gdxcc.gdxSymbolInfo(H, i)
+            _, records, _, expl = gdxcc.gdxSymbolInfoX(H, i)
+            symbols.append({
+                "name": name,
+                "type": _GDX_TYPE_NAMES.get(typ, str(typ)),
+                "dims": dims,
+                "records": records,
+                "description": expl or "",
+            })
+        return symbols
+    finally:
+        gdxcc.gdxClose(H)
 
 
 def _gdx_read_symbol(target: Path, symbol: str, max_rows: int = 500) -> dict:
@@ -148,44 +151,46 @@ def _gdx_read_symbol(target: Path, symbol: str, max_rows: int = 500) -> dict:
     gdxcc.gdxCreate(H, gdxcc.GMS_SSSIZE)
     rc = gdxcc.gdxOpenRead(H, str(target))
     if rc[0] == 0:
+        gdxcc.gdxClose(H)
         raise RuntimeError(f"Cannot open GDX file: {target.name}")
 
-    ret, sym_nr = gdxcc.gdxFindSymbol(H, symbol)
-    if sym_nr <= 0:
-        gdxcc.gdxClose(H)
-        raise KeyError(f"Symbol '{symbol}' not found in {target.name}")
+    try:
+        ret, sym_nr = gdxcc.gdxFindSymbol(H, symbol)
+        if sym_nr <= 0:
+            raise KeyError(f"Symbol '{symbol}' not found in {target.name}")
 
-    _, name, dims, typ = gdxcc.gdxSymbolInfo(H, sym_nr)
-    _, total_records, _, expl = gdxcc.gdxSymbolInfoX(H, sym_nr)
+        _, name, dims, typ = gdxcc.gdxSymbolInfo(H, sym_nr)
+        _, total_records, _, expl = gdxcc.gdxSymbolInfoX(H, sym_nr)
 
-    # Build column names: dim1..dimN + Value
-    col_names = [f"dim{j+1}" for j in range(dims)]
-    is_set = typ == 0  # Sets have no meaningful Value column
-    if not is_set:
-        col_names.append("Value")
-
-    gdxcc.gdxDataReadStrStart(H, sym_nr)
-    rows: list[dict] = []
-    for _ in range(min(total_records, max_rows)):
-        ret, keys, values, _ = gdxcc.gdxDataReadStr(H)
-        if ret == 0:
-            break
-        row = {f"dim{j+1}": keys[j] for j in range(dims)}
+        # Build column names: dim1..dimN + Value
+        col_names = [f"dim{j+1}" for j in range(dims)]
+        is_set = typ == 0  # Sets have no meaningful Value column
         if not is_set:
-            row["Value"] = values[0]
-        rows.append(row)
-    gdxcc.gdxDataReadDone(H)
-    gdxcc.gdxClose(H)
+            col_names.append("Value")
 
-    return {
-        "columns": col_names,
-        "rows": rows,
-        "total_rows": total_records,
-        "truncated": total_records > max_rows,
-        "symbol_name": name,
-        "symbol_type": _GDX_TYPE_NAMES.get(typ, str(typ)),
-        "description": expl or "",
-    }
+        gdxcc.gdxDataReadStrStart(H, sym_nr)
+        rows: list[dict] = []
+        for _ in range(min(total_records, max_rows)):
+            ret, keys, values, _ = gdxcc.gdxDataReadStr(H)
+            if ret == 0:
+                break
+            row = {f"dim{j+1}": keys[j] for j in range(dims)}
+            if not is_set:
+                row["Value"] = values[0]
+            rows.append(row)
+        gdxcc.gdxDataReadDone(H)
+
+        return {
+            "columns": col_names,
+            "rows": rows,
+            "total_rows": total_records,
+            "truncated": total_records > max_rows,
+            "symbol_name": name,
+            "symbol_type": _GDX_TYPE_NAMES.get(typ, str(typ)),
+            "description": expl or "",
+        }
+    finally:
+        gdxcc.gdxClose(H)
 
 
 def _preview_gdx(target: Path, rel_path: str, symbol: str | None = None) -> dict:

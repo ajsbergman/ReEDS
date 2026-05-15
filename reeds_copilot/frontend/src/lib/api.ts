@@ -113,6 +113,7 @@ export interface HealthResponse {
   llm_provider: string;
   model_name: string;
   api_key_set: boolean;
+  stored_keys: string[];  // providers that have a saved key on disk
 }
 
 /* ── Endpoints ────────────────────────────────────────────────────────────── */
@@ -222,6 +223,46 @@ export function updateApiKeyAPI(
     provider,
     model,
   });
+}
+
+export function switchProviderAPI(
+  provider: string,
+  model: string = "",
+): Promise<UpdateApiKeyResponse> {
+  return post<UpdateApiKeyResponse>("/config/switch-provider", {
+    provider,
+    model,
+  });
+}
+
+export function deleteApiKeyAPI(provider: string): Promise<{ deleted: boolean; provider: string }> {
+  return request<{ deleted: boolean; provider: string }>(`/config/api-key/${encodeURIComponent(provider)}`, {
+    method: "DELETE",
+  });
+}
+
+/* ── Shutdown ─────────────────────────────────────────────────────────────── */
+
+export interface ShutdownPreview {
+  active_local_runs: { id: string; batch_name: string; status: string }[];
+  active_hpc_runs: { id: string; batch_name: string; status: string }[];
+  safe_to_shutdown: boolean;
+}
+
+export function shutdownPreviewAPI(): Promise<ShutdownPreview> {
+  return request<ShutdownPreview>("/shutdown/preview");
+}
+
+export interface ShutdownResponse {
+  shutdown: boolean;
+  reason?: string;
+  count?: number;
+  cancelled_local_runs?: number;
+  message: string;
+}
+
+export function shutdownBackendAPI(force = false): Promise<ShutdownResponse> {
+  return post<ShutdownResponse>("/shutdown", { force });
 }
 
 /* ── Chat Sessions ────────────────────────────────────────────────────────── */

@@ -189,39 +189,184 @@ def check_remote_files(repo_root: Path) -> dict:
 
 
 def check_gams_license(repo_root: Path) -> dict:
-    """Check if gamslice.txt exists in the repo root."""
-    p = repo_root / "gamslice.txt"
-    if p.exists():
-        # Read first line to show a preview (mask most of it)
+    """Check that a valid GAMS license is in place.
+
+    GAMS searches for ``gamslice.txt`` in:
+      1. the current working directory (here: the repo root)
+      2. the user's GAMS folder (``~/Documents/GAMS`` on Windows, ``~/.gams`` on *nix)
+      3. the GAMS install directory
+
+    We run plain ``gams`` from the repo root (no input file → it just prints
+    license info and exits 0) and parse the maintenance expiration date.
+    """
+    repo_license = repo_root / "gamslice.txt"
+    gams_exe = shutil.which("gams")
+
+    # No GAMS installed → can only check file presence
+    if not gams_exe:
+        if repo_license.exists():
+            return {"ok": True,
+                    "detail": "gamslice.txt found — install GAMS to verify validity."}
+        return {
+            "ok": False,
+            "detail": "gamslice.txt not found and GAMS is not installed.",
+            "fixable": True, "fix_type": "gamslice",
+        }
+
+    # Run `gams` with no model — prints license info and exits 0
+    try:
+        r = _run([gams_exe], timeout=15, cwd=str(repo_root))
+        out = (r.stdout or "") + "\n" + (r.stderr or "")
+    except subprocess.TimeoutExpired:
+        return {"ok": False, "detail": "GAMS license check timed out.",
+                "fixable": True, "fix_type": "gamslice"}
+    except Exception as exc:
+        return {"ok": False, "detail": f"Could not invoke GAMS: {exc}",
+                "fixable": True, "fix_type": "gamslice"}
+
+    out_low = out.lower()
+
+    # Detect "no license" cases
+    if "demo license" in out_low or "evaluation license" in out_low:
+        return {
+            "ok": False,
+            "detail": "GAMS is using a DEMO/evaluation license (limited to small models).",
+            "fixable": True, "fix_type": "gamslice",
+        }
+    if "license file" in out_low and "not found" in out_low:
+        return {
+            "ok": False,
+            "detail": "GAMS cannot find a license file. Place gamslice.txt in the repo root.",
+            "fixable": True, "fix_type": "gamslice",
+        }
+
+    # Where does GAMS think the license is?
+    import re as _re
+    license_path = ""
+    m = _re.search(r"License\s*:\s*([^\r\n]+gamslice[^\r\n]*)", out, _re.IGNORECASE)
+    if m:
+        license_path = m.group(1).strip()
+
+    # Parse maintenance expiration date.  GAMS prints e.g.:
+    #   *** Maintenance expiration date (GAMS base module): Sep 04, 2024
+    months = {"jan":1,"feb":2,"mar":3,"apr":4,"may":5,"jun":6,
+              "jul":7,"aug":8,"sep":9,"oct":10,"nov":11,"dec":12}
+    expiry_str = ""
+    expiry_date = None
+    em = _re.search(
+        r"maintenance\s+expiration\s+date[^:]*:\s*([A-Za-z]{3,9})\s+(\d{1,2}),?\s+(\d{4})",
+        out, _re.IGNORECASE,
+    )
+    if em:
+        from datetime import date as _date
         try:
-            lines = p.read_text(encoding="utf-8").strip().splitlines()
-            n_lines = len(lines)
-            preview = f"{n_lines} line(s)"
-            if n_lines > 0:
-                first = lines[0]
-                preview += f", starts with: {first[:20]}{'...' if len(first) > 20 else ''}"
+            mon = months.get(em.group(1)[:3].lower())
+            if mon:
+                expiry_date = _date(int(em.group(3)), mon, int(em.group(2)))
+                expiry_str = expiry_date.strftime("%b %d, %Y")
         except Exception:
-            preview = "file exists"
-        return {"ok": True, "detail": f"gamslice.txt found ({preview})"}
+            pass
+
+    # No expiry parsed and command failed → invalid
+    if r.returncode != 0 and not expiry_date:
+        return {
+            "ok": False,
+            "detail": "GAMS reported a license error. Check that gamslice.txt is present and valid.",
+            "fixable": True, "fix_type": "gamslice",
+        }
+
+    # Build a friendly source-location hint
+    source_hint = ""
+    if license_path:
+        if str(repo_root).lower() not in license_path.lower():
+            source_hint = (
+                f" Note: GAMS is reading the license from {license_path}, "
+                f"not from the ReEDS repo root. Place a copy of gamslice.txt in "
+                f"{repo_root} so HPC runs that scp the repo find it."
+            )
+        else:
+            source_hint = f" (using {license_path})"
+
+    if expiry_date is not None:
+        from datetime import date as _date
+        days_left = (expiry_date - _date.today()).days
+        if days_left < 0:
+            return {
+                "ok": False,
+                "detail": (
+                    f"GAMS license maintenance EXPIRED on {expiry_str} "
+                    f"({-days_left} days ago). Renew with sales@gams.com or "
+                    f"obtain a fresh gamslice.txt.{source_hint}"
+                ),
+                "fixable": True, "fix_type": "gamslice",
+            }
+        if days_left < 30:
+            return {
+                "ok": True,
+                "detail": (
+                    f"⚠️ GAMS license expires in {days_left} days "
+                    f"(on {expiry_str}). Renew soon.{source_hint}"
+                ),
+            }
+        return {
+            "ok": True,
+            "detail": f"Valid GAMS license — maintenance through {expiry_str}.{source_hint}",
+        }
+
+    # GAMS exit 0 but no expiry parsed → license accepted, format unknown
     return {
-        "ok": False,
-        "detail": "gamslice.txt not found. A GAMS license is needed for HPC runs.",
-        "fixable": True,
-        "fix_type": "gamslice",
+        "ok": True,
+        "detail": f"GAMS license accepted (could not parse expiry).{source_hint}",
     }
 
 
 def save_gamslice(repo_root: Path, content: str) -> dict:
-    """Save user-provided GAMS license content to gamslice.txt."""
+    """Save user-provided GAMS license content to gamslice.txt.
+
+    Writes to two locations so both local runs and HPC ``scp``-deployed runs
+    pick it up:
+
+      1. ``<repo_root>/gamslice.txt`` — needed for HPC (the repo is rsync'd
+         to the cluster, so the license must travel with it).
+      2. The user-level GAMS folder — the path GAMS itself searches when no
+         license is found in the current working directory:
+            * Windows: ``%USERPROFILE%/Documents/GAMS/gamslice.txt``
+            * Linux/Mac: ``~/.gams/gamslice.txt``
+         Without this, GAMS may still read a stale/expired license from the
+         home folder even though a fresh one sits in the repo.
+    """
     content = content.strip()
     if not content:
         return {"ok": False, "detail": "License content is empty"}
-    p = repo_root / "gamslice.txt"
-    try:
-        p.write_text(content + "\n", encoding="utf-8")
-        return {"ok": True, "detail": f"gamslice.txt saved ({len(content.splitlines())} lines)"}
-    except Exception as exc:
-        return {"ok": False, "detail": f"Failed to write gamslice.txt: {exc}"}
+
+    # Pick the user-scope location for the active OS
+    home = Path.home()
+    if os.name == "nt":
+        user_dir = home / "Documents" / "GAMS"
+    else:
+        user_dir = home / ".gams"
+    user_target = user_dir / "gamslice.txt"
+
+    targets = [repo_root / "gamslice.txt", user_target]
+
+    written: list[str] = []
+    errors: list[str] = []
+    for p in targets:
+        try:
+            p.parent.mkdir(parents=True, exist_ok=True)
+            p.write_text(content + "\n", encoding="utf-8")
+            written.append(str(p))
+        except Exception as exc:
+            errors.append(f"{p}: {exc}")
+
+    if not written:
+        return {"ok": False, "detail": "Failed to write gamslice.txt: " + "; ".join(errors)}
+
+    n_lines = len(content.splitlines())
+    detail = f"gamslice.txt saved ({n_lines} lines) to:\n  • " + "\n  • ".join(written)
+    if errors:
+        detail += "\n\nWarnings:\n  • " + "\n  • ".join(errors)
+    return {"ok": True, "detail": detail}
 
 
 # ── Aggregate check ──────────────────────────────────────────────────────────

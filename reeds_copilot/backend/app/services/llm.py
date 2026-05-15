@@ -44,6 +44,7 @@ DEFAULT_MODELS = {
     "anthropic": "claude-opus-4-1",
     "openai": "gpt-4o",
     "google": "gemini-2.5-flash",
+    "nlr": "claude-sonnet-4-6",
 }
 
 
@@ -499,8 +500,26 @@ def _mock_response(user_prompt: str) -> str:
         "⚠️ No LLM API key is configured. This is a **mock response**.\n\n"
         f"You asked: *{user_prompt[:200]}*\n\n"
         "Please go to **Settings** and enter your API key "
-        "(Anthropic, OpenAI, or Google) to get real answers."
+        "(Anthropic, OpenAI, Google, or NLR LiteLLM) to get real answers."
     )
+
+
+# ── NLR LiteLLM (OpenAI-compatible) ───────────────────────────────────────────
+
+class NlrLitellmProvider(OpenAIProvider):
+    """NLR internal LiteLLM proxy — uses the OpenAI SDK with a custom base URL."""
+
+    NLR_BASE_URL = "https://litellm.nlr.gov"
+
+    def __init__(self, api_key: str, model: str = "claude-sonnet-4-6"):
+        super().__init__(api_key, model)
+
+    def _get_client(self):
+        from openai import AsyncOpenAI
+        return AsyncOpenAI(
+            api_key=self._api_key,
+            base_url=self.NLR_BASE_URL,
+        )
 
 
 # ── Factory ───────────────────────────────────────────────────────────────────
@@ -511,6 +530,7 @@ def build_llm_provider(provider_name: str, api_key: str, model: str | None = Non
         "anthropic": lambda: AnthropicProvider(api_key, resolved_model),
         "openai": lambda: OpenAIProvider(api_key, resolved_model),
         "google": lambda: GoogleProvider(api_key, resolved_model),
+        "nlr": lambda: NlrLitellmProvider(api_key, resolved_model),
     }
     factory = providers.get(provider_name)
     if factory is None:

@@ -61,4 +61,23 @@ export const PROVIDERS: ProviderDef[] = [
     ],
     helpUrl: "https://aistudio.google.com/app/apikey",
   },
+  {
+    value: "nlr",
+    label: "NLR LiteLLM",
+    icon: "🏢",
+    desc: "NLR internal proxy (free for NLR staff)",
+    placeholder: "sk-…",
+    models: [
+      { value: "claude-sonnet-4-6", label: "Claude Sonnet 4.6" },
+      { value: "claude-opus-4-7", label: "Claude Opus 4.7" },
+      { value: "claude-opus-4-6", label: "Claude Opus 4.6" },
+      { value: "claude-haiku-4-5", label: "Claude Haiku 4.5" },
+      { value: "gpt-5.4", label: "GPT-5.4" },
+      { value: "gpt-5.3-codex", label: "GPT-5.3 Codex" },
+      { value: "gpt-5-mini", label: "GPT-5 Mini" },
+      { value: "gemini-3.1-pro-preview", label: "Gemini 3.1 Pro (Preview)" },
+      { value: "gemini-3-pro-image-preview", label: "Gemini 3 Pro Image (Preview)" },
+    ],
+    helpUrl: "https://cloud.nlr.gov/",
+  },
 ];
