@@ -44,6 +44,7 @@ Calculated using the [TSC](https://github.nrel.gov/pbrown/TSC) model as describe
 - `planned_lines-*.csv`: Individual planned transmission projects
   - `default`: Included in all runs
     - TransWest Express: Planned online date and capacity from [CAISO 2026](https://www.caiso.com/documents/ceo-report-mar-2026.pdf); route from [TransWest Express](https://www.transwestexpress.net/about/maps.shtml)
+    - SunZia: Planned online date from [CAISO 2026](https://www.caiso.com/documents/apr-13-2026-informational-filing-of-effective-date-transmission-control-agreement-regarding-subscriber-participating-transmission-owners-sunzia-er25-169.pdf); capacity and converter type from [Hitachi](https://www.hitachienergy.com/news-and-events/customer-stories/sunzia-transmission-enabling-3-gw-of-renewable-power-across-the-u-s-southwest); endpoints from [OpenInfraMap](https://openstreetmap.org/way/1420870282)
   - `NTP_MT`: Lines used in the "MT" scenario of the [NTP Study](https://www.energy.gov/oe/national-transmission-planning-study-0)
   - `NTP_P2P`: Lines used in the "P2P" scenario of the [NTP Study](https://www.energy.gov/oe/national-transmission-planning-study-0)
 
