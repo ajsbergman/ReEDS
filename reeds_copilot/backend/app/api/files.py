@@ -2,12 +2,19 @@
 from __future__ import annotations
 
 import csv as csv_mod
+import hashlib
 import io
 import logging
+import os
 import re
 import secrets
+import shutil
+import subprocess
+import sys
+import tempfile
 import threading
 import time
+from pathlib import Path
 
 import paramiko
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -100,6 +107,101 @@ def raw_file(
     suffix = target.suffix.lower()
     media = MEDIA_TYPES.get(suffix, "application/octet-stream")
     return FileResponse(path=str(target), media_type=media)
+
+
+# ── In-browser PowerPoint preview (PPTX → PDF via LibreOffice) ─────────────
+
+
+def _find_soffice() -> str | None:
+    """Locate the LibreOffice / soffice executable, if installed."""
+    for name in ("soffice", "libreoffice"):
+        p = shutil.which(name)
+        if p:
+            return p
+    if sys.platform.startswith("win"):
+        for p in (
+            r"C:\Program Files\LibreOffice\program\soffice.exe",
+            r"C:\Program Files (x86)\LibreOffice\program\soffice.exe",
+        ):
+            if Path(p).exists():
+                return p
+    return None
+
+
+_PPTX_CACHE_DIR = Path(tempfile.gettempdir()) / "reeds_copilot_pptx_cache"
+
+
+@router.get("/pptx-view")
+def pptx_view(
+    path: str = Query(..., description="Relative path to a .pptx inside the repo"),
+    settings: Settings = Depends(get_settings),
+):
+    """Convert a .pptx to PDF (cached) and serve it inline so the browser
+    can render it natively. Falls back to a 503 if LibreOffice is not
+    installed — the frontend should then keep offering the download button.
+    """
+    try:
+        target = safe_resolve(settings.repo_root, path)
+    except PermissionError as exc:
+        raise HTTPException(status_code=403, detail=str(exc))
+    if not target.is_file():
+        raise HTTPException(status_code=404, detail=f"Not a file: {path}")
+    if target.suffix.lower() != ".pptx":
+        raise HTTPException(status_code=400, detail="Only .pptx files are supported")
+
+    soffice = _find_soffice()
+    if not soffice:
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "In-browser PowerPoint preview requires LibreOffice. "
+                "Install it from https://www.libreoffice.org/ (or `winget install "
+                "TheDocumentFoundation.LibreOffice`) and reload. You can still "
+                "download the file with the ⬇ button."
+            ),
+        )
+
+    # Cache key includes path + mtime + size so a re-generated pptx invalidates.
+    st = target.stat()
+    key_src = f"{target.resolve()}|{int(st.st_mtime)}|{st.st_size}"
+    key = hashlib.sha256(key_src.encode("utf-8")).hexdigest()[:16]
+    _PPTX_CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    pdf_path = _PPTX_CACHE_DIR / f"{key}.pdf"
+
+    if not pdf_path.exists():
+        with tempfile.TemporaryDirectory(prefix="pptx2pdf_") as tmp:
+            try:
+                proc = subprocess.run(
+                    [
+                        soffice, "--headless", "--norestore", "--nologo",
+                        "--convert-to", "pdf",
+                        "--outdir", tmp,
+                        str(target),
+                    ],
+                    capture_output=True, timeout=120,
+                    creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+                )
+            except subprocess.TimeoutExpired:
+                raise HTTPException(status_code=504, detail="PPTX conversion timed out (>120s)")
+            produced = Path(tmp) / (target.stem + ".pdf")
+            if not produced.exists():
+                stderr = proc.stderr.decode(errors="replace")[:400] if proc.stderr else ""
+                log.warning("LibreOffice conversion failed for %s: %s", target, stderr)
+                raise HTTPException(
+                    status_code=500,
+                    detail=f"PPTX conversion failed. {stderr or 'No PDF produced.'}",
+                )
+            # Move into the cache atomically
+            os.replace(str(produced), str(pdf_path))
+
+    return FileResponse(
+        path=str(pdf_path),
+        media_type="application/pdf",
+        headers={
+            "Content-Disposition": f'inline; filename="{target.stem}.pdf"',
+            "Cache-Control": "private, max-age=300",
+        },
+    )
 
 
 # ── HPC remote file browsing (via paramiko SSH) ─────────────────────────────

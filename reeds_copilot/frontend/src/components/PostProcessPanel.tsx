@@ -10,6 +10,7 @@ import {
   ppListOutputsAPI,
   rawFileURL,
   downloadFileURL,
+  pptxViewURL,
   type RunFolder,
   type PPJob,
   type PPOutputFile,
@@ -378,6 +379,7 @@ export default function PostProcessPanel({ onClose, onSelectFile }: Props) {
               <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
                 {jobOutputs.filter((f) => [".html", ".pptx"].includes(f.suffix)).map((f) => {
                   const isHtml = f.suffix === ".html";
+                  const isPptx = f.suffix === ".pptx";
                   const isViewable = [".html", ".png", ".jpg", ".csv", ".xlsx"].includes(f.suffix);
                   return (
                     <div key={f.rel_path} style={{
@@ -392,6 +394,14 @@ export default function PostProcessPanel({ onClose, onSelectFile }: Props) {
                       {isHtml && (
                         <a href={rawFileURL(f.rel_path)} target="_blank" rel="noopener noreferrer"
                           className="btn btn-outline"
+                          style={{ fontSize: "0.7rem", padding: "2px 6px", whiteSpace: "nowrap", color: "#fff" }}>
+                          Open ↗
+                        </a>
+                      )}
+                      {isPptx && (
+                        <a href={pptxViewURL(f.rel_path)} target="_blank" rel="noopener noreferrer"
+                          className="btn btn-outline"
+                          title="Render slides as PDF in a new tab (requires LibreOffice on the backend)"
                           style={{ fontSize: "0.7rem", padding: "2px 6px", whiteSpace: "nowrap", color: "#fff" }}>
                           Open ↗
                         </a>

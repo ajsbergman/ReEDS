@@ -183,6 +183,12 @@ export function rawFileURL(path: string): string {
   return `${BASE}/files/raw?path=${encodeURIComponent(path)}`;
 }
 
+/** URL that converts a .pptx to PDF on the backend and serves it inline so
+ *  the browser renders it natively. Returns 503 if LibreOffice isn't installed. */
+export function pptxViewURL(path: string): string {
+  return `${BASE}/files/pptx-view?path=${encodeURIComponent(path)}`;
+}
+
 /* ── HPC remote file browsing ──────────────────────────────────────────────── */
 
 export function listHpcFilesAPI(
