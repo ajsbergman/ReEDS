@@ -29,9 +29,18 @@ class Settings(BaseSettings):
     max_csv_preview_rows: int = 200
 
     # Server
-    host: str = "0.0.0.0"
+    # Bind to loopback only by default so the SSH-password-handling API is
+    # not exposed on the local network. Override via REEDS_COPILOT_HOST env
+    # var if you intentionally need LAN access (and add TLS/auth in front).
+    host: str = Field(default="127.0.0.1", alias="REEDS_COPILOT_HOST")
     port: int = 8001
     cors_origins: list[str] = ["http://localhost:5173", "http://127.0.0.1:5173"]
+
+    # SSH host-key policy:
+    #   "strict" (default) — reject unknown hosts (uses ~/.ssh/known_hosts)
+    #   "tofu"             — Trust-On-First-Use (auto-add unknown hosts)
+    # The frontend can flip this to "tofu" only via explicit user opt-in.
+    ssh_host_key_policy: str = Field(default="strict", alias="REEDS_COPILOT_SSH_POLICY")
 
     model_config = {
         "env_prefix": "",

@@ -161,7 +161,24 @@ def _get_ssh_client(
 
         # Build a new connection
         client = paramiko.SSHClient()
-        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+
+        # ── Host-key verification (defense against MITM on first connect) ──
+        # Always load the user's existing known_hosts so previously-trusted
+        # hosts continue to work. Policy for *unknown* hosts is configurable:
+        #   strict  → RejectPolicy (safe default; user must `ssh host` once
+        #             from a terminal to record the key)
+        #   tofu    → AutoAddPolicy (Trust-On-First-Use; convenient but
+        #             vulnerable to MITM on the very first connect)
+        try:
+            client.load_system_host_keys()
+        except Exception:
+            pass  # known_hosts file may not exist yet on this machine
+
+        policy_name = (get_settings().ssh_host_key_policy or "strict").lower()
+        if policy_name == "tofu":
+            client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        else:
+            client.set_missing_host_key_policy(paramiko.RejectPolicy())
 
         connect_kwargs: dict = dict(
             hostname=host, username=user, timeout=15,
@@ -177,6 +194,22 @@ def _get_ssh_client(
                 status_code=401,
                 detail="SSH authentication failed. Check username/password or SSH keys.",
             )
+        except paramiko.SSHException as exc:
+            # Most commonly: "Server '<host>' not found in known_hosts"
+            msg = str(exc)
+            if "not found in known_hosts" in msg or "not in known_hosts" in msg:
+                raise HTTPException(
+                    status_code=495,  # custom: SSL/cert-equivalent error
+                    detail=(
+                        f"Host key for '{host}' is not in your ~/.ssh/known_hosts. "
+                        f"For your safety the connection was refused (defense against "
+                        f"man-in-the-middle attacks). Run `ssh {user}@{host}` once from "
+                        f"a terminal, accept the host key, then retry. "
+                        f"Or set REEDS_COPILOT_SSH_POLICY=tofu to trust-on-first-use "
+                        f"(less secure)."
+                    ),
+                )
+            raise HTTPException(status_code=502, detail=f"SSH error: {msg}")
         except Exception as exc:
             raise HTTPException(
                 status_code=502,
