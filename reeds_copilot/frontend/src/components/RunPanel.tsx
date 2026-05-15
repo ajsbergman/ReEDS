@@ -12,10 +12,16 @@ import {
   getRunAPI,
   cancelRunAPI,
   deleteRunAPI,
+  hpcConnectAPI,
+  listHpcCondaEnvsAPI,
+  hpcEnvCheckAPI,
+  hpcSqueueAPI,
   type CasesFile,
   type CondaEnv,
   type RunRecord,
   type EnvCheckResult,
+  type HpcEnvCheck,
+  type SlurmJob,
 } from "../lib/api";
 
 /* ─── helpers ─────────────────────────────────────────────────────────────── */
@@ -85,6 +91,19 @@ export default function RunPanel() {
   const [hpcReedsPath, setHpcReedsPath] = useState("");
   const [hpcConnected, setHpcConnected] = useState(false);
   const [hpcLoading, setHpcLoading] = useState(false);
+  const [hpcLoginOk, setHpcLoginOk] = useState(false);
+  const [hpcHome, setHpcHome] = useState("");
+  const [hpcSuggestedPaths, setHpcSuggestedPaths] = useState<string[]>([]);
+  const [hpcLoginError, setHpcLoginError] = useState("");
+
+  /* HPC conda envs + env checks */
+  const [hpcCondaEnvs, setHpcCondaEnvs] = useState<{ name: string; prefix: string }[]>([]);
+  const [hpcSelectedEnv, setHpcSelectedEnv] = useState("reeds2");
+  const [hpcEnvChecks, setHpcEnvChecks] = useState<HpcEnvCheck[]>([]);
+  const [hpcEnvLoading, setHpcEnvLoading] = useState(false);
+
+  /* HPC Slurm queue */
+  const [slurmQueue, setSlurmQueue] = useState<SlurmJob[]>([]);
 
   /* HPC / Slurm config */
   const [slurmAccount, setSlurmAccount] = useState("");
@@ -212,7 +231,26 @@ export default function RunPanel() {
     if (expandedRun) {
       getRunAPI(expandedRun).then(setExpandedDetail).catch(() => {});
     }
+    // Refresh Slurm queue if HPC connected
+    if (target === "hpc" && hpcLoginOk && hpcHost && hpcUser) {
+      hpcSqueueAPI(hpcHost, hpcUser, hpcPassword)
+        .then((r) => setSlurmQueue(r.jobs))
+        .catch(() => {});
+    }
   }
+
+  // Auto-poll Slurm queue every 15s while on HPC tab
+  useEffect(() => {
+    if (target !== "hpc" || !hpcLoginOk) return;
+    const tick = () => {
+      hpcSqueueAPI(hpcHost, hpcUser, hpcPassword)
+        .then((r) => setSlurmQueue(r.jobs))
+        .catch(() => {});
+    };
+    tick();
+    const id = setInterval(tick, 15000);
+    return () => clearInterval(id);
+  }, [target, hpcLoginOk, hpcHost, hpcUser, hpcPassword]);
 
   function handleSuffixChange(suffix: string) {
     setSelectedSuffix(suffix);
@@ -456,95 +494,40 @@ export default function RunPanel() {
           </>
         )}
 
-        {/* ── HPC-only: connection + Slurm config ── */}
+        {/* ── HPC: separated step blocks ── */}
         {target === "hpc" && (
-          <>
-            <div className="run-field">
-              <label>HPC Cluster</label>
-              <div style={{ display: "flex", gap: 6 }}>
-                <select value={hpcCluster} onChange={(e) => {
-                  const v = e.target.value as "kestrel" | "eagle" | "custom";
-                  setHpcCluster(v);
-                  if (v === "kestrel") setHpcHost("kestrel.hpc.nlr.gov");
-                  else if (v === "eagle") setHpcHost("eagle.hpc.nlr.gov");
-                }} style={{ width: 120 }}>
-                  <option value="kestrel">Kestrel</option>
-                  <option value="eagle">Eagle</option>
-                  <option value="custom">Custom</option>
-                </select>
-                <input type="text" value={hpcHost} onChange={(e) => setHpcHost(e.target.value)}
-                  placeholder="hostname" style={{ flex: 1 }} />
-              </div>
-            </div>
-            <div className="run-field">
-              <label>Username</label>
-              <input type="text" value={hpcUser} onChange={(e) => setHpcUser(e.target.value)}
-                placeholder="HPC username" />
-            </div>
-            <div className="run-field">
-              <label>Password</label>
-              <input type="password" value={hpcPassword} onChange={(e) => setHpcPassword(e.target.value)}
-                placeholder="password" />
-            </div>
-            <div className="run-field">
-              <label>Remote ReEDS Path</label>
-              <input type="text" value={hpcReedsPath} onChange={(e) => setHpcReedsPath(e.target.value)}
-                placeholder="/projects/reeds/ReEDS" />
-            </div>
-
-            {/* Connect & load cases */}
-            <button
-              className="run-launch-btn"
-              style={{ marginBottom: 12, background: hpcConnected ? "#4caf50" : undefined }}
-              disabled={hpcLoading || !hpcHost || !hpcUser || !hpcPassword || !hpcReedsPath}
-              onClick={() => {
-                setHpcLoading(true);
-                setError("");
-                listHpcCasesFilesAPI(hpcHost, hpcUser, hpcReedsPath, hpcPassword)
-                  .then((files) => {
-                    setCasesFiles(files);
-                    setHpcConnected(true);
-                    const small = files.find((f) => f.suffix === "small");
-                    if (small) {
-                      setSelectedSuffix(small.suffix);
-                      setAvailableCases(small.cases);
-                      setSelectedCases(small.cases);
-                    } else if (files.length > 0) {
-                      setSelectedSuffix(files[0].suffix);
-                      setAvailableCases(files[0].cases);
-                      setSelectedCases(files[0].cases);
-                    }
-                  })
-                  .catch((e) => setError(e instanceof Error ? e.message : String(e)))
-                  .finally(() => setHpcLoading(false));
-              }}
-            >
-              {hpcLoading ? "Connecting…" : hpcConnected ? "✅ Connected — Reload Cases" : "🔌 Connect & Load Cases"}
-            </button>
-            <div className="run-field">
-              <label>Slurm Account (Allocation)</label>
-              <input type="text" value={slurmAccount} onChange={(e) => setSlurmAccount(e.target.value)}
-                placeholder="e.g. reeds" />
-            </div>
-            <div style={{ display: "flex", gap: 8 }}>
-              <div className="run-field" style={{ flex: 1 }}>
-                <label>Walltime</label>
-                <input type="text" value={slurmWalltime} onChange={(e) => setSlurmWalltime(e.target.value)}
-                  placeholder="2-00:00:00" />
-              </div>
-              <div className="run-field" style={{ flex: 1 }}>
-                <label>Partition</label>
-                <input type="text" value={slurmPartition} onChange={(e) => setSlurmPartition(e.target.value)}
-                  placeholder="(default)" />
-              </div>
-              <div className="run-field" style={{ flex: 1 }}>
-                <label>Memory (MB)</label>
-                <input type="text" value={slurmMemory} onChange={(e) => setSlurmMemory(e.target.value)}
-                  placeholder="246000" />
-              </div>
-            </div>
-          </>
+          <HpcConfigBlocks
+            hpcCluster={hpcCluster} setHpcCluster={setHpcCluster}
+            hpcHost={hpcHost} setHpcHost={setHpcHost}
+            hpcUser={hpcUser} setHpcUser={setHpcUser}
+            hpcPassword={hpcPassword} setHpcPassword={setHpcPassword}
+            hpcReedsPath={hpcReedsPath} setHpcReedsPath={setHpcReedsPath}
+            hpcLoginOk={hpcLoginOk} setHpcLoginOk={setHpcLoginOk}
+            hpcHome={hpcHome} setHpcHome={setHpcHome}
+            hpcSuggestedPaths={hpcSuggestedPaths} setHpcSuggestedPaths={setHpcSuggestedPaths}
+            hpcLoginError={hpcLoginError} setHpcLoginError={setHpcLoginError}
+            hpcConnected={hpcConnected} setHpcConnected={setHpcConnected}
+            hpcLoading={hpcLoading} setHpcLoading={setHpcLoading}
+            casesFiles={casesFiles} setCasesFiles={setCasesFiles}
+            setSelectedSuffix={setSelectedSuffix}
+            setAvailableCases={setAvailableCases}
+            setSelectedCases={setSelectedCases}
+            hpcCondaEnvs={hpcCondaEnvs} setHpcCondaEnvs={setHpcCondaEnvs}
+            hpcSelectedEnv={hpcSelectedEnv} setHpcSelectedEnv={setHpcSelectedEnv}
+            hpcEnvChecks={hpcEnvChecks} setHpcEnvChecks={setHpcEnvChecks}
+            hpcEnvLoading={hpcEnvLoading} setHpcEnvLoading={setHpcEnvLoading}
+            slurmAccount={slurmAccount} setSlurmAccount={setSlurmAccount}
+            slurmWalltime={slurmWalltime} setSlurmWalltime={setSlurmWalltime}
+            slurmPartition={slurmPartition} setSlurmPartition={setSlurmPartition}
+            slurmMemory={slurmMemory} setSlurmMemory={setSlurmMemory}
+            setError={setError}
+          />
         )}
+
+        {/* Cases & launch — only show when local OR (HPC fully connected) */}
+        {(target === "local" || hpcConnected) && (
+        <div className="run-block-cases" style={target === "hpc" ? hpcBlockStyle : undefined}>
+          {target === "hpc" && <h3 style={hpcBlockTitleStyle}>📋 5. Case Configuration & Launch</h3>}
 
         {/* Batch name (original) */}
         <div className="run-field">
@@ -631,6 +614,8 @@ export default function RunPanel() {
         >
           {launching ? "Launching…" : "🚀 Launch Run"}
         </button>
+        </div>
+        )}
       </section>
 
       {/* ── Run history ───────────────────────────────────────────────────── */}
@@ -641,6 +626,18 @@ export default function RunPanel() {
             ↻
           </button>
         </div>
+
+        {/* Slurm live queue (HPC only) */}
+        {target === "hpc" && hpcLoginOk && (
+          <SlurmQueueWidget
+            jobs={slurmQueue}
+            onRefresh={() => {
+              hpcSqueueAPI(hpcHost, hpcUser, hpcPassword)
+                .then((r) => setSlurmQueue(r.jobs))
+                .catch(() => {});
+            }}
+          />
+        )}
 
         {runs.filter((r) => target === "hpc" ? r.target === "hpc" : r.target !== "hpc").length === 0 && (
           <p className="run-empty">No {target === "hpc" ? "HPC" : "local"} runs yet. Launch one above!</p>
@@ -727,6 +724,339 @@ export default function RunPanel() {
           </div>
         ))}
       </section>
+    </div>
+  );
+}
+
+/* ─── HPC step-block helpers ──────────────────────────────────────────────── */
+
+const hpcBlockStyle: React.CSSProperties = {
+  border: "1px solid var(--border)",
+  borderRadius: 8,
+  padding: 14,
+  marginBottom: 14,
+  background: "var(--bg-secondary)",
+};
+
+const hpcBlockTitleStyle: React.CSSProperties = {
+  margin: "0 0 10px 0",
+  fontSize: "0.95rem",
+  fontWeight: 600,
+};
+
+const stepDoneBadge = (ok: boolean) => (
+  <span style={{
+    marginLeft: 8, fontSize: "0.72rem", fontWeight: 600,
+    color: ok ? "#4caf50" : "var(--text-muted)",
+  }}>
+    {ok ? "✅ done" : "⏳ pending"}
+  </span>
+);
+
+interface HpcConfigBlocksProps {
+  hpcCluster: "kestrel" | "eagle" | "custom";
+  setHpcCluster: (v: "kestrel" | "eagle" | "custom") => void;
+  hpcHost: string; setHpcHost: (v: string) => void;
+  hpcUser: string; setHpcUser: (v: string) => void;
+  hpcPassword: string; setHpcPassword: (v: string) => void;
+  hpcReedsPath: string; setHpcReedsPath: (v: string) => void;
+  hpcLoginOk: boolean; setHpcLoginOk: (v: boolean) => void;
+  hpcHome: string; setHpcHome: (v: string) => void;
+  hpcSuggestedPaths: string[]; setHpcSuggestedPaths: (v: string[]) => void;
+  hpcLoginError: string; setHpcLoginError: (v: string) => void;
+  hpcConnected: boolean; setHpcConnected: (v: boolean) => void;
+  hpcLoading: boolean; setHpcLoading: (v: boolean) => void;
+  casesFiles: CasesFile[]; setCasesFiles: (v: CasesFile[]) => void;
+  setSelectedSuffix: (v: string) => void;
+  setAvailableCases: (v: string[]) => void;
+  setSelectedCases: (v: string[]) => void;
+  hpcCondaEnvs: { name: string; prefix: string }[];
+  setHpcCondaEnvs: (v: { name: string; prefix: string }[]) => void;
+  hpcSelectedEnv: string; setHpcSelectedEnv: (v: string) => void;
+  hpcEnvChecks: HpcEnvCheck[]; setHpcEnvChecks: (v: HpcEnvCheck[]) => void;
+  hpcEnvLoading: boolean; setHpcEnvLoading: (v: boolean) => void;
+  slurmAccount: string; setSlurmAccount: (v: string) => void;
+  slurmWalltime: string; setSlurmWalltime: (v: string) => void;
+  slurmPartition: string; setSlurmPartition: (v: string) => void;
+  slurmMemory: string; setSlurmMemory: (v: string) => void;
+  setError: (v: string) => void;
+}
+
+function HpcConfigBlocks(p: HpcConfigBlocksProps) {
+  function handleLogin() {
+    p.setError("");
+    p.setHpcLoginError("");
+    p.setHpcLoading(true);
+    hpcConnectAPI(p.hpcHost, p.hpcUser, p.hpcPassword)
+      .then((info) => {
+        p.setHpcLoginOk(true);
+        p.setHpcHome(info.home);
+        p.setHpcSuggestedPaths(info.suggested_paths);
+        // Auto-fill repo path if empty and we have a candidate
+        if (!p.hpcReedsPath && info.suggested_paths[0]) {
+          p.setHpcReedsPath(info.suggested_paths[0]);
+        }
+        // Also load conda envs
+        listHpcCondaEnvsAPI(p.hpcHost, p.hpcUser, p.hpcPassword)
+          .then((envs) => p.setHpcCondaEnvs(envs))
+          .catch(() => {});
+      })
+      .catch((e) => {
+        p.setHpcLoginOk(false);
+        p.setHpcLoginError(e instanceof Error ? e.message : String(e));
+      })
+      .finally(() => p.setHpcLoading(false));
+  }
+
+  function handleLoadRepo() {
+    p.setError("");
+    p.setHpcLoading(true);
+    listHpcCasesFilesAPI(p.hpcHost, p.hpcUser, p.hpcReedsPath, p.hpcPassword)
+      .then((files) => {
+        p.setCasesFiles(files);
+        p.setHpcConnected(true);
+        const small = files.find((f) => f.suffix === "small");
+        if (small) {
+          p.setSelectedSuffix(small.suffix);
+          p.setAvailableCases(small.cases);
+          p.setSelectedCases(small.cases);
+        } else if (files.length > 0) {
+          p.setSelectedSuffix(files[0].suffix);
+          p.setAvailableCases(files[0].cases);
+          p.setSelectedCases(files[0].cases);
+        }
+      })
+      .catch((e) => p.setError(e instanceof Error ? e.message : String(e)))
+      .finally(() => p.setHpcLoading(false));
+  }
+
+  function handleEnvCheck() {
+    p.setHpcEnvLoading(true);
+    hpcEnvCheckAPI(p.hpcHost, p.hpcUser, p.hpcReedsPath, p.hpcSelectedEnv, p.hpcPassword)
+      .then((r) => p.setHpcEnvChecks(r.checks))
+      .catch(() => p.setHpcEnvChecks([]))
+      .finally(() => p.setHpcEnvLoading(false));
+  }
+
+  return (
+    <>
+      {/* ── Block 1: HPC Login ── */}
+      <div style={hpcBlockStyle}>
+        <h3 style={hpcBlockTitleStyle}>
+          🔐 1. HPC Login {stepDoneBadge(p.hpcLoginOk)}
+        </h3>
+        <div className="run-field">
+          <label>HPC Cluster</label>
+          <div style={{ display: "flex", gap: 6 }}>
+            <select value={p.hpcCluster} onChange={(e) => {
+              const v = e.target.value as "kestrel" | "eagle" | "custom";
+              p.setHpcCluster(v);
+              if (v === "kestrel") p.setHpcHost("kestrel.hpc.nlr.gov");
+              else if (v === "eagle") p.setHpcHost("eagle.hpc.nlr.gov");
+            }} style={{ width: 120 }}>
+              <option value="kestrel">Kestrel</option>
+              <option value="eagle">Eagle</option>
+              <option value="custom">Custom</option>
+            </select>
+            <input type="text" value={p.hpcHost} onChange={(e) => p.setHpcHost(e.target.value)}
+              placeholder="hostname" style={{ flex: 1 }} />
+          </div>
+        </div>
+        <div className="run-field">
+          <label>Username</label>
+          <input type="text" value={p.hpcUser} onChange={(e) => p.setHpcUser(e.target.value)}
+            placeholder="HPC username" autoComplete="username" />
+        </div>
+        <div className="run-field">
+          <label>Password</label>
+          <input type="password" value={p.hpcPassword} onChange={(e) => p.setHpcPassword(e.target.value)}
+            placeholder="password" autoComplete="current-password" />
+        </div>
+        <button
+          className="run-launch-btn"
+          style={{ background: p.hpcLoginOk ? "#4caf50" : undefined }}
+          disabled={p.hpcLoading || !p.hpcHost || !p.hpcUser || !p.hpcPassword}
+          onClick={handleLogin}
+        >
+          {p.hpcLoading ? "Connecting…" : p.hpcLoginOk ? "✅ Logged in — Reconnect" : "🔌 Connect"}
+        </button>
+        {p.hpcLoginError && (
+          <div className="run-error" style={{ marginTop: 8 }}>{p.hpcLoginError}</div>
+        )}
+        {p.hpcLoginOk && p.hpcHome && (
+          <div style={{ marginTop: 8, fontSize: "0.78rem", color: "var(--text-muted)" }}>
+            $HOME = <code>{p.hpcHome}</code>
+          </div>
+        )}
+      </div>
+
+      {/* ── Block 2: ReEDS repo root ── */}
+      <div style={{ ...hpcBlockStyle, opacity: p.hpcLoginOk ? 1 : 0.5 }}>
+        <h3 style={hpcBlockTitleStyle}>
+          📁 2. ReEDS Repo Root {stepDoneBadge(p.hpcConnected)}
+        </h3>
+        {p.hpcSuggestedPaths.length > 0 && (
+          <div style={{ marginBottom: 8, fontSize: "0.8rem", color: "var(--text-muted)" }}>
+            Suggested:{" "}
+            {p.hpcSuggestedPaths.map((path) => (
+              <button
+                key={path}
+                onClick={() => p.setHpcReedsPath(path)}
+                style={{
+                  margin: "2px 4px 2px 0", padding: "2px 8px",
+                  background: "var(--bg)", border: "1px solid var(--border)",
+                  borderRadius: 4, fontSize: "0.75rem", cursor: "pointer",
+                  color: "var(--accent)",
+                }}
+              >
+                {path}
+              </button>
+            ))}
+          </div>
+        )}
+        <div className="run-field">
+          <label>Remote ReEDS Path</label>
+          <input type="text" value={p.hpcReedsPath} onChange={(e) => p.setHpcReedsPath(e.target.value)}
+            placeholder="/projects/reeds/ReEDS" disabled={!p.hpcLoginOk} />
+        </div>
+        <button
+          className="run-launch-btn"
+          style={{ background: p.hpcConnected ? "#4caf50" : undefined }}
+          disabled={p.hpcLoading || !p.hpcLoginOk || !p.hpcReedsPath}
+          onClick={handleLoadRepo}
+        >
+          {p.hpcLoading ? "Loading…" : p.hpcConnected ? "✅ Loaded — Reload Cases" : "📂 Verify & Load Cases"}
+        </button>
+      </div>
+
+      {/* ── Block 3: Conda env + status ── */}
+      <div style={{ ...hpcBlockStyle, opacity: p.hpcConnected ? 1 : 0.5 }}>
+        <h3 style={hpcBlockTitleStyle}>
+          🐍 3. Conda Environment & Status {stepDoneBadge(p.hpcEnvChecks.length > 0 && p.hpcEnvChecks.every((c) => c.ok || c.name === "julia"))}
+        </h3>
+        <div className="run-field">
+          <label>Conda Environment</label>
+          <select value={p.hpcSelectedEnv}
+            onChange={(e) => p.setHpcSelectedEnv(e.target.value)}
+            disabled={!p.hpcConnected}>
+            {p.hpcCondaEnvs.length === 0 && (
+              <option value="reeds2">reeds2 (default)</option>
+            )}
+            {p.hpcCondaEnvs.map((env) => (
+              <option key={env.name} value={env.name}>{env.name}</option>
+            ))}
+          </select>
+        </div>
+        <div className="env-checks">
+          <div className="env-checks-header">
+            <label>Environment Status</label>
+            <button
+              className="env-recheck-btn"
+              onClick={handleEnvCheck}
+              disabled={p.hpcEnvLoading || !p.hpcConnected}
+              title="Re-check"
+            >
+              {p.hpcEnvLoading ? "⏳" : "↻"}
+            </button>
+          </div>
+          {p.hpcEnvChecks.length === 0 && !p.hpcEnvLoading && (
+            <span className="env-check-empty">Click ↻ to check the remote environment</span>
+          )}
+          {p.hpcEnvChecks.map((c) => (
+            <div key={c.name} className={`env-check-row ${c.ok ? "pass" : "fail"}`}>
+              <span className="env-check-icon">{c.ok ? "✅" : "❌"}</span>
+              <span className="env-check-label">{c.label}</span>
+              <span className="env-check-detail">{c.detail}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Block 4: Slurm config ── */}
+      <div style={{ ...hpcBlockStyle, opacity: p.hpcConnected ? 1 : 0.5 }}>
+        <h3 style={hpcBlockTitleStyle}>⚙️ 4. Slurm Configuration</h3>
+        <div className="run-field">
+          <label>Slurm Account (Allocation)</label>
+          <input type="text" value={p.slurmAccount}
+            onChange={(e) => p.setSlurmAccount(e.target.value)}
+            placeholder="e.g. reeds" disabled={!p.hpcConnected} />
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <div className="run-field" style={{ flex: 1 }}>
+            <label>Walltime</label>
+            <input type="text" value={p.slurmWalltime}
+              onChange={(e) => p.setSlurmWalltime(e.target.value)}
+              placeholder="2-00:00:00" disabled={!p.hpcConnected} />
+          </div>
+          <div className="run-field" style={{ flex: 1 }}>
+            <label>Partition</label>
+            <input type="text" value={p.slurmPartition}
+              onChange={(e) => p.setSlurmPartition(e.target.value)}
+              placeholder="(default)" disabled={!p.hpcConnected} />
+          </div>
+          <div className="run-field" style={{ flex: 1 }}>
+            <label>Memory (MB)</label>
+            <input type="text" value={p.slurmMemory}
+              onChange={(e) => p.setSlurmMemory(e.target.value)}
+              placeholder="246000" disabled={!p.hpcConnected} />
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+/* ─── Slurm queue widget ──────────────────────────────────────────────────── */
+
+function SlurmQueueWidget({ jobs, onRefresh }: { jobs: SlurmJob[]; onRefresh: () => void }) {
+  return (
+    <div style={{
+      border: "1px solid var(--border)", borderRadius: 8,
+      padding: 12, marginBottom: 14, background: "var(--bg-secondary)",
+    }}>
+      <div style={{ display: "flex", alignItems: "center", marginBottom: 8 }}>
+        <strong style={{ flex: 1 }}>📡 Slurm Queue (squeue -u $USER)</strong>
+        <span style={{ color: "var(--text-muted)", fontSize: "0.78rem", marginRight: 8 }}>
+          auto-refresh every 15s
+        </span>
+        <button className="run-refresh-btn" onClick={onRefresh} title="Refresh">↻</button>
+      </div>
+      {jobs.length === 0 ? (
+        <div style={{ color: "var(--text-muted)", fontSize: "0.85rem" }}>
+          No active Slurm jobs.
+        </div>
+      ) : (
+        <div style={{ overflowX: "auto" }}>
+          <table style={{ width: "100%", fontSize: "0.78rem", borderCollapse: "collapse" }}>
+            <thead>
+              <tr style={{ color: "var(--text-muted)" }}>
+                <th style={{ textAlign: "left", padding: "4px 8px" }}>Job ID</th>
+                <th style={{ textAlign: "left", padding: "4px 8px" }}>Name</th>
+                <th style={{ textAlign: "left", padding: "4px 8px" }}>State</th>
+                <th style={{ textAlign: "left", padding: "4px 8px" }}>Elapsed</th>
+                <th style={{ textAlign: "left", padding: "4px 8px" }}>Limit</th>
+                <th style={{ textAlign: "left", padding: "4px 8px" }}>Reason / Node</th>
+              </tr>
+            </thead>
+            <tbody>
+              {jobs.map((j) => (
+                <tr key={j.job_id} style={{ borderTop: "1px solid var(--border)" }}>
+                  <td style={{ padding: "4px 8px", color: "var(--accent)" }}>{j.job_id}</td>
+                  <td style={{ padding: "4px 8px" }}>{j.name}</td>
+                  <td style={{ padding: "4px 8px", fontWeight: 600,
+                    color: j.state === "RUNNING" ? "#4caf50"
+                      : j.state === "PENDING" ? "#ff9800" : undefined }}>
+                    {j.state}
+                  </td>
+                  <td style={{ padding: "4px 8px" }}>{j.elapsed}</td>
+                  <td style={{ padding: "4px 8px" }}>{j.limit}</td>
+                  <td style={{ padding: "4px 8px" }}>{j.reason}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
     </div>
   );
 }

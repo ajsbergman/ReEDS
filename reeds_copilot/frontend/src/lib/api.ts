@@ -220,6 +220,71 @@ export function listHpcCasesFilesAPI(
   return post<CasesFile[]>("/files/hpc/cases-files", { host, user, reeds_path, password });
 }
 
+export interface HpcConnectInfo {
+  ok: boolean;
+  home: string;
+  hostname: string;
+  suggested_paths: string[];
+}
+
+export function hpcConnectAPI(
+  host: string,
+  user: string,
+  password: string = "",
+): Promise<HpcConnectInfo> {
+  return post<HpcConnectInfo>("/files/hpc/connect", { host, user, password });
+}
+
+export interface HpcCondaEnv {
+  name: string;
+  prefix: string;
+}
+
+export function listHpcCondaEnvsAPI(
+  host: string,
+  user: string,
+  password: string = "",
+): Promise<HpcCondaEnv[]> {
+  return post<HpcCondaEnv[]>("/files/hpc/conda-envs", { host, user, password });
+}
+
+export interface HpcEnvCheck {
+  name: string;
+  label: string;
+  ok: boolean;
+  detail: string;
+  fixable: boolean;
+}
+
+export function hpcEnvCheckAPI(
+  host: string,
+  user: string,
+  reeds_path: string,
+  conda_env: string,
+  password: string = "",
+): Promise<{ checks: HpcEnvCheck[] }> {
+  return post<{ checks: HpcEnvCheck[] }>("/files/hpc/env-check", {
+    host, user, password, reeds_path, conda_env,
+  });
+}
+
+export interface SlurmJob {
+  job_id: string;
+  name: string;
+  state: string;
+  elapsed: string;
+  limit: string;
+  reason: string;
+}
+
+export function hpcSqueueAPI(
+  host: string,
+  user: string,
+  password: string = "",
+): Promise<{ jobs: SlurmJob[] }> {
+  return post<{ jobs: SlurmJob[] }>("/files/hpc/squeue", { host, user, password });
+}
+
 export function healthAPI(): Promise<HealthResponse> {
   return request<HealthResponse>("/health");
 }

@@ -358,9 +358,7 @@ def disconnect_all_hpc():
 def list_hpc_cases_files(req: HpcCasesRequest):
     """List cases_*.csv files from the remote ReEDS repo and parse case names."""
     if not re.match(r'^[a-zA-Z0-9/_.\-~]+$', req.reeds_path):
-        raise HTTPException(status_code=400, detail="Invalid path characters")
-
-    # List all cases*.csv files
+        raise HTTPException(status_code=400, detail="Invalid path characters")    # List all cases*.csv files
     cmd = f'ls -1 {req.reeds_path}/cases*.csv 2>/dev/null'
     out = _ssh_exec(req.host, req.user, cmd, password=req.password, timeout=15)
 
@@ -405,3 +403,170 @@ def list_hpc_cases_files(req: HpcCasesRequest):
         })
 
     return results
+
+
+# ── HPC: connection check, conda envs, env health, slurm queue ────────────────
+
+class HpcConnectRequest(BaseModel):
+    host: str = Field(..., description="HPC login node hostname")
+    user: str = Field(..., description="SSH username")
+    password: str = Field(default="", description="SSH password (never logged)")
+
+
+class HpcEnvCheckRequest(HpcConnectRequest):
+    reeds_path: str = Field(..., description="Absolute path to ReEDS repo on HPC")
+    conda_env: str = Field(default="reeds2", description="Conda env name to check")
+
+
+@router.post("/hpc/connect")
+def hpc_connect(req: HpcConnectRequest):
+    """Verify SSH login. Returns home dir and a few suggested ReEDS-repo path candidates."""
+    out = _ssh_exec(req.host, req.user,
+                    "echo HOME=$HOME; echo HOSTNAME=$(hostname);"
+                    " for d in $HOME $HOME/* /projects/$USER /scratch/$USER; do"
+                    "   if [ -f \"$d/cases.csv\" ] && [ -f \"$d/runbatch.py\" ]; then echo CAND=$d; fi;"
+                    "   if [ -d \"$d\" ]; then for sub in $d/ReEDS $d/reeds $d/ReEDS-2.0; do"
+                    "     if [ -f \"$sub/cases.csv\" ] && [ -f \"$sub/runbatch.py\" ]; then echo CAND=$sub; fi;"
+                    "   done; fi;"
+                    " done",
+                    password=req.password, timeout=20)
+    home = ""
+    hostname = ""
+    candidates: list[str] = []
+    for line in out.splitlines():
+        line = line.strip()
+        if line.startswith("HOME="):
+            home = line[5:]
+        elif line.startswith("HOSTNAME="):
+            hostname = line[9:]
+        elif line.startswith("CAND="):
+            cand = line[5:]
+            if cand and cand not in candidates:
+                candidates.append(cand)
+    return {"ok": True, "home": home, "hostname": hostname, "suggested_paths": candidates[:6]}
+
+
+@router.post("/hpc/conda-envs")
+def hpc_conda_envs(req: HpcConnectRequest):
+    """Return the list of conda envs available on the HPC for this user."""
+    out = _ssh_exec(req.host, req.user,
+                    "module load anaconda3 2>/dev/null; "
+                    "module load conda 2>/dev/null; "
+                    "(conda env list 2>/dev/null || ~/.conda/envs/.. 2>/dev/null) | "
+                    "grep -v '^#' | awk 'NF>=1 {print $1}'",
+                    password=req.password, timeout=20)
+    envs: list[dict] = []
+    for line in out.splitlines():
+        name = line.strip()
+        if not name or name.startswith("#"):
+            continue
+        envs.append({"name": name, "prefix": ""})
+    # Make sure default appears even if module load failed
+    if not envs:
+        envs = [{"name": "reeds2", "prefix": ""}]
+    return envs
+
+
+@router.post("/hpc/env-check")
+def hpc_env_check(req: HpcEnvCheckRequest):
+    """Run lightweight environment health checks on the HPC."""
+    if not re.match(r'^[a-zA-Z0-9/_.\-~]+$', req.reeds_path):
+        raise HTTPException(status_code=400, detail="Invalid reeds_path characters")
+    if not re.match(r'^[a-zA-Z0-9_.\-]+$', req.conda_env):
+        raise HTTPException(status_code=400, detail="Invalid conda env name")
+
+    # One combined script — minimizes SSH round-trips
+    script = (
+        "module load anaconda3 2>/dev/null; module load conda 2>/dev/null; "
+        f"source activate {req.conda_env} 2>/dev/null || conda activate {req.conda_env} 2>/dev/null; "
+        f"echo CONDA_OK=$([ \"$CONDA_DEFAULT_ENV\" = \"{req.conda_env}\" ] && echo 1 || echo 0); "
+        f"echo CONDA_PREFIX=$CONDA_PREFIX; "
+        f"echo PYTHON=$(which python 2>/dev/null); "
+        "echo GAMS=$(which gams 2>/dev/null); "
+        "echo JULIA=$(which julia 2>/dev/null); "
+        f"echo LICENSE=$([ -f {req.reeds_path}/gamslice.txt ] && echo 1 || echo 0); "
+        f"echo REPO=$([ -f {req.reeds_path}/cases.csv ] && [ -f {req.reeds_path}/runbatch.py ] && echo 1 || echo 0); "
+        f"echo SLURM=$(which sbatch 2>/dev/null)"
+    )
+    out = _ssh_exec(req.host, req.user, script, password=req.password, timeout=25)
+    info: dict[str, str] = {}
+    for line in out.splitlines():
+        if "=" in line:
+            k, _, v = line.partition("=")
+            info[k.strip()] = v.strip()
+
+    checks = [
+        {
+            "name": "repo",
+            "label": "ReEDS repo",
+            "ok": info.get("REPO") == "1",
+            "detail": req.reeds_path if info.get("REPO") == "1" else "cases.csv or runbatch.py missing",
+            "fixable": False,
+        },
+        {
+            "name": "conda_env",
+            "label": f"Conda env ({req.conda_env})",
+            "ok": info.get("CONDA_OK") == "1",
+            "detail": info.get("CONDA_PREFIX") or "not found / activation failed",
+            "fixable": False,
+        },
+        {
+            "name": "python",
+            "label": "Python",
+            "ok": bool(info.get("PYTHON")),
+            "detail": info.get("PYTHON") or "not found",
+            "fixable": False,
+        },
+        {
+            "name": "gams",
+            "label": "GAMS",
+            "ok": bool(info.get("GAMS")),
+            "detail": info.get("GAMS") or "gams not on PATH (try: module load gams)",
+            "fixable": False,
+        },
+        {
+            "name": "gams_license",
+            "label": "GAMS license (gamslice.txt)",
+            "ok": info.get("LICENSE") == "1",
+            "detail": "found in repo" if info.get("LICENSE") == "1" else "missing in repo root",
+            "fixable": False,
+        },
+        {
+            "name": "julia",
+            "label": "Julia",
+            "ok": bool(info.get("JULIA")),
+            "detail": info.get("JULIA") or "not found (only needed for some workflows)",
+            "fixable": False,
+        },
+        {
+            "name": "slurm",
+            "label": "Slurm (sbatch)",
+            "ok": bool(info.get("SLURM")),
+            "detail": info.get("SLURM") or "sbatch not found",
+            "fixable": False,
+        },
+    ]
+    return {"checks": checks}
+
+
+@router.post("/hpc/squeue")
+def hpc_squeue(req: HpcConnectRequest):
+    """Return the current Slurm queue for this user."""
+    out = _ssh_exec(req.host, req.user,
+                    f"squeue -u {req.user} -h "
+                    "-o '%i|%j|%T|%M|%l|%R' 2>/dev/null",
+                    password=req.password, timeout=15)
+    jobs = []
+    for line in out.splitlines():
+        parts = line.split("|")
+        if len(parts) < 6:
+            continue
+        jobs.append({
+            "job_id": parts[0].strip(),
+            "name": parts[1].strip(),
+            "state": parts[2].strip(),
+            "elapsed": parts[3].strip(),
+            "limit": parts[4].strip(),
+            "reason": parts[5].strip(),
+        })
+    return {"jobs": jobs}
