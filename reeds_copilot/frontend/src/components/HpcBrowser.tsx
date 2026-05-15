@@ -1,5 +1,6 @@
 ﻿import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import {
+  hpcConnectAPI,
   listHpcFilesAPI,
   previewHpcFileAPI,
   disconnectHpcAPI,
@@ -75,6 +76,11 @@ export default function HpcBrowser() {
   const [hpcHost, setHpcHost] = useState("kestrel.hpc.nlr.gov");
   const [hpcUser, setHpcUser] = useState("");
   const [hpcPassword, setHpcPassword] = useState("");
+  // Opaque server-issued token returned by /hpc/connect. After login we
+  // wipe the password and use this token for every subsequent HPC API call,
+  // matching the mechanism in RunPanel.
+  const [hpcSessionToken, setHpcSessionToken] = useState("");
+  const [connecting, setConnecting] = useState(false);
   const [connected, setConnected] = useState(false);
 
   /* â”€â”€ File browser state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
@@ -124,7 +130,7 @@ export default function HpcBrowser() {
       if (!hpcHost || !hpcUser) return;
       setLoading(true);
       setError(null);
-      listHpcFilesAPI(hpcHost, hpcUser, path, hpcPassword)
+      listHpcFilesAPI(hpcHost, hpcUser, path, "", hpcSessionToken)
         .then((res: FileListResponse) => {
           setEntries(res.entries);
           setCurrentPath(path);
@@ -136,7 +142,7 @@ export default function HpcBrowser() {
         })
         .finally(() => setLoading(false));
     },
-    [hpcHost, hpcUser, hpcPassword],
+    [hpcHost, hpcUser, hpcSessionToken],
   );
 
   function handleClusterChange(value: string) {
@@ -145,18 +151,43 @@ export default function HpcBrowser() {
     if (match && match.host) setHpcHost(match.host);
   }
 
-  function handleConnect() {
+  async function handleConnect() {
     if (!hpcHost || !hpcUser) { setError("Please enter both hostname and username"); return; }
-    loadDirectory("/");
+    setConnecting(true);
+    setError(null);
+    try {
+      const info = await hpcConnectAPI(hpcHost, hpcUser, hpcPassword);
+      // Server-issued token replaces the password for all later calls.
+      setHpcSessionToken(info.session_token);
+      setHpcPassword("");
+      setConnected(true);
+      // Open the user's home dir if the server gave us one
+      const startPath = info.home || "/";
+      // loadDirectory uses the new token via state by the next render; call
+      // the API directly here so we don't have to wait for re-render.
+      try {
+        const res = await listHpcFilesAPI(hpcHost, hpcUser, startPath, "", info.session_token);
+        setEntries(res.entries);
+        setCurrentPath(startPath);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+      setConnected(false);
+    } finally {
+      setConnecting(false);
+    }
   }
 
   function handleDisconnect() {
-    disconnectHpcAPI(hpcHost, hpcUser).catch(() => {});
+    disconnectHpcAPI(hpcHost, hpcUser, hpcSessionToken).catch(() => {});
     setConnected(false);
     setEntries([]);
     setPreview(null);
     setSelectedFile(null);
     setHpcPassword("");
+    setHpcSessionToken("");
     setError(null);
     setCasesFiles([]);
   }
@@ -169,7 +200,7 @@ export default function HpcBrowser() {
     } else {
       const ext = getExtension(entry.name);
       if (!ext) {
-        listHpcFilesAPI(hpcHost, hpcUser, entry.rel_path, hpcPassword)
+        listHpcFilesAPI(hpcHost, hpcUser, entry.rel_path, "", hpcSessionToken)
           .then((res) => {
             setEntries(res.entries);
             setCurrentPath(entry.rel_path);
@@ -186,7 +217,7 @@ export default function HpcBrowser() {
   function showPreview(entry: FileEntry) {
     setSelectedFile(entry.rel_path);
     setPreviewLoading(true);
-    previewHpcFileAPI(hpcHost, hpcUser, entry.rel_path, hpcPassword)
+    previewHpcFileAPI(hpcHost, hpcUser, entry.rel_path, "", 200, hpcSessionToken)
       .then(setPreview)
       .catch((err) => {
         setPreview({
@@ -236,7 +267,7 @@ export default function HpcBrowser() {
   }
   function sortIndicator(key: SortKey): string {
     if (sortKey !== key) return "";
-    return sortDir === "asc" ? " â–²" : " â–¼";
+    return sortDir === "asc" ? " ▲" : " ▼";
   }
 
   const pathParts = currentPath.split("/").filter(Boolean);
@@ -244,7 +275,7 @@ export default function HpcBrowser() {
   /* â”€â”€ Run form logic (mirrors RunPanel) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€  */
   function loadCasesFiles(path: string) {
     if (!hpcHost || !hpcUser || !path) return;
-    listHpcCasesFilesAPI(hpcHost, hpcUser, path, hpcPassword)
+    listHpcCasesFilesAPI(hpcHost, hpcUser, path, "", hpcSessionToken)
       .then((files) => {
         setCasesFiles(files);
         const small = files.find((f) => f.suffix === "small");
@@ -297,7 +328,8 @@ export default function HpcBrowser() {
         overwrite,
         hpc_host: hpcHost,
         hpc_user: hpcUser,
-        hpc_password: hpcPassword,
+        hpc_password: hpcSessionToken ? "" : hpcPassword,
+        hpc_session_token: hpcSessionToken || undefined,
         hpc_reeds_path: reedsPath.trim(),
         slurm_account: slurmAccount.trim(),
         slurm_walltime: slurmWalltime.trim(),
@@ -338,9 +370,11 @@ export default function HpcBrowser() {
   /* Clear SSH session & password when user closes/refreshes the page */
   useEffect(() => {
     const cleanup = () => {
-      if (hpcHost && hpcUser) {
+      if (hpcSessionToken) {
         // Use sendBeacon for reliability during page unload
-        const payload = JSON.stringify({ host: hpcHost, user: hpcUser });
+        const payload = JSON.stringify({
+          host: hpcHost, user: hpcUser, session_token: hpcSessionToken,
+        });
         navigator.sendBeacon(
           `${import.meta.env.VITE_API_URL ?? "http://localhost:8001/api"}/files/hpc/disconnect`,
           new Blob([payload], { type: "application/json" }),
@@ -349,7 +383,7 @@ export default function HpcBrowser() {
     };
     window.addEventListener("beforeunload", cleanup);
     return () => window.removeEventListener("beforeunload", cleanup);
-  }, [hpcHost, hpcUser]);
+  }, [hpcHost, hpcUser, hpcSessionToken]);
 
   useEffect(() => {
     const hasRunning = runs.some((r) => r.status === "running" || r.status === "queued");
@@ -395,22 +429,32 @@ export default function HpcBrowser() {
           <input type="text" value={hpcUser} onChange={(e) => setHpcUser(e.target.value)}
             placeholder="username" />
           <label>Password</label>
-          <input type="password" value={hpcPassword} onChange={(e) => setHpcPassword(e.target.value)}
-            placeholder="password" />
-          <button className="btn-connect" onClick={handleConnect} disabled={loading}>
-            {loading && !connected ? "Connectingâ€¦" : connected ? "ðŸŸ¢ Connected" : "Connect"}
+          <input type="password" value={hpcPassword}
+            onChange={(e) => setHpcPassword(e.target.value)}
+            disabled={!!hpcSessionToken}
+            placeholder={hpcSessionToken ? "— session active —" : "password"} />
+          <button className="btn-connect" onClick={handleConnect}
+            disabled={connecting || !!hpcSessionToken}>
+            {connecting ? "Connecting…" : connected ? "🟢 Connected" : "Connect"}
           </button>
           {connected && (
-            <button className="btn-disconnect" onClick={handleDisconnect}>Disconnect</button>
+            <button className="btn-disconnect" onClick={handleDisconnect}>
+              🔒 Disconnect
+            </button>
           )}
         </div>
+        {hpcSessionToken && (
+          <div style={{ fontSize: "0.75rem", color: "var(--text-muted)", padding: "4px 12px" }}>
+            🔐 session active (password not stored)
+          </div>
+        )}
       </div>
 
       {error && <div className="error-banner">{error}</div>}
 
       {!connected && !loading && (
         <div className="hpc-empty-state">
-          <p>ðŸ–¥ï¸ Connect to an HPC cluster to browse remote files and launch runs</p>
+          <p>🖥️ Connect to an HPC cluster to browse remote files and launch runs</p>
           <p style={{ fontSize: "0.85rem", opacity: 0.7 }}>
             Enter your credentials and click Connect. Password-based or SSH key auth supported.
           </p>
@@ -445,7 +489,7 @@ export default function HpcBrowser() {
                   );
                 })}
                 {pathParts.length > 0 && (
-                  <span onClick={navigateUp} style={{ marginLeft: 12, cursor: "pointer" }}>â¬† up</span>
+                  <span onClick={navigateUp} style={{ marginLeft: 12, cursor: "pointer" }}>⬆ up</span>
                 )}
               </div>
 
@@ -456,7 +500,7 @@ export default function HpcBrowser() {
                 <span className="sort-col sort-col--date" onClick={() => toggleSort("modified")}>Modified{sortIndicator("modified")}</span>
               </div>
 
-              {loading && <div className="loading">Loadingâ€¦</div>}
+              {loading && <div className="loading">Loading…</div>}
               {!loading && sortedEntries.length === 0 && (
                 <div className="loading" style={{ opacity: 0.6 }}>Empty directory</div>
               )}
@@ -464,7 +508,7 @@ export default function HpcBrowser() {
                 <div key={e.rel_path}
                   className={`file-entry${selectedFile === e.rel_path ? " selected" : ""}`}
                   onClick={() => handleClick(e)}>
-                  <span className="icon">{e.is_dir ? "ðŸ“" : "ðŸ“„"}</span>
+                  <span className="icon">{e.is_dir ? "📁" : "📄"}</span>
                   <span className="name">{e.name}</span>
                   <span className="ext">{e.is_dir ? "" : getExtension(e.name)}</span>
                   <span className="size">{formatSize(e.size)}</span>
@@ -478,7 +522,7 @@ export default function HpcBrowser() {
               {!preview && !previewLoading && (
                 <div className="hpc-empty-state" style={{ padding: "2rem" }}><p>Select a file to preview</p></div>
               )}
-              {previewLoading && <div className="loading">Loading previewâ€¦</div>}
+              {previewLoading && <div className="loading">Loading preview…</div>}
               {preview && !previewLoading && (
                 <div className="hpc-preview-content">
                   <div className="hpc-preview-header">

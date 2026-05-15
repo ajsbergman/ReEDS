@@ -488,6 +488,7 @@ export function startRunAPI(body: {
   hpc_host?: string;
   hpc_user?: string;
   hpc_password?: string;
+  hpc_session_token?: string;
   hpc_reeds_path?: string;
   slurm_account?: string;
   slurm_walltime?: string;
