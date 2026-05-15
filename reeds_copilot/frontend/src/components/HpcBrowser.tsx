@@ -68,24 +68,56 @@ function statusBadge(s: string) {
   );
 }
 
-/* â”€â”€â”€ Main component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+/* --- Main component ------------------------------------------------------ */
+
+// Module-level cache so connection state and form values persist across
+// tab switches (HpcBrowser is unmounted whenever the user navigates away
+// from the HPC Explorer tab). Mirrors the `hpcCache` in RunPanel.
+// NOTE: the password is intentionally NEVER cached -- only the opaque,
+// server-issued session token is kept (and that token expires server-side
+// after the idle timeout configured in backend SESSION_IDLE_TIMEOUT_SECS).
+type HpcExplorerCache = {
+  cluster: string;
+  host: string;
+  user: string;
+  sessionToken: string;
+  connected: boolean;
+  currentPath: string;
+  entries: FileEntry[];
+  reedsPath: string;
+  selectedSuffix: string;
+  selectedCases: string[];
+  batchName: string;
+  simultRuns: number;
+  overwrite: boolean;
+  slurmAccount: string;
+  slurmWalltime: string;
+  slurmPartition: string;
+  slurmMemory: string;
+  slurmMailUser: string;
+  slurmMailBegin: boolean;
+  slurmMailEnd: boolean;
+  slurmMailFail: boolean;
+};
+
+let hpcExplorerCache: HpcExplorerCache | null = null;
 
 export default function HpcBrowser() {
-  /* â”€â”€ Connection state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-  const [cluster, setCluster] = useState("kestrel");
-  const [hpcHost, setHpcHost] = useState("kestrel.hpc.nlr.gov");
-  const [hpcUser, setHpcUser] = useState("");
+  /* -- Connection state -- */
+  const [cluster, setCluster] = useState(() => hpcExplorerCache?.cluster ?? "kestrel");
+  const [hpcHost, setHpcHost] = useState(() => hpcExplorerCache?.host ?? "kestrel.hpc.nlr.gov");
+  const [hpcUser, setHpcUser] = useState(() => hpcExplorerCache?.user ?? "");
   const [hpcPassword, setHpcPassword] = useState("");
   // Opaque server-issued token returned by /hpc/connect. After login we
   // wipe the password and use this token for every subsequent HPC API call,
   // matching the mechanism in RunPanel.
-  const [hpcSessionToken, setHpcSessionToken] = useState("");
+  const [hpcSessionToken, setHpcSessionToken] = useState(() => hpcExplorerCache?.sessionToken ?? "");
   const [connecting, setConnecting] = useState(false);
-  const [connected, setConnected] = useState(false);
+  const [connected, setConnected] = useState(() => hpcExplorerCache?.connected ?? false);
 
-  /* â”€â”€ File browser state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-  const [currentPath, setCurrentPath] = useState("");
-  const [entries, setEntries] = useState<FileEntry[]>([]);
+  /* -- File browser state -- */
+  const [currentPath, setCurrentPath] = useState(() => hpcExplorerCache?.currentPath ?? "");
+  const [entries, setEntries] = useState<FileEntry[]>(() => hpcExplorerCache?.entries ?? []);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>("name");
@@ -96,25 +128,25 @@ export default function HpcBrowser() {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
 
-  /* â”€â”€ Run form state (mirrors RunPanel) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
-  const [reedsPath, setReedsPath] = useState("");
+  /* -- Run form state (mirrors RunPanel) -- */
+  const [reedsPath, setReedsPath] = useState(() => hpcExplorerCache?.reedsPath ?? "");
   const [casesFiles, setCasesFiles] = useState<CasesFile[]>([]);
-  const [selectedSuffix, setSelectedSuffix] = useState("");
+  const [selectedSuffix, setSelectedSuffix] = useState(() => hpcExplorerCache?.selectedSuffix ?? "");
   const [availableCases, setAvailableCases] = useState<string[]>([]);
-  const [selectedCases, setSelectedCases] = useState<string[]>([]);
+  const [selectedCases, setSelectedCases] = useState<string[]>(() => hpcExplorerCache?.selectedCases ?? []);
   const [batchName, setBatchName] = useState(
-    () => `v${new Date().toISOString().slice(0, 10).replace(/-/g, "")}_hpc`,
+    () => hpcExplorerCache?.batchName ?? `v${new Date().toISOString().slice(0, 10).replace(/-/g, "")}_hpc`,
   );
-  const [simultRuns, setSimultRuns] = useState(1);
-  const [overwrite, setOverwrite] = useState(false);
-  const [slurmAccount, setSlurmAccount] = useState("");
-  const [slurmWalltime, setSlurmWalltime] = useState("2-00:00:00");
-  const [slurmPartition, setSlurmPartition] = useState("");
-  const [slurmMemory, setSlurmMemory] = useState("246000");
-  const [slurmMailUser, setSlurmMailUser] = useState("");
-  const [slurmMailBegin, setSlurmMailBegin] = useState(false);
-  const [slurmMailEnd, setSlurmMailEnd] = useState(false);
-  const [slurmMailFail, setSlurmMailFail] = useState(false);
+  const [simultRuns, setSimultRuns] = useState(() => hpcExplorerCache?.simultRuns ?? 1);
+  const [overwrite, setOverwrite] = useState(() => hpcExplorerCache?.overwrite ?? false);
+  const [slurmAccount, setSlurmAccount] = useState(() => hpcExplorerCache?.slurmAccount ?? "");
+  const [slurmWalltime, setSlurmWalltime] = useState(() => hpcExplorerCache?.slurmWalltime ?? "2-00:00:00");
+  const [slurmPartition, setSlurmPartition] = useState(() => hpcExplorerCache?.slurmPartition ?? "");
+  const [slurmMemory, setSlurmMemory] = useState(() => hpcExplorerCache?.slurmMemory ?? "246000");
+  const [slurmMailUser, setSlurmMailUser] = useState(() => hpcExplorerCache?.slurmMailUser ?? "");
+  const [slurmMailBegin, setSlurmMailBegin] = useState(() => hpcExplorerCache?.slurmMailBegin ?? false);
+  const [slurmMailEnd, setSlurmMailEnd] = useState(() => hpcExplorerCache?.slurmMailEnd ?? false);
+  const [slurmMailFail, setSlurmMailFail] = useState(() => hpcExplorerCache?.slurmMailFail ?? false);
   const [launching, setLaunching] = useState(false);
   const [runError, setRunError] = useState("");
 
@@ -190,6 +222,9 @@ export default function HpcBrowser() {
     setHpcSessionToken("");
     setError(null);
     setCasesFiles([]);
+    // Drop cached session so a future tab visit shows the login form,
+    // not a "session expired" message.
+    hpcExplorerCache = null;
   }
 
   function handleClick(entry: FileEntry) {
@@ -366,6 +401,51 @@ export default function HpcBrowser() {
   useEffect(() => {
     if (connected) refreshRuns();
   }, [connected]);
+
+  /* Persist connection + form state to module-level cache so that switching
+     tabs (which unmounts this component) does not lose the session. */
+  useEffect(() => {
+    hpcExplorerCache = {
+      cluster, host: hpcHost, user: hpcUser,
+      sessionToken: hpcSessionToken, connected,
+      currentPath, entries,
+      reedsPath, selectedSuffix, selectedCases,
+      batchName, simultRuns, overwrite,
+      slurmAccount, slurmWalltime, slurmPartition, slurmMemory,
+      slurmMailUser, slurmMailBegin, slurmMailEnd, slurmMailFail,
+    };
+  }, [
+    cluster, hpcHost, hpcUser, hpcSessionToken, connected,
+    currentPath, entries,
+    reedsPath, selectedSuffix, selectedCases,
+    batchName, simultRuns, overwrite,
+    slurmAccount, slurmWalltime, slurmPartition, slurmMemory,
+    slurmMailUser, slurmMailBegin, slurmMailEnd, slurmMailFail,
+  ]);
+
+  /* On (re)mount: if we have a cached session token, refresh the directory
+     listing so any server-side staleness is detected immediately. If the
+     token has expired the API call will 401, and we drop back to the
+     login form. */
+  useEffect(() => {
+    if (!hpcSessionToken || !hpcHost || !hpcUser) return;
+    listHpcFilesAPI(hpcHost, hpcUser, currentPath || "/", "", hpcSessionToken)
+      .then((res) => {
+        setEntries(res.entries);
+        setConnected(true);
+      })
+      .catch((err) => {
+        // Session expired or invalid -- clear cached creds and force re-login
+        const msg = err instanceof Error ? err.message : String(err);
+        setHpcSessionToken("");
+        setConnected(false);
+        setEntries([]);
+        setError(`Session expired -- please reconnect (${msg})`);
+      });
+    // Run only on mount (deps intentionally empty so cached state restoration
+    // happens once when returning to the tab).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   /* Clear SSH session & password when user closes/refreshes the page */
   useEffect(() => {

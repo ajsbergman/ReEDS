@@ -1612,8 +1612,10 @@ details[open] > .settings-api-guide-toggle::before {
 
 .hpc-browser {
   display: flex;
+  flex: 1;
   flex-direction: column;
   height: 100%;
+  min-width: 0;
   overflow: hidden;
 }
 
@@ -1758,7 +1760,7 @@ details[open] > .settings-api-guide-toggle::before {
 }
 
 .hpc-file-list {
-  flex: 1;
+  flex: 1 1 0;
   overflow-y: auto;
   border-right: 1px solid var(--border);
   min-width: 0;
@@ -1770,8 +1772,8 @@ details[open] > .settings-api-guide-toggle::before {
 }
 
 .hpc-preview-pane {
-  width: 45%;
-  min-width: 300px;
+  flex: 1 1 0;
+  min-width: 360px;
   overflow-y: auto;
   background: var(--bg-surface);
 }
