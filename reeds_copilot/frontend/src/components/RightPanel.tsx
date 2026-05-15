@@ -7,35 +7,49 @@ import type { SourceSnippet } from "../lib/api";
 
 interface Props {
   selectedFile: string | null;
+  selectedLine?: number | null;
   sources: SourceSnippet[];
-  onSelectFile: (path: string) => void;
+  onSelectFile: (path: string, line?: number) => void;
   width?: number;
 }
 
-export default function RightPanel({ selectedFile, sources, onSelectFile, width }: Props) {
+export default function RightPanel({ selectedFile, selectedLine, sources, onSelectFile, width }: Props) {
   const [preview, setPreview] = useState<FilePreviewResponse | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [fullMode, setFullMode] = useState(false);
   const [gdxSymbol, setGdxSymbol] = useState<string | null>(null);
 
   useEffect(() => {
     if (!selectedFile) {
       setPreview(null);
+      setLoadError(null);
       setFullMode(false);
       setGdxSymbol(null);
       return;
     }
     let cancelled = false;
     setLoading(true);
+    setLoadError(null);
     previewFileAPI(selectedFile, fullMode, gdxSymbol)
-      .then((res) => { if (!cancelled) setPreview(res); })
-      .catch(() => { if (!cancelled) setPreview(null); })
+      .then((res) => { if (!cancelled) { setPreview(res); setLoadError(null); } })
+      .catch((err) => {
+        if (cancelled) return;
+        setPreview(null);
+        const msg = (err && (err.message || String(err))) || "Unknown error";
+        setLoadError(msg);
+      })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [selectedFile, fullMode, gdxSymbol]);
 
+  // If the caller asked for a specific line, force full-file mode so it can be located
+  useEffect(() => {
+    if (selectedLine && selectedLine > 0) setFullMode(true);
+  }, [selectedFile, selectedLine]);
+
   // Reset full mode and gdx symbol when switching files
-  useEffect(() => { setFullMode(false); setGdxSymbol(null); }, [selectedFile]);
+  useEffect(() => { if (!selectedLine) setFullMode(false); setGdxSymbol(null); }, [selectedFile]);
 
   return (
     <div className="right-panel" style={width ? { width, minWidth: width } : undefined}>
@@ -44,8 +58,8 @@ export default function RightPanel({ selectedFile, sources, onSelectFile, width 
         <>
           <h3>Sources</h3>
           {sources.map((s, i) => (
-            <div key={i} className="source-item" onClick={() => onSelectFile(s.file_path)}>
-              <div className="path">{s.file_path}</div>
+            <div key={i} className="source-item" onClick={() => onSelectFile(s.file_path, s.line)}>
+              <div className="path">{s.file_path}{s.line ? `:${s.line}` : ""}</div>
               {s.snippet && s.snippet !== "(filename match)" && (
                 <div className="snippet">{s.snippet}</div>
               )}
@@ -87,7 +101,25 @@ export default function RightPanel({ selectedFile, sources, onSelectFile, width 
           ) : preview && preview.columns && preview.rows ? (
             <CsvPreview preview={preview} fullMode={fullMode} onViewFull={() => setFullMode(true)} />
           ) : preview && preview.content ? (
-            <HighlightedPreview content={preview.content} filename={selectedFile} truncated={preview.truncated} fullMode={fullMode} onViewFull={() => setFullMode(true)} />
+            <HighlightedPreview content={preview.content} filename={selectedFile} truncated={preview.truncated} fullMode={fullMode} onViewFull={() => setFullMode(true)} highlightLine={selectedLine ?? null} />
+          ) : !loading && loadError ? (
+            <div className="file-preview" style={{ padding: 14, color: "var(--text-muted)" }}>
+              <div style={{ color: "#f87171", fontWeight: 600, marginBottom: 6 }}>
+                Could not open this file
+              </div>
+              <div style={{ fontSize: "0.85rem", marginBottom: 8 }}>
+                <code style={{ color: "#fbbf24" }}>{selectedFile}</code>
+              </div>
+              <div style={{ fontSize: "0.8rem", lineHeight: 1.5 }}>
+                The path may not exist in this repo, may be outside the repo
+                root, or the AI may have cited it without verifying. Try the
+                <strong> Search</strong> tab to find a similar file.
+              </div>
+              <details style={{ marginTop: 10, fontSize: "0.75rem", opacity: 0.7 }}>
+                <summary>Details</summary>
+                <div style={{ marginTop: 4 }}>{loadError}</div>
+              </details>
+            </div>
           ) : null}
         </>
       )}
@@ -101,8 +133,9 @@ export default function RightPanel({ selectedFile, sources, onSelectFile, width 
   );
 }
 
-function HighlightedPreview({ content, filename, truncated, fullMode, onViewFull }: {
+function HighlightedPreview({ content, filename, truncated, fullMode, onViewFull, highlightLine }: {
   content: string; filename: string; truncated?: boolean; fullMode: boolean; onViewFull: () => void;
+  highlightLine?: number | null;
 }) {
   const lang = guessLang(filename);
   const highlighted = useMemo(() => {
@@ -116,6 +149,20 @@ function HighlightedPreview({ content, filename, truncated, fullMode, onViewFull
   }, [content, lang]);
 
   const lines = highlighted.split("\n");
+  const targetLine = highlightLine && highlightLine > 0 ? highlightLine : null;
+
+  // Scroll to the target line whenever it (or the file) changes
+  useEffect(() => {
+    if (!targetLine) return;
+    const id = `right-line-${targetLine}`;
+    // Wait for the DOM to render the new content
+    const t = setTimeout(() => {
+      const el = document.getElementById(id);
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 50);
+    return () => clearTimeout(t);
+  }, [targetLine, content]);
+
   return (
     <div className="file-preview">
       <div className="hljs" style={{
@@ -123,18 +170,33 @@ function HighlightedPreview({ content, filename, truncated, fullMode, onViewFull
         fontFamily: "var(--font-mono)", fontSize: "0.78rem",
         overflow: "auto", maxHeight: "calc(100vh - 160px)", lineHeight: 1.5,
       }}>
-        {lines.map((lineHtml, idx) => (
-          <div key={idx} style={{ display: "flex", minHeight: "1.5em" }}>
-            <span style={{
-              display: "inline-block", width: 40, minWidth: 40, textAlign: "right",
-              paddingRight: 8, color: "var(--text-muted)", opacity: 0.5,
-              userSelect: "none", borderRight: "1px solid var(--border)",
-              marginRight: 8, flexShrink: 0,
-            }}>{idx + 1}</span>
-            <span style={{ whiteSpace: "pre-wrap", wordBreak: "break-all" }}
-              dangerouslySetInnerHTML={{ __html: lineHtml || "&nbsp;" }} />
-          </div>
-        ))}
+        {lines.map((lineHtml, idx) => {
+          const lineNo = idx + 1;
+          const isTarget = targetLine === lineNo;
+          return (
+            <div
+              key={idx}
+              id={`right-line-${lineNo}`}
+              style={{
+                display: "flex", minHeight: "1.5em",
+                background: isTarget ? "rgba(255, 200, 0, 0.18)" : undefined,
+                borderLeft: isTarget ? "3px solid #f59e0b" : "3px solid transparent",
+              }}
+            >
+              <span style={{
+                display: "inline-block", width: 40, minWidth: 40, textAlign: "right",
+                paddingRight: 8,
+                color: isTarget ? "#f59e0b" : "var(--text-muted)",
+                opacity: isTarget ? 1 : 0.5,
+                fontWeight: isTarget ? 700 : 400,
+                userSelect: "none", borderRight: "1px solid var(--border)",
+                marginRight: 8, flexShrink: 0,
+              }}>{lineNo}</span>
+              <span style={{ whiteSpace: "pre-wrap", wordBreak: "break-all" }}
+                dangerouslySetInnerHTML={{ __html: lineHtml || "&nbsp;" }} />
+            </div>
+          );
+        })}
       </div>
       {truncated && !fullMode && (
         <button

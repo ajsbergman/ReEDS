@@ -35,10 +35,12 @@ export default function App() {
   const [tab, setTab] = useState<Tab>("chat");
   const [mode, setMode] = useState<Mode>("general");
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
+  const [selectedLine, setSelectedLine] = useState<number | null>(null);
   const [sources, setSources] = useState<SourceSnippet[]>([]);
   const [messages, setMessages] = useState<Message[]>([]);
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [showWelcome, setShowWelcome] = useState<boolean | null>(null);
+  const [didShutdown, setDidShutdown] = useState(false);
 
   // Session state
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -69,6 +71,14 @@ export default function App() {
         // If health check fails, still show welcome so user can configure.
         setShowWelcome(true);
       });
+  }, []);
+
+  // Listen for backend shutdown so we can show a dedicated stopped screen
+  // instead of falling back to the WelcomeScreen when /health stops responding.
+  useEffect(() => {
+    function onShutdown() { setDidShutdown(true); }
+    window.addEventListener("reeds-backend-shutdown", onShutdown);
+    return () => window.removeEventListener("reeds-backend-shutdown", onShutdown);
   }, []);
 
   // NOTE: We intentionally do NOT cancel runs on beforeunload.
@@ -154,6 +164,15 @@ export default function App() {
   // Show nothing while checking
   if (showWelcome === null) return null;
 
+  // After a clean shutdown, try to close the tab. Browsers block window.close()
+  // unless the tab was opened by JS, so as a fallback we navigate to about:blank
+  // so the user sees an empty tab they can close instead of any UI.
+  if (didShutdown) {
+    try { window.close(); } catch { /* ignore */ }
+    try { window.location.replace("about:blank"); } catch { /* ignore */ }
+    return null;
+  }
+
   // Show welcome/onboarding if no API key
   if (showWelcome) {
     return (
@@ -164,8 +183,9 @@ export default function App() {
     );
   }
 
-  function handleSelectFile(path: string) {
+  function handleSelectFile(path: string, line?: number) {
     setSelectedFile(path);
+    setSelectedLine(line && line > 0 ? line : null);
   }
 
   const sidebarItems: { key: Tab; label: string; tooltip: string }[] = [
@@ -247,7 +267,11 @@ export default function App() {
 
         <div className="content-row">
           {/* Center */}
-          {tab === "chat" && (
+          {/* Keep ChatPanel ALWAYS mounted (just hidden) so an in-flight
+              "Thinking…" request keeps running when the user switches tabs.
+              Unmounting would tear down the loading state and the user would
+              have no idea the answer eventually arrived. */}
+          <div style={{ display: tab === "chat" ? "contents" : "none" }}>
             <ChatPanel
               mode={mode}
               selectedPath={selectedFile}
@@ -255,8 +279,9 @@ export default function App() {
               messages={messages}
               setMessages={handleSetMessages}
               onNavigate={(t) => setTab(t as Tab)}
+              onSelectFile={handleSelectFile}
             />
-          )}
+          </div>
           {tab === "search" && <SearchPanel onSelectFile={handleSelectFile} />}
           {tab === "setup" && <SetupWizard />}
           {tab === "runs" && <RunPanel />}
@@ -275,6 +300,7 @@ export default function App() {
               <ResizeHandle direction="horizontal" onResize={handleRightResize} />
               <RightPanel
                 selectedFile={selectedFile}
+                selectedLine={selectedLine}
                 sources={sources}
                 onSelectFile={handleSelectFile}
                 width={rightWidth}

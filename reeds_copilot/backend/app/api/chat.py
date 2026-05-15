@@ -30,7 +30,9 @@ def _build_context(sources: list[SourceSnippet], selected_content: str | None) -
     if selected_content:
         parts.append(f"<selected_file>\n{selected_content}\n</selected_file>")
     for src in sources:
-        parts.append(f"--- {src.file_path} ---\n{src.snippet}")
+        # Include the matched line number so the LLM cites with #L<line> anchors
+        anchor = f"#L{src.line}" if src.line else ""
+        parts.append(f"--- {src.file_path}{anchor} ---\n{src.snippet}")
     return "\n\n".join(parts)
 
 
@@ -53,7 +55,13 @@ async def chat(body: ChatRequest, request: Request, settings: Settings = Depends
     category = MODE_CATEGORY_MAP.get(body.mode)
     hits = text_search(repo_index, body.message, category=category, max_results=settings.max_retrieval_results)
     sources = [
-        SourceSnippet(file_path=h.file_path, snippet=h.snippet, match_type=h.match_type, score=h.score)
+        SourceSnippet(
+            file_path=h.file_path,
+            snippet=h.snippet,
+            match_type=h.match_type,
+            score=h.score,
+            line=h.line,
+        )
         for h in hits
     ]
 
@@ -71,7 +79,37 @@ async def chat(body: ChatRequest, request: Request, settings: Settings = Depends
     context = _build_context(sources, selected_content)
 
     mode_hint = f"The user is in '{body.mode}' mode."
-    user_prompt = f"{mode_hint}\n\nUser question: {body.message}"
+
+    # Build a hard per-message reminder. LLMs follow recency much more reliably
+    # than the system prompt — list the EXACT files+lines they may cite, and
+    # forbid anything else. This kills hallucinated paths like
+    # "inputs/plant_characteristics/" or invented techs like "battery_2".
+    if sources:
+        allow_lines = []
+        for s in sources:
+            anchor = f"#L{s.line}" if s.line else ""
+            allow_lines.append(f"  - [{s.file_path}{anchor}]({s.file_path}{anchor})")
+        allow_block = "\n".join(allow_lines)
+        guard = (
+            "\n\nIMPORTANT — citation rules for THIS answer:\n"
+            "1. You may ONLY cite files from this allow-list (paths and line\n"
+            "   anchors must be copied verbatim — do NOT shorten or change them):\n"
+            f"{allow_block}\n"
+            "2. Use markdown links exactly in the form `[path](path#Lline)` so\n"
+            "   the user's viewer jumps to the right line.\n"
+            "3. Do NOT mention any other file paths, directories, or invented\n"
+            "   technology names. If the allow-list does not contain the\n"
+            "   information needed, say so explicitly instead of guessing.\n"
+            "4. Ground every factual claim in a snippet from the context above.\n"
+        )
+    else:
+        guard = (
+            "\n\nNo files were retrieved for this question. Answer conceptually\n"
+            "and explicitly say which files would normally be relevant — do NOT\n"
+            "fabricate paths or line numbers.\n"
+        )
+
+    user_prompt = f"{mode_hint}\n\nUser question: {body.message}{guard}"
 
     # Build tool executor bound to this repo
     def _exec(tool_name: str, tool_input: dict) -> tuple[str, list[dict]]:

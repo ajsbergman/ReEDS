@@ -33,6 +33,7 @@ export interface SourceSnippet {
   snippet: string;
   match_type: string;
   score: number;
+  line?: number;
 }
 
 export interface ChatAttachment {

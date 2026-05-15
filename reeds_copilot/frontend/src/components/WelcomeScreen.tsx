@@ -122,6 +122,7 @@ export default function WelcomeScreen({ health, onComplete }: Props) {
                 style={{ color: "var(--accent)" }}>
                 {provider.helpUrl.replace("https://", "")}
               </a>
+              {provider.value === "nlr" && " → Self-Service → AI Model Access"}
             </p>
 
             {/* Model picker */}

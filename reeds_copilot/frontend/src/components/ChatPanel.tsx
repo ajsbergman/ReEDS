@@ -16,9 +16,25 @@ interface Props {
   messages: Message[];
   setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
   onNavigate?: (tab: string) => void;
+  onSelectFile?: (path: string, line?: number) => void;
 }
 
 const RUN_KEYWORDS = /\b(run reeds|launch.*run|start.*run|execute.*model|run.*model|runbatch|cases[_ ]?csv|how.*run|can i run)\b/i;
+
+// Heuristic: does this string look like a path to a repo file?
+// Matches things like "docs/source/model_documentation.md", "b_inputs.gms",
+// "inputs/tech-subset-table.csv", optionally with #L42 line anchors.
+const FILE_PATH_RE = /^([\w./\-]+\.(?:md|rst|txt|gms|py|jl|r|sh|bat|csv|json|ya?ml|toml|cfg|ini|opt))(?:#L\d+(?:-L\d+)?)?$/i;
+
+function stripLineAnchor(p: string): string {
+  const i = p.indexOf("#");
+  return i >= 0 ? p.slice(0, i) : p;
+}
+
+function parseLineAnchor(p: string): number | undefined {
+  const m = /#L(\d+)/.exec(p);
+  return m ? parseInt(m[1], 10) : undefined;
+}
 
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -127,7 +143,7 @@ function AttachmentBlock({ att }: { att: ChatAttachment; onSelectFile?: (p: stri
   return null;
 }
 
-export default function ChatPanel({ mode, selectedPath, onSources, messages, setMessages, onNavigate }: Props) {
+export default function ChatPanel({ mode, selectedPath, onSources, messages, setMessages, onNavigate, onSelectFile }: Props) {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -214,7 +230,45 @@ export default function ChatPanel({ mode, selectedPath, onSources, messages, set
           <div key={i} className={`chat-msg ${m.role}`}>
             {m.role === "assistant" ? (
               <>
-                <ReactMarkdown>{m.content}</ReactMarkdown>
+                <ReactMarkdown
+                  components={{
+                    // Markdown links — if the href looks like a repo file, open it in the right panel
+                    a({ href, children, ...rest }) {
+                      const target = (href || "").trim();
+                      if (onSelectFile && target && FILE_PATH_RE.test(target)) {
+                        const line = parseLineAnchor(target);
+                        return (
+                          <a
+                            href="#"
+                            onClick={(e) => { e.preventDefault(); onSelectFile(stripLineAnchor(target), line); }}
+                            style={{ color: "var(--accent)", textDecoration: "underline", cursor: "pointer" }}
+                          >
+                            {children}
+                          </a>
+                        );
+                      }
+                      return <a href={target} target="_blank" rel="noreferrer" {...rest}>{children}</a>;
+                    },
+                    // Inline code — if the text looks like a repo file path, make it clickable too
+                    code({ children, className, ...rest }) {
+                      const text = String(children ?? "").trim();
+                      const isInline = !className;
+                      if (isInline && onSelectFile && FILE_PATH_RE.test(text)) {
+                        const line = parseLineAnchor(text);
+                        return (
+                          <code
+                            onClick={() => onSelectFile(stripLineAnchor(text), line)}
+                            style={{ cursor: "pointer", color: "var(--accent)", textDecoration: "underline dotted" }}
+                            title="Open in viewer"
+                          >
+                            {children}
+                          </code>
+                        );
+                      }
+                      return <code className={className} {...rest}>{children}</code>;
+                    },
+                  }}
+                >{m.content}</ReactMarkdown>
                 {m.attachments?.map((att, j) => (
                   <AttachmentBlock key={j} att={att} onSelectFile={onNavigate ? undefined : undefined} />
                 ))}

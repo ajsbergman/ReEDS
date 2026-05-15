@@ -132,13 +132,11 @@ export default function SettingsPanel() {
           phase: "done",
           message:
             (cancelled ? `Cancelled ${cancelled} local run(s). ` : "") +
-            "Backend stopped and launcher windows closed. This browser tab will close in 2s…",
+            "Backend stopped. You can close this browser tab.",
         });
-        setTimeout(() => {
-          // Browsers block window.close() unless the tab was opened by JS.
-          // We try anyway; if blocked, the user can close it manually.
-          try { window.close(); } catch { /* ignore */ }
-        }, 2000);
+        // Notify App to take over with a dedicated stopped screen so the
+        // WelcomeScreen never reappears as a side-effect of /health failing.
+        window.dispatchEvent(new CustomEvent("reeds-backend-shutdown"));
       } else {
         setShutdownState({
           phase: "error",
@@ -153,11 +151,9 @@ export default function SettingsPanel() {
       if (stoppedConfirmed) {
         setShutdownState({
           phase: "done",
-          message: "Backend stopped and launcher windows closed. This browser tab will close in 2s…",
+          message: "Backend stopped. You can close this browser tab.",
         });
-        setTimeout(() => {
-          try { window.close(); } catch { /* ignore */ }
-        }, 2000);
+        window.dispatchEvent(new CustomEvent("reeds-backend-shutdown"));
       } else {
         setShutdownState({
           phase: "error",

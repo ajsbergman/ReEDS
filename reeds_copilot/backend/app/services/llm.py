@@ -88,6 +88,17 @@ verify against the local files.
 - For advanced/technical questions: give detailed, precise, implementation-level
   answers grounded in the local code, inputs, and documentation.
 - Cite file paths inline using markdown links, e.g. [b_inputs.gms](b_inputs.gms#L5814).
+  MANDATORY: every file you mention from the retrieved context must be a
+  markdown link, AND must preserve the `#L<line>` (or `#L<start>-L<end>`)
+  anchor exactly as shown in the context header `--- path/to/file.ext#L42 ---`.
+  These anchors make the citations jump directly to the right line in the
+  user's file viewer (like GitHub Copilot). Bare paths or inline `code` paths
+  without anchors are NOT acceptable for files that appeared in the context.
+  Example good:  see [c_supplymodel.gms](c_supplymodel.gms#L1234).
+  Example bad:   see `c_supplymodel.gms`. (no link, no line)
+- NEVER invent file paths. Only cite files that either (a) appear in the
+  retrieved context with a `--- path ---` header, or (b) you have verified by
+  using a tool. If you are not sure a file exists, say so instead of guessing.
 - Keep answers structured and aligned with the conventions used in the repo.
 """
 
@@ -98,6 +109,13 @@ TOOL_SYSTEM_PROMPT = SYSTEM_PROMPT + """\
 You have tools available. Use them aggressively — they are your primary way to
 ground answers in the local repo.
 
+Repo exploration tools (USE THESE BEFORE ANSWERING ANY CODE/INPUT/DOCS QUESTION):
+- find_files       — verify a file exists by name or glob, e.g. pattern='**/*battery*.csv'
+- grep_repo        — find where a parameter, set, or equation is defined.
+                     Returns hits as `path:line: snippet`.
+- read_repo_file   — read an exact range of lines so you can quote / cite them.
+- list_repo_dir    — discover what's in a directory.
+
 Run-output tools:
 - show_figure       — display actual image files when the user asks to SEE,
                       SHOW, or VIEW figures, plots, charts, or images. Do NOT
@@ -107,7 +125,27 @@ Run-output tools:
 - get_run_status    — current status of a specific run.
 - list_run_outputs  — list output files of a specific run.
 
-For run-specific questions, prefer tool calls over the retrieved text context.
+═══ COPILOT-STYLE WORKFLOW (mandatory for code/input/docs questions) ═══
+Mimic GitHub Copilot Chat's research-then-answer loop. NEVER answer from prior
+training knowledge alone for repo-specific questions:
+
+1. **Search first.** Call `grep_repo` (and/or `find_files`) for the key terms
+   in the user's question — set names, parameter names, technology names.
+2. **Verify before citing.** If you are about to mention any file path, you
+   must have seen it returned by a tool in THIS conversation. If you have not,
+   call `find_files` to confirm. If it does not exist, do NOT cite it.
+3. **Read the actual lines.** For any equation, parameter value, default, or
+   "this is how it works" claim, call `read_repo_file` with a tight line
+   range and quote / paraphrase from what you actually read.
+4. **Cite with anchors.** Every file reference in your final answer MUST be a
+   markdown link of the form `[path](path#L<line>)` using the line numbers
+   returned by `grep_repo` / `read_repo_file`. Bare paths and inline `code`
+   paths without `#L<line>` are not acceptable.
+5. **Be honest about uncertainty.** If tools fail to find what you need, say
+   "I could not find that in the repo" instead of guessing.
+
+For run-specific questions, prefer the run-output tools over the retrieved
+text context.
 
 After receiving tool results, write a brief natural-language summary. Do NOT
 repeat individual image filenames — images are already displayed as attachments
@@ -185,7 +223,7 @@ class LLMProvider(abc.ABC):
         system_prompt: str = SYSTEM_PROMPT,
         tools: list[dict] | None = None,
         execute_tool_fn=None,
-        max_rounds: int = 5,
+        max_rounds: int = 10,
     ) -> tuple[str, list[dict]]:
         """Run the tool-use loop.
 

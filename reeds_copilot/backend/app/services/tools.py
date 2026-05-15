@@ -305,3 +305,232 @@ def list_runs(repo_root: Path) -> tuple[str, list[dict]]:
         lines.append(f"- {mark} `{r['name']}`")
 
     return "\n".join(lines), []
+
+
+# ── Copilot-style filesystem exploration tools ───────────────────────────────
+# These let the LLM verify that files actually exist and read exact lines
+# instead of hallucinating paths or paraphrasing code from training data.
+
+_EXPLORE_IGNORE_DIRS = {
+    ".git", "node_modules", "__pycache__", ".venv", "venv", "dist", "build",
+    ".pytest_cache", ".mypy_cache", ".ruff_cache", ".idea", ".vscode",
+    "runs",  # run outputs are massive; use the run-specific tools instead
+}
+_EXPLORE_MAX_RESULTS = 80
+
+
+def _explore_safe_path(repo_root: Path, rel_path: str) -> Path | None:
+    """Resolve a path inside repo_root. Returns None if it escapes or is missing."""
+    try:
+        rel = (rel_path or "").strip().lstrip("/\\").replace("\\", "/")
+        if not rel or rel == ".":
+            return repo_root.resolve()
+        p = (repo_root / rel).resolve()
+        root = repo_root.resolve()
+        if root not in p.parents and p != root:
+            return None
+        return p
+    except Exception:
+        return None
+
+
+@tool(
+    description=(
+        "Find files by name or glob pattern across the ReEDS repo. "
+        "USE THIS to verify a file exists BEFORE citing it in an answer. "
+        "Returns relative paths, one per line. "
+        "Examples: pattern='b_inputs.gms', pattern='**/*battery*', "
+        "pattern='docs/source/*.md', pattern='inputs/techs/*.csv'."
+    ),
+    parameters={
+        "pattern": {
+            "type": "string",
+            "description": "Glob pattern (supports ** for recursive). e.g. '**/*battery*.csv'",
+        },
+        "max_results": {
+            "type": "integer",
+            "description": "Max results to return (default 40, hard cap 80).",
+        },
+    },
+    required=["pattern"],
+)
+def find_files(repo_root: Path, pattern: str, max_results: int = 40) -> tuple[str, list[dict]]:
+    """Glob the repo for matching files."""
+    pat = (pattern or "").strip().lstrip("/\\")
+    if not pat:
+        return "Empty pattern.", []
+    cap = min(max(1, int(max_results or 40)), _EXPLORE_MAX_RESULTS)
+
+    # Make a bare filename act like **/<name>
+    if "/" not in pat and "\\" not in pat and "*" not in pat:
+        pat = f"**/{pat}"
+
+    try:
+        matches = []
+        for p in repo_root.glob(pat):
+            if not p.is_file():
+                continue
+            rel = p.relative_to(repo_root).as_posix()
+            if any(part in _EXPLORE_IGNORE_DIRS for part in rel.split("/")):
+                continue
+            matches.append(rel)
+            if len(matches) >= cap:
+                break
+    except Exception as exc:
+        return f"Glob error: {exc}", []
+
+    if not matches:
+        return f"No files match pattern `{pat}`.", []
+    matches.sort()
+    return f"Found {len(matches)} file(s) matching `{pat}`:\n" + "\n".join(matches), []
+
+
+@tool(
+    description=(
+        "Search for an exact string or regex inside the ReEDS repo. "
+        "USE THIS to find where a parameter, set, or equation is defined. "
+        "Returns up to ~40 hits as `path:line: snippet`. Citations should use "
+        "the returned `path#L<line>` so the user's viewer jumps to the line."
+    ),
+    parameters={
+        "query": {"type": "string", "description": "Plain text or regex to search for."},
+        "is_regex": {"type": "boolean", "description": "Treat query as regex (default false)."},
+        "include_glob": {
+            "type": "string",
+            "description": "Optional glob to restrict files, e.g. '**/*.gms' or 'inputs/**'.",
+        },
+        "max_results": {"type": "integer", "description": "Max hits (default 30, hard cap 80)."},
+    },
+    required=["query"],
+)
+def grep_repo(
+    repo_root: Path,
+    query: str,
+    is_regex: bool = False,
+    include_glob: str = "",
+    max_results: int = 30,
+) -> tuple[str, list[dict]]:
+    """Grep through the repo, skipping noisy dirs and binaries."""
+    import re
+
+    q = (query or "").strip()
+    if not q:
+        return "Empty query.", []
+    cap = min(max(1, int(max_results or 30)), _EXPLORE_MAX_RESULTS)
+    try:
+        regex = re.compile(q, re.IGNORECASE) if is_regex else re.compile(re.escape(q), re.IGNORECASE)
+    except re.error as exc:
+        return f"Invalid regex: {exc}", []
+
+    text_suffixes = {
+        ".gms", ".py", ".md", ".rst", ".txt", ".csv", ".json", ".yaml", ".yml",
+        ".toml", ".cfg", ".ini", ".opt", ".jl", ".sh", ".bat", ".r", ".tsv",
+    }
+    glob = (include_glob or "**/*").strip()
+
+    hits: list[str] = []
+    try:
+        for p in repo_root.glob(glob):
+            if not p.is_file():
+                continue
+            rel = p.relative_to(repo_root).as_posix()
+            if any(part in _EXPLORE_IGNORE_DIRS for part in rel.split("/")):
+                continue
+            if p.suffix.lower() not in text_suffixes:
+                continue
+            try:
+                if p.stat().st_size > 2_000_000:  # skip huge files
+                    continue
+                with p.open("r", encoding="utf-8", errors="replace") as fh:
+                    for i, line in enumerate(fh, start=1):
+                        if regex.search(line):
+                            snippet = line.rstrip("\n")[:200]
+                            hits.append(f"{rel}#L{i}: {snippet}")
+                            if len(hits) >= cap:
+                                break
+            except Exception:
+                continue
+            if len(hits) >= cap:
+                break
+    except Exception as exc:
+        return f"Search error: {exc}", []
+
+    if not hits:
+        return f"No matches for `{q}`" + (f" in `{glob}`." if include_glob else "."), []
+    return f"Found {len(hits)} hit(s) for `{q}`:\n" + "\n".join(hits), []
+
+
+@tool(
+    description=(
+        "Read a specific range of lines from a repo file. "
+        "USE THIS to verify the exact contents of a file BEFORE quoting or "
+        "paraphrasing it. Returns the requested lines numbered like "
+        "`  42: <code>` so you can cite `path#L42` accurately."
+    ),
+    parameters={
+        "path": {"type": "string", "description": "Repo-relative path, e.g. 'b_inputs.gms'."},
+        "start_line": {"type": "integer", "description": "1-based start line (default 1)."},
+        "end_line": {
+            "type": "integer",
+            "description": "1-based end line inclusive (default start+200, max 400-line span).",
+        },
+    },
+    required=["path"],
+)
+def read_repo_file(
+    repo_root: Path, path: str, start_line: int = 1, end_line: int = 0,
+) -> tuple[str, list[dict]]:
+    """Read a slice of a file, with line numbers."""
+    p = _explore_safe_path(repo_root, path)
+    if p is None or not p.is_file():
+        return f"File not found: `{path}`. Use find_files to locate it.", []
+    try:
+        if p.stat().st_size > 4_000_000:
+            return f"File `{path}` is too large to read inline ({p.stat().st_size} bytes).", []
+        text = p.read_text(encoding="utf-8", errors="replace")
+    except Exception as exc:
+        return f"Read error: {exc}", []
+
+    lines = text.splitlines()
+    n = len(lines)
+    s = max(1, int(start_line or 1))
+    if s > n:
+        return f"`{path}` only has {n} line(s); start_line {s} is past the end.", []
+    e = int(end_line or 0)
+    if e <= 0:
+        e = min(n, s + 199)
+    e = min(n, max(s, e))
+    if e - s + 1 > 400:
+        e = s + 399
+    width = len(str(e))
+    body = "\n".join(f"{str(i).rjust(width)}: {lines[i - 1]}" for i in range(s, e + 1))
+    header = f"{path}  (lines {s}-{e} of {n})"
+    return f"{header}\n{body}", []
+
+
+@tool(
+    description=(
+        "List the contents of a directory inside the ReEDS repo. "
+        "Use this to discover what files exist before searching or reading."
+    ),
+    parameters={
+        "path": {"type": "string", "description": "Repo-relative directory (default repo root)."},
+    },
+)
+def list_repo_dir(repo_root: Path, path: str = "") -> tuple[str, list[dict]]:
+    """List a directory non-recursively."""
+    target = _explore_safe_path(repo_root, path or "")
+    if target is None or not target.is_dir():
+        return f"Directory not found: `{path}`.", []
+    entries = []
+    for child in sorted(target.iterdir(), key=lambda c: (not c.is_dir(), c.name.lower())):
+        if child.name.startswith(".") or child.name in _EXPLORE_IGNORE_DIRS:
+            continue
+        entries.append(f"{'📁' if child.is_dir() else '📄'} {child.name}")
+        if len(entries) >= _EXPLORE_MAX_RESULTS:
+            entries.append(f"… (truncated, more than {_EXPLORE_MAX_RESULTS} entries)")
+            break
+    if not entries:
+        return f"`{path or '.'}` is empty.", []
+    rel = target.relative_to(repo_root).as_posix() or "."
+    return f"Contents of `{rel}/`:\n" + "\n".join(entries), []

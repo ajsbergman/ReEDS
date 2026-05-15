@@ -63,7 +63,7 @@ export const PROVIDERS: ProviderDef[] = [
   },
   {
     value: "nlr",
-    label: "NLR LiteLLM",
+    label: "NLR LiteLLM (VPN needed)",
     icon: "🏢",
     desc: "NLR internal proxy (free for NLR staff)",
     placeholder: "sk-…",

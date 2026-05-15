@@ -19,6 +19,7 @@ class SourceSnippet(BaseModel):
     snippet: str
     match_type: str = ""
     score: float = 0.0
+    line: int = 0  # 1-based; 0 = unknown / filename match
 
 
 class ChatResponse(BaseModel):

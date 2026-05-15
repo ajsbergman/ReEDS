@@ -25,6 +25,7 @@ class SearchHit:
     snippet: str
     match_type: str
     score: float
+    line: int = 0  # 1-based line number of the first match (0 = unknown)
 
 
 def _snippet_around(lines: list[str], idx: int, context: int = CONTEXT_LINES) -> str:
@@ -58,10 +59,12 @@ def text_search(
         lines = text.splitlines()
         match_count = 0
         best_snippet = ""
+        first_match_line = 0
         for i, line in enumerate(lines):
             if pattern.search(line):
                 if match_count == 0:
                     best_snippet = _snippet_around(lines, i)
+                    first_match_line = i + 1  # 1-based
                 match_count += 1
 
         if match_count > 0:
@@ -70,6 +73,7 @@ def text_search(
                 snippet=best_snippet,
                 match_type="text",
                 score=match_count,
+                line=first_match_line,
             ))
 
         if len(hits) >= max_results * 3:
