@@ -414,13 +414,16 @@ export default function SettingsPanel() {
               <div className="settings-api-card nlr">
                 <div className="settings-api-card-header">
                   <span>🏢</span>
-                  <strong>NLR Staff (recommended — free!)</strong>
+                  <strong>NLR Staff (recommended — no out-of-pocket cost)</strong>
                 </div>
-                <p>NLR provides free LLM access through its internal LiteLLM proxy. No personal payment needed.</p>
+                <p>
+                  NLR provides LLM access through its internal LiteLLM proxy. You won't pay personally,
+                  but usage is billed to a <strong>project charge code</strong> that you provide when requesting access.
+                </p>
                 <ol>
                   <li>Go to <a href="https://cloud.nlr.gov/" target="_blank" rel="noopener noreferrer">cloud.nlr.gov</a></li>
                   <li>Navigate to <strong>Self Service → AI Model Request</strong></li>
-                  <li>Submit a request (you'll need a charge code)</li>
+                  <li>Submit a request (you'll need a <strong>project charge code</strong> to bill usage to)</li>
                   <li>Once approved, you'll receive an API key via email</li>
                   <li>Select <strong>"NLR LiteLLM"</strong> above and paste your key</li>
                 </ol>
