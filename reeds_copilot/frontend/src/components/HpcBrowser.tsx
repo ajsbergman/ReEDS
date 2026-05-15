@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useMemo, useCallback } from "react";
+﻿import { useEffect, useRef, useState, useMemo, useCallback } from "react";
 import {
   listHpcFilesAPI,
   previewHpcFileAPI,
@@ -67,17 +67,17 @@ function statusBadge(s: string) {
   );
 }
 
-/* ─── Main component ──────────────────────────────────────────────────────── */
+/* â”€â”€â”€ Main component â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
 
 export default function HpcBrowser() {
-  /* ── Connection state ─────────────────────────────── */
+  /* â”€â”€ Connection state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   const [cluster, setCluster] = useState("kestrel");
   const [hpcHost, setHpcHost] = useState("kestrel.hpc.nlr.gov");
   const [hpcUser, setHpcUser] = useState("");
   const [hpcPassword, setHpcPassword] = useState("");
   const [connected, setConnected] = useState(false);
 
-  /* ── File browser state ───────────────────────────── */
+  /* â”€â”€ File browser state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   const [currentPath, setCurrentPath] = useState("");
   const [entries, setEntries] = useState<FileEntry[]>([]);
   const [loading, setLoading] = useState(false);
@@ -85,12 +85,12 @@ export default function HpcBrowser() {
   const [sortKey, setSortKey] = useState<SortKey>("name");
   const [sortDir, setSortDir] = useState<SortDir>("asc");
 
-  /* ── Preview state ────────────────────────────────── */
+  /* â”€â”€ Preview state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   const [preview, setPreview] = useState<FilePreviewResponse | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
 
-  /* ── Run form state (mirrors RunPanel) ────────────── */
+  /* â”€â”€ Run form state (mirrors RunPanel) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   const [reedsPath, setReedsPath] = useState("");
   const [casesFiles, setCasesFiles] = useState<CasesFile[]>([]);
   const [selectedSuffix, setSelectedSuffix] = useState("");
@@ -112,16 +112,13 @@ export default function HpcBrowser() {
   const [launching, setLaunching] = useState(false);
   const [runError, setRunError] = useState("");
 
-  /* ── Run history state ────────────────────────────── */
+  /* â”€â”€ Run history state â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
   const [runs, setRuns] = useState<RunRecord[]>([]);
   const [expandedRun, setExpandedRun] = useState<string | null>(null);
   const [expandedDetail, setExpandedDetail] = useState<RunRecord | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  /* ── Active view: "browser" or "run" ──────────────── */
-  const [activeView, setActiveView] = useState<"browser" | "run">("browser");
-
-  /* ── File browser logic ─────────────────────────────  */
+  /* ── File browser logic ──────────────────────────────────────────  */
   const loadDirectory = useCallback(
     (path: string) => {
       if (!hpcHost || !hpcUser) return;
@@ -216,7 +213,7 @@ export default function HpcBrowser() {
     setSelectedFile(null);
   }
 
-  /* ── Sorting ────────────────────────────────────────  */
+  /* â”€â”€ Sorting â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€  */
   const sortedEntries = useMemo(() => {
     const dirs = entries.filter((e) => e.is_dir);
     const files = entries.filter((e) => !e.is_dir);
@@ -239,12 +236,12 @@ export default function HpcBrowser() {
   }
   function sortIndicator(key: SortKey): string {
     if (sortKey !== key) return "";
-    return sortDir === "asc" ? " ▲" : " ▼";
+    return sortDir === "asc" ? " â–²" : " â–¼";
   }
 
   const pathParts = currentPath.split("/").filter(Boolean);
 
-  /* ── Run form logic (mirrors RunPanel) ──────────────  */
+  /* â”€â”€ Run form logic (mirrors RunPanel) â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€  */
   function loadCasesFiles(path: string) {
     if (!hpcHost || !hpcUser || !path) return;
     listHpcCasesFilesAPI(hpcHost, hpcUser, path, hpcPassword)
@@ -323,7 +320,7 @@ export default function HpcBrowser() {
     }
   }
 
-  /* ── Run history logic ──────────────────────────────  */
+  /* â”€â”€ Run history logic â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€  */
   function refreshRuns() {
     listRunsAPI().then((all) => {
       // Only show HPC runs
@@ -379,10 +376,10 @@ export default function HpcBrowser() {
     try { setExpandedDetail(await getRunAPI(id)); } catch { setExpandedDetail(null); }
   }
 
-  /* ── Render ─────────────────────────────────────────  */
+  /* â”€â”€ Render â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€  */
   return (
     <div className="hpc-browser">
-      {/* ── Connection bar ────────────────────────────── */}
+      {/* â”€â”€ Connection bar â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */}
       <div className="hpc-connection-bar">
         <div className="hpc-connection-row">
           <label>Cluster</label>
@@ -401,7 +398,7 @@ export default function HpcBrowser() {
           <input type="password" value={hpcPassword} onChange={(e) => setHpcPassword(e.target.value)}
             placeholder="password" />
           <button className="btn-connect" onClick={handleConnect} disabled={loading}>
-            {loading && !connected ? "Connecting…" : connected ? "🟢 Connected" : "Connect"}
+            {loading && !connected ? "Connectingâ€¦" : connected ? "ðŸŸ¢ Connected" : "Connect"}
           </button>
           {connected && (
             <button className="btn-disconnect" onClick={handleDisconnect}>Disconnect</button>
@@ -413,27 +410,15 @@ export default function HpcBrowser() {
 
       {!connected && !loading && (
         <div className="hpc-empty-state">
-          <p>🖥️ Connect to an HPC cluster to browse remote files and launch runs</p>
+          <p>ðŸ–¥ï¸ Connect to an HPC cluster to browse remote files and launch runs</p>
           <p style={{ fontSize: "0.85rem", opacity: 0.7 }}>
             Enter your credentials and click Connect. Password-based or SSH key auth supported.
           </p>
         </div>
       )}
 
-      {/* ── View toggle ──────────────────────────────── */}
+      {/* â”€â”€ File Browser View â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€  */}
       {connected && (
-        <div className="hpc-view-toggle">
-          <button className={activeView === "browser" ? "active" : ""} onClick={() => setActiveView("browser")}>
-            📂 File Browser
-          </button>
-          <button className={activeView === "run" ? "active" : ""} onClick={() => setActiveView("run")}>
-            🚀 Launch Run
-          </button>
-        </div>
-      )}
-
-      {/* ── File Browser View ─────────────────────────  */}
-      {connected && activeView === "browser" && (
         <>
           <div className="hpc-connection-bar" style={{ borderTop: "none" }}>
             <div className="hpc-path-input-row">
@@ -460,7 +445,7 @@ export default function HpcBrowser() {
                   );
                 })}
                 {pathParts.length > 0 && (
-                  <span onClick={navigateUp} style={{ marginLeft: 12, cursor: "pointer" }}>⬆ up</span>
+                  <span onClick={navigateUp} style={{ marginLeft: 12, cursor: "pointer" }}>â¬† up</span>
                 )}
               </div>
 
@@ -471,7 +456,7 @@ export default function HpcBrowser() {
                 <span className="sort-col sort-col--date" onClick={() => toggleSort("modified")}>Modified{sortIndicator("modified")}</span>
               </div>
 
-              {loading && <div className="loading">Loading…</div>}
+              {loading && <div className="loading">Loadingâ€¦</div>}
               {!loading && sortedEntries.length === 0 && (
                 <div className="loading" style={{ opacity: 0.6 }}>Empty directory</div>
               )}
@@ -479,7 +464,7 @@ export default function HpcBrowser() {
                 <div key={e.rel_path}
                   className={`file-entry${selectedFile === e.rel_path ? " selected" : ""}`}
                   onClick={() => handleClick(e)}>
-                  <span className="icon">{e.is_dir ? "📁" : "📄"}</span>
+                  <span className="icon">{e.is_dir ? "ðŸ“" : "ðŸ“„"}</span>
                   <span className="name">{e.name}</span>
                   <span className="ext">{e.is_dir ? "" : getExtension(e.name)}</span>
                   <span className="size">{formatSize(e.size)}</span>
@@ -493,7 +478,7 @@ export default function HpcBrowser() {
               {!preview && !previewLoading && (
                 <div className="hpc-empty-state" style={{ padding: "2rem" }}><p>Select a file to preview</p></div>
               )}
-              {previewLoading && <div className="loading">Loading preview…</div>}
+              {previewLoading && <div className="loading">Loading previewâ€¦</div>}
               {preview && !previewLoading && (
                 <div className="hpc-preview-content">
                   <div className="hpc-preview-header">
@@ -527,211 +512,7 @@ export default function HpcBrowser() {
             </div>
           </div>
         </>
-      )}
 
-      {/* ── Launch Run View (mirrors RunPanel) ─────────  */}
-      {connected && activeView === "run" && (
-        <div className="run-panel">
-          <section className="run-form">
-            <h2>Launch ReEDS Run on HPC</h2>
-
-            {/* ReEDS Path */}
-            <div className="run-field">
-              <label>ReEDS Path on HPC *</label>
-              <div style={{ display: "flex", gap: 6 }}>
-                <input type="text" value={reedsPath} onChange={(e) => setReedsPath(e.target.value)}
-                  onKeyDown={handleReedsPathKeyDown}
-                  placeholder="/projects/reeds/ReEDS" style={{ flex: 1 }} />
-                <button className="btn-set-path" onClick={setReedsPathFromBrowser}
-                  title="Use current browsed directory">📂 Use Current Dir</button>
-              </div>
-              <span className="run-field-hint">Press Enter or click "Use Current Dir" to load cases files</span>
-            </div>
-
-            {/* Slurm config */}
-            <div className="slurm-config">
-              <label style={{ fontWeight: 600, marginBottom: 4, display: "block" }}>
-                Slurm Configuration
-              </label>
-              <div className="run-field">
-                <label>Account (Allocation) *</label>
-                <input type="text" value={slurmAccount}
-                  onChange={(e) => setSlurmAccount(e.target.value)}
-                  placeholder="your-project-allocation" />
-              </div>
-              <div className="run-field">
-                <label>Walltime</label>
-                <input type="text" value={slurmWalltime}
-                  onChange={(e) => setSlurmWalltime(e.target.value)}
-                  placeholder="2-00:00:00" />
-                <span className="run-field-hint">Format: D-HH:MM:SS</span>
-              </div>
-              <div className="run-field">
-                <label>Partition (optional)</label>
-                <input type="text" value={slurmPartition}
-                  onChange={(e) => setSlurmPartition(e.target.value)}
-                  placeholder="(leave blank for default)" />
-              </div>
-              <div className="run-field">
-                <label>Memory (MB)</label>
-                <input type="text" value={slurmMemory}
-                  onChange={(e) => setSlurmMemory(e.target.value)}
-                  placeholder="246000" />
-                <span className="run-field-hint">Up to 246000 (normal) or 2000000 (bigmem) on Kestrel</span>
-              </div>
-              <div className="run-field">
-                <label>Email Notifications</label>
-                <input type="email" value={slurmMailUser}
-                  onChange={(e) => setSlurmMailUser(e.target.value)}
-                  placeholder="your.email@nrel.gov" />
-                <div style={{ display: "flex", gap: 12, marginTop: 4 }}>
-                  <label style={{ fontSize: "0.85rem", fontWeight: 400 }}>
-                    <input type="checkbox" checked={slurmMailBegin}
-                      onChange={(e) => setSlurmMailBegin(e.target.checked)} /> BEGIN
-                  </label>
-                  <label style={{ fontSize: "0.85rem", fontWeight: 400 }}>
-                    <input type="checkbox" checked={slurmMailEnd}
-                      onChange={(e) => setSlurmMailEnd(e.target.checked)} /> END
-                  </label>
-                  <label style={{ fontSize: "0.85rem", fontWeight: 400 }}>
-                    <input type="checkbox" checked={slurmMailFail}
-                      onChange={(e) => setSlurmMailFail(e.target.checked)} /> FAIL
-                  </label>
-                </div>
-                <span className="run-field-hint">Leave email blank to disable notifications</span>
-              </div>
-            </div>
-
-            {/* Batch name */}
-            <div className="run-field">
-              <label>Batch Name</label>
-              <input type="text" value={batchName} onChange={(e) => setBatchName(e.target.value)}
-                placeholder="v20260509_hpc" />
-            </div>
-
-            {/* Cases file selector */}
-            <div className="run-field">
-              <label>Cases File</label>
-              {casesFiles.length > 0 ? (
-                <select value={selectedSuffix} onChange={(e) => handleSuffixChange(e.target.value)}>
-                  {casesFiles.map((f) => (
-                    <option key={f.suffix} value={f.suffix}>
-                      {f.filename} ({f.cases.length} case{f.cases.length !== 1 ? "s" : ""})
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <span className="run-field-hint" style={{ display: "block", padding: "6px 0" }}>
-                  Set the ReEDS path above to load available cases files
-                </span>
-              )}
-            </div>
-
-            {/* Case selection chips */}
-            {availableCases.length > 0 && (
-              <div className="run-field">
-                <label>
-                  Cases to Run
-                  <span className="run-field-hint">
-                    {selectedCases.length}/{availableCases.length} selected
-                  </span>
-                  <span className="case-select-btns">
-                    <button onClick={() => setSelectedCases([...availableCases])}>All</button>
-                    <button onClick={() => setSelectedCases([])}>None</button>
-                  </span>
-                </label>
-                <div className="case-chips">
-                  {availableCases.map((c) => (
-                    <button key={c}
-                      className={`case-chip ${selectedCases.includes(c) ? "selected" : ""}`}
-                      onClick={() => toggleCase(c)} title={c}>
-                      {c}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Simultaneous runs */}
-            <div className="run-field">
-              <label>Simultaneous Runs</label>
-              <input type="number" min={1} max={32} value={simultRuns}
-                onChange={(e) => setSimultRuns(Math.max(1, +e.target.value))}
-                style={{ width: 80 }} />
-            </div>
-
-            <label className="run-overwrite-toggle">
-              <input type="checkbox" checked={overwrite}
-                onChange={(e) => setOverwrite(e.target.checked)} />
-              Overwrite existing run folders
-            </label>
-
-            {runError && <div className="run-error">{runError}</div>}
-
-            <button className="run-launch-btn" onClick={handleLaunch} disabled={launching}>
-              {launching ? "Submitting…" : "🚀 Submit to HPC"}
-            </button>
-          </section>
-
-          {/* ── Run history ───────────────────────────── */}
-          <section className="run-history">
-            <div className="run-history-header">
-              <h2>HPC Run History</h2>
-              <button className="run-refresh-btn" onClick={refreshRuns} title="Refresh">↻</button>
-            </div>
-
-            {runs.length === 0 && (
-              <p className="run-empty">No HPC runs yet. Launch one above!</p>
-            )}
-
-            {runs.map((r) => (
-              <div key={r.id} className={`run-card ${r.status}`}>
-                <div className="run-card-header" onClick={() => toggleExpand(r.id)}>
-                  <div className="run-card-title">
-                    <strong>{r.batch_name}</strong>
-                    <span className="run-card-suffix">cases_{r.cases_suffix}.csv</span>
-                  </div>
-                  <div className="run-card-meta">
-                    <span style={{
-                      fontSize: "0.7rem", padding: "1px 6px", borderRadius: 3,
-                      background: "#7c4dff", color: "#fff", fontWeight: 600, marginRight: 4,
-                    }}>HPC</span>
-                    {statusBadge(r.status)}
-                    <span className="run-card-time">{fmtTime(r.created_at)}</span>
-                  </div>
-                </div>
-
-                <div className="run-card-actions">
-                  {(r.status === "running" || r.status === "queued") && (
-                    <button className="run-action cancel" onClick={() => handleCancel(r.id)}>Cancel</button>
-                  )}
-                  {r.status !== "running" && r.status !== "queued" && (
-                    <button className="run-action delete" onClick={() => handleDelete(r.id)}>Delete</button>
-                  )}
-                </div>
-
-                {expandedRun === r.id && expandedDetail && (
-                  <div className="run-detail">
-                    <div className="run-detail-row"><span>Cases:</span><span>{expandedDetail.cases.join(", ") || "all"}</span></div>
-                    <div className="run-detail-row"><span>Workers:</span><span>{expandedDetail.simult_runs}</span></div>
-                    {expandedDetail.slurm_job_ids?.length > 0 && (
-                      <div className="run-detail-row"><span>Slurm Jobs:</span><span>{expandedDetail.slurm_job_ids.join(", ")}</span></div>
-                    )}
-                    {expandedDetail.error && (
-                      <div className="run-detail-row error"><span>Error:</span><span>{expandedDetail.error}</span></div>
-                    )}
-                    {expandedDetail.log_tail && (
-                      <div className="run-log">
-                        <label>Log Output (last 100 lines)</label>
-                        <pre>{expandedDetail.log_tail}</pre>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            ))}
-          </section>
-        </div>
       )}
     </div>
   );
