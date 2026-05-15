@@ -212,7 +212,10 @@ def shutdown(body: ShutdownRequest, settings: Settings = Depends(get_settings)):
     frontend_port = 5173
 
     def _exit_soon():
-        time.sleep(0.7)  # let the HTTP response flush
+        # Tiny pause to let the HTTP response flush back to the client; we
+        # keep this short so the launcher terminals start exiting at the
+        # same time the frontend's 2s countdown begins.
+        time.sleep(0.1)
         if _sys.platform.startswith("win"):
             ps_kill = (
                 # Kill whatever listens on the frontend port

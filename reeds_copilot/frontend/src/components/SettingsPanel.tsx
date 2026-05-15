@@ -25,6 +25,7 @@ export default function SettingsPanel() {
     | { phase: "idle" }
     | { phase: "checking" }
     | { phase: "confirm"; activeRuns: { id: string; batch_name: string; status: string }[]; force: boolean }
+    | { phase: "countdown"; force: boolean; secondsLeft: number }
     | { phase: "shutting" }
     | { phase: "done"; message: string }
     | { phase: "error"; message: string }
@@ -41,6 +42,22 @@ export default function SettingsPanel() {
   }
 
   useEffect(() => { refreshHealth(); }, []);
+
+  /* Shutdown countdown: visual only — the actual shutdown request fires
+     immediately when entering this phase so the backend/terminals start
+     winding down in parallel with the on-screen countdown. */
+  useEffect(() => {
+    if (shutdownState.phase !== "countdown") return;
+    if (shutdownState.secondsLeft <= 0) return;
+    const t = setTimeout(() => {
+      setShutdownState((s) =>
+        s.phase === "countdown"
+          ? { phase: "countdown", force: s.force, secondsLeft: s.secondsLeft - 1 }
+          : s,
+      );
+    }, 1000);
+    return () => clearTimeout(t);
+  }, [shutdownState]);
 
   const currentProvider = PROVIDERS.find((p) => p.value === provider) ?? PROVIDERS[0];
   const storedKeys = health?.stored_keys ?? [];
@@ -113,7 +130,12 @@ export default function SettingsPanel() {
   }
 
   async function handleShutdownConfirm(force: boolean) {
-    setShutdownState({ phase: "shutting" });
+    // Don't clobber an active "countdown" phase — its UI doubles as the
+    // shutting-down indicator while the API call is in flight.
+    setShutdownState((s) => (s.phase === "countdown" ? s : { phase: "shutting" }));
+    // Minimum visible duration so the on-screen countdown completes before we
+    // jump to the "Backend stopped" screen — gives terminals ~3s to also exit.
+    const minDelay = new Promise<void>((r) => setTimeout(r, 3000));
     try {
       const res = await shutdownBackendAPI(force);
       if (!res.shutdown) {
@@ -127,6 +149,7 @@ export default function SettingsPanel() {
       // Backend said it's exiting — verify by polling /health until it stops responding
       const cancelled = res.cancelled_local_runs ?? 0;
       const stoppedConfirmed = await waitForBackendDown(8000);
+      await minDelay;
       if (stoppedConfirmed) {
         setShutdownState({
           phase: "done",
@@ -148,6 +171,7 @@ export default function SettingsPanel() {
     } catch (e) {
       // Network error usually means the backend already exited (good!)
       const stoppedConfirmed = await waitForBackendDown(4000);
+      await minDelay;
       if (stoppedConfirmed) {
         setShutdownState({
           phase: "done",
@@ -584,7 +608,15 @@ export default function SettingsPanel() {
             <div style={{ display: "flex", gap: 8 }}>
               <button
                 type="button"
-                onClick={() => handleShutdownConfirm(shutdownState.force)}
+                onClick={() => {
+                  // Kick off the actual shutdown immediately so the backend
+                  // and its launcher terminals start exiting now; the
+                  // countdown UI just provides a brief visual buffer so they
+                  // finish at roughly the same time.
+                  const force = shutdownState.force;
+                  setShutdownState({ phase: "countdown", force, secondsLeft: 3 });
+                  void handleShutdownConfirm(force);
+                }}
                 style={{
                   padding: "6px 14px",
                   background: "var(--danger, #e05252)",
@@ -613,6 +645,25 @@ export default function SettingsPanel() {
               >
                 Cancel
               </button>
+            </div>
+          </div>
+        )}
+
+        {shutdownState.phase === "countdown" && (
+          <div style={{
+            padding: 12,
+            border: "1px solid var(--danger, #e05252)",
+            borderRadius: "var(--radius)",
+            background: "rgba(224,82,82,0.08)",
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+          }}>
+            <div style={{ fontSize: "1.4rem", fontWeight: 700, color: "var(--danger, #e05252)" }}>
+              {shutdownState.secondsLeft}
+            </div>
+            <div style={{ flex: 1, fontSize: "0.85rem" }}>
+              Shutting down backend… ({shutdownState.secondsLeft}s)
             </div>
           </div>
         )}
