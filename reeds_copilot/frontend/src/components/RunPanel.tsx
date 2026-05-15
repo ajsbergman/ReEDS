@@ -16,12 +16,14 @@ import {
   listHpcCondaEnvsAPI,
   hpcEnvCheckAPI,
   hpcSqueueAPI,
+  listHpcFilesAPI,
   type CasesFile,
   type CondaEnv,
   type RunRecord,
   type EnvCheckResult,
   type HpcEnvCheck,
   type SlurmJob,
+  type FileEntry,
 } from "../lib/api";
 
 /* ─── helpers ─────────────────────────────────────────────────────────────── */
@@ -919,6 +921,18 @@ function HpcConfigBlocks(p: HpcConfigBlocksProps) {
           <input type="text" value={p.hpcReedsPath} onChange={(e) => p.setHpcReedsPath(e.target.value)}
             placeholder="/projects/reeds/ReEDS" disabled={!p.hpcLoginOk} />
         </div>
+
+        {/* Mini HPC file explorer */}
+        {p.hpcLoginOk && (
+          <MiniHpcExplorer
+            host={p.hpcHost}
+            user={p.hpcUser}
+            password={p.hpcPassword}
+            home={p.hpcHome}
+            onPick={(path) => p.setHpcReedsPath(path)}
+          />
+        )}
+
         <button
           className="run-launch-btn"
           style={{ background: p.hpcConnected ? "#4caf50" : undefined }}
@@ -1057,6 +1071,224 @@ function SlurmQueueWidget({ jobs, onRefresh }: { jobs: SlurmJob[]; onRefresh: ()
           </table>
         </div>
       )}
+    </div>
+  );
+}
+
+/* ─── Mini HPC file explorer (used inside Block 2) ───────────────────────── */
+
+function MiniHpcExplorer({
+  host, user, password, home, onPick,
+}: {
+  host: string; user: string; password: string; home: string;
+  onPick: (path: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [cwd, setCwd] = useState<string>(home || "/");
+  const [entries, setEntries] = useState<FileEntry[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [hasReeds, setHasReeds] = useState(false);
+
+  // Reset cwd when home becomes available
+  useEffect(() => {
+    if (open && home && cwd === "/") setCwd(home);
+  }, [open, home]);
+
+  // Fetch directory whenever cwd changes (only while open)
+  useEffect(() => {
+    if (!open || !host || !user) return;
+    setLoading(true);
+    setError("");
+    listHpcFilesAPI(host, user, cwd, password)
+      .then((r) => {
+        // Only show directories (folders) — this is a folder picker
+        const dirs = r.entries.filter((e) => e.is_dir);
+        setEntries(dirs);
+        // Detect whether current dir IS a ReEDS repo
+        const all = r.entries;
+        const hasCases = all.some((e) => e.name === "cases.csv" && !e.is_dir);
+        const hasRunbatch = all.some((e) => e.name === "runbatch.py" && !e.is_dir);
+        setHasReeds(hasCases && hasRunbatch);
+      })
+      .catch((e) => {
+        setError(e instanceof Error ? e.message : String(e));
+        setEntries([]);
+        setHasReeds(false);
+      })
+      .finally(() => setLoading(false));
+  }, [open, cwd, host, user, password]);
+
+  function goUp() {
+    if (cwd === "/" || !cwd) return;
+    const parent = cwd.replace(/\/+$/, "").split("/").slice(0, -1).join("/") || "/";
+    setCwd(parent);
+  }
+
+  function enter(name: string) {
+    const next = cwd.endsWith("/") ? `${cwd}${name}` : `${cwd}/${name}`;
+    setCwd(next);
+  }
+
+  // Path breadcrumb (clickable)
+  const segments = cwd === "/" ? [""] : cwd.split("/");
+  const crumbs = segments.map((seg, i) => {
+    const path = i === 0 ? "/" : segments.slice(0, i + 1).join("/");
+    return { label: seg || "/", path };
+  });
+
+  if (!open) {
+    return (
+      <button
+        type="button"
+        onClick={() => setOpen(true)}
+        style={{
+          width: "100%", padding: "6px 10px", marginBottom: 8,
+          background: "var(--bg)", border: "1px dashed var(--border)",
+          borderRadius: 4, fontSize: "0.78rem", cursor: "pointer",
+          color: "var(--accent)", textAlign: "left",
+        }}
+      >
+        🗂️ Browse HPC filesystem to pick a folder…
+      </button>
+    );
+  }
+
+  return (
+    <div style={{
+      marginBottom: 10, border: "1px solid var(--border)", borderRadius: 6,
+      background: "var(--bg)", overflow: "hidden",
+    }}>
+      {/* Header bar */}
+      <div style={{
+        display: "flex", alignItems: "center", gap: 6,
+        padding: "6px 8px", background: "var(--bg-elevated)",
+        borderBottom: "1px solid var(--border)", fontSize: "0.78rem",
+      }}>
+        <button
+          type="button" onClick={goUp} disabled={cwd === "/" || loading}
+          title="Up one level"
+          style={{
+            padding: "2px 8px", background: "transparent",
+            border: "1px solid var(--border)", borderRadius: 3,
+            color: "var(--text-muted)", cursor: cwd === "/" ? "default" : "pointer",
+          }}
+        >
+          ⬆
+        </button>
+        {home && (
+          <button
+            type="button" onClick={() => setCwd(home)}
+            title="Go to $HOME"
+            style={{
+              padding: "2px 8px", background: "transparent",
+              border: "1px solid var(--border)", borderRadius: 3,
+              color: "var(--text-muted)", cursor: "pointer",
+            }}
+          >
+            🏠
+          </button>
+        )}
+        <div style={{ flex: 1, overflowX: "auto", whiteSpace: "nowrap" }}>
+          {crumbs.map((c, i) => (
+            <span key={i}>
+              {i > 0 && <span style={{ color: "var(--text-muted)" }}>/</span>}
+              <button
+                type="button"
+                onClick={() => setCwd(c.path)}
+                style={{
+                  padding: "1px 4px", background: "transparent", border: "none",
+                  color: i === crumbs.length - 1 ? "var(--accent)" : "var(--text-muted)",
+                  cursor: "pointer", fontFamily: "monospace", fontSize: "0.78rem",
+                }}
+              >
+                {c.label || "/"}
+              </button>
+            </span>
+          ))}
+        </div>
+        <button
+          type="button" onClick={() => setOpen(false)} title="Close explorer"
+          style={{
+            padding: "2px 8px", background: "transparent",
+            border: "1px solid var(--border)", borderRadius: 3,
+            color: "var(--text-muted)", cursor: "pointer",
+          }}
+        >
+          ✕
+        </button>
+      </div>
+
+      {/* Directory listing */}
+      <div style={{
+        maxHeight: 200, overflowY: "auto", padding: "4px 0",
+        fontSize: "0.8rem",
+      }}>
+        {loading && (
+          <div style={{ padding: "8px 12px", color: "var(--text-muted)" }}>
+            Loading…
+          </div>
+        )}
+        {!loading && error && (
+          <div style={{ padding: "8px 12px", color: "var(--danger)" }}>
+            {error}
+          </div>
+        )}
+        {!loading && !error && entries.length === 0 && (
+          <div style={{ padding: "8px 12px", color: "var(--text-muted)" }}>
+            (no subfolders)
+          </div>
+        )}
+        {!loading && !error && entries.map((e) => (
+          <div
+            key={e.rel_path}
+            onDoubleClick={() => enter(e.name)}
+            onClick={() => enter(e.name)}
+            style={{
+              padding: "3px 12px", cursor: "pointer", display: "flex",
+              alignItems: "center", gap: 6, fontFamily: "monospace",
+            }}
+            onMouseEnter={(ev) => (ev.currentTarget.style.background = "var(--bg-elevated)")}
+            onMouseLeave={(ev) => (ev.currentTarget.style.background = "transparent")}
+          >
+            <span>📁</span>
+            <span>{e.name}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* Footer: pick this folder */}
+      <div style={{
+        display: "flex", alignItems: "center", gap: 8,
+        padding: "6px 8px", background: "var(--bg-elevated)",
+        borderTop: "1px solid var(--border)",
+      }}>
+        {hasReeds && (
+          <span style={{ color: "#4caf50", fontSize: "0.75rem" }}>
+            ✅ ReEDS repo detected
+          </span>
+        )}
+        {!hasReeds && !loading && (
+          <span style={{ color: "var(--text-muted)", fontSize: "0.75rem" }}>
+            cases.csv / runbatch.py not found here
+          </span>
+        )}
+        <div style={{ flex: 1 }} />
+        <button
+          type="button"
+          onClick={() => { onPick(cwd); setOpen(false); }}
+          disabled={!cwd}
+          style={{
+            padding: "4px 12px",
+            background: hasReeds ? "var(--accent)" : "var(--bg)",
+            border: "1px solid var(--accent)",
+            borderRadius: 4, color: hasReeds ? "#fff" : "var(--accent)",
+            fontSize: "0.78rem", fontWeight: 600, cursor: "pointer",
+          }}
+        >
+          Use this folder
+        </button>
+      </div>
     </div>
   );
 }
