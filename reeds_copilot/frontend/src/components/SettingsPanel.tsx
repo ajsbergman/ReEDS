@@ -70,7 +70,8 @@ export default function SettingsPanel() {
     setSwitching(true);
     setSaveMsg(null);
     try {
-      const res = await switchProviderAPI(providerValue, prov.models[0].value);
+      // Pass empty model so backend uses the per-provider remembered model
+      const res = await switchProviderAPI(providerValue, "");
       setSaveMsg({ ok: res.success, text: res.message });
       if (res.success) refreshHealth();
     } catch (err: unknown) {

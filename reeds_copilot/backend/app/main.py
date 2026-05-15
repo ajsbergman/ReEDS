@@ -36,8 +36,13 @@ async def lifespan(app: FastAPI):
         "google": stored_keys.get("google") or settings.google_api_key,
         "nlr": stored_keys.get("nlr", ""),
     }
-    # Pick the configured provider, or the first provider that has a key
-    provider_name = settings.llm_provider
+    # Prefer the last-active provider remembered in keys.json; then env config; then first with a key
+    remembered_provider = keystore.get_active_provider()
+    provider_name = (
+        remembered_provider
+        if remembered_provider and key_map.get(remembered_provider)
+        else settings.llm_provider
+    )
     api_key = key_map.get(provider_name, "")
     if not api_key:
         # Auto-select the first provider that has a stored key
@@ -46,10 +51,15 @@ async def lifespan(app: FastAPI):
                 provider_name = pname
                 api_key = pkey
                 break
-    app.state.llm = build_llm_provider(provider_name, api_key, settings.model_name or None)
+    # Prefer the per-provider remembered model; fall back to env override
+    chosen_model = keystore.get_model(provider_name) or settings.model_name or None
+    app.state.llm = build_llm_provider(provider_name, api_key, chosen_model)
     app.state.active_provider_name = provider_name
-    app.state.active_model_name = settings.model_name or ""
-    log.info("LLM provider: %s  model: %s  key set: %s", provider_name, settings.model_name, bool(api_key))
+    app.state.active_model_name = getattr(app.state.llm, "_model", chosen_model or "")
+    log.info(
+        "LLM provider: %s  model: %s  key set: %s",
+        provider_name, app.state.active_model_name, bool(api_key),
+    )
 
     # Load persisted run history
     init_run_manager(settings.repo_root)

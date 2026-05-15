@@ -184,7 +184,8 @@ export default function ChatPanel({ mode, selectedPath, onSources, messages, set
     if (!prov) return;
     setSwitchingProvider(true);
     try {
-      const res = await switchProviderAPI(providerValue, prov.models[0].value);
+      // Pass empty model so backend uses the per-provider remembered model
+      const res = await switchProviderAPI(providerValue, "");
       if (res.success) {
         setActiveProvider(providerValue);
       } else {

@@ -57,12 +57,13 @@ def update_api_key(
         provider = build_llm_provider(provider_name, key, model)
         request.app.state.llm = provider
         request.app.state.active_provider_name = provider_name
-        request.app.state.active_model_name = getattr(provider, "_model", DEFAULT_MODELS.get(provider_name, ""))
-        # Persist key to local disk so it survives restarts
-        keystore.save_key(provider_name, key)
+        active_model = getattr(provider, "_model", DEFAULT_MODELS.get(provider_name, ""))
+        request.app.state.active_model_name = active_model
+        # Persist key + chosen model so they survive restarts
+        keystore.save_key(provider_name, key, active_model)
         return UpdateApiKeyResponse(
             success=True,
-            message=f"Switched to {provider_name} ({request.app.state.active_model_name}). Chat is ready.",
+            message=f"Switched to {provider_name} ({active_model}). Chat is ready.",
         )
     except Exception as exc:
         return UpdateApiKeyResponse(success=False, message=str(exc))
@@ -112,15 +113,19 @@ def switch_provider(
             success=False,
             message=f"No stored API key for '{provider_name}'. Save one first in Settings.",
         )
-    model = body.model.strip() or None
+    # If no model passed by the caller, fall back to the previously remembered one
+    model = body.model.strip() or keystore.get_model(provider_name) or None
     try:
         provider = build_llm_provider(provider_name, key, model)
         request.app.state.llm = provider
         request.app.state.active_provider_name = provider_name
-        request.app.state.active_model_name = getattr(provider, "_model", DEFAULT_MODELS.get(provider_name, ""))
+        active_model = getattr(provider, "_model", DEFAULT_MODELS.get(provider_name, ""))
+        request.app.state.active_model_name = active_model
+        # Remember the active provider + chosen model across restarts
+        keystore.save_model(provider_name, active_model)
         return UpdateApiKeyResponse(
             success=True,
-            message=f"Switched to {provider_name} ({request.app.state.active_model_name}).",
+            message=f"Switched to {provider_name} ({active_model}).",
         )
     except Exception as exc:
         return UpdateApiKeyResponse(success=False, message=str(exc))
