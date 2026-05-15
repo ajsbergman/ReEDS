@@ -414,11 +414,11 @@ export default function SettingsPanel() {
               <div className="settings-api-card nlr">
                 <div className="settings-api-card-header">
                   <span>🏢</span>
-                  <strong>NLR Staff (recommended — no out-of-pocket cost)</strong>
+                  <strong>NLR Staff (recommended)</strong>
                 </div>
                 <p>
-                  NLR provides LLM access through its internal LiteLLM proxy. You won't pay personally,
-                  but usage is billed to a <strong>project charge code</strong> that you provide when requesting access.
+                  NLR provides LLM access through its internal LiteLLM proxy.
+                  Usage is billed to a <strong>project charge code</strong> that you provide when requesting access.
                 </p>
                 <ol>
                   <li>Go to <a href="https://cloud.nlr.gov/" target="_blank" rel="noopener noreferrer">cloud.nlr.gov</a></li>

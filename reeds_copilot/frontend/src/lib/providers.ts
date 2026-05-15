@@ -65,7 +65,7 @@ export const PROVIDERS: ProviderDef[] = [
     value: "nlr",
     label: "NLR LiteLLM (VPN needed)",
     icon: "🏢",
-    desc: "NLR internal proxy (no out-of-pocket cost — billed to a project charge code)",
+    desc: "NLR internal proxy (billed to a project charge code)",
     placeholder: "sk-…",
     models: [
       { value: "claude-sonnet-4-6", label: "Claude Sonnet 4.6" },
