@@ -39,11 +39,13 @@ def preview(
     path: str = Query(..., description="Relative path inside the repo"),
     full: bool = Query(False, description="Return full file content (up to 10 MB)"),
     gdx_symbol: str | None = Query(None, description="GDX symbol name to preview"),
+    h5_dataset: str | None = Query(None, description="HDF5 dataset path to preview"),
     settings: Settings = Depends(get_settings),
 ):
     try:
         result = preview_file(
-            settings.repo_root, path, settings, full=full, gdx_symbol=gdx_symbol,
+            settings.repo_root, path, settings, full=full,
+            gdx_symbol=gdx_symbol, h5_dataset=h5_dataset,
         )
     except (FileNotFoundError, PermissionError) as exc:
         raise HTTPException(status_code=400, detail=str(exc))

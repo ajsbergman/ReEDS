@@ -2,7 +2,7 @@ import { useEffect, useState, useMemo } from "react";
 import hljs from "highlight.js";
 import "highlight.js/styles/vs2015.css";
 import { guessLang } from "../lib/highlight";
-import { previewFileAPI, downloadFileURL, rawFileURL, type FilePreviewResponse, type GdxSymbolInfo } from "../lib/api";
+import { previewFileAPI, downloadFileURL, rawFileURL, type FilePreviewResponse, type GdxSymbolInfo, type H5DatasetInfo } from "../lib/api";
 import type { SourceSnippet } from "../lib/api";
 
 interface Props {
@@ -19,6 +19,7 @@ export default function RightPanel({ selectedFile, selectedLine, sources, onSele
   const [loadError, setLoadError] = useState<string | null>(null);
   const [fullMode, setFullMode] = useState(false);
   const [gdxSymbol, setGdxSymbol] = useState<string | null>(null);
+  const [h5Dataset, setH5Dataset] = useState<string | null>(null);
 
   useEffect(() => {
     if (!selectedFile) {
@@ -26,12 +27,13 @@ export default function RightPanel({ selectedFile, selectedLine, sources, onSele
       setLoadError(null);
       setFullMode(false);
       setGdxSymbol(null);
+      setH5Dataset(null);
       return;
     }
     let cancelled = false;
     setLoading(true);
     setLoadError(null);
-    previewFileAPI(selectedFile, fullMode, gdxSymbol)
+    previewFileAPI(selectedFile, fullMode, gdxSymbol, h5Dataset)
       .then((res) => { if (!cancelled) { setPreview(res); setLoadError(null); } })
       .catch((err) => {
         if (cancelled) return;
@@ -41,15 +43,19 @@ export default function RightPanel({ selectedFile, selectedLine, sources, onSele
       })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [selectedFile, fullMode, gdxSymbol]);
+  }, [selectedFile, fullMode, gdxSymbol, h5Dataset]);
 
   // If the caller asked for a specific line, force full-file mode so it can be located
   useEffect(() => {
     if (selectedLine && selectedLine > 0) setFullMode(true);
   }, [selectedFile, selectedLine]);
 
-  // Reset full mode and gdx symbol when switching files
-  useEffect(() => { if (!selectedLine) setFullMode(false); setGdxSymbol(null); }, [selectedFile]);
+  // Reset full mode and gdx/h5 selection when switching files
+  useEffect(() => {
+    if (!selectedLine) setFullMode(false);
+    setGdxSymbol(null);
+    setH5Dataset(null);
+  }, [selectedFile]);
 
   return (
     <div className="right-panel" style={width ? { width, minWidth: width } : undefined}>
@@ -98,6 +104,10 @@ export default function RightPanel({ selectedFile, selectedLine, sources, onSele
             <GdxSymbolList symbols={preview.gdx_symbols} onSelect={setGdxSymbol} />
           ) : preview && preview.gdx_symbol && preview.columns && preview.rows ? (
             <GdxDataView preview={preview} onBack={() => setGdxSymbol(null)} />
+          ) : preview && preview.h5_datasets && !h5Dataset ? (
+            <H5DatasetList datasets={preview.h5_datasets} onSelect={setH5Dataset} />
+          ) : preview && preview.h5_dataset && preview.columns && preview.rows ? (
+            <H5DataView preview={preview} onBack={() => setH5Dataset(null)} />
           ) : preview && preview.columns && preview.rows ? (
             <CsvPreview preview={preview} fullMode={fullMode} onViewFull={() => setFullMode(true)} />
           ) : preview && preview.content ? (
@@ -334,6 +344,123 @@ function GdxDataView({ preview, onBack }: { preview: FilePreviewResponse; onBack
         <span style={{ fontWeight: 600, color: "var(--accent, #2C86B8)" }}>
           {preview.gdx_symbol}
         </span>
+        <span style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>
+          {preview.rows.length}{preview.total_rows != null && preview.total_rows > preview.rows.length ? ` / ${preview.total_rows.toLocaleString()}` : ""} rows
+          {preview.truncated && " (showing first 500)"}
+        </span>
+      </div>
+      <div className="csv-table-wrap">
+        <table>
+          <thead>
+            <tr>
+              {preview.columns.map((c) => (
+                <th key={c}>{c}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {preview.rows.map((row, i) => (
+              <tr key={i}>
+                {preview.columns!.map((c) => (
+                  <td key={c}>{String(row[c] ?? "")}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+
+/* ── HDF5 dataset list ───────────────────────────────────────────────────── */
+
+function H5DatasetList({ datasets, onSelect }: { datasets: H5DatasetInfo[]; onSelect: (name: string) => void }) {
+  const [filter, setFilter] = useState("");
+  const filtered = filter
+    ? datasets.filter((d) => d.name.toLowerCase().includes(filter.toLowerCase()))
+    : datasets;
+
+  return (
+    <div>
+      <div style={{ color: "var(--text-muted)", marginBottom: 6, fontSize: "0.8rem" }}>
+        {datasets.length} dataset{datasets.length === 1 ? "" : "s"} in HDF5 file
+      </div>
+      <input
+        type="text"
+        placeholder="Filter datasets…"
+        value={filter}
+        onChange={(e) => setFilter(e.target.value)}
+        style={{
+          width: "100%", padding: "5px 8px", marginBottom: 8,
+          background: "var(--bg-input, #23272e)", color: "var(--text-primary, #e0e0e0)",
+          border: "1px solid var(--border, #333)", borderRadius: 4, fontSize: "0.82rem",
+          boxSizing: "border-box",
+        }}
+      />
+      <div className="csv-table-wrap" style={{ maxHeight: "70vh" }}>
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Shape</th>
+              <th>Dtype</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map((d) => (
+              <tr
+                key={d.name}
+                onClick={() => onSelect(d.name)}
+                style={{ cursor: "pointer" }}
+                title={`${d.name} — ${d.shape} ${d.dtype}`}
+              >
+                <td style={{ color: "var(--accent, #2C86B8)" }}>{d.name}</td>
+                <td>{d.shape}</td>
+                <td>{d.dtype}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {filtered.length === 0 && (
+        <div style={{ color: "var(--text-muted)", fontSize: "0.82rem", marginTop: 6 }}>
+          No datasets match "{filter}"
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+/* ── HDF5 single-dataset data view ───────────────────────────────────────── */
+
+function H5DataView({ preview, onBack }: { preview: FilePreviewResponse; onBack: () => void }) {
+  if (!preview.columns || !preview.rows) return null;
+  return (
+    <div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
+        <button
+          className="btn btn-outline"
+          style={{ fontSize: "0.75rem", padding: "2px 8px" }}
+          onClick={onBack}
+        >
+          ← Back
+        </button>
+        <span style={{ fontWeight: 600, color: "var(--accent, #2C86B8)" }}>
+          {preview.h5_dataset}
+        </span>
+        {preview.h5_shape && (
+          <span style={{ color: "var(--text-muted)", fontSize: "0.78rem" }}>
+            shape {preview.h5_shape}
+          </span>
+        )}
+        {preview.h5_dtype && (
+          <span style={{ color: "var(--text-muted)", fontSize: "0.78rem" }}>
+            dtype {preview.h5_dtype}
+          </span>
+        )}
         <span style={{ color: "var(--text-muted)", fontSize: "0.8rem" }}>
           {preview.rows.length}{preview.total_rows != null && preview.total_rows > preview.rows.length ? ` / ${preview.total_rows.toLocaleString()}` : ""} rows
           {preview.truncated && " (showing first 500)"}

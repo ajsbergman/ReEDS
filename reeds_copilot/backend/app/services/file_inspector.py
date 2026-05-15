@@ -66,6 +66,7 @@ def preview_file(
     settings: Settings,
     full: bool = False,
     gdx_symbol: str | None = None,
+    h5_dataset: str | None = None,
 ) -> dict:
     target = safe_resolve(repo_root, rel_path)
     if not target.is_file():
@@ -76,6 +77,9 @@ def preview_file(
 
     if suffix == ".gdx":
         return _preview_gdx(target, rel_path, symbol=gdx_symbol)
+
+    if suffix in (".h5", ".hdf5"):
+        return _preview_h5(target, rel_path, dataset=h5_dataset)
 
     if suffix == ".csv":
         return _preview_csv(target, rel_path, settings, full=full)
@@ -251,3 +255,164 @@ def _preview_csv(target: Path, rel_path: str, settings: Settings, full: bool = F
         "total_rows": total_rows,
         "truncated": total_rows > display_rows,
     }
+
+
+# ── HDF5 helpers (use h5py) ───────────────────────────────────────────────────
+
+def _h5_list_datasets(target: Path) -> list[dict]:
+    """Walk an HDF5 file and return one entry per dataset."""
+    import h5py
+
+    out: list[dict] = []
+    with h5py.File(target, "r") as f:
+        def visit(name: str, obj) -> None:
+            if isinstance(obj, h5py.Dataset):
+                try:
+                    shape_str = "×".join(str(s) for s in obj.shape) or "scalar"
+                except Exception:
+                    shape_str = "?"
+                try:
+                    dtype_str = str(obj.dtype)
+                except Exception:
+                    dtype_str = "?"
+                out.append({
+                    "name": "/" + name,
+                    "shape": shape_str,
+                    "dtype": dtype_str,
+                    "size": int(obj.size) if hasattr(obj, "size") else 0,
+                    "ndim": int(obj.ndim) if hasattr(obj, "ndim") else 0,
+                })
+        f.visititems(visit)
+    return out
+
+
+def _h5_read_dataset(target: Path, dataset: str, max_rows: int = 500) -> dict:
+    """Read one dataset's data, returning columns/rows similar to GDX preview."""
+    import h5py
+    import numpy as np
+
+    with h5py.File(target, "r") as f:
+        if dataset not in f:
+            raise KeyError(f"Dataset '{dataset}' not found in {target.name}")
+        obj = f[dataset]
+        if not isinstance(obj, h5py.Dataset):
+            raise KeyError(f"'{dataset}' is not a dataset")
+
+        shape = obj.shape
+        ndim = obj.ndim
+        total_rows = int(shape[0]) if ndim >= 1 else 1
+
+        # Scalar
+        if ndim == 0:
+            val = obj[()]
+            if isinstance(val, bytes):
+                val = val.decode("utf-8", errors="replace")
+            return {
+                "columns": ["Value"],
+                "rows": [{"Value": _to_jsonable(val)}],
+                "total_rows": 1,
+                "truncated": False,
+                "shape": "scalar",
+                "dtype": str(obj.dtype),
+            }
+
+        # 1-D
+        if ndim == 1:
+            n = min(total_rows, max_rows)
+            data = obj[:n]
+            rows = [{"Value": _to_jsonable(v)} for v in data]
+            return {
+                "columns": ["Value"],
+                "rows": rows,
+                "total_rows": total_rows,
+                "truncated": total_rows > n,
+                "shape": "×".join(str(s) for s in shape),
+                "dtype": str(obj.dtype),
+            }
+
+        # 2-D — show columns named col0..colN
+        if ndim == 2:
+            n = min(total_rows, max_rows)
+            data = obj[:n, :]
+            cols = [f"col{j}" for j in range(shape[1])]
+            rows = [
+                {cols[j]: _to_jsonable(data[i, j]) for j in range(shape[1])}
+                for i in range(n)
+            ]
+            return {
+                "columns": cols,
+                "rows": rows,
+                "total_rows": total_rows,
+                "truncated": total_rows > n,
+                "shape": "×".join(str(s) for s in shape),
+                "dtype": str(obj.dtype),
+            }
+
+        # Higher-dim — slice the leading axis, show flattened summary per row
+        n = min(total_rows, max_rows)
+        rows = []
+        for i in range(n):
+            slab = np.asarray(obj[i])
+            preview = ", ".join(str(_to_jsonable(v)) for v in slab.ravel()[:8])
+            if slab.size > 8:
+                preview += f", … ({slab.size} values)"
+            rows.append({"Index": i, "Slice shape": "×".join(str(s) for s in slab.shape), "Preview": preview})
+        return {
+            "columns": ["Index", "Slice shape", "Preview"],
+            "rows": rows,
+            "total_rows": total_rows,
+            "truncated": total_rows > n,
+            "shape": "×".join(str(s) for s in shape),
+            "dtype": str(obj.dtype),
+        }
+
+
+def _to_jsonable(v):
+    """Coerce a single HDF5 value to something JSON-serializable."""
+    import numpy as np
+
+    if isinstance(v, bytes):
+        try:
+            return v.decode("utf-8", errors="replace")
+        except Exception:
+            return repr(v)
+    if isinstance(v, np.generic):
+        try:
+            return v.item()
+        except Exception:
+            return str(v)
+    if isinstance(v, np.ndarray):
+        return v.tolist()
+    return v
+
+
+def _preview_h5(target: Path, rel_path: str, dataset: str | None = None) -> dict:
+    """Preview an HDF5 file: dataset list or single dataset data."""
+    try:
+        if dataset:
+            info = _h5_read_dataset(target, dataset)
+            return {
+                "rel_path": rel_path,
+                "file_type": target.suffix.lower(),
+                "columns": info["columns"],
+                "rows": info["rows"],
+                "total_rows": info["total_rows"],
+                "truncated": info["truncated"],
+                "h5_dataset": dataset,
+                "h5_shape": info["shape"],
+                "h5_dtype": info["dtype"],
+            }
+        else:
+            datasets = _h5_list_datasets(target)
+            return {
+                "rel_path": rel_path,
+                "file_type": target.suffix.lower(),
+                "h5_datasets": datasets,
+            }
+    except Exception as exc:
+        log.warning("HDF5 preview error: %s", exc)
+        return {
+            "rel_path": rel_path,
+            "file_type": target.suffix.lower(),
+            "content": f"Error reading HDF5: {exc}",
+        }

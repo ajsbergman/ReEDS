@@ -72,6 +72,14 @@ class GdxSymbolInfo(BaseModel):
     description: str = ""
 
 
+class H5DatasetInfo(BaseModel):
+    name: str           # "/group/dataset"
+    shape: str          # e.g. "100×3" or "scalar"
+    dtype: str          # e.g. "float64"
+    size: int = 0       # total element count
+    ndim: int = 0
+
+
 class FilePreviewResponse(BaseModel):
     rel_path: str
     file_type: str
@@ -84,6 +92,11 @@ class FilePreviewResponse(BaseModel):
     # GDX-specific
     gdx_symbols: list[GdxSymbolInfo] | None = None  # symbol listing
     gdx_symbol: str | None = None                    # active symbol name
+    # HDF5-specific
+    h5_datasets: list[H5DatasetInfo] | None = None  # dataset listing
+    h5_dataset: str | None = None                    # active dataset path
+    h5_shape: str | None = None
+    h5_dtype: str | None = None
 
 
 # ── Health ────────────────────────────────────────────────────────────────────

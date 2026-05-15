@@ -93,6 +93,14 @@ export interface GdxSymbolInfo {
   description: string;
 }
 
+export interface H5DatasetInfo {
+  name: string;
+  shape: string;
+  dtype: string;
+  size: number;
+  ndim: number;
+}
+
 export interface FilePreviewResponse {
   rel_path: string;
   file_type: string;
@@ -105,6 +113,11 @@ export interface FilePreviewResponse {
   // GDX-specific
   gdx_symbols?: GdxSymbolInfo[] | null;
   gdx_symbol?: string | null;
+  // HDF5-specific
+  h5_datasets?: H5DatasetInfo[] | null;
+  h5_dataset?: string | null;
+  h5_shape?: string | null;
+  h5_dtype?: string | null;
 }
 
 export interface HealthResponse {
@@ -153,10 +166,12 @@ export function previewFileAPI(
   path: string,
   full: boolean = false,
   gdxSymbol?: string | null,
+  h5Dataset?: string | null,
 ): Promise<FilePreviewResponse> {
   const params = new URLSearchParams({ path });
   if (full) params.set("full", "true");
   if (gdxSymbol) params.set("gdx_symbol", gdxSymbol);
+  if (h5Dataset) params.set("h5_dataset", h5Dataset);
   return request<FilePreviewResponse>(`/files/preview?${params}`);
 }
 
