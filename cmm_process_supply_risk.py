@@ -5,6 +5,7 @@ from scipy.spatial import ConvexHull
 from scipy.stats import gaussian_kde
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
+from adjustText import adjust_text
 
 # -----------------------------
 # LOAD + CLEAN 
@@ -28,7 +29,10 @@ disc_cost["Pct_Diff"] = (
     disc_cost["Pct_Diff"].astype(float).round(6)
 )
 
+disc_cost["Pct_Diff"] = disc_cost["Pct_Diff"].clip(lower=0)
+
 disc_cost = disc_cost[['Scenario', 'Material_name', 'Pct_Diff']]
+
 
 # clean up supply risk data
 
@@ -79,6 +83,11 @@ def plot_fixed(df_input, filename, title=None):
 
     fig, ax = plt.subplots(figsize=(12, 9))
     legend_handles = []
+
+    # Store labels so we can adjust them after all points/ranges are drawn
+    texts = []
+    label_xs = []
+    label_ys = []
 
     for mat in materials:
         sub = df_fixed[df_fixed["Material_name"] == mat]
@@ -141,15 +150,26 @@ def plot_fixed(df_input, filename, title=None):
                 )
             )
 
-        # add shortened label on plot
-        ax.text(
+        # add shortened label on plot, but store it for later adjustment
+        txt = ax.text(
             x,
             y_mid,
             short_label,
             fontsize=11,
             ha='center',
-            va='center'
+            va='center',
+            zorder=5,
+            bbox=dict(
+                facecolor='white',
+                edgecolor='none',
+                alpha=0.75,
+                pad=1
+            )
         )
+
+        texts.append(txt)
+        label_xs.append(x)
+        label_ys.append(y_mid)
 
     ax.set_xlabel("Composite supply risk (60/20/20)", fontsize=16)
     ax.set_ylabel("% Difference in Discounted System Cost", fontsize=16)
@@ -160,6 +180,23 @@ def plot_fixed(df_input, filename, title=None):
         ax.set_title(os.path.splitext(filename)[0], fontsize=18)
 
     ax.grid(True)
+
+    # Adjust labels to reduce overlap
+    if texts:
+        adjust_text(
+            texts,
+            x=label_xs,
+            y=label_ys,
+            ax=ax,
+            expand=(1.2, 1.4),
+            force_text=(0.5, 0.8),
+            force_static=(0.2, 0.4),
+            arrowprops=dict(
+                arrowstyle='-',
+                linewidth=0.6,
+                alpha=0.6
+            )
+        )
 
     if legend_handles:
         ax.legend(
@@ -204,6 +241,11 @@ def plot_polygons(df_input, filename, title=None, use_density=False):
 
     fig, ax = plt.subplots(figsize=(12, 9))
     legend_handles = []
+
+    # Store labels so we can adjust them after all polygons/points are drawn
+    texts = []
+    label_xs = []
+    label_ys = []
 
     for mat in materials:
         sub = df_all[df_all["Material_name"] == mat]
@@ -265,14 +307,25 @@ def plot_polygons(df_input, filename, title=None, use_density=False):
                 zorder=3
             )
 
-            ax.text(
+            txt = ax.text(
                 x0,
                 y0,
                 short_label,
                 fontsize=11,
                 ha='center',
-                va='center'
+                va='center',
+                zorder=5,
+                bbox=dict(
+                    facecolor='white',
+                    edgecolor='none',
+                    alpha=0.75,
+                    pad=1
+                )
             )
+
+            texts.append(txt)
+            label_xs.append(x0)
+            label_ys.append(y0)
 
             legend_handles.append(
                 Line2D(
@@ -316,14 +369,25 @@ def plot_polygons(df_input, filename, title=None, use_density=False):
                 alpha=0.35
             )
 
-            ax.text(
+            txt = ax.text(
                 center[0],
                 center[1],
                 short_label,
                 fontsize=11,
                 ha='center',
-                va='center'
+                va='center',
+                zorder=5,
+                bbox=dict(
+                    facecolor='white',
+                    edgecolor='none',
+                    alpha=0.75,
+                    pad=1
+                )
             )
+
+            texts.append(txt)
+            label_xs.append(center[0])
+            label_ys.append(center[1])
 
             legend_handles.append(
                 Patch(
@@ -347,14 +411,25 @@ def plot_polygons(df_input, filename, title=None, use_density=False):
                 zorder=3
             )
 
-            ax.text(
+            txt = ax.text(
                 x0,
                 y0,
                 short_label,
                 fontsize=11,
                 ha='center',
-                va='center'
+                va='center',
+                zorder=5,
+                bbox=dict(
+                    facecolor='white',
+                    edgecolor='none',
+                    alpha=0.75,
+                    pad=1
+                )
             )
+
+            texts.append(txt)
+            label_xs.append(x0)
+            label_ys.append(y0)
 
             legend_handles.append(
                 Line2D(
@@ -377,6 +452,23 @@ def plot_polygons(df_input, filename, title=None, use_density=False):
         ax.set_title(os.path.splitext(filename)[0], fontsize=18)
 
     ax.grid(True)
+
+    # Adjust labels to reduce overlap
+    if texts:
+        adjust_text(
+            texts,
+            x=label_xs,
+            y=label_ys,
+            ax=ax,
+            expand=(1.2, 1.4),
+            force_text=(0.5, 0.8),
+            force_static=(0.2, 0.4),
+            arrowprops=dict(
+                arrowstyle='-',
+                linewidth=0.6,
+                alpha=0.6
+            )
+        )
 
     if legend_handles:
         ax.legend(
@@ -412,3 +504,139 @@ plot_polygons(df_without_restrict, "3_range_with_density_without_restrict.png", 
 
 # 4) points for restrict only 
 plot_fixed(df_only_restrict, "4_points_only_restrict.png", title="Strict Unavailability at Fixed Supply Risk")
+
+
+# ------------------------------
+# COPPER TEST PLOT
+# ------------------------------
+copper = pd.read_csv("cmm_copper_temp.csv")
+copper[['Scenario','Material_name']] = copper['scenario'].str.split("_", expand=True)
+
+ref_cost = copper.loc[copper["Scenario"] == "Reference", "disc_cost"].iloc[0]
+
+copper['Pct_Diff'] = ((copper['disc_cost'] - ref_cost) / ref_cost) * 100
+
+copper["Pct_Diff"] = (
+    copper["Pct_Diff"].astype(float).round(6)
+)
+
+copper["Pct_Diff"] = copper["Pct_Diff"].clip(lower=0)
+
+copper = copper[['Scenario', 'Material_name', 'Pct_Diff','min_avail']]
+
+def plot_min_avail(df_input, filename, title=None):
+    df_plot = df_input.copy()
+
+    # Check required columns
+    required_cols = ["min_avail", "Pct_Diff", "Scenario"]
+    missing_cols = [col for col in required_cols if col not in df_plot.columns]
+
+    if missing_cols:
+        raise ValueError(f"Missing required columns: {missing_cols}")
+
+    # Drop rows where the point or label cannot be plotted
+    df_plot = df_plot.dropna(subset=["min_avail", "Pct_Diff", "Scenario"]).copy()
+
+    # Make sure Scenario labels are strings
+    df_plot["Scenario"] = df_plot["Scenario"].astype(str)
+
+    fig, ax = plt.subplots(figsize=(12, 9))
+
+    texts = []
+    label_xs = []
+    label_ys = []
+
+    # Plot all points
+    ax.scatter(
+        df_plot["min_avail"],
+        df_plot["Pct_Diff"],
+        s=80,
+        color="steelblue",
+        edgecolor="black",
+        linewidth=0.7,
+        zorder=3
+    )
+
+    # Add labels
+    for _, row in df_plot.iterrows():
+        x = row["min_avail"]
+        y = row["Pct_Diff"]
+        label = row["Scenario"]
+
+        txt = ax.text(
+            x,
+            y,
+            label,
+            fontsize=11,
+            ha="center",
+            va="center",
+            zorder=5,
+            clip_on=False,  # prevents labels from disappearing at plot edges
+            bbox=dict(
+                facecolor="white",
+                edgecolor="none",
+                alpha=0.75,
+                pad=1
+            )
+        )
+
+        texts.append(txt)
+        label_xs.append(x)
+        label_ys.append(y)
+
+    ax.set_xlabel("Share of Global Copper Supply", fontsize=16)
+    ax.set_ylabel("% Difference in Discounted System Cost", fontsize=16)
+
+    if title is not None:
+        ax.set_title(title, fontsize=18)
+    else:
+        ax.set_title(os.path.splitext(filename)[0], fontsize=18)
+
+    ax.grid(True)
+
+    # Add extra space around the plotted points so labels have room
+    x_min = df_plot["min_avail"].min()
+    x_max = df_plot["min_avail"].max()
+    y_min = df_plot["Pct_Diff"].min()
+    y_max = df_plot["Pct_Diff"].max()
+
+    x_range = x_max - x_min
+    y_range = y_max - y_min
+
+    if x_range == 0:
+        x_range = 1
+    if y_range == 0:
+        y_range = 1
+
+    ax.set_xlim(
+        x_min - 0.12 * x_range,
+        x_max + 0.12 * x_range
+    )
+
+    ax.set_ylim(
+        y_min - 0.12 * y_range,
+        y_max + 0.12 * y_range
+    )
+
+    # Adjust labels to reduce overlap
+    if texts:
+        adjust_text(
+            texts,
+            x=label_xs,
+            y=label_ys,
+            ax=ax,
+            expand=(1.3, 1.5),
+            force_text=(0.6, 0.9),
+            force_static=(0.3, 0.5),
+            arrowprops=dict(
+                arrowstyle="-",
+                linewidth=0.6,
+                alpha=0.6
+            )
+        )
+
+    fig.tight_layout()
+    fig.savefig(filename, dpi=300, bbox_inches="tight")
+    plt.close(fig)
+
+plot_min_avail(copper, "5_points_availability.png", title='Change in Discounted System Costs Across Copper Supply Scenarios')

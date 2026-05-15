@@ -158,6 +158,30 @@ byproduct_df.to_csv(os.path.join(workdir, 'cmm_us_byproduct.csv'), index=False)
 
 # PRICE DATA
 
+price_df = price_df[['Material','Product','Type','price_per_tonne','year_source']]
+price_df['Material'] = price_df['Material'].str.strip()
+price_df['Material'] = price_df['Material'].str.replace(r'\s+', '_', regex=True)
+
+# remove prices not needed 
+#keep only metal chromium
+price_df = price_df[~((price_df['Material'] == 'Chromium') & (price_df['Product'] == 'ore'))]
+price_df = price_df[~((price_df['Material'] == 'Chromium') & (price_df['Product'] == 'alloy'))]
+# keep only refined gallium (from notes in source document)
+price_df = price_df[~((price_df['Material'] == 'Gallium') & (price_df['price_per_tonne'] == 220000.0))]
+# keep only magnesium metal 
+price_df = price_df[~((price_df['Material'] == 'Magnesium') & (price_df['Product'] == 'chemical compound'))]
+# keep only titanium metal
+price_df = price_df[~((price_df['Material'] == 'Titanium') & (price_df['Product'] == 'chemical compound'))]
+price_df = price_df[~((price_df['Material'] == 'Titanium') & (price_df['Product'] == 'mineral concentrate'))]
+# keep only yttrium metal 
+price_df = price_df[~((price_df['Material'] == 'Yttrium') & (price_df['Product'] == 'chemical compound'))]
+# keep only zinc metal
+price_df = price_df[~((price_df['Material'] == 'Zirconium') & (price_df['Product'] == 'ore'))]
+# keep only manganese metal 
+price_df = price_df[~((price_df['Material'] == 'Manganese') & (price_df['Product'] == 'ore'))]
+price_df = price_df[~((price_df['Material'] == 'Manganese') & (price_df['Product'] == 'alloy'))]
+
+# deflate prices 
 new_cols = ['year','deflator']
 deflator_df.columns = new_cols
 deflator_df.loc[len(deflator_df)] = {'year': 2025, 'deflator': 0.586666667} # calculated from https://www.minneapolisfed.org/about-us/monetary-policy/inflation-calculator/consumer-price-index-1800-
@@ -172,35 +196,15 @@ price_df = pd.merge(
 )
 
 price_df['price_per_tonne_2004'] = price_df['price_per_tonne'] * price_df['deflator']
-
 price_df['price_per_tonne_2004'] = price_df['price_per_tonne_2004'].round(2)
 
-price_df = price_df[['Material','Product','Type','price_per_tonne_2004']]
-price_df['Material'] = price_df['Material'].str.strip()
-price_df['Material'] = price_df['Material'].str.replace(r'\s+', '_', regex=True)
+# take average by material type (keeping current for reference and 2004 for deflated price to go in model)
+price_df = price_df.groupby(['Material'], as_index=False)[['price_per_tonne','price_per_tonne_2004']].mean().round(2)
 
+#print prices to output in presentation
+#price_df.to_csv(os.path.join(workdir, 'cmm_price_temp.csv'), index=False)
 
-# remove prices not needed 
-#keep only metal chromium
-price_df = price_df[~((price_df['Material'] == 'Chromium') & (price_df['Product'] == 'ore'))]
-price_df = price_df[~((price_df['Material'] == 'Chromium') & (price_df['Product'] == 'alloy'))]
-# keep only refined gallium
-price_df = price_df[~((price_df['Material'] == 'Gallium') & (price_df['price_per_tonne_2004'] == '132612.07'))]
-# keep only magnesium metal 
-price_df = price_df[~((price_df['Material'] == 'Magnesium') & (price_df['Product'] == 'chemical compound'))]
-# keep only titanium metal
-price_df = price_df[~((price_df['Material'] == 'Titanium') & (price_df['Product'] == 'chemical compound'))]
-price_df = price_df[~((price_df['Material'] == 'Titanium') & (price_df['Product'] == 'mineral concentrate'))]
-# keep only yttrium metal 
-price_df = price_df[~((price_df['Material'] == 'Yttrium') & (price_df['Product'] == 'chemical compound'))]
-# keep only zinc metal
-price_df = price_df[~((price_df['Material'] == 'Zirconium') & (price_df['Product'] == 'ore'))]
-# keep only manganese metal 
-price_df = price_df[~((price_df['Material'] == 'Manganese') & (price_df['Product'] == 'ore'))]
-price_df = price_df[~((price_df['Material'] == 'Manganese') & (price_df['Product'] == 'alloy'))]
-
-# take average by material type
-price_df = price_df.groupby(['Material'], as_index=False)['price_per_tonne_2004'].mean().round(2)
+price_df = price_df[['Material','price_per_tonne']]
 new_cols = ['* mat','price']
 price_df.columns = new_cols
 
