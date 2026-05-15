@@ -88,6 +88,14 @@ type HpcCache = {
 };
 let hpcCache: HpcCache | null = null;
 
+/**
+ * Module-level cache of local env-check results, keyed by conda env name.
+ * Persists across mount/unmount of <RunPanel/> so switching sidebar tabs
+ * doesn't trigger a re-check. Cleared on full page reload. Use the ↻
+ * Refresh button (or change env) to refetch.
+ */
+let localEnvCache: { env: string; checks: EnvCheckResult[] } | null = null;
+
 export default function RunPanel() {
   /* Config form state */
   const [target, setTarget] = useState<"local" | "hpc">(() => hpcCache?.target ?? "local");
@@ -103,7 +111,9 @@ export default function RunPanel() {
   const [selectedEnv, setSelectedEnv] = useState("reeds2");
 
   /* Environment checks */
-  const [envChecks, setEnvChecks] = useState<EnvCheckResult[]>([]);
+  const [envChecks, setEnvChecks] = useState<EnvCheckResult[]>(
+    () => localEnvCache?.checks ?? [],
+  );
   const [envLoading, setEnvLoading] = useState(false);
   const [fixing, setFixing] = useState<string | null>(null);
   const [fixMsg, setFixMsg] = useState("");
@@ -212,14 +222,21 @@ export default function RunPanel() {
       })
       .catch(() => {});
     refreshRuns();
-    runEnvChecks("reeds2");
+    // Only auto-run env-checks on first visit (or after page reload).
+    // Subsequent re-mounts (sidebar tab switches) reuse the cached result.
+    if (!localEnvCache || localEnvCache.env !== "reeds2") {
+      runEnvChecks("reeds2");
+    }
   }, []);
 
   /* Re-run env checks when conda env changes */
   function runEnvChecks(env: string) {
     setEnvLoading(true);
     envCheckAPI(env)
-      .then(setEnvChecks)
+      .then((checks) => {
+        setEnvChecks(checks);
+        localEnvCache = { env, checks };
+      })
       .catch(() => {})
       .finally(() => setEnvLoading(false));
   }
