@@ -16,6 +16,7 @@ import {
   createSessionAPI,
   getSessionAPI,
   updateSessionAPI,
+  generateSessionTitleAPI,
   type SourceSnippet,
   type HealthResponse,
 } from "./lib/api";
@@ -88,6 +89,9 @@ export default function App() {
 
   // Auto-save messages to the active session (debounced)
   const prevMsgCountRef = useRef(0);
+  // Sessions we've already asked the LLM to auto-title (avoids re-doing it
+  // on every subsequent message in the same chat).
+  const aiTitledRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     if (!sessionId || messages.length === 0) return;
     // Only save if messages actually changed
@@ -96,7 +100,8 @@ export default function App() {
 
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
-      // Auto-title from first user message
+      // Fallback title from first user message (truncated). The AI-title
+      // effect below will overwrite this once the assistant has replied.
       const firstUserMsg = messages.find((m) => m.role === "user");
       const title = firstUserMsg
         ? firstUserMsg.content.slice(0, 60) + (firstUserMsg.content.length > 60 ? "…" : "")
@@ -105,6 +110,30 @@ export default function App() {
         .then(() => setHistoryRefreshKey((k) => k + 1))
         .catch(() => {});
     }, 500);
+  }, [messages, sessionId]);
+
+  // After the first user+assistant exchange, ask the LLM for a concise title
+  // (similar to ChatGPT's auto-titling). Runs at most once per session.
+  useEffect(() => {
+    if (!sessionId) return;
+    if (aiTitledRef.current.has(sessionId)) return;
+    const hasUser = messages.some((m) => m.role === "user");
+    const hasAssistant = messages.some((m) => m.role === "assistant");
+    if (!hasUser || !hasAssistant) return;
+    aiTitledRef.current.add(sessionId);
+    // Small delay so the debounced save above lands first.
+    const t = setTimeout(() => {
+      generateSessionTitleAPI(
+        sessionId,
+        messages.map((m) => ({ role: m.role, content: m.content })),
+      )
+        .then(() => setHistoryRefreshKey((k) => k + 1))
+        .catch(() => {
+          // On failure, allow a future retry for this session.
+          aiTitledRef.current.delete(sessionId);
+        });
+    }, 700);
+    return () => clearTimeout(t);
   }, [messages, sessionId]);
 
   // Clean up debounced save timer on unmount

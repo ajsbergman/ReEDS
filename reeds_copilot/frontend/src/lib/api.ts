@@ -408,6 +408,20 @@ export function deleteSessionAPI(id: string): Promise<{ ok: boolean }> {
   });
 }
 
+export function generateSessionTitleAPI(
+  id: string,
+  messages: { role: string; content: string }[],
+): Promise<{ title: string }> {
+  return request<{ title: string }>(
+    `/chat/sessions/${encodeURIComponent(id)}/generate-title`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ messages }),
+    },
+  );
+}
+
 /* ── Runs ──────────────────────────────────────────────────────────────────── */
 
 export interface CasesFile {

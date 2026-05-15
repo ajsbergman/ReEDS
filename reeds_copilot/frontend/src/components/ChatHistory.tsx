@@ -62,6 +62,7 @@ export default function ChatHistory({
             key={s.id}
             className={`session-item ${s.id === activeSessionId ? "active" : ""}`}
             onClick={() => onSelectSession(s.id)}
+            title={s.title}
           >
             <div className="session-title">{s.title}</div>
             <div className="session-meta">
