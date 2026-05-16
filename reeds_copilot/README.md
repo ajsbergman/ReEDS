@@ -1,6 +1,6 @@
 # ReEDS-Copilot
 
-An AI-powered assistant for the ReEDS (Regional Energy Deployment System) repository.  
+An AI-powered assistant for the ReEDS (Regional Energy Deployment System) repository.
 Browse documentation, search source code, inspect inputs/outputs, and chat with an LLM that is grounded in the local repo context.
 
 ---
@@ -21,36 +21,37 @@ This installs dependencies, starts backend (port 8001) + frontend (port 5173), a
 
 ### Prerequisites
 
-| Tool | Version | Notes |
-|------|---------|-------|
-| Python | ≥ 3.10 | Backend runtime |
-| Node.js | ≥ 18 | Frontend dev server (includes npm) |
+| Tool    | Version | Notes                              |
+| ------- | ------- | ---------------------------------- |
+| Python  | ≥ 3.10 | Backend runtime                    |
+| Node.js | ≥ 18   | Frontend dev server (includes npm) |
 
-**For running ReEDS models** (optional):
-| Tool | Notes |
-|------|-------|
-| Conda | With an environment containing ReEDS dependencies (default name: `reeds2`) |
-| GAMS | Licensed, on PATH or auto-detected |
-| Julia | Version matching `Project.toml` (managed via juliaup) |
+**For running ReEDS models:**
+
+| Tool  | Notes                                                                       |
+| ----- | --------------------------------------------------------------------------- |
+| Conda | With an environment containing ReEDS dependencies (default name:`reeds2`) |
+| GAMS  | Licensed, on PATH or auto-detected                                          |
+| Julia | Version matching `Project.toml` (managed via juliaup)                     |
+
+> The **Setup Wizard** inside ReEDS-Copilot detects what's missing and offers one-click install/configuration for each of these.
 
 ### LLM API Key (required for AI chat)
 
-ReEDS-Copilot uses commercial LLM APIs for its chat functionality. You need an API key from **at least one** of the providers below. Personal API usage is very affordable — typical interactive use costs **less than $1/month**.
+ReEDS-Copilot uses commercial LLM APIs for its chat functionality. You need an API key from **at least one** of the providers below.
+
+> **NLR staff:** the easiest option is NLR's LiteLLM gateway, which lets you use Claude, GPT, and Gemini models through a single key billed to an NLR project charge code. The login page in ReEDS-Copilot walks you through obtaining the key step by step.
+
+> **External users / personal use:** sign up directly with one of the providers below. Personal API usage is very affordable — typical interactive use costs **less than $10/month**.
 
 > **Note:** An API key is different from a regular ChatGPT, Claude, or Gemini chat account. API keys are obtained from the provider's **developer console** (links below) and are billed separately on a pay-per-use basis.
 
-| Provider | Sign Up | Pricing (approximate) | Notes |
-|----------|---------|----------------------|-------|
-| **Google Gemini** | [aistudio.google.com](https://aistudio.google.com/apikey) | Free tier available; paid starts at ~$0.15/million input tokens | Generous free tier, fast |
-| **Anthropic** | [console.anthropic.com](https://console.anthropic.com/) | ~$3–15/million input tokens depending on model | Best tool-use quality |
-| **OpenAI** | [platform.openai.com](https://platform.openai.com/api-keys) | ~$2.50–10/million input tokens depending on model | Widely used, good all-around |
-
-**How to get started:**
-1. Create an account at one of the links above
-2. Generate an API key from the provider's dashboard
-3. Either set it as an environment variable (see below) or enter it directly in the ReEDS-Copilot **Settings** panel in the browser
-
-> **Cost note:** A typical chat message uses roughly 2,000–5,000 input tokens. At Google Gemini's free tier or paid rate, you could send hundreds of messages per day for pennies. Even with Anthropic's most capable model, a full day of heavy usage rarely exceeds $1.
+| Provider                                     | Sign Up                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | Pricing (approximate)                                           | Notes                                             |
+| -------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------- | ------------------------------------------------- |
+| **NLR LiteLLM** *(NLR VPN required)* | [https://cloud.nlr.gov/](https://gcc02.safelinks.protection.outlook.com/?url=https%3A%2F%2Fcloud.nlr.gov%2F&data=05%7C02%7CYunzhi.Chen%40nlr.gov%7C31716e7c6831430d056708deb1e421e5%7Ca0f29d7e28cd4f5484427885aee7c080%7C0%7C0%7C639143790553772984%7CUnknown%7CTWFpbGZsb3d8eyJFbXB0eU1hcGkiOnRydWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoiTWFpbCIsIldUIjoyfQ%3D%3D%7C0%7C%7C%7C&sdata=DNMJcs4wKyBHwQ8mMbTWNHv9eY1deMj%2Bk6PjggqeKqM%3D&reserved=0 "Original URL: https://cloud.nlr.gov/. Click or tap if you trust this link.") | Billed to an NLR charge code                                    | Access to Claude, GPT, and Gemini through one key |
+| **Google Gemini**                      | [aistudio.google.com](https://aistudio.google.com/apikey)                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | Free tier available; paid starts at ~$0.15/million input tokens | Generous free tier, fast                          |
+| **Anthropic**                          | [console.anthropic.com](https://console.anthropic.com/)                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | ~$3–15/million input tokens depending on model                 | Best tool-use quality                             |
+| **OpenAI**                             | [platform.openai.com](https://platform.openai.com/api-keys)                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | ~$2.50–10/million input tokens depending on model              | Widely used, good all-around                      |
 
 ---
 
