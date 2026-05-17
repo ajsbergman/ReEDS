@@ -1812,17 +1812,10 @@ Substation POIs incur a substation upgrade cost of \$15/kW; transmission line PO
 
 Network reinforcement represents upgrades to the existing transmission network required to avoid congestion when moving power from the POI for a new generator to load centers.
 It is intended to represent the costs associated with interconnection queues, which represent a major bottleneck for the deployment of new wind and solar in the United States. {cite}`gormanGridConnectionBarriers2025`.
-Network reinforcement costs are approximated by tracing a path along existing transmission lines from each wind/solar POI to each zone "center" within the same state;
-the zone center is usually taken as the largest population center in the model zone but is sometimes (for zones without large urban centers) assigned to a high-voltage substation within the zone.[^ref35]
-A cost for each reinforcement route is calculated using the cost surface described above, with capital expenditure (CAPEX) costs multiplied by 50% to approximate the lower cost for reconductoring compared to greenfield transmission construction.
+Network reinforcement costs are approximated by tracing a path along existing transmission lines from each wind/solar POI to a nearby urban center.
+A cost for each reinforcement route is calculated using the cost surface described above.
 The single lowest-cost route for each POI is then selected; the associated reinforcement cost [\$/MW] and transmission distance [MW-miles] are incurred for every MW of new wind/solar capacity added at all reV sites associated with that POI.
 (This heuristic method of tracing a path from the POI to the largest load center in the zone is highly simplified and does not represent all the considerations involved in an actual interconnection study.)
-
-[^ref35]: Some zone centers are also manually adjusted.
-For example, Vancouver and Portland are the largest population centers in the southern Washington and northern Oregon regions, respectively.
-However, these centers are only about 10 miles apart.
-Modeling such a short distance between these nodes could create a bias for interzonal transmission investments between Washington and Oregon.
-Therefore, Yakima was used in lieu of Vancouver as the node location for southern Washington.
 
 {numref}`figure-local-generation-interconnection-components` illustrates the concepts of spur lines and reinforcement lines, and {numref}`figure-interconnection-cost-distribution` shows the resulting distribution of interconnection costs for land-based wind and utility-scale PV under the three siting regimes.
 

@@ -296,7 +296,7 @@ def get_zonemap(case=None, exclude_water_areas=False, crs='ESRI:102008', **kwarg
     return dfba
 
 
-def get_dfmap(case=None, levels=None, exclude_water_areas=False):
+def get_dfmap(case=None, levels=None, exclude_water_areas=True):
     """Get dictionary of maps at different hierarchy levels"""
     hierarchy = (
         get_hierarchy(case, original=True)

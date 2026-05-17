@@ -965,7 +965,7 @@ if __name__ == '__main__':
     write = args.write
 
     # #%% Inputs for testing
-    # case = os.path.join(reeds.io.reeds_path, 'runs', 'v20251209_scM0_USA_defaults')
+    # case = os.path.join(reeds.io.reeds_path, 'runs', 'v20260517_transcostM0_USA_defaults')
     # interactive = True
     # write = 'png'
 
@@ -1086,7 +1086,7 @@ if __name__ == '__main__':
     ### Supply curves
     extras = (True if 'usa' in sw.GSw_Region.lower() else False)
     try:
-        for tech in ['upv', 'wind-ons', 'wind-ofs', 'egs']:
+        for tech in [None, 'upv', 'wind-ons', 'wind-ofs', 'egs']:
             plot_generator = map_supplycurves(
                 case=case,
                 tech=tech,
