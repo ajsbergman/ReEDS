@@ -215,3 +215,228 @@ def get_map(resolution='county', source='tiger', crs='ESRI:102008'):
         df = df.set_index(index[resolution]).copy()
 
     return df
+
+
+def apply_uniform_disaggregation(df, region_col):
+    # Assign zonal values to each zone's counties uniformly
+    county2zone = reeds.io.get_county2zone(GSw_ZoneSet='z134', as_map=False)
+    county2zone['FIPS'] = 'p' + county2zone.FIPS
+    df = (
+        df
+        .merge(county2zone[['r', 'FIPS']], left_on=region_col, right_on='r')
+        .drop(columns=[region_col, 'r'])
+        .rename(columns={'FIPS': region_col})
+        [df.columns]
+    )
+
+    return df
+
+
+def apply_variable_disaggregation(
+    df,
+    region_col,
+    fix_cols,
+    inputs_case,
+    disagg_variable
+):
+    # Save the dataframe's original columns
+    # (used later to put the output in the correct format)
+    original_columns = df.columns
+    # Get zone-to-county allocation factors for the given disagg variable
+    disagg_data = reeds.io.get_disagg_data(
+        os.path.dirname(inputs_case),
+        disagg_variable
+    )
+    # Add disagg data to the original dataframe
+    if disagg_variable == 'hydroexist':
+        df = df.merge(
+            disagg_data,
+            left_on=[region_col, 'i'],
+            right_on=['PCA_REG', 'i']
+        )
+    else:
+        df = df.merge(
+            disagg_data[['PCA_REG', 'FIPS', 'fracdata']],
+            left_on=region_col,
+            right_on='PCA_REG'
+        )
+    df = (
+        df.drop(columns=[region_col, 'PCA_REG'])
+        .rename(columns={'FIPS': region_col})
+    )
+    # If the dataframe values are 'wide', set the dataframe index
+    # and then multiply all values by their allocation factor.
+    # Otherwise, multiply the 'value' and allocation factor columns.
+    if 'wide' in fix_cols:
+        index_cols = (
+            [col for col in fix_cols if col in original_columns]
+            + [region_col]
+        )
+        df = df.set_index(index_cols)
+        df = (
+            df.mul(df['fracdata'], axis='index')
+            .reset_index()
+            [original_columns]
+        )
+    else:
+        df = (
+            df.assign(value=lambda x: x['value'] * x['fracdata'])
+            [original_columns]
+        )
+
+    return df
+
+
+def apply_supply_curve_disaggregation(
+    df,
+    region_col,
+    fix_cols,
+    inputs_case,
+    disagg_variable
+):
+    # Apply variable disaggregation to capacities
+    df_cap = df.loc[df['sc_cat'] == 'cap'].drop(columns='sc_cat')
+    df_cap = apply_variable_disaggregation(
+        df_cap,
+        region_col,
+        fix_cols,
+        inputs_case,
+        disagg_variable
+    )
+    # Apply uniform disaggregation to costs
+    df_cost = df.loc[df['sc_cat'] == 'cost'].drop(columns='sc_cat')
+    df_cost = apply_uniform_disaggregation(df_cost, region_col)
+    # Combine results
+    df = (
+        pd.concat(
+            [df_cap.assign(sc_cat='cap'), df_cost.assign(sc_cat='cost')],
+            ignore_index=True
+        )
+        [df.columns]
+    )
+
+    return df
+
+
+def downscale_from_legacy_zone_to_county(
+    df,
+    region_file_entry,
+    inputs_case
+):
+    disaggfunc = region_file_entry['disaggfunc']
+    region_col = region_file_entry['region_col']
+    fix_cols = region_file_entry['fix_cols'].split(',')
+
+    if region_col == 'wide':
+        df = pd.melt(df, id_vars=fix_cols, var_name='r')
+        region_col = 'r'
+        return_wide_regions = True
+    else:
+        return_wide_regions = False
+
+    match disaggfunc:
+        case 'uniform':
+            df = apply_uniform_disaggregation(df, region_col)
+        case 'geosize' | 'hydroexist' | 'population':
+            if 'sc_cat' in df.columns:
+                df = apply_supply_curve_disaggregation(
+                    df,
+                    region_col,
+                    fix_cols,
+                    inputs_case,
+                    disaggfunc
+                )
+            else:
+                df = apply_variable_disaggregation(
+                    df,
+                    region_col,
+                    fix_cols,
+                    inputs_case,
+                    disaggfunc
+                )
+        case 'ignore':
+            pass
+
+    if return_wide_regions:
+        df = pd.pivot_table(df, values='value', index=fix_cols, columns=['r'])
+        df = df.reset_index().rename_axis('', axis=1)
+
+    return df
+
+
+def upscale_from_county_to_zone(
+    df,
+    region_file_entry,
+    inputs_case
+):
+    region_col = region_file_entry['region_col'].replace('r_cendiv', 'r')
+    fix_cols = region_file_entry['fix_cols'].split(',')
+
+    if region_col == 'wide':
+        df = pd.melt(df, id_vars=fix_cols, var_name='r')
+        region_col = 'r'
+        return_wide_regions = True
+    else:
+        return_wide_regions = False
+
+    groupby_cols = (
+        [col for col in fix_cols if col in df.columns]
+        + [region_col]
+    )
+
+    county_r_map = reeds.io.get_county2zone(os.path.dirname(inputs_case))
+    county_r_map.index = 'p' + county_r_map.index.str.zfill(5)
+
+    if 'sc_cat' in df.columns:
+        original_columns = df.columns
+        df_cap = (
+            df.loc[df.sc_cat == 'cap']
+            .drop(columns='sc_cat')
+            .set_index(groupby_cols)
+            ['value']
+            .rename('cap')
+        )
+        df_cost = (
+            df.loc[df.sc_cat == 'cost']
+            .drop(columns='sc_cat')
+            .set_index(groupby_cols)
+            ['value']
+            .rename('cost')
+        )
+        df = (
+            pd.concat([df_cap, df_cost], axis=1)
+            .reset_index()
+            .assign(
+                cap_adj=lambda x: x['cap'].fillna(1).replace(0, 1),
+                cap_weighted_cost=lambda x: x['cap_adj'] * x['cost']
+            )
+        )
+        df[region_col] = df[region_col].map(county_r_map)
+
+        df = (
+            df.groupby(groupby_cols)
+            .sum()
+            .assign(cost=lambda x: x['cap_weighted_cost'] / x['cap_adj'])
+            .reset_index()
+            .drop(columns=['cap_adj', 'cap_weighted_cost'])
+        )
+        df = pd.melt(
+            df,
+            id_vars=groupby_cols,
+            value_vars=['cap', 'cost'],
+            var_name='sc_cat'
+        )
+        df = df[original_columns]
+    else:
+        df[region_col] = df[region_col].map(county_r_map)
+        df = (
+            df.groupby(groupby_cols, as_index=False)
+            .agg(region_file_entry['aggfunc'])
+            [df.columns]
+        )
+
+    if return_wide_regions:
+        df = pd.pivot_table(df, values='value', index=fix_cols, columns=['r'])
+        df = df.reset_index().rename_axis('', axis=1)
+
+    return df
