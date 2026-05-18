@@ -452,7 +452,7 @@ For example, `default` will use `inputs/userinput/mcs_distributions_default.yaml
 
 5. Run ReEDS as usual. Each Monte Carlo draw will create its own run using the sampled inputs.
 
-These four switches (`MCS_runs`,`MCS_dist`, `MCS_dist_groups`, and `MCS_lhs`) are the only required controls.
+These four switches (`MCS_runs`, `MCS_dist`, `MCS_dist_groups`, and `MCS_lhs`) are the only required controls.
 All other settings live in the YAML file (`inputs/userinput/mcs_distributions_{MCS_dist}.yaml`).
 
 ### YAML distribution file format
