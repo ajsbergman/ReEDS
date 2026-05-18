@@ -886,10 +886,10 @@ def setupEnvironment(
         for s in single.split(','):
             if s not in df_cases:
                 err = (
-                    f'Specified single={single} but available cases are: '
-                    + ', '.join([c for c in df_cases.columns])
+                    f'Specified single={single} but available cases are:\n'
+                    + '\n> '.join([c for c in df_cases.columns])
                 )
-                raise KeyError(err)
+                raise ValueError(err)
         df_cases = df_cases[single.split(',')].copy()
         casenames = single.split(',')
 
