@@ -1,8 +1,0 @@
-,Default Value,Pacific_CPLEX,Pacific_GUROBI,Pacific_HIGHS,Pacific_CBC,Pacific_SCIP,Pacific_SOPLEX
-ignore,0,0,,,,,
-solver,CPLEX,CPLEX,GUROBI,HIGHS,CBC,SCIP,SOPLEX
-GSw_Region,cendiv/Pacific,,,,,,
-endyear,2032,,,,,,
-yearset,,,,,,,
-GSw_ZoneSet,,,,,,,
-GSw_GasCurve,2,,,,,,

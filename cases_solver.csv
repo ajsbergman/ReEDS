@@ -1,0 +1,8 @@
+,Default Value,Pacific_CBC,Pacific_CPLEX,Pacific_GUROBI,Pacific_HIGHS,Pacific_SCIP,Pacific_SOPLEX,USA_defaults_CBC,USA_defaults_CPLEX,USA_defaults_GUROBI,USA_defaults_HIGHS,USA_defaults_SCIP,USA_defaults_SOPLEX,WECC_CBC,WECC_county_CBC,WECC_county_CPLEX,WECC_county_GUROBI,WECC_county_HIGHS,WECC_county_SCIP,WECC_county_SOPLEX,WECC_CPLEX,WECC_GUROBI,WECC_HIGHS,WECC_SCIP,WECC_SOPLEX
+ignore,0,1,1,1,1,1,1,,,,,,,,,,,,,,,,,,
+GSw_Region,cendiv/Pacific,,,,,,,country/USA,country/USA,country/USA,country/USA,country/USA,country/USA,interconnect/western,interconnect/western,interconnect/western,interconnect/western,interconnect/western,interconnect/western,interconnect/western,interconnect/western,interconnect/western,interconnect/western,interconnect/western,interconnect/western
+endyear,2050,,,,,,,,,,,,,,,,,,,,,,,,
+GSw_ZoneSet,,,,,,,,,,,,,,z3109,z3109,z3109,z3109,z3109,z3109,z3109,z3109,z3109,z3109,z3109,z3109
+GSw_GasCurve,2,,,,,,,1,1,1,1,1,1,,,,,,,,,,,,
+GSw_PRM_StressIterateMax,,,,,,,,,,,,,,,0,0,0,0,0,0,,,,,
+solver,CPLEX,CBC,CPLEX,GUROBI,HIGHS,SCIP,SOPLEX,CBC,CPLEX,GUROBI,HIGHS,SCIP,SOPLEX,CBC,CBC,CPLEX,GUROBI,HIGHS,SCIP,SOPLEX,CPLEX,GUROBI,HIGHS,SCIP,SOPLEX
