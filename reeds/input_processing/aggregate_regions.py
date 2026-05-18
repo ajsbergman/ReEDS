@@ -1165,7 +1165,14 @@ else:
 r_ba_glob = r_ba
 
 # loop over inputfiles from runfiles and call aggregation/disaggregation function
-for filepath in inputfiles:
+transmission_files = [
+    'transmission_capacity_future.csv',
+    'transmission_capacity_future_baseline.csv',
+    'transmission_cost_ac.csv',
+    'transmission_cost_dc.csv',
+    'transmission_distance.csv',
+]
+for filepath in transmission_files:
     ### For debugging: Specify a file
     # filepath = ''
     ### Get the appropriate row from runfiles
