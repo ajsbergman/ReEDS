@@ -854,7 +854,6 @@ def setupEnvironment(
         single=single,
         skip_checks=skip_checks,
     )
-    all_case_names = list(df_cases.columns)
     ## Propagate debug setting
     if debug:
         df_cases.loc['debug'] = str(debug)
@@ -926,6 +925,7 @@ def setupEnvironment(
                 raise IsADirectoryError('\n'+'\n'.join(existing_outpaths))
 
     # Exit early if no runnable cases remain after filtering
+    all_case_names = list(df_cases.columns)
     if len(caseList) == 0:
         print(f"All {len(all_case_names)} scenario(s) in {cases_filename} have ignore=1. Exiting without starting runs.")
         quit()
