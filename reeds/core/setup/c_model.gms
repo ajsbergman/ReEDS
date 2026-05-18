@@ -191,6 +191,7 @@ eq_interconnection_queues(tg,r,t)         "--MW-- capacity deployment limit base
  eq_curt_gen_balance(r,allh,t)                 "--MW-- net generation and curtailment must equal gross generation"
  eq_dhyd_dispatch(i,v,r,allszn,t)              "--MWh-- dispatchable hydro seasonal energy constraint (when not allowing seasonal enregy shifting)"
  eq_min_cf(i,r,t)                              "--MWh-- minimum capacity factor constraint for each generator fleet, applied to (i,r)"
+ eq_min_cf_cc_peaking(i,v,r,t)                 "--MWh-- minimum CF for base Gas-CC when Gas-CC-peaking upgrade is active"
  eq_max_daily_cf(i,r,allszn,t)                 "--MWh-- maximum daily capacity factor constraint for any technology with maxdailycf(i,t) specified"
  eq_mingen_fixed(i,v,r,allh,t)                 "--MW-- Generation in each timeslice must be greater than mingen_fixed * available capacity"
  eq_mingen_lb(r,allh,allszn,t)                 "--MW-- lower bound on minimum generation level"
@@ -1338,6 +1339,18 @@ eq_min_cf(i,r,t)$[minCF(i,t)$tmodel(t)$valgen_irt(i,r,t)$Sw_MinCF]..
     =g=
 
     sum{v$valgen(i,v,r,t), CAP(i,v,r,t) } * sum{h$h_rep(h), hours(h) } * minCF(i,t)
+;
+
+* When Gas-CC-peaking upgrade is active, enforce a minimum CF on base Gas-CC (non-peaking, non-CCS)
+* so low-CF operation is diverted to the Gas-CC-peaking upgrade technology
+eq_min_cf_cc_peaking(i,v,r,t)$[gas_cc(i)$(not gas_cc_peaking(i))$(not gas_cc_ccs(i))
+                               $Sw_CombinedCyclePeaker$tmodel(t)$valgen(i,v,r,t)]..
+
+    sum{h$h_rep(h), hours(h) * GEN(i,v,r,h,t) }
+
+    =g=
+
+    CAP(i,v,r,t) * sum{h$h_rep(h), hours(h) } * Sw_CP_CC_minCF
 ;
 
 * Maximum allowed daily capacity factor

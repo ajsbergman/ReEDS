@@ -283,6 +283,21 @@ $include reeds%ds%core%ds%solve%ds%5_varfix.gms
 *** Dump data used in calculations between solve years
 $include reeds%ds%core%ds%solve%ds%6_data_dump.gms
 
+*** Export generation and capacity data for CF-based heat rate adjustment
+parameter
+  GEN_Annual(i,v,r,t) "--MWh-- Annual generation for heat rate adjustment"
+;
+
+GEN_Annual(i,v,r,t)$tmodel_new(t) =
+    sum{h$[valgen(i,v,r,t)$h_rep(h)],
+        hours(h) * GEN.l(i,v,r,h,t)
+    }
+;
+
+execute_unload "outputs%ds%heatRateData%ds%GEN_data_%cur_year%.gdx"
+  GEN_Annual, CAP.l, heat_rate_init, cost_fom_init, cost_vom_init, heat_rate, cost_fom, cost_vom
+;
+
 *** Abort if the solver returns an error
 if (ReEDSmodel.modelStat > 1,
     abort "Model did not solve to optimality",

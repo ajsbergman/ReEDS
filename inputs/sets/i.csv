@@ -30,6 +30,7 @@ Gas-CC_H_2x1-CCS_max
 Gas-CC-CCS-F1
 Gas-CC-CCS-F2
 Gas-CC-CCS-F3
+Gas-CC-peaking
 Gas-CT
 Gas-CT_aero
 H2-CT
@@ -233,6 +234,8 @@ CoalOldUns_CofireOld
 CoalOldScr_CofireOld
 coal-new_CofireNew
 Gas-CC_Gas-CC-CCS_mod
+Gas-CC_Gas-CC-peaking
+Gas-CC-peaking_Gas-CC
 Gas-CC_H_1x1_Gas-CC_H_1x1-CCS_mod
 Gas-CC_H_2x1_Gas-CC_H_2x1-CCS_mod
 Gas-CC_H_1x1_Gas-CC_H_1x1-CCS_max

@@ -17,6 +17,7 @@ Gas-CC_H_2x1-CCS_max,0.05
 gas-CC-CCS-F1,0.05
 gas-CC-CCS-F2,0.05
 gas-CC-CCS-F3,0.05
+gas-CC-peaking,0.05
 CoalOldScr,0.02
 CoalOldUns,0.02
 coal-new,0.02

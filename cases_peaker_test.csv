@@ -1,0 +1,16 @@
+,Default Value,Pac_baseline,Pac_peaker_on,Pac_peaker_minCF,Pac_peaker_HRadj,Pac_peaker_full
+ignore,1,0,,,,
+GSw_Region,cendiv/Pacific,,,,,
+endyear,2032,,,,,
+GSw_GasCurve,2,,,,,
+GSw_StartCost,0,,,,,5
+GSw_CombinedCyclePeaker,1,0,,,,
+GSw_minCF_peaking,0,,,0.15,,0.15
+GSw_CP_fom,1.05,,,,,
+GSw_CP_vom,1.5,,,,,
+GSw_CP_hr,1.23,,,,,
+GSw_CP_CC_minCF,0.20,,,,,
+GSw_CF_Heatrate_adj,0,,,,1,1
+GSw_HR_AdjIterateMax,0,,,,3,3
+GSw_HR_AdjThreshold,0.01,,,,,
+GSw_HR_AdjStep,0.5,,,,,

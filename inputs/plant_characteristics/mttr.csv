@@ -64,6 +64,8 @@ gas-cc_h_1x1_gas-cc_h_1x1-ccs_mod,48
 gas-cc_h_2x1_gas-cc_h_2x1-ccs_max,48
 gas-cc_h_2x1_gas-cc_h_2x1-ccs_mod,48
 gas-cc_gas-cc-ccs,48
+gas-cc_gas-cc-peaking,48
+gas-cc-peaking_gas-cc,48
 gas-cc_h2-ct,48
 gas-cc_re-cc,48
 gas-cc-ccs_max,48
@@ -75,6 +77,7 @@ gas-cc_h_2x1-ccs_mod,48
 gas-cc-ccs,48
 gas-cc-nsp,48
 gas-cc,48
+gas-cc-peaking,48
 gas-cc_h_1x1,48
 gas-cc_h_2x1,48
 gas-ct_h2-ct,48

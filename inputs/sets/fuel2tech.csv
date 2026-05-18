@@ -23,6 +23,7 @@ naturalgas,gas-cc_h_2x1-ccs_max
 naturalgas,gas-cc-ccs-f1
 naturalgas,gas-cc-ccs-f2
 naturalgas,gas-cc-ccs-f3
+naturalgas,gas-cc-peaking
 naturalgas,ng-fuel-cell
 uranium,nuclear
 uranium,nuclear-smr

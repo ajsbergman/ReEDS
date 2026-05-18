@@ -11,6 +11,7 @@ ng-fuel-cell,650,https://atb.nlr.gov/electricity/2024/fossil_energy_technologies
 gas-cc-ccs,247,gas-cc assumption
 gas-cc-ccs_mod,247,gas-cc assumption
 gas-cc-ccs_max,247,gas-cc assumption
+gas-cc-peaking,247,gas-cc assumption
 gas-cc_h_1x1-ccs_mod,330,gas-cc_h_1x1 assumption
 gas-cc_h_1x1-ccs_max,330,gas-cc_h_1x1 assumption
 gas-cc_h_2x1-ccs_mod,336,gas-cc_h_2x1 assumption
@@ -18,6 +19,8 @@ gas-cc_h_2x1-ccs_max,336,gas-cc_h_2x1 assumption
 gas-cc_gas-cc-ccs,247,gas-cc assumption
 gas-cc_gas-cc-ccs_mod,247,gas-cc assumption
 gas-cc_gas-cc-ccs_max,247,gas-cc assumption
+gas-cc_gas-cc-peaking,247,gas-cc assumption
+gas-cc-peaking_gas-cc,247,gas-cc assumption
 gas-cc_h_1x1_gas-cc_h_1x1-ccs_mod,330,gas-cc_h_1x1 assumption
 gas-cc_h_1x1_gas-cc_h_1x1-ccs_max,330,gas-cc_h_1x1 assumption
 gas-cc_h_2x1_gas-cc_h_2x1-ccs_mod,336,gas-cc_h_2x1 assumption

@@ -445,6 +445,7 @@ set
   fuel_cell(i)         "fuel cell technologies",
   gas_cc_ccs(i)        "techs that are gas combined cycle and have CCS",
   gas_cc(i)            "techs that are gas combined cycle",
+  gas_cc_peaking(i)    "techs that are gas combined cycle peaking variant",
   gas_ct(i)            "techs that are gas combustion turbine",
   gas(i)               "techs that use gas (but not o-g-s)",
   geo(i)               "geothermal technologies",
@@ -724,6 +725,14 @@ if(Sw_GasCC_H_2x1 = 0,
   ban('Gas-CC_H_2x1-CCS_max') = yes ;
 ) ;
 
+* Ban Gas-CC-peaking technology and its upgrade links if GSw_CombinedCyclePeaker is off
+if(Sw_CombinedCyclePeaker = 0,
+  ban(i)$i_subsets(i,'gas_cc_peaking') = yes ;
+  ban('Gas-CC-peaking') = yes ;
+  ban('Gas-CC_Gas-CC-peaking') = yes ;
+  ban('Gas-CC-peaking_Gas-CC') = yes ;
+) ;
+
 if(Sw_Geothermal = 0,
   ban(i)$i_subsets(i,'geo') = yes ;
 ) ;
@@ -978,6 +987,7 @@ fossil(i)$(not ban(i))              = yes$i_subsets(i,'fossil') ;
 fuel_cell(i)$(not ban(i))           = yes$i_subsets(i,'fuel_cell') ;
 gas_cc_ccs(i)$(not ban(i))          = yes$i_subsets(i,'gas_cc_ccs') ;
 gas_cc(i)$(not ban(i))              = yes$i_subsets(i,'gas_cc') ;
+gas_cc_peaking(i)$(not ban(i))      = yes$i_subsets(i,'gas_cc_peaking') ;
 gas_ct(i)$(not ban(i))              = yes$i_subsets(i,'gas_ct') ;
 gas(i)$(not ban(i))                 = yes$i_subsets(i,'gas') ;
 geo(i)$(not ban(i))                 = yes$i_subsets(i,'geo') ;
@@ -4440,6 +4450,25 @@ cost_vom(i,initv,r,t)$[upgrade(i)$Sw_Upgrades$ccs(i)$Sw_UpgradeVOM_Nems$unitspec
 cost_vom(i,newv,r,t)$[upgrade(i)$Sw_Upgrades$valcap(i,newv,r,t)] =
         sum{ii$upgrade_to(i,ii), cost_vom(ii,newv,r,t) } ;
 
+* Gas-CC-peaking VOM: apply Sw_CP_vom multiplier (upgrade from Gas-CC to Gas-CC-peaking)
+cost_vom(i,initv,r,t)$[upgrade(i)$Sw_Upgrades$gas_cc_peaking(i)
+                      $sum{ii$upgrade_from(i,ii), valcap(ii,initv,r,t) }] =
+       sum{ii$upgrade_from(i,ii), cost_vom(ii,initv,r,t)} * Sw_CP_vom
+;
+* Gas-CC-peaking VOM for new vintages
+cost_vom(i,newv,r,t)$[upgrade(i)$Sw_Upgrades$gas_cc_peaking(i)$valcap(i,newv,r,t)] =
+       sum{ii$upgrade_from(i,ii), cost_vom(ii,newv,r,t)} * Sw_CP_vom
+;
+* Reverse upgrade (Gas-CC-peaking -> Gas-CC): divide by multiplier
+cost_vom(i,initv,r,t)$[upgrade(i)$Sw_Upgrades$(not gas_cc_peaking(i))
+                      $sum{ii$[upgrade_from(i,ii)$gas_cc_peaking(ii)], valcap(ii,initv,r,t) }] =
+       sum{ii$[upgrade_from(i,ii)$gas_cc_peaking(ii)], cost_vom(ii,initv,r,t)} / Sw_CP_vom
+;
+cost_vom(i,newv,r,t)$[upgrade(i)$Sw_Upgrades$(not gas_cc_peaking(i))
+                      $sum{ii$[upgrade_from(i,ii)$gas_cc_peaking(ii)], valcap(ii,newv,r,t) }] =
+       sum{ii$[upgrade_from(i,ii)$gas_cc_peaking(ii)], cost_vom(ii,newv,r,t)} / Sw_CP_vom
+;
+
 *=================
 * --- Fixed OM ---
 *=================
@@ -4533,6 +4562,24 @@ cost_fom(i,initv,r,t)$[upgrade(i)$Sw_Upgrades$ccs(i)$Sw_UpgradeFOM_Nems$unitspec
 cost_fom(i,newv,r,t)$[upgrade(i)$Sw_Upgrades$valcap(i,newv,r,t)] =
       sum{ii$upgrade_to(i,ii), cost_fom(ii,newv,r,t) } ;
 
+* Gas-CC-peaking FOM: apply Sw_CP_fom multiplier
+cost_fom(i,initv,r,t)$[upgrade(i)$Sw_Upgrades$gas_cc_peaking(i)
+                      $sum{ii$upgrade_from(i,ii), valcap(ii,initv,r,t) }] =
+       sum{ii$upgrade_from(i,ii), cost_fom(ii,initv,r,t)} * Sw_CP_fom
+;
+cost_fom(i,newv,r,t)$[upgrade(i)$Sw_Upgrades$gas_cc_peaking(i)$valcap(i,newv,r,t)] =
+       sum{ii$upgrade_from(i,ii), cost_fom(ii,newv,r,t)} * Sw_CP_fom
+;
+* Reverse upgrade (Gas-CC-peaking -> Gas-CC)
+cost_fom(i,initv,r,t)$[upgrade(i)$Sw_Upgrades$(not gas_cc_peaking(i))
+                      $sum{ii$[upgrade_from(i,ii)$gas_cc_peaking(ii)], valcap(ii,initv,r,t) }] =
+       sum{ii$[upgrade_from(i,ii)$gas_cc_peaking(ii)], cost_fom(ii,initv,r,t)} / Sw_CP_fom
+;
+cost_fom(i,newv,r,t)$[upgrade(i)$Sw_Upgrades$(not gas_cc_peaking(i))
+                      $sum{ii$[upgrade_from(i,ii)$gas_cc_peaking(ii)], valcap(ii,newv,r,t) }] =
+       sum{ii$[upgrade_from(i,ii)$gas_cc_peaking(ii)], cost_fom(ii,newv,r,t)} / Sw_CP_fom
+;
+
 *====================
 * --- Heat Rates ---
 *====================
@@ -4597,6 +4644,29 @@ heat_rate(i,newv,r,t)$[upgrade(i)$Sw_Upgrades$valcap(i,newv,r,t)] =
 
 heat_rate(i,v,r,t)$[heat_rate_adj(i,'pre2010')$initv(v)] = heat_rate_adj(i,'pre2010') * heat_rate(i,v,r,t) ;
 heat_rate(i,v,r,t)$[heat_rate_adj(i,'post2010')$newv(v)] = heat_rate_adj(i,'post2010') * heat_rate(i,v,r,t) ;
+
+* Gas-CC-peaking heat rate: apply Sw_CP_hr multiplier
+heat_rate(i,v,r,t)$[upgrade(i)$Sw_Upgrades$gas_cc_peaking(i)$valcap(i,v,r,t)] =
+       (smax{ii$upgrade_from(i,ii), heat_rate(ii,v,r,t)}) * Sw_CP_hr
+;
+* Reverse upgrade (Gas-CC-peaking -> Gas-CC)
+heat_rate(i,v,r,t)$[upgrade(i)$Sw_Upgrades$(not gas_cc_peaking(i))
+                   $sum{ii$[upgrade_from(i,ii)$gas_cc_peaking(ii)], 1}$valcap(i,v,r,t)] =
+       (smax{ii$[upgrade_from(i,ii)$gas_cc_peaking(ii)], heat_rate(ii,v,r,t)}) / Sw_CP_hr
+;
+
+*=========================================
+* --- Init parameters for CF-based HR adjustment ---
+*=========================================
+* Snapshot cost/HR values before CF-based adjustments for use in iteration
+parameter heat_rate_init(i,v,r,t) "--MMBtu/MWh-- base heat rate before CF adjustment" ;
+heat_rate_init(i,v,r,t) = heat_rate(i,v,r,t) ;
+
+parameter cost_vom_init(i,v,r,t) "--2004$/MWh-- base VOM before CF adjustment" ;
+cost_vom_init(i,v,r,t) = cost_vom(i,v,r,t) ;
+
+parameter cost_fom_init(i,v,r,t) "--2004$/MW-yr-- base FOM before CF adjustment" ;
+cost_fom_init(i,v,r,t) = cost_fom(i,v,r,t) ;
 
 *=========================================
 * --- Fuel Prices ---
@@ -5920,6 +5990,10 @@ minCF(i,t)$upgrade(i) = sum{ii$upgrade_to(i,ii), minCF(ii,t) } ;
 
 * adjust fleet mincf for nuclear when using flexible nuclear
 minCF(i,t)$[nuclear(i)$Sw_NukeFlex] = minCF_nuclear_flex ;
+
+* Override minCF for Gas-CC and Gas-CC-peaking if GSw_minCF_peaking > 0
+minCF(i,t)$[gas_cc(i)$Sw_minCF_peaking] = Sw_minCF_peaking ;
+minCF(i,t)$[gas_cc_peaking(i)$Sw_minCF_peaking] = Sw_minCF_peaking ;
 
 parameter maxdailycf_input(i) "--fraction-- maximum daily capacity factor for a technology"
 /

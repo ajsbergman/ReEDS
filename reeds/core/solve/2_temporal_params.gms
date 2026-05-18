@@ -888,6 +888,42 @@ szn_adj_gas(h)$frac_h_quarter_weights(h,"wint") =
 
 
 *=============================================
+* -- CF-based heat rate / O&M adjustments --
+*=============================================
+* Load adjustment multipliers computed by heatRate_cf_adjustment.py after prior solve.
+* Only applies after the start year (need a prior solve to compute CFs).
+$ifthene.hr_adj %cur_year%>%startyear%
+$onMultiR
+parameter heatrate_cf_adj_in(i,v,r) "--unitless-- CF-based heat rate multiplier" ;
+
+$gdxin outputs%ds%heatRateData%ds%heatrate_cf_adj%cur_year%.gdx
+$load heatrate_cf_adj_in = heatrate_cf_adj
+$gdxin
+
+parameter vom_cf_adj_in(i,v,r) "--unitless-- CF-based VOM multiplier" ;
+
+$gdxin outputs%ds%heatRateData%ds%vom_cf_adj%cur_year%.gdx
+$load vom_cf_adj_in = vom_cf_adj
+$gdxin
+
+parameter fom_cf_adj_in(i,v,r) "--unitless-- CF-based FOM multiplier" ;
+
+$gdxin outputs%ds%heatRateData%ds%fom_cf_adj%cur_year%.gdx
+$load fom_cf_adj_in = fom_cf_adj
+$gdxin
+$offMulti
+
+* Apply multipliers to base (init) values
+heat_rate(i,v,r,t)$[tmodel(t)$heatrate_cf_adj_in(i,v,r)] = heat_rate_init(i,v,r,t) * heatrate_cf_adj_in(i,v,r) ;
+heat_rate(i,v,r,t)$[tmodel(t)$(not heatrate_cf_adj_in(i,v,r))] = heat_rate_init(i,v,r,t) ;
+cost_vom(i,v,r,t)$[tmodel(t)$vom_cf_adj_in(i,v,r)] = cost_vom_init(i,v,r,t) * vom_cf_adj_in(i,v,r) ;
+cost_vom(i,v,r,t)$[tmodel(t)$(not vom_cf_adj_in(i,v,r))] = cost_vom_init(i,v,r,t) ;
+cost_fom(i,v,r,t)$[tmodel(t)$fom_cf_adj_in(i,v,r)] = cost_fom_init(i,v,r,t) * fom_cf_adj_in(i,v,r) ;
+cost_fom(i,v,r,t)$[tmodel(t)$(not fom_cf_adj_in(i,v,r))] = cost_fom_init(i,v,r,t) ;
+$endif.hr_adj
+
+
+*=============================================
 * -- Round parameters for GAMS --
 *=============================================
 
