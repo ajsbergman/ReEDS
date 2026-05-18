@@ -628,6 +628,13 @@ def main(case):
     outputs['transmission_line_fom'] = get_transmission_fom(case, interface_params).reset_index()
     outputs['trancap_fut'] = get_trancap_fut(case)
     outputs['transmission_cost_nonac'] = get_transmission_cost_nonac(case, interface_params)
+    ## A few downstream processes expect a single distance for each zone pair;
+    ## keep the longest
+    outputs['transmission_distance'] = (
+        outputs['transmission_miles'].drop(columns='trtype')
+        .sort_values('miles', ascending=False).drop_duplicates(['r','rr'], keep='first')
+        .sort_values(['r','rr'])
+    )
 
     for hurdle_level in [1, 2]:
         outputs[f'cost_hurdle_rate{hurdle_level}'] = get_hurdle_rates(case, hurdle_level)

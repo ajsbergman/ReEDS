@@ -1398,8 +1398,8 @@ def main(run_dir, inputpath='inputs.csv', write=True, verbose=0):
     trans_cap['state2'] = trans_cap.index.get_level_values('rr').map(reedsregion2state)
 
     trans_dist = pd.read_csv(
-        os.path.join(run_dir, 'inputs_case', 'transmission_miles.csv')
-    ).rename(columns={'*r':'r'}).set_index(['r','rr','trtype']).miles
+        os.path.join(run_dir, 'inputs_case', 'transmission_distance.csv')
+    ).rename(columns={'*r':'r'}).set_index(['r','rr']).miles
 
     trans_cap['MWmile'] = (trans_cap['tran_cap'] * trans_dist).reindex(trans_cap.index)
     ### Check for nulls
