@@ -959,7 +959,7 @@ def setupEnvironment(
     elif simult_runs > 0:
         WORKERS = simult_runs
     else:
-        WORKERS = int(input('Number of simultaneous runs [integer]: '))
+        WORKERS = int(input('Number of simultaneous runs [positive integer]: '))
         if WORKERS <=0:
             print('Number of simultaneous runs must be at least 1. Exiting.')
             quit()
