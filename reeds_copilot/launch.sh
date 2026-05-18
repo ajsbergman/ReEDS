@@ -11,11 +11,75 @@ echo "  ║         ReEDS-Copilot  Launcher          ║"
 echo "  ╚══════════════════════════════════════════╝"
 echo
 
+# Detect platform once for the auto-install helpers below.
+case "$(uname -s)" in
+    Darwin*) PLATFORM="macos" ;;
+    Linux*)  PLATFORM="linux" ;;
+    *)       PLATFORM="other" ;;
+esac
+
+# ── auto_install <friendly-name> <macos-brew-pkg> <linux-apt-pkg> <linux-dnf-pkg>
+# Tries to install a missing tool using the OS package manager. Returns
+# non-zero if no supported package manager is available or the install fails
+# (typically because admin rights are required on a managed machine).
+auto_install() {
+    local name="$1" brew_pkg="$2" apt_pkg="$3" dnf_pkg="$4"
+    echo "        $name not found. Attempting auto-install..."
+    case "$PLATFORM" in
+        macos)
+            if ! command -v brew &>/dev/null; then
+                echo "  ERROR: Homebrew is required for auto-install on macOS."
+                echo "  Install Homebrew first: https://brew.sh/"
+                return 1
+            fi
+            brew install "$brew_pkg"
+            ;;
+        linux)
+            if command -v apt-get &>/dev/null; then
+                sudo apt-get update -y && sudo apt-get install -y $apt_pkg
+            elif command -v dnf &>/dev/null; then
+                sudo dnf install -y $dnf_pkg
+            elif command -v yum &>/dev/null; then
+                sudo yum install -y $dnf_pkg
+            else
+                echo "  ERROR: No supported package manager (apt-get / dnf / yum) found."
+                return 1
+            fi
+            ;;
+        *)
+            echo "  ERROR: Auto-install is not supported on this OS."
+            return 1
+            ;;
+    esac
+}
+
+# Print a friendly "needs admin" message when auto_install fails.
+admin_help() {
+    local name="$1" url="$2"
+    echo
+    echo "  ========================================"
+    echo "      Could not install $name automatically"
+    echo "  ========================================"
+    echo
+    echo "  This usually means your computer requires administrator"
+    echo "  rights to install new software (common on work laptops)."
+    echo
+    echo "  What to do:"
+    echo "    - Personal computer: re-run this launcher with sudo, or install"
+    echo "      $name manually from: $url"
+    echo "    - Work / managed computer: please contact your IT admin and"
+    echo "      ask them to install $name from: $url"
+    echo
+    echo "  Once $name is installed, re-run this launcher."
+}
+
 # ── Check Python ─────────────────────────────
 echo "  [1/5] Checking Python..."
 if ! command -v python3 &>/dev/null && ! command -v python &>/dev/null; then
-    echo "  ERROR: Python not found. Install Python 3.10+."
-    exit 1
+    if ! auto_install "Python 3" "python@3.12" "python3 python3-pip python3-venv" "python3 python3-pip"; then
+        admin_help "Python 3.10+" "https://www.python.org/downloads/"
+        exit 1
+    fi
 fi
 PY=$(command -v python3 || command -v python)
 echo "        Found $($PY --version)"
@@ -23,8 +87,10 @@ echo "        Found $($PY --version)"
 # ── Check Node.js ────────────────────────────
 echo "  [2/5] Checking Node.js..."
 if ! command -v node &>/dev/null; then
-    echo "  ERROR: Node.js not found. Install Node.js 18+ from https://nodejs.org"
-    exit 1
+    if ! auto_install "Node.js" "node" "nodejs npm" "nodejs npm"; then
+        admin_help "Node.js 18+" "https://nodejs.org/"
+        exit 1
+    fi
 fi
 echo "        Found Node $(node --version)"
 

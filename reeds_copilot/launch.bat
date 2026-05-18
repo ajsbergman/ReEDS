@@ -9,23 +9,107 @@ echo       ReEDS-Copilot  Launcher
 echo   ========================================
 echo.
 
-:: ── Check Python ─────────────────────────────
+set "NEED_RESTART=0"
+
+:: ── Check Python ───────────────────────────────────
+rem [1/5] Checking Python...
 echo   [1/5] Checking Python...
 where python >nul 2>&1
 if errorlevel 1 (
-    echo   ERROR: Python not found. Install Python 3.10+ and add it to PATH.
-    goto :fail
+    echo         Python not found. Attempting auto-install via winget...
+    where winget >nul 2>&1
+    if errorlevel 1 (
+        echo.
+        echo   ERROR: winget is not available on this machine.
+        echo   Please install Python 3.10+ manually from:
+        echo       https://www.python.org/downloads/
+        echo   Then re-run this launcher.
+        goto :fail
+    )
+    echo         Installing Python 3.12 ^(may take a couple of minutes^)...
+    winget install -e --id Python.Python.3.12 --silent --accept-source-agreements --accept-package-agreements
+    if errorlevel 1 (
+        echo.
+        echo   ========================================
+        echo       Could not install Python automatically
+        echo   ========================================
+        echo.
+        echo   This usually means your computer requires administrator
+        echo   rights to install new software ^(common on work laptops^).
+        echo.
+        echo   What to do:
+        echo     - Personal laptop: right-click launch.bat and choose
+        echo       "Run as administrator", then try again.
+        echo     - Work / managed laptop: please contact your IT admin and
+        echo       ask them to install Python 3.10+ from:
+        echo           https://www.python.org/downloads/
+        echo.
+        echo   Once Python is installed, re-run this launcher.
+        goto :fail
+    )
+    echo         Python installed.
+    set "NEED_RESTART=1"
+) else (
+    for /f "tokens=*" %%i in ('python --version 2^>^&1') do echo         Found %%i
 )
-for /f "tokens=*" %%i in ('python --version 2^>^&1') do echo         Found %%i
 
-:: ── Check Node.js ────────────────────────────
+:: ── Check Node.js ──────────────────────────────────
 echo   [2/5] Checking Node.js...
 where node >nul 2>&1
 if errorlevel 1 (
-    echo   ERROR: Node.js not found. Install from https://nodejs.org
-    goto :fail
+    echo         Node.js not found. Attempting auto-install via winget...
+    where winget >nul 2>&1
+    if errorlevel 1 (
+        echo.
+        echo   ERROR: winget is not available on this machine.
+        echo   Please install Node.js 18+ manually from:
+        echo       https://nodejs.org/
+        echo   Then re-run this launcher.
+        goto :fail
+    )
+    echo         Installing Node.js LTS ^(may take a couple of minutes^)...
+    winget install -e --id OpenJS.NodeJS.LTS --silent --accept-source-agreements --accept-package-agreements
+    if errorlevel 1 (
+        echo.
+        echo   ========================================
+        echo       Could not install Node.js automatically
+        echo   ========================================
+        echo.
+        echo   This usually means your computer requires administrator
+        echo   rights to install new software ^(common on work laptops^).
+        echo.
+        echo   What to do:
+        echo     - Personal laptop: right-click launch.bat and choose
+        echo       "Run as administrator", then try again.
+        echo     - Work / managed laptop: please contact your IT admin and
+        echo       ask them to install Node.js 18+ from:
+        echo           https://nodejs.org/
+        echo.
+        echo   Once Node.js is installed, re-run this launcher.
+        goto :fail
+    )
+    echo         Node.js installed.
+    set "NEED_RESTART=1"
+) else (
+    for /f "tokens=*" %%i in ('node --version 2^>^&1') do echo         Found Node %%i
 )
-for /f "tokens=*" %%i in ('node --version 2^>^&1') do echo         Found Node %%i
+
+:: If we installed anything, the current cmd session can't see the new PATH
+:: entries until a new shell starts. Ask the user to relaunch — simplest and
+:: most reliable way to pick up the newly installed tools.
+if "%NEED_RESTART%"=="1" (
+    echo.
+    echo   ========================================
+    echo       Setup complete!
+    echo.
+    echo       Required tools have been installed.
+    echo       Please CLOSE this window and double-click
+    echo       launch.bat again to start ReEDS-Copilot.
+    echo   ========================================
+    echo.
+    pause
+    exit /b 0
+)
 
 :: ── Backend dependencies ─────────────────────
 echo   [3/5] Installing backend dependencies...

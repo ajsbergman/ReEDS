@@ -19,12 +19,14 @@ bash reeds_copilot/launch.sh
 
 This installs dependencies, starts backend (port 8001) + frontend (port 5173), and opens the browser automatically.
 
+> **First-time on a fresh computer?** The launcher will auto-install Python and Node.js for you using your system's package manager (`winget` on Windows, `brew` on macOS, `apt`/`dnf` on Linux). After they install, just close the window and double-click the launcher again — that's it.
+
 ### Prerequisites
 
 | Tool    | Version | Notes                              |
 | ------- | ------- | ---------------------------------- |
-| Python  | ≥ 3.10 | Backend runtime                    |
-| Node.js | ≥ 18   | Frontend dev server (includes npm) |
+| Python  | ≥ 3.10 | Backend runtime — auto-installed if missing |
+| Node.js | ≥ 18   | Frontend dev server (includes npm) — auto-installed if missing |
 
 **For running ReEDS models:**
 
