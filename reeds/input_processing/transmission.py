@@ -92,17 +92,20 @@ def get_interface_params(case, **kwargs):
         raise Exception(f'{len(dup)} duplicate entries in interface_params')
 
     ## Get representative line capacity [MW] and calculate $/MW
-    _line_params = {
-        polarity: pd.read_csv(
-            Path(reeds.io.reeds_path, 'inputs', 'transmission', f'conductor_{polarity}.csv'),
-        )
-        for polarity in ['ac', 'dc']
-    }
-    _line_params['ac']['MVA'] = (
-        _line_params['ac'].voltage_kv * _line_params['ac'].amp
-        * np.sqrt(3) / 1e3
-    )
-    _line_params['ac']['MW'] = _line_params['ac']['MVA'] * scalars['power_factor_ac']
+    _line_params = {}
+    for polarity in ['ac', 'dc']:
+        if polarity == 'ac':
+            fpath = Path(
+                reeds.io.reeds_path, 'inputs', 'transmission',
+                f'conductor_{polarity}_{sw.GSw_TransConductor}.csv',
+            )
+            df = pd.read_csv(fpath)
+            df['MVA'] = df.voltage_kv * df.amp * np.sqrt(3) / 1e3
+            df['MW'] = df['MVA'] * scalars['power_factor_ac']
+        else:
+            fpath = Path(reeds.io.reeds_path, 'inputs', 'transmission', f'conductor_{polarity}.csv')
+            df = pd.read_csv(fpath)
+        _line_params[polarity] = df
     line_params = pd.concat(
         {key: df.set_index('voltage_kv') for key, df in _line_params.items()},
         names=('polarity','voltage'),
@@ -680,6 +683,8 @@ def main(case):
             .round(2)
         )
     outputs['tscbin'] = transmission_cost_ac.tscbin.drop_duplicates()
+    ## Write transmission_cost_ac for R2X
+    outputs['transmission_cost_ac'] = transmission_cost_ac
 
     ### Pipelines
     outputs['pipeline_cost_mult'] = get_pipeline_cost_mult(

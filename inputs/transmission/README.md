@@ -6,7 +6,11 @@
   The `osm_id` column gives the OpenStreetMap ID of the converter; for example, the "Miles City, MT" converter (with `osm_id = 137835349`) can be found at <https://www.openstreetmap.org/way/137835349>.
   This file is used to validate the interface-level B2B capacity for different spatial resolutions stored at `inputs/zones/{GSw_ZoneSet}/b2b.csv`.
 
-- `conductor_(ac|dc).csv`: Conductor and power rating assumptions for AC/DC transmission lines as a function of voltage from the MISO 2025 Transmission Cost Estimation Guide ([parent page](https://www.misoenergy.org/planning/transmission-planning/mtep), [description](https://cdn.misoenergy.org/MISO%20Transmission%20Cost%20Estimation%20Guide%20for%20MTEP25337433.pdf), [data workbook](https://cdn.misoenergy.org/MISO%20Transmission%20Cost%20Estimate%20Workbook%20for%20MTEP25547535.xlsx))
+- `conductor_(ac|dc)*.csv`: Conductor and power rating assumptions for AC/DC transmission lines as a function of voltage from the MISO 2025 Transmission Cost Estimation Guide ([parent page](https://www.misoenergy.org/planning/transmission-planning/mtep), [description](https://cdn.misoenergy.org/MISO%20Transmission%20Cost%20Estimation%20Guide%20for%20MTEP25337433.pdf), [data workbook](https://cdn.misoenergy.org/MISO%20Transmission%20Cost%20Estimate%20Workbook%20for%20MTEP25547535.xlsx))
+  - `conductor_ac_default.csv` and `conductor_dc.csv` use the conductors specified by the MISO guide.
+  AC lines use either ACSR or ACSS conductors depending on the voltage.
+  - `conductor_ac_acsr.csv` instead uses ACSR for all AC voltages.
+  Ampacities for 477 kcmil (Flicker) and 795 kcmil (Drake) ACSR conductors are taken from [Southwire](https://www.southwire.com/wire-cable/bare-aluminum-overhead-transmission-distribution/acsr/p/ALBARE6).
 
 - `cost_hurdle_country.csv`: Hurdle rate for transmission flows [\$/MWh] between USA/Canada and USA/Mexico.
 
