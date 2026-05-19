@@ -1,0 +1,378 @@
+# Kestrel HPC Torc/Slurm workflow — full framework × solver × size matrix.
+#
+# Frameworks: gams, linopy, arco, pyomo, pyoptinterface
+# Solvers:    cplex (gams only), highs, xpress
+# Sizes:      small, medium, large, xlarge
+#
+# xpress jobs load the xpressmp module via FRAMEWORK_MODULES env override.
+# xlarge jobs get extra memory (128G), time (4h), and CPUs (8).
+#
+# After writing this file, generate the Slurm layer on Kestrel:
+#   torc slurm generate --account reedseda -o torc_kestrel_full_matrix_slurm.yaml \
+#       tests/framework_comparison/torc_kestrel_full_matrix.yaml
+# ============================================================================
+
+name: framework-comparison-kestrel-full
+description: Full matrix (5 frameworks × {cplex,highs,xpress} × 4 sizes) on Kestrel
+
+slurm_defaults:
+  account: "${SLURM_ACCOUNT:-reedseda}"
+  partition: "${SLURM_PARTITION:-standard}"
+
+env:
+  FRAMEWORK_MODULES: "${FRAMEWORK_MODULES:-gams/51.3.0 conda/2024.06.1}"
+  FRAMEWORK_COMPARISON_ARCO_PREFIX: "${FRAMEWORK_COMPARISON_ARCO_PREFIX:-/scratch/psanchez/arco/latest}"
+  TORC_API_URL: "${TORC_API_URL:-http://torc.hpc.nrel.gov:8080/torc-service/v1}"
+
+# Resource requirement profiles
+resource_requirements:
+  - name: small_job
+    num_cpus: 4
+    memory: "16G"
+    runtime: "30m"
+
+  - name: medium_job
+    num_cpus: 4
+    memory: "32G"
+    runtime: "1h"
+
+  - name: large_job
+    num_cpus: 4
+    memory: "64G"
+    runtime: "2h"
+
+  - name: xlarge_job
+    num_cpus: 8
+    memory: "128G"
+    runtime: "4h"
+
+# ============================================================================
+jobs:
+  # --- gams / cplex ---------------------------------------------------
+  - name: gams_cplex_small
+    invocation_script: bash tests/framework_comparison/setup_env_hpc.sh --
+    command: >
+      python tests/framework_comparison/run_framework.py
+        --module solve_gams --solver cplex --size small
+        --label gams_cplex_small
+    resource_requirements: small_job
+
+  - name: gams_cplex_medium
+    invocation_script: bash tests/framework_comparison/setup_env_hpc.sh --
+    command: >
+      python tests/framework_comparison/run_framework.py
+        --module solve_gams --solver cplex --size medium
+        --label gams_cplex_medium
+    resource_requirements: medium_job
+
+  - name: gams_cplex_large
+    invocation_script: bash tests/framework_comparison/setup_env_hpc.sh --
+    command: >
+      python tests/framework_comparison/run_framework.py
+        --module solve_gams --solver cplex --size large
+        --label gams_cplex_large
+    resource_requirements: large_job
+
+  - name: gams_cplex_xlarge
+    invocation_script: bash tests/framework_comparison/setup_env_hpc.sh --
+    command: >
+      python tests/framework_comparison/run_framework.py
+        --module solve_gams --solver cplex --size xlarge
+        --label gams_cplex_xlarge
+    resource_requirements: xlarge_job
+
+  # --- linopy / highs -------------------------------------------------
+  - name: linopy_highs_small
+    invocation_script: bash tests/framework_comparison/setup_env_hpc.sh --
+    command: >
+      python tests/framework_comparison/run_framework.py
+        --module solve_linopy --solver highs --size small
+        --label linopy_highs_small
+    resource_requirements: small_job
+
+  - name: linopy_highs_medium
+    invocation_script: bash tests/framework_comparison/setup_env_hpc.sh --
+    command: >
+      python tests/framework_comparison/run_framework.py
+        --module solve_linopy --solver highs --size medium
+        --label linopy_highs_medium
+    resource_requirements: medium_job
+
+  - name: linopy_highs_large
+    invocation_script: bash tests/framework_comparison/setup_env_hpc.sh --
+    command: >
+      python tests/framework_comparison/run_framework.py
+        --module solve_linopy --solver highs --size large
+        --label linopy_highs_large
+    resource_requirements: large_job
+
+  - name: linopy_highs_xlarge
+    invocation_script: bash tests/framework_comparison/setup_env_hpc.sh --
+    command: >
+      python tests/framework_comparison/run_framework.py
+        --module solve_linopy --solver highs --size xlarge
+        --label linopy_highs_xlarge
+    resource_requirements: xlarge_job
+
+  # --- linopy / xpress ------------------------------------------------
+  - name: linopy_xpress_small
+    invocation_script: bash tests/framework_comparison/setup_env_hpc.sh --
+    command: >
+      python tests/framework_comparison/run_framework.py
+        --module solve_linopy --solver xpress --size small
+        --label linopy_xpress_small
+    env:
+      FRAMEWORK_MODULES: "gams/51.3.0 xpressmp conda/2024.06.1"
+    resource_requirements: small_job
+
+  - name: linopy_xpress_medium
+    invocation_script: bash tests/framework_comparison/setup_env_hpc.sh --
+    command: >
+      python tests/framework_comparison/run_framework.py
+        --module solve_linopy --solver xpress --size medium
+        --label linopy_xpress_medium
+    env:
+      FRAMEWORK_MODULES: "gams/51.3.0 xpressmp conda/2024.06.1"
+    resource_requirements: medium_job
+
+  - name: linopy_xpress_large
+    invocation_script: bash tests/framework_comparison/setup_env_hpc.sh --
+    command: >
+      python tests/framework_comparison/run_framework.py
+        --module solve_linopy --solver xpress --size large
+        --label linopy_xpress_large
+    env:
+      FRAMEWORK_MODULES: "gams/51.3.0 xpressmp conda/2024.06.1"
+    resource_requirements: large_job
+
+  - name: linopy_xpress_xlarge
+    invocation_script: bash tests/framework_comparison/setup_env_hpc.sh --
+    command: >
+      python tests/framework_comparison/run_framework.py
+        --module solve_linopy --solver xpress --size xlarge
+        --label linopy_xpress_xlarge
+    env:
+      FRAMEWORK_MODULES: "gams/51.3.0 xpressmp conda/2024.06.1"
+    resource_requirements: xlarge_job
+
+  # --- arco / highs ---------------------------------------------------
+  - name: arco_highs_small
+    invocation_script: bash tests/framework_comparison/setup_env_hpc.sh --
+    command: >
+      python tests/framework_comparison/run_framework.py
+        --module solve_arco --solver highs --size small
+        --label arco_highs_small
+    resource_requirements: small_job
+
+  - name: arco_highs_medium
+    invocation_script: bash tests/framework_comparison/setup_env_hpc.sh --
+    command: >
+      python tests/framework_comparison/run_framework.py
+        --module solve_arco --solver highs --size medium
+        --label arco_highs_medium
+    resource_requirements: medium_job
+
+  - name: arco_highs_large
+    invocation_script: bash tests/framework_comparison/setup_env_hpc.sh --
+    command: >
+      python tests/framework_comparison/run_framework.py
+        --module solve_arco --solver highs --size large
+        --label arco_highs_large
+    resource_requirements: large_job
+
+  - name: arco_highs_xlarge
+    invocation_script: bash tests/framework_comparison/setup_env_hpc.sh --
+    command: >
+      python tests/framework_comparison/run_framework.py
+        --module solve_arco --solver highs --size xlarge
+        --label arco_highs_xlarge
+    resource_requirements: xlarge_job
+
+  # --- arco / xpress --------------------------------------------------
+  - name: arco_xpress_small
+    invocation_script: bash tests/framework_comparison/setup_env_hpc.sh --
+    command: >
+      python tests/framework_comparison/run_framework.py
+        --module solve_arco --solver xpress --size small
+        --label arco_xpress_small
+    env:
+      FRAMEWORK_MODULES: "gams/51.3.0 xpressmp conda/2024.06.1"
+    resource_requirements: small_job
+
+  - name: arco_xpress_medium
+    invocation_script: bash tests/framework_comparison/setup_env_hpc.sh --
+    command: >
+      python tests/framework_comparison/run_framework.py
+        --module solve_arco --solver xpress --size medium
+        --label arco_xpress_medium
+    env:
+      FRAMEWORK_MODULES: "gams/51.3.0 xpressmp conda/2024.06.1"
+    resource_requirements: medium_job
+
+  - name: arco_xpress_large
+    invocation_script: bash tests/framework_comparison/setup_env_hpc.sh --
+    command: >
+      python tests/framework_comparison/run_framework.py
+        --module solve_arco --solver xpress --size large
+        --label arco_xpress_large
+    env:
+      FRAMEWORK_MODULES: "gams/51.3.0 xpressmp conda/2024.06.1"
+    resource_requirements: large_job
+
+  - name: arco_xpress_xlarge
+    invocation_script: bash tests/framework_comparison/setup_env_hpc.sh --
+    command: >
+      python tests/framework_comparison/run_framework.py
+        --module solve_arco --solver xpress --size xlarge
+        --label arco_xpress_xlarge
+    env:
+      FRAMEWORK_MODULES: "gams/51.3.0 xpressmp conda/2024.06.1"
+    resource_requirements: xlarge_job
+
+  # --- pyomo / highs --------------------------------------------------
+  - name: pyomo_highs_small
+    invocation_script: bash tests/framework_comparison/setup_env_hpc.sh --
+    command: >
+      python tests/framework_comparison/run_framework.py
+        --module solve_pyomo --solver highs --size small
+        --label pyomo_highs_small
+    resource_requirements: small_job
+
+  - name: pyomo_highs_medium
+    invocation_script: bash tests/framework_comparison/setup_env_hpc.sh --
+    command: >
+      python tests/framework_comparison/run_framework.py
+        --module solve_pyomo --solver highs --size medium
+        --label pyomo_highs_medium
+    resource_requirements: medium_job
+
+  - name: pyomo_highs_large
+    invocation_script: bash tests/framework_comparison/setup_env_hpc.sh --
+    command: >
+      python tests/framework_comparison/run_framework.py
+        --module solve_pyomo --solver highs --size large
+        --label pyomo_highs_large
+    resource_requirements: large_job
+
+  - name: pyomo_highs_xlarge
+    invocation_script: bash tests/framework_comparison/setup_env_hpc.sh --
+    command: >
+      python tests/framework_comparison/run_framework.py
+        --module solve_pyomo --solver highs --size xlarge
+        --label pyomo_highs_xlarge
+    resource_requirements: xlarge_job
+
+  # --- pyomo / xpress -------------------------------------------------
+  - name: pyomo_xpress_small
+    invocation_script: bash tests/framework_comparison/setup_env_hpc.sh --
+    command: >
+      python tests/framework_comparison/run_framework.py
+        --module solve_pyomo --solver xpress --size small
+        --label pyomo_xpress_small
+    env:
+      FRAMEWORK_MODULES: "gams/51.3.0 xpressmp conda/2024.06.1"
+    resource_requirements: small_job
+
+  - name: pyomo_xpress_medium
+    invocation_script: bash tests/framework_comparison/setup_env_hpc.sh --
+    command: >
+      python tests/framework_comparison/run_framework.py
+        --module solve_pyomo --solver xpress --size medium
+        --label pyomo_xpress_medium
+    env:
+      FRAMEWORK_MODULES: "gams/51.3.0 xpressmp conda/2024.06.1"
+    resource_requirements: medium_job
+
+  - name: pyomo_xpress_large
+    invocation_script: bash tests/framework_comparison/setup_env_hpc.sh --
+    command: >
+      python tests/framework_comparison/run_framework.py
+        --module solve_pyomo --solver xpress --size large
+        --label pyomo_xpress_large
+    env:
+      FRAMEWORK_MODULES: "gams/51.3.0 xpressmp conda/2024.06.1"
+    resource_requirements: large_job
+
+  - name: pyomo_xpress_xlarge
+    invocation_script: bash tests/framework_comparison/setup_env_hpc.sh --
+    command: >
+      python tests/framework_comparison/run_framework.py
+        --module solve_pyomo --solver xpress --size xlarge
+        --label pyomo_xpress_xlarge
+    env:
+      FRAMEWORK_MODULES: "gams/51.3.0 xpressmp conda/2024.06.1"
+    resource_requirements: xlarge_job
+
+  # --- pyoptinterface / highs -----------------------------------------
+  - name: pyoptinterface_highs_small
+    invocation_script: bash tests/framework_comparison/setup_env_hpc.sh --
+    command: >
+      python tests/framework_comparison/run_framework.py
+        --module solve_pyoptinterface --solver highs --size small
+        --label pyoptinterface_highs_small
+    resource_requirements: small_job
+
+  - name: pyoptinterface_highs_medium
+    invocation_script: bash tests/framework_comparison/setup_env_hpc.sh --
+    command: >
+      python tests/framework_comparison/run_framework.py
+        --module solve_pyoptinterface --solver highs --size medium
+        --label pyoptinterface_highs_medium
+    resource_requirements: medium_job
+
+  - name: pyoptinterface_highs_large
+    invocation_script: bash tests/framework_comparison/setup_env_hpc.sh --
+    command: >
+      python tests/framework_comparison/run_framework.py
+        --module solve_pyoptinterface --solver highs --size large
+        --label pyoptinterface_highs_large
+    resource_requirements: large_job
+
+  - name: pyoptinterface_highs_xlarge
+    invocation_script: bash tests/framework_comparison/setup_env_hpc.sh --
+    command: >
+      python tests/framework_comparison/run_framework.py
+        --module solve_pyoptinterface --solver highs --size xlarge
+        --label pyoptinterface_highs_xlarge
+    resource_requirements: xlarge_job
+
+  # --- pyoptinterface / xpress ----------------------------------------
+  - name: pyoptinterface_xpress_small
+    invocation_script: bash tests/framework_comparison/setup_env_hpc.sh --
+    command: >
+      python tests/framework_comparison/run_framework.py
+        --module solve_pyoptinterface --solver xpress --size small
+        --label pyoptinterface_xpress_small
+    env:
+      FRAMEWORK_MODULES: "gams/51.3.0 xpressmp conda/2024.06.1"
+    resource_requirements: small_job
+
+  - name: pyoptinterface_xpress_medium
+    invocation_script: bash tests/framework_comparison/setup_env_hpc.sh --
+    command: >
+      python tests/framework_comparison/run_framework.py
+        --module solve_pyoptinterface --solver xpress --size medium
+        --label pyoptinterface_xpress_medium
+    env:
+      FRAMEWORK_MODULES: "gams/51.3.0 xpressmp conda/2024.06.1"
+    resource_requirements: medium_job
+
+  - name: pyoptinterface_xpress_large
+    invocation_script: bash tests/framework_comparison/setup_env_hpc.sh --
+    command: >
+      python tests/framework_comparison/run_framework.py
+        --module solve_pyoptinterface --solver xpress --size large
+        --label pyoptinterface_xpress_large
+    env:
+      FRAMEWORK_MODULES: "gams/51.3.0 xpressmp conda/2024.06.1"
+    resource_requirements: large_job
+
+  - name: pyoptinterface_xpress_xlarge
+    invocation_script: bash tests/framework_comparison/setup_env_hpc.sh --
+    command: >
+      python tests/framework_comparison/run_framework.py
+        --module solve_pyoptinterface --solver xpress --size xlarge
+        --label pyoptinterface_xpress_xlarge
+    env:
+      FRAMEWORK_MODULES: "gams/51.3.0 xpressmp conda/2024.06.1"
+    resource_requirements: xlarge_job

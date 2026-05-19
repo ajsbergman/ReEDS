@@ -1,0 +1,217 @@
+# Rebuild the FAISS vector index used by ReEDS-GPT.
+#
+# Logic:
+#   1. Daily schedule checks upstream ReEDS directly.
+#   2. If upstream/main has not changed since the last indexed commit, skip indexing.
+#   3. If upstream/main changed, checkout upstream ReEDS into reeds-src/ and run incremental indexing.
+#   4. Monthly cron does a full rebuild to clean stale chunks / drift.
+#   5. Manual workflow_dispatch can force a full rebuild.
+#
+# Required GitHub Secrets:
+#   GCP_SA_KEY      – Service-account JSON with roles:
+#                       storage.objectAdmin  (gs://reeds-agent-index)
+#                       run.services.update  (Cloud Run restart)
+#   GOOGLE_API_KEY  – Gemini API key for embedding
+
+name: Update ReEDS-GPT Index
+
+on:
+  schedule:
+    # Daily upstream check at 08:00 UTC
+    - cron: "0 8 * * *"
+
+    # Full rebuild on the 1st of every month at 06:00 UTC
+    - cron: "0 6 1 * *"
+
+  workflow_dispatch:
+    inputs:
+      full_rebuild:
+        description: "Force a full non-incremental rebuild"
+        type: boolean
+        default: false
+
+concurrency:
+  group: update-index
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  GCS_BUCKET: reeds-agent-index
+  GCP_PROJECT: reeds-agent-api
+  CLOUD_RUN_SERVICE: reeds-agent
+  CLOUD_RUN_REGION: us-central1
+
+  # Upstream ReEDS repository to index.
+  # Change this if the official upstream repo is different.
+  UPSTREAM_REPO: ReEDS-Model/ReEDS
+  UPSTREAM_BRANCH: main
+
+  # Avoid downloading large Git LFS files such as .h5 files.
+  GIT_LFS_SKIP_SMUDGE: "1"
+
+jobs:
+  build-and-upload:
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── Checkout this fork only for workflow scripts ──────────────
+      - name: Checkout fork for workflow scripts
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          lfs: false
+
+      # ── GCP Auth ──────────────────────────────────────────────────
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set up gcloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+
+      # ── Check upstream commit vs previous indexed commit ──────────
+      - name: Check whether upstream ReEDS changed
+        id: check
+        run: |
+          set -euo pipefail
+          UPSTREAM_SHA="$(git ls-remote "https://github.com/${UPSTREAM_REPO}.git" "refs/heads/${UPSTREAM_BRANCH}" | awk '{print $1}')"
+          if [ -z "$UPSTREAM_SHA" ]; then
+            echo "Failed to resolve upstream SHA for ${UPSTREAM_REPO}:${UPSTREAM_BRANCH}"
+            exit 1
+          fi
+          echo "upstream_sha=$UPSTREAM_SHA" >> "$GITHUB_OUTPUT"
+          mkdir -p previous_manifest
+          gsutil cp "gs://$GCS_BUCKET/manifest.json" previous_manifest/manifest.json \
+            || echo "{}" > previous_manifest/manifest.json
+          PREVIOUS_SHA="$(python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path("previous_manifest/manifest.json")
+          try:
+              data = json.loads(p.read_text(encoding="utf-8"))
+              print(data.get("git_commit", ""))
+          except Exception:
+              print("")
+          PY
+          )"
+          echo "previous_sha=$PREVIOUS_SHA" >> "$GITHUB_OUTPUT"
+          echo "Upstream SHA: $UPSTREAM_SHA"
+          echo "Previous indexed SHA: $PREVIOUS_SHA"
+          echo "Event name: ${{ github.event_name }}"
+          echo "Schedule: ${{ github.event.schedule }}"
+          # Monthly scheduled run: always full rebuild.
+          if [ "${{ github.event_name }}" = "schedule" ] && [ "${{ github.event.schedule }}" = "0 6 1 * *" ]; then
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+            echo "is_full_rebuild=true" >> "$GITHUB_OUTPUT"
+            echo "Monthly full rebuild."
+          # Manual full rebuild.
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.full_rebuild }}" = "true" ]; then
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+            echo "is_full_rebuild=true" >> "$GITHUB_OUTPUT"
+            echo "Manual full rebuild."
+          # Manual non-full run: build only if upstream changed.
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "$UPSTREAM_SHA" != "$PREVIOUS_SHA" ]; then
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+            echo "is_full_rebuild=false" >> "$GITHUB_OUTPUT"
+            echo "Manual run: upstream changed, building incremental index."
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "should_build=false" >> "$GITHUB_OUTPUT"
+            echo "is_full_rebuild=false" >> "$GITHUB_OUTPUT"
+            echo "Manual run: upstream unchanged, skipping index build."
+          # Daily schedule: build only if upstream changed.
+          elif [ "$UPSTREAM_SHA" != "$PREVIOUS_SHA" ]; then
+            echo "should_build=true" >> "$GITHUB_OUTPUT"
+            echo "is_full_rebuild=false" >> "$GITHUB_OUTPUT"
+            echo "Upstream changed. Building incremental index."
+          else
+            echo "should_build=false" >> "$GITHUB_OUTPUT"
+            echo "is_full_rebuild=false" >> "$GITHUB_OUTPUT"
+            echo "Upstream unchanged. Skipping index build."
+          fi
+      - name: Stop if upstream unchanged
+        if: steps.check.outputs.should_build != 'true'
+        run: |
+          echo "No upstream changes detected. Skipping indexing."
+          echo "Upstream SHA: ${{ steps.check.outputs.upstream_sha }}"
+          echo "Previous indexed SHA: ${{ steps.check.outputs.previous_sha }}"
+      # ── Checkout upstream ReEDS source to index ───────────────────
+      - name: Checkout upstream ReEDS without LFS objects
+        if: steps.check.outputs.should_build == 'true'
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.UPSTREAM_REPO }}
+          ref: ${{ env.UPSTREAM_BRANCH }}
+          path: reeds-src
+          fetch-depth: 0
+          lfs: false
+
+      - name: Disable LFS smudge in upstream checkout
+        if: steps.check.outputs.should_build == 'true'
+        working-directory: reeds-src
+        run: |
+          git lfs install --skip-smudge
+          git config --local filter.lfs.smudge "git-lfs smudge --skip -- %f"
+          git config --local filter.lfs.process "git-lfs filter-process --skip"
+          git config --local filter.lfs.required false
+      # ── Python ────────────────────────────────────────────────────
+      - name: Set up Python
+        if: steps.check.outputs.should_build == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        if: steps.check.outputs.should_build == 'true'
+        run: |
+          pip install --quiet \
+            langchain-core \
+            langchain-text-splitters \
+            langchain-community \
+            langchain-google-genai \
+            faiss-cpu \
+            tqdm
+      # ── Download previous index for incremental build ─────────────
+      - name: Download existing index from GCS
+        if: >-
+          steps.check.outputs.should_build == 'true'
+          && steps.check.outputs.is_full_rebuild != 'true'
+        run: |
+          mkdir -p reeds_index
+          gsutil -m cp \
+            "gs://$GCS_BUCKET/index.faiss" \
+            "gs://$GCS_BUCKET/index.pkl" \
+            "gs://$GCS_BUCKET/manifest.json" \
+            reeds_index/ \
+          || echo "::warning::No existing index in GCS – will build from scratch"
+      # ── Build index ───────────────────────────────────────────────
+      - name: Build FAISS index
+        if: steps.check.outputs.should_build == 'true'
+        env:
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+          REEDS_REPO: ${{ github.workspace }}/reeds-src
+          REEDS_INDEX_DIR: ${{ github.workspace }}/reeds_index
+          REEDS_EMBED_MODEL: "gemini:gemini-embedding-001"
+          REEDS_INCREMENTAL: ${{ steps.check.outputs.is_full_rebuild == 'true' && '0' || '1' }}
+          REEDS_SKIP_UNCHANGED: ${{ steps.check.outputs.is_full_rebuild == 'true' && '0' || '1' }}
+        run: python .github/scripts/build_reeds_index.py
+
+      # ── Upload fresh index to GCS ─────────────────────────────────
+      - name: Upload index to GCS
+        if: steps.check.outputs.should_build == 'true'
+        run: |
+          gsutil -m cp \
+            reeds_index/index.faiss \
+            reeds_index/index.pkl \
+            reeds_index/manifest.json \
+            "gs://$GCS_BUCKET/"
+      # ── Restart Cloud Run so it loads the fresh index ─────────────
+      - name: Restart Cloud Run service
+        if: steps.check.outputs.should_build == 'true'
+        run: |
+          gcloud run services update "$CLOUD_RUN_SERVICE" \
+            --region "$CLOUD_RUN_REGION" \
+            --project "$GCP_PROJECT" \
+            --update-env-vars "INDEX_UPDATED=$(date -u +%Y%m%dT%H%M%SZ)"
