@@ -67,5 +67,22 @@ slurm_parallel_runs/
 # documentation files
 docs/build/*
 
-# framework comparison benchmark outputs
+# framework comparison benchmark outputs and runtime artifacts
+tests/framework_comparison/.venv/
 tests/framework_comparison/results/
+tests/framework_comparison/torc_output*/
+tests/framework_comparison/vendor/
+tests/framework_comparison/__pycache__/
+tests/framework_comparison/.pytest_cache/
+tests/framework_comparison/.mypy_cache/
+tests/framework_comparison/.ruff_cache/
+tests/framework_comparison/*.log
+tests/framework_comparison/*.lst
+tests/framework_comparison/*.gms
+
+torc_output/
+torc_output_local_smoke/
+wf*.tar.gz
+progress.md
+torc_solver_matrix.slurm.yaml
+tests/framework_comparison/torc_solver_matrix.slurm.yaml

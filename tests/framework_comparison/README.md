@@ -1,16 +1,16 @@
 # ReEDS LP Framework Comparison
 
-Benchmarks Python LP frameworks for ReEDS.
-Each framework solves the same parametric test problem at four sizes and is evaluated
-on build time, solve time, peak memory, and lines of code.
+Benchmarks Python LP modeling frameworks on a ReEDS-representative linear program.
+Compute work runs through Torc Slurm allocations on Kestrel — not direct `sbatch`
+jobs or login-node solves.
 
 ## Problem structure
 
-The test problem is a simplified single-vintage capacity-expansion LP with the same
-indexing and constraint patterns as `reeds/core/setup/c_model.gms`:
+Simplified single-vintage capacity-expansion LP with the same indexing and
+constraint patterns as `reeds/core/setup/c_model.gms`.
 
 | Element | Description |
-|---------|-------------|
+| --- | --- |
 | Variables | `GEN[i,r,h,t]`, `CAP[i,r,t]`, `INV[i,r,t]`, `FLOW[r,rr,h,t]`, `RAMPUP[i,r,h,t]`, `CHARGE[i,r,h,t]`, `SOC[i,r,h,t]` |
 | `eq_cap_accum` | Capacity accumulation across years |
 | `eq_cap_limit` | Generation ≤ region-specific CF × capacity |
@@ -20,136 +20,154 @@ indexing and constraint patterns as `reeds/core/setup/c_model.gms`:
 | `eq_transmission_limit` | Corridor flow limits |
 | `eq_emit_cap` | Annual CO₂ cap |
 | `eq_ramping` | RAMPUP slack ≥ hour-to-hour increase in dispatch |
-| `eq_min_cf` | Minimum annual capacity factor (6%) for dispatchable techs |
+| `eq_min_cf` | Minimum annual capacity factor for dispatchable techs |
 | `eq_soc` / `eq_soc_cap` / `eq_charge_cap` | Battery storage state-of-charge |
 
-**Transmission** uses a sparse mesh (ring backbone + random extra edges, ~4 corridors
-per region). **VRE capacity factors** vary by region. **n\_years = 2** for all sizes,
-approximately matching ReEDS's sequential-myopic solve structure.
+## Problem sizes
 
-### Problem sizes
+| Size | Regions | Techs | Hours | Years | Approx. variables |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| small | 5 | 4 | 24 | 2 | 15 K |
+| medium | 20 | 5 | 100 | 2 | 200 K |
+| large | 60 | 7 | 400 | 2 | 3 M |
+| xlarge | 120 | 8 | 800 | 2 | 25 M |
 
-| Size | Regions | Techs | Hours | Years | ~Variables |
-|------|---------|-------|-------|-------|------------|
-| small | 5 | 4 | 24 | 2 | ~15 K |
-| medium | 20 | 5 | 100 | 2 | ~200 K |
-| large | 60 | 7 | 400 | 2 | ~3 M |
-| xlarge | 120 | 8 | 800 | 2 | ~25 M |
-
-### Technology set (in order; sizes include the first n techs)
-
-| Tech | Type | Has startcost | Has min\_cf |
-|------|------|--------------|------------|
-| gas\_cc | dispatchable | yes | yes |
-| gas\_ct | dispatchable | yes | yes |
-| wind | VRE | — | — |
-| solar | VRE | — | — |
-| coal | dispatchable | yes | yes |
-| nuclear | dispatchable | yes | yes |
-| battery | storage | — | — |
-| geotherm | dispatchable | yes | yes |
-
-## Frameworks
-
-| Label in benchmark | Module | Solver |
-|--------------------|--------|--------|
-| `linopy` | `solve_linopy.py` | HiGHS (via linopy) |
-| `pyomo` | `solve_pyomo.py` | HiGHS (via highspy) |
-| `pyoptinterface` | `solve_pyoptinterface.py` | HiGHS (via pyoptinterface) |
-| `arco` | `solve_arco.py` | HiGHS (via Arco Python bindings) |
-| `gams_highs` | `solve_gams.py` | HiGHS (via GAMS subprocess) |
-| `gams_cplex` | `solve_gams.py` | CPLEX (via GAMS subprocess) |
-| `gamspy_highs` | `solve_gamspy.py` | HiGHS (via GAMSPy) |
-| `gamspy_cplex` | `solve_gamspy.py` | CPLEX (via GAMSPy) |
-
-## Running
-
-All commands assume the `reeds2` conda environment and are run from the repo root
-or from `tests/framework_comparison/`.
-
-```powershell
-# Activate environment
-conda activate reeds2
-
-# Quick sanity check — all frameworks, small problem only
-python tests/framework_comparison/benchmark.py --size small
-
-# Full benchmark — all sizes (slow, large takes ~5 min per framework)
-python tests/framework_comparison/benchmark.py
-
-# Subset of frameworks or sizes
-python tests/framework_comparison/benchmark.py --frameworks linopy pyomo --size small medium
-
-# GAMSPy with CPLEX only
-python tests/framework_comparison/benchmark.py --frameworks gamspy_cplex --size small medium large
-```
-
-Results are printed to the terminal and saved as CSV in `results/`.
-
-### Running Arco standalone with `uv --script`
-
-`solve_arco.py` includes inline `uv` metadata and pins Arco to the current PR commit. You can compile/install the bindings directly from that source with:
-
-```bash
-uv run --script tests/framework_comparison/solve_arco.py
-```
-
-### CLI options
-
-| Flag | Default | Description |
-|------|---------|-------------|
-| `--size` | all | Problem size(s): `small medium large xlarge` |
-| `--frameworks` | all | Framework labels (see table above) |
-| `--repeat N` | 1 | Repeat each run N times; report minimum times |
-| `--no-memory` | off | Skip peak RSS measurement |
-
-## Environment setup
-
-### Conda environment
-
-```powershell
-conda activate reeds2
-```
-
-The `reeds2` environment must have: `linopy`, `pyomo`, `highspy`, `highsbox`,
-`pyoptinterface`, `gamspy`, `gamspy_base`, `psutil`, `numpy`, `xarray`.
-
-### GAMS (solve_gams.py)
-
-`solve_gams.py` calls `gams.exe` via subprocess. The GAMS executable path is
-hard-coded at the top of that file; update it if your GAMS installation is elsewhere.
-
-### GAMSPy (solve_gamspy.py)
-
-GAMSPy requires a license that is validated against `license.gams.com:443` on
-every `Container()` call. On the NLR network (Netskope SSL inspection), two
-user-level environment variables must be set:
-
-```
-CURL_CA_BUNDLE  = C:\Users\<you>\.certs\windows-root-ca-bundle.pem
-CURL_SSL_NO_REVOKE = 1
-```
-
-Set these via **System Properties → Environment Variables** and restart VSCode
-(or any process that calls GAMSPy) for them to take effect.
-
-To install the GAMSPy license:
-
-```powershell
-& "C:\envs\reeds2\python.exe" -m gamspy install license <access_code>
-```
-
-## Files
+## File layout
 
 | File | Purpose |
-|------|---------|
-| `data_generator.py` | Generates `ProblemData` for each size; single source of truth for all parameters |
-| `benchmark.py` | Main harness: runs frameworks, measures time/memory, saves CSV |
-| `solve_linopy.py` | linopy implementation |
-| `solve_pyomo.py` | Pyomo implementation |
-| `solve_pyoptinterface.py` | pyoptinterface implementation |
-| `solve_arco.py` | Arco Python implementation (includes `uv --script` metadata) |
-| `solve_gams.py` | Writes a `.gms` file and invokes GAMS via subprocess |
+| --- | --- |
+| `data_generator.py` | Single source of truth for benchmark parameters and problem sizes |
+| `run_framework.py` | CLI adapter: one job = one invocation → JSON result |
+| `solve_arco.py` | Arco implementation |
+| `solve_gams.py` | GAMS subprocess implementation |
 | `solve_gamspy.py` | GAMSPy implementation |
-| `verify_env.py` | Lightweight import and solve check (older, pre-ramping/storage version) |
-| `results/` | Benchmark output CSVs, timestamped |
+| `solve_linopy.py` | Linopy implementation |
+| `solve_pyomo.py` | Pyomo implementation |
+| `solve_pyoptinterface.py` | PyOptInterface implementation |
+| `run_gams.sh` | Thin GAMS subprocess wrapper called by `solve_gams.py` |
+| `setup_env_local.sh` | Local env setup (uv sync + optional Arco wheel) |
+| `setup_env_hpc.sh` | Kestrel HPC pre-job setup (modules + venv + Arco wheel + env exports) |
+| `torc_local.yaml` | Torc workflow for local development runs (no Slurm) |
+| `torc_kestrel.yaml` | Torc/Slurm workflow for canonical Kestrel benchmarks |
+| `pull_results.sh` | Pull JSON results from a Torc run and emit CSV (local or remote SSH) |
+| `create_comparison_benchmark_table.py` | Convert CSV results to a markdown table |
+
+## Default benchmark matrix
+
+Both `torc_local.yaml` and `torc_kestrel.yaml` run **small** and **medium**
+sizes for:
+
+| Framework | Module | Default solver |
+| --- | --- | --- |
+| Linopy | `solve_linopy.py` | HiGHS |
+| Pyomo | `solve_pyomo.py` | HiGHS |
+| Arco | `solve_arco.py` | HiGHS |
+| GAMS | `solve_gams.py` | HiGHS (via GAMS) |
+
+Xpress, CPLEX, GAMSPy, and PyOptInterface are not in the default matrix.
+Add them when the required site access and licenses are confirmed.
+
+---
+
+## Quick-start: local smoke-test
+
+```bash
+# 1. Set up the Python environment
+./tests/framework_comparison/setup_env_local.sh
+
+# 2. Run a single framework/size directly
+python tests/framework_comparison/run_framework.py \
+  --module solve_linopy --solver highs --size small
+
+# 3. Or run the full local Torc matrix (no Slurm)
+torc workflow create tests/framework_comparison/torc_local.yaml
+torc workflow run <workflow-id>
+```
+
+### Change the solver
+```bash
+BENCHMARK_SOLVER=scip torc workflow create tests/framework_comparison/torc_local.yaml
+```
+
+### Pull and display results
+```bash
+./tests/framework_comparison/pull_results.sh \
+  --run-dir /path/to/torc-runs/framework-matrix-<id> > /tmp/results.csv
+
+python tests/framework_comparison/create_comparison_benchmark_table.py /tmp/results.csv
+```
+
+---
+
+## Kestrel HPC workflow
+
+### Prerequisites
+
+- Torc client: `/scratch/psanchez/torc/0.30.3/torc`
+- Torc API: `http://torc.hpc.nrel.gov:8080/torc-service/v1`
+- Kestrel modules: `gams/51.3.0 conda/2024.06.1`
+- Optional Arco prefix: `/scratch/psanchez/arco/latest`
+
+### Deploy and run
+
+```bash
+SHA=$(git rev-parse HEAD)
+RUN_ID=framework-matrix-$(date +%Y%m%d-%H%M%S)
+
+/path/to/deploy-git-torc-slurm.sh \
+  --host psanchez@kestrel.hpc.nrel.gov \
+  --remote-git-dir /scratch/psanchez/git/ReEDS.git \
+  --sha "$SHA" \
+  --run-id "$RUN_ID" \
+  --workflow tests/framework_comparison/torc_kestrel.yaml \
+  --torc-api-url http://torc.hpc.nrel.gov:8080/torc-service/v1 \
+  --modules 'gams/51.3.0 conda/2024.06.1' \
+  --remote-torc-bin /scratch/psanchez/torc/0.30.3/torc
+```
+
+### Monitor
+
+```bash
+export TORC_API_URL=http://torc.hpc.nrel.gov:8080/torc-service/v1
+torc status <workflow-id>
+torc results list <workflow-id>
+```
+
+### Pull results from Kestrel
+
+```bash
+./tests/framework_comparison/pull_results.sh \
+  --host psanchez@kestrel.hpc.nrel.gov > /tmp/results.csv
+
+python tests/framework_comparison/create_comparison_benchmark_table.py /tmp/results.csv
+```
+
+### Inspect individual JSON results on Kestrel
+
+```bash
+ssh psanchez@kestrel.hpc.nrel.gov \
+  'find /scratch/psanchez/torc-runs/<run-id>/src/tests/framework_comparison/torc_output_matrix/framework_results \
+    -name "*.json" -maxdepth 1 -print -exec cat {} \;'
+```
+
+---
+
+## Environment variables
+
+| Variable | Purpose | Default |
+| --- | --- | --- |
+| `BENCHMARK_SOLVER` | Solver used by all jobs in a workflow | `highs` |
+| `FRAMEWORK_MODULES` | Space- or comma-separated Lmod modules (HPC) | `gams/51.3.0 conda/2024.06.1` |
+| `FRAMEWORK_COMPARISON_ARCO_PREFIX` | Prefix with `wheels/` and `scip/lib/` | `/scratch/$USER/arco/latest` |
+| `GAMS_EXE` | Explicit GAMS executable path | discovered from `PATH` |
+| `TORC_API_URL` | Torc API endpoint | Kestrel Torc URL |
+| `TORC_RUNS_BASE` | Local/remote Torc runs directory | `/scratch/$USER/torc-runs` |
+
+## Notes
+
+- **Torc job return code 0** only means the adapter wrote its JSON result.
+  Always inspect `error` fields in per-case JSON files for pass/fail.
+- **Login-node runs**: only for lightweight status/file checks.
+  All benchmark solves must go through Torc/Slurm.
+- **Solver override**: set `BENCHMARK_SOLVER` before workflow creation or
+  pass `--env BENCHMARK_SOLVER=<solver>` to the deploy script.
