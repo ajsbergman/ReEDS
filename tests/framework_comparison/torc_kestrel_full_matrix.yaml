@@ -29,22 +29,22 @@ resource_requirements:
   - name: small_job
     num_cpus: 4
     memory: "16G"
-    runtime: "30m"
+    runtime: "PT30M"
 
   - name: medium_job
     num_cpus: 4
     memory: "32G"
-    runtime: "1h"
+    runtime: "PT1H"
 
   - name: large_job
     num_cpus: 4
     memory: "64G"
-    runtime: "2h"
+    runtime: "PT2H"
 
   - name: xlarge_job
     num_cpus: 8
     memory: "128G"
-    runtime: "4h"
+    runtime: "PT4H"
 
 # ============================================================================
 jobs:
