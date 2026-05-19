@@ -1,0 +1,93 @@
+# Local Torc workflow for the ReEDS framework comparison benchmark.
+#
+# Runs jobs directly (no Slurm) on the local machine.
+# Intended for development smoke-tests — NOT for canonical benchmark numbers.
+#
+# Prerequisites:
+#   - Torc client installed and TORC_API_URL set (or defaults to local)
+#   - Python venv synced: ./setup_env_local.sh
+#
+# Usage:
+#   torc workflow create torc_local.yaml
+#   torc workflow run <workflow-id>
+#
+# Solver override:
+#   Set BENCHMARK_SOLVER env var before creating the workflow:
+#     BENCHMARK_SOLVER=highs torc workflow create torc_local.yaml
+#   Or edit the jobs below directly.
+#
+# Sizes run: small, medium
+# Frameworks: linopy, pyomo, arco  (all with HiGHS by default)
+# ============================================================================
+
+name: framework-comparison-local
+description: Local smoke-test matrix for ReEDS LP framework comparison
+
+env:
+  BENCHMARK_SOLVER: "${BENCHMARK_SOLVER:-highs}"
+  PYTHONPATH: "src/tests/framework_comparison"
+
+jobs:
+  - name: linopy_highs_small
+    command: >
+      python tests/framework_comparison/run_framework.py
+        --module solve_linopy
+        --solver "${BENCHMARK_SOLVER}"
+        --size small
+        --label linopy_${BENCHMARK_SOLVER}_small
+
+  - name: linopy_highs_medium
+    command: >
+      python tests/framework_comparison/run_framework.py
+        --module solve_linopy
+        --solver "${BENCHMARK_SOLVER}"
+        --size medium
+        --label linopy_${BENCHMARK_SOLVER}_medium
+
+  - name: pyomo_highs_small
+    command: >
+      python tests/framework_comparison/run_framework.py
+        --module solve_pyomo
+        --solver "${BENCHMARK_SOLVER}"
+        --size small
+        --label pyomo_${BENCHMARK_SOLVER}_small
+
+  - name: pyomo_highs_medium
+    command: >
+      python tests/framework_comparison/run_framework.py
+        --module solve_pyomo
+        --solver "${BENCHMARK_SOLVER}"
+        --size medium
+        --label pyomo_${BENCHMARK_SOLVER}_medium
+
+  - name: arco_highs_small
+    command: >
+      python tests/framework_comparison/run_framework.py
+        --module solve_arco
+        --solver "${BENCHMARK_SOLVER}"
+        --size small
+        --label arco_${BENCHMARK_SOLVER}_small
+
+  - name: arco_highs_medium
+    command: >
+      python tests/framework_comparison/run_framework.py
+        --module solve_arco
+        --solver "${BENCHMARK_SOLVER}"
+        --size medium
+        --label arco_${BENCHMARK_SOLVER}_medium
+
+  - name: gams_highs_small
+    command: >
+      python tests/framework_comparison/run_framework.py
+        --module solve_gams
+        --solver "${BENCHMARK_SOLVER}"
+        --size small
+        --label gams_${BENCHMARK_SOLVER}_small
+
+  - name: gams_highs_medium
+    command: >
+      python tests/framework_comparison/run_framework.py
+        --module solve_gams
+        --solver "${BENCHMARK_SOLVER}"
+        --size medium
+        --label gams_${BENCHMARK_SOLVER}_medium

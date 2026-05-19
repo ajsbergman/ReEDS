@@ -1,0 +1,142 @@
+# Kestrel HPC Torc/Slurm workflow for the ReEDS framework comparison benchmark.
+#
+# Each job runs through Slurm on a Kestrel compute node.  The pre-job
+# step calls setup_env_hpc.sh to load modules, sync the venv, and export
+# the canonical environment variables.
+#
+# Prerequisites:
+#   - Torc client: /scratch/psanchez/torc/0.30.3/torc
+#   - TORC_API_URL: http://torc.hpc.nrel.gov:8080/torc-service/v1
+#   - Git-backed deployment via deploy-git-torc-slurm.sh (see README)
+#
+# Deployment (from local machine):
+#   SHA=$(git rev-parse HEAD)
+#   RUN_ID=framework-matrix-$(date +%Y%m%d-%H%M%S)
+#   /path/to/deploy-git-torc-slurm.sh \
+#     --host psanchez@kestrel.hpc.nrel.gov \
+#     --remote-git-dir /scratch/psanchez/git/ReEDS.git \
+#     --sha "$SHA" \
+#     --run-id "$RUN_ID" \
+#     --workflow tests/framework_comparison/torc_kestrel.yaml \
+#     --torc-api-url http://torc.hpc.nrel.gov:8080/torc-service/v1 \
+#     --modules 'gams/51.3.0 conda/2024.06.1' \
+#     --remote-torc-bin /scratch/psanchez/torc/0.30.3/torc
+#
+# Solver override:
+#   Pass BENCHMARK_SOLVER=<solver> via --env flag to the deploy script, or
+#   edit this file directly before deployment.
+#
+# Sizes run:   small, medium
+# Frameworks:  linopy, pyomo, arco, gams  (all with HiGHS by default)
+# ============================================================================
+
+name: framework-comparison-kestrel
+description: Kestrel Slurm matrix for ReEDS LP framework comparison
+
+# Slurm defaults applied to every job unless overridden per-job
+slurm_defaults:
+  account: "${SLURM_ACCOUNT:-reedseda}"
+  partition: "${SLURM_PARTITION:-standard}"
+  nodes: 1
+  ntasks: 1
+  cpus_per_task: 4
+  memory: "32G"
+  time: "02:00:00"
+
+env:
+  BENCHMARK_SOLVER: "${BENCHMARK_SOLVER:-highs}"
+  FRAMEWORK_MODULES: "${FRAMEWORK_MODULES:-gams/51.3.0 conda/2024.06.1}"
+  FRAMEWORK_COMPARISON_ARCO_PREFIX: "${FRAMEWORK_COMPARISON_ARCO_PREFIX:-/scratch/psanchez/arco/latest}"
+  TORC_API_URL: "${TORC_API_URL:-http://torc.hpc.nrel.gov:8080/torc-service/v1}"
+
+pre_job:
+  command: bash tests/framework_comparison/setup_env_hpc.sh
+
+jobs:
+  - name: linopy_highs_small
+    command: >
+      python tests/framework_comparison/run_framework.py
+        --module solve_linopy
+        --solver "${BENCHMARK_SOLVER}"
+        --size small
+        --label linopy_${BENCHMARK_SOLVER}_small
+    slurm:
+      time: "00:30:00"
+      memory: "16G"
+
+  - name: linopy_highs_medium
+    command: >
+      python tests/framework_comparison/run_framework.py
+        --module solve_linopy
+        --solver "${BENCHMARK_SOLVER}"
+        --size medium
+        --label linopy_${BENCHMARK_SOLVER}_medium
+    slurm:
+      time: "01:00:00"
+      memory: "32G"
+
+  - name: pyomo_highs_small
+    command: >
+      python tests/framework_comparison/run_framework.py
+        --module solve_pyomo
+        --solver "${BENCHMARK_SOLVER}"
+        --size small
+        --label pyomo_${BENCHMARK_SOLVER}_small
+    slurm:
+      time: "00:30:00"
+      memory: "16G"
+
+  - name: pyomo_highs_medium
+    command: >
+      python tests/framework_comparison/run_framework.py
+        --module solve_pyomo
+        --solver "${BENCHMARK_SOLVER}"
+        --size medium
+        --label pyomo_${BENCHMARK_SOLVER}_medium
+    slurm:
+      time: "01:00:00"
+      memory: "32G"
+
+  - name: arco_highs_small
+    command: >
+      python tests/framework_comparison/run_framework.py
+        --module solve_arco
+        --solver "${BENCHMARK_SOLVER}"
+        --size small
+        --label arco_${BENCHMARK_SOLVER}_small
+    slurm:
+      time: "00:30:00"
+      memory: "16G"
+
+  - name: arco_highs_medium
+    command: >
+      python tests/framework_comparison/run_framework.py
+        --module solve_arco
+        --solver "${BENCHMARK_SOLVER}"
+        --size medium
+        --label arco_${BENCHMARK_SOLVER}_medium
+    slurm:
+      time: "01:00:00"
+      memory: "32G"
+
+  - name: gams_highs_small
+    command: >
+      python tests/framework_comparison/run_framework.py
+        --module solve_gams
+        --solver "${BENCHMARK_SOLVER}"
+        --size small
+        --label gams_${BENCHMARK_SOLVER}_small
+    slurm:
+      time: "00:30:00"
+      memory: "16G"
+
+  - name: gams_highs_medium
+    command: >
+      python tests/framework_comparison/run_framework.py
+        --module solve_gams
+        --solver "${BENCHMARK_SOLVER}"
+        --size medium
+        --label gams_${BENCHMARK_SOLVER}_medium
+    slurm:
+      time: "01:00:00"
+      memory: "32G"
