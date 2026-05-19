@@ -668,12 +668,12 @@ def main(sw, t, iteration=0, logging=True):
     # main(sw, t, iteration, logging=False)
 
     # %%###  option to run script directly for debugging
-    casedir =  "/Users/aayad/Work/repos/ReEDS/runs/v20260419_224354_Pacific"
-    t = 2020 # previous solve year
-    iteration = 0
-    # load switches
-    sw = reeds.io.get_switches(casedir)
-    sw['t'] = t
-    sw['GSw_PRM_UpdateMethod'] = 2
-    # %%###
-    main(sw, t, iteration, logging=False)
+    # casedir =  "/Users/aayad/Work/repos/ReEDS/runs/v20260419_224354_Pacific"
+    # t = 2020 # previous solve year
+    # iteration = 0
+    # # load switches
+    # sw = reeds.io.get_switches(casedir)
+    # sw['t'] = t
+    # sw['GSw_PRM_UpdateMethod'] = 2
+    # # %%###
+    # main(sw, t, iteration, logging=False)
