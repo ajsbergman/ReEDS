@@ -1573,7 +1573,7 @@ Note the difference in color scales.
 
 
 Scheduled (planned and maintenance) outage rates are derived from the NERC GADS database {cite}`nercGeneratingAvailabilityData2023`.
-Scheduled outage rates for combined cycle, combustion turbine, nuclear, steam (coal), and hydro technologies are measured and applied at monthly resolution using GADS data from 2013 to 2023 {cite}`murphyGridReliabilityStatistics2025`.
+Scheduled outage rates for combined cycle, combustion turbine, nuclear, steam (coal), and hydro technologies are measured and applied at monthly resolution using GADS data from 2013 to 2023 {cite}`murphyGridReliabilityStatistics2025` (see the [scheduled outages](https://github.com/NatLabRockies/grid-reliability-statistics/blob/main/notebooks/scheduled_outages.ipynb) notebook for specific details).
 Scheduled outage rates for other technologies are measured as time-independent average values using GADS data from 2014 to 2018;
 scheduled outages for these technologies are applied only during spring and fall, with the outage rates during those months scaled to reproduce the measured time-independent averages.
 {numref}`figure-outage_scheduled` shows scheduled outage rates for the technologies used by default.
@@ -2917,7 +2917,7 @@ We do not model banking of allowances, emissions offsets, or recycling of initia
 #### Federal tax credits for clean electricity and captured carbon
 
 Existing federal tax incentives are included in ReEDS, aligned with the One Big Beautiful Bill Act (OBBBA) passed in the summer of 2025.
-These include the production tax credit (PTC) and the ITC for several electricity generation technologies, the 45Q credit for capturing and storing carbon, the 45U credits for existing nuclear generation, the 45V credit for producing hydrogen, and the Modified Accelerated Cost Recovery System (MACRS) depreciation schedules.
+These include the production tax credit (PTC) and the ITC for several electricity generation technologies, the 45Q credit for capturing and storing carbon, the 45U credits for existing nuclear generation, the 45V credit for producing hydrogen, and the Modified Accelerated Cost Recovery System (MACRS) depreciation schedules.[^ref52]
 
 [^ref52]: Note the eligible cost basis for MACRS is reduced by one-half the value of the tax credit.
 
@@ -3148,7 +3148,7 @@ For these states, the nuclear power plants are not allowed to retire until after
 The policy end dates are taken from EIA {cite:year}`eiaElectricPowerMonthly2019a`.
 
 In addition, there are [several states that do not allow new nuclear power](https://www.ncsl.org/environment-and-natural-resources/states-restrictions-on-new-nuclear-power-facility-construction).
-These states include California, Connecticut, Illinois, Maine, Massachusetts, Minnesota, New Jersey, New York (Long Island only), Oregon, Rhode Island, and Vermont.
+These states include California, Illinois, Maine, Massachusetts, Minnesota, New York (Long Island only), Oregon, Rhode Island, and Vermont. Nuclear ban is not imposed for Connecticut since Act25-127 allows construction of advanced nuclear facilities in municipalities with referendums.
 
 
 ### Other Policy Capabilities
@@ -3760,7 +3760,9 @@ For all ReEDS system cost results, we assume the operational costs for the nonmo
 The marginal electricity prices in ReEDS are taken as the shadow prices from the constraints in the model that are directly impacted by the need to serve electricity. These include the load balance constraint, the operating reserve requirement, the RPS and CES requirements, and the planning reserve margin requirement (applied either in stress periods or seasonally via capacity credits). Taken together, these values show the total marginal cost of serving electricity in a given region and time slice. Weighted average versions are also calculated to report national annual marginal electricity prices. These marginal prices are most analogous to wholesale electricity prices but within a model that has full coordination and foresight.
 
 ```{admonition} Marginal Price Outputs
-Marginal electricity price outputs are calculated with `reqt_price` in `e_report.gms` and are outputs in `reqt_price.csv`. The quantity required by the model is reported in the `reqt_quant.csv` output. These two taken together can be used to calculate a $/MWh electricity price, which is done in make of the ReEDS outputs and reported as "Bulk System Electricity Price" in bokehpivot HTML outputs and in other output locations.
+Marginal electricity price outputs are recorded in `reqt_price.csv`.
+The quantity required by the model is reported in `reqt_quant.csv`.
+These two can be combined to calculate a \$/MWh electricity price.
 ```
 
 
@@ -3863,7 +3865,7 @@ In the example in {numref}`figure-energy-capacity-requirements-for-storage`, 5,0
 
 We repeat this process in each region for each season over a large range of storage power capacities (from 0% to 90% of peak demand in 100-MW increments).
 The result of each dispatch is used to produce the "power-energy curve" in {numref}`figure-storage-peak-capacity-determination`, which allows us to calculate the marginal capacity credit for additional storage.
-The curve gives storage energy capacity that is required for full capacity credit as a function of total storage capacity.[^ref45]
+The curve gives storage energy capacity that is required for full capacity credit as a function of total storage capacity.
 At any point along the curve, the slope of the tangent to the curve represents the number of hours needed for marginal storage to receive full capacity credit.
 The incremental capacity credit of an additional unit of storage is equal to the duration of the additional unit installed divided by the duration requirement (slope) at the point on the curve corresponding to the installed storage capacity.
 
