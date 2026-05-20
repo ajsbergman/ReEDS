@@ -60,10 +60,25 @@ if [[ ! -f "${UV_SYNC_MARKER}" ]]; then
   touch "${UV_SYNC_MARKER}"
 fi
 
-if [[ -x "${UV_PROJECT_DIR}/.venv/bin/python" ]]; then
-  export PATH="${UV_PROJECT_DIR}/.venv/bin:${PATH}"
-  log "Using project venv python: ${UV_PROJECT_DIR}/.venv/bin/python"
+readonly UV_VENV_PYTHON="${UV_PROJECT_DIR}/.venv/bin/python"
+[[ -x "${UV_VENV_PYTHON}" ]] || die "Missing uv environment python: ${UV_VENV_PYTHON}"
+
+readonly ARCO_WHEEL_DIR="${ARCO_PREFIX%/}/wheels"
+readonly ARCO_VERSION="${FRAMEWORK_ARCO_VERSION:-0.6.1}"
+readonly ARCO_SYNC_MARKER="${UV_PROJECT_DIR}/.uv-sync.arco-${ARCO_VERSION}.done"
+if [[ -d "${ARCO_WHEEL_DIR}" ]] && [[ ! -f "${ARCO_SYNC_MARKER}" ]]; then
+  log "Installing arco==${ARCO_VERSION} from local wheels: ${ARCO_WHEEL_DIR}"
+  uv pip install \
+    --python "${UV_VENV_PYTHON}" \
+    --reinstall \
+    --no-index \
+    --find-links "${ARCO_WHEEL_DIR}" \
+    "arco==${ARCO_VERSION}" || die "Failed to install arco wheel"
+  touch "${ARCO_SYNC_MARKER}"
 fi
+
+export PATH="${UV_PROJECT_DIR}/.venv/bin:${PATH}"
+log "Using project venv python: ${UV_PROJECT_DIR}/.venv/bin/python"
 
 export FRAMEWORK_MODULES
 export FRAMEWORK_COMPARISON_ARCO_PREFIX="${ARCO_PREFIX}"
