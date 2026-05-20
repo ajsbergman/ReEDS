@@ -4,90 +4,93 @@
 # Intended for development smoke-tests — NOT for canonical benchmark numbers.
 #
 # Prerequisites:
-#   - Torc client installed and TORC_API_URL set (or defaults to local)
-#   - Python venv synced: ./setup_env_local.sh
+#   - Torc client installed
+#   - Python venv synced: uv sync
 #
-# Usage:
-#   torc workflow create torc_local.yaml
-#   torc workflow run <workflow-id>
+# Usage (in-memory, single machine):
+#   torc -s --in-memory run tests/framework_comparison/torc_local.yaml
 #
-# Solver override:
-#   Set BENCHMARK_SOLVER env var before creating the workflow:
-#     BENCHMARK_SOLVER=highs torc workflow create torc_local.yaml
-#   Or edit the jobs below directly.
-#
-# Sizes run: small, medium
-# Frameworks: linopy, pyomo, arco  (all with HiGHS by default)
+# Frameworks: linopy, arco, pyomo, pyoptinterface (no gams/gamspy)
+# Solvers:    highs, xpress
+# Sizes:      small, medium
+# Total jobs: 4 frameworks × 2 solvers × 2 sizes = 16 jobs
 # ============================================================================
 
 name: framework-comparison-local
-description: Local smoke-test matrix for ReEDS LP framework comparison
+description: Local smoke-test matrix (linopy, arco, pyomo, pyoptinterface × {highs,xpress} × {small,medium})
 
 env:
-  BENCHMARK_SOLVER: "${BENCHMARK_SOLVER:-highs}"
-  PYTHONPATH: "src/tests/framework_comparison"
+  PYTHONPATH: "tests/framework_comparison"
 
 jobs:
+  # --- linopy / highs -------------------------------------------------
   - name: linopy_highs_small
-    command: >
-      python tests/framework_comparison/run_framework.py
-        --module solve_linopy
-        --solver "${BENCHMARK_SOLVER}"
-        --size small
-        --label linopy_${BENCHMARK_SOLVER}_small
+    invocation_script: bash tests/framework_comparison/setup_env_local.sh
+    command: python tests/framework_comparison/run_framework.py --module solve_linopy --solver highs --size small --label linopy_highs_small
 
   - name: linopy_highs_medium
-    command: >
-      python tests/framework_comparison/run_framework.py
-        --module solve_linopy
-        --solver "${BENCHMARK_SOLVER}"
-        --size medium
-        --label linopy_${BENCHMARK_SOLVER}_medium
+    invocation_script: bash tests/framework_comparison/setup_env_local.sh
+    command: python tests/framework_comparison/run_framework.py --module solve_linopy --solver highs --size medium --label linopy_highs_medium
 
-  - name: pyomo_highs_small
-    command: >
-      python tests/framework_comparison/run_framework.py
-        --module solve_pyomo
-        --solver "${BENCHMARK_SOLVER}"
-        --size small
-        --label pyomo_${BENCHMARK_SOLVER}_small
+  # --- linopy / xpress ------------------------------------------------
+  - name: linopy_xpress_small
+    invocation_script: bash tests/framework_comparison/setup_env_local.sh
+    command: python tests/framework_comparison/run_framework.py --module solve_linopy --solver xpress --size small --label linopy_xpress_small
 
-  - name: pyomo_highs_medium
-    command: >
-      python tests/framework_comparison/run_framework.py
-        --module solve_pyomo
-        --solver "${BENCHMARK_SOLVER}"
-        --size medium
-        --label pyomo_${BENCHMARK_SOLVER}_medium
+  - name: linopy_xpress_medium
+    invocation_script: bash tests/framework_comparison/setup_env_local.sh
+    command: python tests/framework_comparison/run_framework.py --module solve_linopy --solver xpress --size medium --label linopy_xpress_medium
 
+  # --- arco / highs ---------------------------------------------------
   - name: arco_highs_small
-    command: >
-      python tests/framework_comparison/run_framework.py
-        --module solve_arco
-        --solver "${BENCHMARK_SOLVER}"
-        --size small
-        --label arco_${BENCHMARK_SOLVER}_small
+    invocation_script: bash tests/framework_comparison/setup_env_local.sh
+    command: python tests/framework_comparison/run_framework.py --module solve_arco --solver highs --size small --label arco_highs_small
 
   - name: arco_highs_medium
-    command: >
-      python tests/framework_comparison/run_framework.py
-        --module solve_arco
-        --solver "${BENCHMARK_SOLVER}"
-        --size medium
-        --label arco_${BENCHMARK_SOLVER}_medium
+    invocation_script: bash tests/framework_comparison/setup_env_local.sh
+    command: python tests/framework_comparison/run_framework.py --module solve_arco --solver highs --size medium --label arco_highs_medium
 
-  - name: gams_highs_small
-    command: >
-      python tests/framework_comparison/run_framework.py
-        --module solve_gams
-        --solver "${BENCHMARK_SOLVER}"
-        --size small
-        --label gams_${BENCHMARK_SOLVER}_small
+  # --- arco / xpress --------------------------------------------------
+  - name: arco_xpress_small
+    invocation_script: bash tests/framework_comparison/setup_env_local.sh
+    command: python tests/framework_comparison/run_framework.py --module solve_arco --solver xpress --size small --label arco_xpress_small
 
-  - name: gams_highs_medium
-    command: >
-      python tests/framework_comparison/run_framework.py
-        --module solve_gams
-        --solver "${BENCHMARK_SOLVER}"
-        --size medium
-        --label gams_${BENCHMARK_SOLVER}_medium
+  - name: arco_xpress_medium
+    invocation_script: bash tests/framework_comparison/setup_env_local.sh
+    command: python tests/framework_comparison/run_framework.py --module solve_arco --solver xpress --size medium --label arco_xpress_medium
+
+  # --- pyomo / highs --------------------------------------------------
+  - name: pyomo_highs_small
+    invocation_script: bash tests/framework_comparison/setup_env_local.sh
+    command: python tests/framework_comparison/run_framework.py --module solve_pyomo --solver highs --size small --label pyomo_highs_small
+
+  - name: pyomo_highs_medium
+    invocation_script: bash tests/framework_comparison/setup_env_local.sh
+    command: python tests/framework_comparison/run_framework.py --module solve_pyomo --solver highs --size medium --label pyomo_highs_medium
+
+  # --- pyomo / xpress -------------------------------------------------
+  - name: pyomo_xpress_small
+    invocation_script: bash tests/framework_comparison/setup_env_local.sh
+    command: python tests/framework_comparison/run_framework.py --module solve_pyomo --solver xpress --size small --label pyomo_xpress_small
+
+  - name: pyomo_xpress_medium
+    invocation_script: bash tests/framework_comparison/setup_env_local.sh
+    command: python tests/framework_comparison/run_framework.py --module solve_pyomo --solver xpress --size medium --label pyomo_xpress_medium
+
+  # --- pyoptinterface / highs ------------------------------------------
+  - name: pyoptinterface_highs_small
+    invocation_script: bash tests/framework_comparison/setup_env_local.sh
+    command: python tests/framework_comparison/run_framework.py --module solve_pyoptinterface --solver highs --size small --label pyoptinterface_highs_small
+
+  - name: pyoptinterface_highs_medium
+    invocation_script: bash tests/framework_comparison/setup_env_local.sh
+    command: python tests/framework_comparison/run_framework.py --module solve_pyoptinterface --solver highs --size medium --label pyoptinterface_highs_medium
+
+  # --- pyoptinterface / xpress -----------------------------------------
+  - name: pyoptinterface_xpress_small
+    invocation_script: bash tests/framework_comparison/setup_env_local.sh
+    command: python tests/framework_comparison/run_framework.py --module solve_pyoptinterface --solver xpress --size small --label pyoptinterface_xpress_small
+
+  - name: pyoptinterface_xpress_medium
+    invocation_script: bash tests/framework_comparison/setup_env_local.sh
+    command: python tests/framework_comparison/run_framework.py --module solve_pyoptinterface --solver xpress --size medium --label pyoptinterface_xpress_medium
