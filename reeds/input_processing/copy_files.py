@@ -1205,18 +1205,25 @@ def write_region_indexed_file(
         'transmission_distance.csv',
     ]
     if filename not in transmission_files:
+        region_col = region_file_entry['region_col']
+        fix_cols = region_file_entry['fix_cols'].split(',')
+
         if region_file_entry['disaggfunc'] != 'ignore':
             df = reeds.spatial.downscale_from_legacy_zone_to_county(
-                df,
-                region_file_entry,
-                inputs_case
+                df=df,
+                region_col=region_col,
+                fix_cols=fix_cols,
+                inputs_case=inputs_case,
+                disaggfunc=region_file_entry['disaggfunc']
             )
 
         if region_file_entry['aggfunc'] != 'ignore':
             df = reeds.spatial.upscale_from_county_to_zone(
-                df,
-                region_file_entry,
-                inputs_case
+                df=df,
+                region_col=region_col,
+                fix_cols=fix_cols,
+                inputs_case=inputs_case,
+                aggfunc=region_file_entry['aggfunc']
             )
 
     #---- Write data to dir_dst (inputs_case) folder ----
