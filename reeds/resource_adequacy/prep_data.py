@@ -170,7 +170,7 @@ def main(t, casedir, iteration=0):
         ## e.g. "upv_5" -> "upv", "csp2_3" -> "csp"
         techs_vre_simplify = dict(zip(
             techs_vre,
-            [re.sub('\d?_\d+$', '', i) for i in techs_vre]
+            [re.sub(r'\d?_\d+$', '', i) for i in techs_vre]
         ))
 
     try:

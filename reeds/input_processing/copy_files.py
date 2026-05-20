@@ -337,7 +337,7 @@ def get_regions_and_agglevel(
 
     # Sort hier_sub by r so that "ord(r)" commands in GAMS result in the properly
     # ordered outputs
-    hier_sub['numeric_value'] = hier_sub['r'].str.extract('(\d+)').astype(float)
+    hier_sub['numeric_value'] = hier_sub['r'].str.extract(r'(\d+)').astype(float)
     hier_sub = hier_sub.sort_values(by='numeric_value').drop('numeric_value', axis=1)
 
     # Output the itlgrp files for mixed and county resolution
@@ -900,7 +900,7 @@ def write_scalars(scalars, inputs_case):
     scalars_write = pd.concat([scalars, toadd], axis=0)
 
     # Trim trailing decimal zeros
-    scalars_write.value = scalars_write.value.astype(str).replace('\.0+$', '', regex=True)
+    scalars_write.value = scalars_write.value.astype(str).replace(r'\.0+$', '', regex=True)
     scalars_write.to_csv(os.path.join(inputs_case, 'scalars.csv'), header=False)
 
     # Rewrite the scalar tables as GAMS-readable definition
