@@ -162,7 +162,7 @@ The ReEDS source code is hosted on GitHub at <https://github.com/ReEDS-Model/ReE
 git lfs install
 ```
 
-3. Clone the ReEDS-2.0 repository on your desktop. Alternatively, download a ZIP from GitHub ({numref}`figure-github-download`).
+3. Clone the ReEDS repository on your desktop. Alternatively, download a ZIP from GitHub ({numref}`figure-github-download`).
 
 ```{figure} figs/readme/github-download.png
 :name: figure-github-download
@@ -291,7 +291,7 @@ If you experience issues, try the following:
 **Quick Start:**
 1. Navigate to the ReEDS directory from the command line
 2. Activate environment: `conda activate reeds2`
-3. Run the model: `python runbatch.py`
+3. Run the model: `python runreeds.py`
 4. Follow the prompts for batch configuration
 5. Check for a successful run: 
    1. Look for CSV files in `runs/[batchname_scenario]/outputs` (a successful run should have 100+ csv files in the outputs folder)
