@@ -41,7 +41,7 @@ dependencies:
   ## ^^^
   - pip:
     - gamsapi[transfer]==53.5.0
-    - gdxpds==1.5.0
+    - gdxpds==1.6.0
     ## vvv The next packages are optional for default settings and may
     ## vvv be excluded if they cause trouble building the environment.
     - gamspy_base==53.5.0 # for tests on the github runner

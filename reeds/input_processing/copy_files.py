@@ -455,12 +455,7 @@ def read_banned_tech_file(full_path, filepath, inputs_case, r_county):
                 .apply(list)
                 .apply(sorted)
             )
-            r_all_counties_map = (
-                r_county.groupby('r')
-                ['county']
-                .apply(list)
-                .apply(sorted)
-            )
+            r_all_counties_map = r_county.county.tolist()
             county_ban_regions = list(
                 r_ban_counties_map
                 .loc[(r_ban_counties_map.isin(r_all_counties_map))]
@@ -492,11 +487,8 @@ def read_special_h5file(full_path):
         df.columns = df.columns.str.replace('distpv|','')
     elif filename.startswith('transmission_cost_ac'):
         df = df.reset_index()
-        for col in ['r', 'rr', 'tscbin']:
-            df[col] = df[col].str.decode('utf-8')
     elif filename.startswith('transmission_distance'):
         df = df.stack().rename('miles').reset_index()
-        df['r'] = df['r'].str.decode('utf-8')
 
     return df
 
@@ -1673,7 +1665,7 @@ if __name__ == '__main__' and not hasattr(sys, 'ps1'):
 
     # #%% Settings for testing ###
     # reeds_path = reeds.io.reeds_path
-    # inputs_case = os.path.join(reeds_path,'runs','v20260305_itlM0_USA_defaults','inputs_case')
+    # inputs_case = os.path.join(reeds_path,'runs','v20260520_envM0_Pacific','inputs_case')
 
 
     # ---- Set up logger ----

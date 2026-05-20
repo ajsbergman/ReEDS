@@ -774,7 +774,7 @@ def get_scalars(case=None, full=False):
     return scalars
 
 
-def read_h5py_file(filename, decode_strings=False):
+def read_h5py_file(filename):
     """Return dataframe object for a h5py file.
 
     This function returns a pandas dataframe of a h5py file. If the file has multiple dataset on it
@@ -822,7 +822,7 @@ def read_h5py_file(filename, decode_strings=False):
             idx_cols.sort()
             for idx_col in idx_cols:
                 df[idx_col] = pd.Series(f[idx_col]).values
-                if str(df[idx_col].dtype).startswith('|S') and decode_strings:
+                if str(df[idx_col].dtype).startswith('|S'):
                     df[idx_col] = df[idx_col].str.decode('utf-8')
             df = df.set_index(idx_cols)
 
@@ -843,7 +843,7 @@ def read_h5py_file(filename, decode_strings=False):
     return df
 
 
-def read_file(filename, parse_timestamps=False, decode_strings=False):
+def read_file(filename, parse_timestamps=False):
     """Return dataframe object of input file for multiple file formats.
 
     This function read multiple file formats for h5 file sand returns a dataframe from the file.
@@ -873,7 +873,7 @@ def read_file(filename, parse_timestamps=False, decode_strings=False):
     # datasets that composes the h5 file. For a single dataset we use pandas (since it is the most
     # convenient) and h5py for the custom h5 file.
     try:
-        df = read_h5py_file(filename, decode_strings=decode_strings)
+        df = read_h5py_file(filename)
     except TypeError:
         df = pd.read_hdf(filename)
 
