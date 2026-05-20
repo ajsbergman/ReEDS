@@ -8,6 +8,7 @@ readonly DEFAULT_MODULES="gams/51.3.0 conda/2024.06.1"
 readonly TORC_API_URL_DEFAULT="http://torc.hpc.nrel.gov:8080/torc-service/v1"
 
 log() { printf '[setup-hpc] %s\n' "$*" >&2; }
+warn() { printf '[setup-hpc] WARN: %s\n' "$*" >&2; }
 die() { printf '[setup-hpc] ERROR: %s\n' "$*" >&2; exit 1; }
 
 FRAMEWORK_MODULES="${FRAMEWORK_MODULES:-${DEFAULT_MODULES}}"
@@ -66,15 +67,31 @@ readonly UV_VENV_PYTHON="${UV_PROJECT_DIR}/.venv/bin/python"
 readonly ARCO_WHEEL_DIR="${ARCO_PREFIX%/}/wheels"
 readonly ARCO_VERSION="${FRAMEWORK_ARCO_VERSION:-0.6.1}"
 readonly ARCO_SYNC_MARKER="${UV_PROJECT_DIR}/.uv-sync.arco-${ARCO_VERSION}.done"
+
+REQUIRES_ARCO=0
+if [[ " $* " == *" --module solve_arco "* ]]; then
+  REQUIRES_ARCO=1
+fi
+
 if [[ -d "${ARCO_WHEEL_DIR}" ]] && [[ ! -f "${ARCO_SYNC_MARKER}" ]]; then
   log "Installing arco==${ARCO_VERSION} from local wheels: ${ARCO_WHEEL_DIR}"
-  uv pip install \
+  if uv pip install \
     --python "${UV_VENV_PYTHON}" \
     --reinstall \
+    --no-deps \
     --no-index \
     --find-links "${ARCO_WHEEL_DIR}" \
-    "arco==${ARCO_VERSION}" || die "Failed to install arco wheel"
-  touch "${ARCO_SYNC_MARKER}"
+    "arco==${ARCO_VERSION}"; then
+    touch "${ARCO_SYNC_MARKER}"
+  elif (( REQUIRES_ARCO == 1 )); then
+    die "Failed to install arco wheel for solve_arco run"
+  else
+    warn "Arco wheel install failed, continuing because this run does not require solve_arco"
+  fi
+fi
+
+if (( REQUIRES_ARCO == 1 )); then
+  "${UV_VENV_PYTHON}" -c 'import arco' >/dev/null 2>&1 || die "arco import failed after setup"
 fi
 
 export PATH="${UV_PROJECT_DIR}/.venv/bin:${PATH}"

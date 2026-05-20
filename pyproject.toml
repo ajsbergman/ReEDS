@@ -10,7 +10,7 @@ framework-comparison = [
   "linopy",
   "numpy",
   "pyomo",
-  "pyoptinterface",
+  "pyoptinterface[highs]",
   "xarray",
-  "xpress",
+  "xpress==9.7.*",
 ]
