@@ -42,6 +42,29 @@ if [[ -z "${GAMS_EXE:-}" ]] && command -v gams >/dev/null 2>&1; then
   export GAMS_EXE
 fi
 
+readonly UV_PROJECT_DIR="${FRAMEWORK_UV_PROJECT:-${REPO_ROOT}}"
+readonly UV_GROUPS_RAW="${FRAMEWORK_UV_GROUPS:-framework-comparison}"
+[[ -f "${UV_PROJECT_DIR}/pyproject.toml" ]] || die "Missing pyproject.toml at ${UV_PROJECT_DIR}. Set FRAMEWORK_UV_PROJECT to the ReEDS project root."
+
+UV_GROUPS_CLEAN="${UV_GROUPS_RAW//,/ }"
+readonly UV_GROUPS_CLEAN
+readonly UV_SYNC_MARKER="${UV_PROJECT_DIR}/.uv-sync.${UV_GROUPS_CLEAN// /_}.done"
+
+if [[ ! -f "${UV_SYNC_MARKER}" ]]; then
+  log "Running one-time uv sync at: ${UV_PROJECT_DIR} (groups: ${UV_GROUPS_CLEAN})"
+  UV_GROUP_ARGS=()
+  for grp in ${UV_GROUPS_CLEAN}; do
+    UV_GROUP_ARGS+=("--group" "${grp}")
+  done
+  uv sync --project "${UV_PROJECT_DIR}" "${UV_GROUP_ARGS[@]}" || die "uv sync failed"
+  touch "${UV_SYNC_MARKER}"
+fi
+
+if [[ -x "${UV_PROJECT_DIR}/.venv/bin/python" ]]; then
+  export PATH="${UV_PROJECT_DIR}/.venv/bin:${PATH}"
+  log "Using project venv python: ${UV_PROJECT_DIR}/.venv/bin/python"
+fi
+
 export FRAMEWORK_MODULES
 export FRAMEWORK_COMPARISON_ARCO_PREFIX="${ARCO_PREFIX}"
 export TORC_API_URL="${TORC_API_URL:-${TORC_API_URL_DEFAULT}}"

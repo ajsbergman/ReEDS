@@ -67,6 +67,32 @@ sizes for:
 Xpress, CPLEX, GAMSPy, and PyOptInterface are not in the default matrix.
 Add them when the required site access and licenses are confirmed.
 
+## Latest Kestrel full-matrix pull (workflow 964)
+
+Pulled with:
+
+```bash
+./tests/framework_comparison/pull_results.sh --host psanchez@kestrel.hpc.nrel.gov \
+  > tests/framework_comparison/results/benchmark_wf964.csv
+```
+
+Artifact:
+- `tests/framework_comparison/results/benchmark_wf964.csv` (36 cases + header)
+
+Summary from JSON adapter results:
+
+| Metric | Value |
+| --- | ---: |
+| Workflow ID | 964 |
+| Cases | 36 |
+| Adapter status `ok` | 0 |
+| Adapter status `failed` | 36 |
+| Common error signature | `Traceback ... run_framework.py line 302` |
+
+Notes:
+- Torc job status is `completed` for all 36 jobs, but adapter JSONs report failures.
+- Per the project contract, treat JSON `error` field as benchmark pass/fail source of truth.
+
 ---
 
 ## Quick-start: local smoke-test

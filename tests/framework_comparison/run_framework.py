@@ -325,7 +325,7 @@ def main() -> int:
             str(exc),
         )
         write_result(result, output_path)
-        return 0
+        return 1
 
     write_result(result, output_path)
     status = "build_only" if args.build_only else "ok"

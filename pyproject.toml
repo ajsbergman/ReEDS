@@ -1,0 +1,17 @@
+[project]
+name = "reeds"
+version = "0.0.0"
+requires-python = ">=3.11"
+
+[dependency-groups]
+framework-comparison = [
+  "arco",
+  "gamspy",
+  "highspy",
+  "linopy",
+  "numpy",
+  "pyomo",
+  "pyoptinterface",
+  "xarray",
+  "xpress",
+]
