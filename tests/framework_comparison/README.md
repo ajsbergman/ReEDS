@@ -187,6 +187,7 @@ ssh psanchez@kestrel.hpc.nrel.gov \
 | `FRAMEWORK_COMPARISON_ARCO_PREFIX` | Prefix with `wheels/` and `scip/lib/` | `/scratch/$USER/arco/latest` |
 | `GAMS_EXE` | Explicit GAMS executable path | discovered from `PATH` |
 | `TORC_API_URL` | Torc API endpoint | Kestrel Torc URL |
+| `GAMS_LICENSE_FILE` | Path to GAMS/CPLEX license file used by `gams ... license=...` | unset |
 | `TORC_RUNS_BASE` | Local/remote Torc runs directory | `/scratch/$USER/torc-runs` |
 
 ## Notes
@@ -197,3 +198,12 @@ ssh psanchez@kestrel.hpc.nrel.gov \
   All benchmark solves must go through Torc/Slurm.
 - **Solver override**: set `BENCHMARK_SOLVER` before workflow creation or
   pass `--env BENCHMARK_SOLVER=<solver>` to the deploy script.
+
+## Debugging learnings (May 2026)
+
+- Keep `invocation_script` env-only and finish with `exec "$@"` in `setup_env_hpc.sh`.
+- Use single-line `command:` entries in Torc YAML to avoid shell split issues.
+- For Arco on Kestrel, install from `/scratch/$USER/arco/latest/wheels` with `--no-deps`.
+- Pin `xpress==9.7.*` to match site license and use `pyoptinterface[highs]` so HiGHS is bundled.
+- GAMS CPLEX requires passing a license path explicitly: runner now uses
+  `gams ... license=<GAMS_LICENSE_FILE|GAMS_LICENSE>`.

@@ -23,6 +23,7 @@ env:
   FRAMEWORK_UV_PROJECT: "."
   FRAMEWORK_UV_GROUPS: "framework-comparison"
   FRAMEWORK_COMPARISON_ARCO_PREFIX: "${FRAMEWORK_COMPARISON_ARCO_PREFIX:-/scratch/psanchez/arco/latest}"
+  GAMS_LICENSE_FILE: "${GAMS_LICENSE_FILE:-}"
   TORC_API_URL: "${TORC_API_URL:-http://torc.hpc.nrel.gov:8080/torc-service/v1}"
 
 # Resource requirement profiles

@@ -42,6 +42,12 @@ if [[ -z "${GAMS_EXE:-}" ]] && command -v gams >/dev/null 2>&1; then
   GAMS_EXE="$(command -v gams)"
   export GAMS_EXE
 fi
+if [[ -n "${GAMS_LICENSE:-}" ]] && [[ -z "${GAMS_LICENSE_FILE:-}" ]]; then
+  export GAMS_LICENSE_FILE="${GAMS_LICENSE}"
+fi
+if [[ -n "${GAMS_LICENSE_FILE:-}" ]]; then
+  log "Using GAMS license file: ${GAMS_LICENSE_FILE}"
+fi
 
 readonly UV_PROJECT_DIR="${FRAMEWORK_UV_PROJECT:-${REPO_ROOT}}"
 readonly UV_GROUPS_RAW="${FRAMEWORK_UV_GROUPS:-framework-comparison}"
