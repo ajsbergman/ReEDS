@@ -93,6 +93,39 @@ Notes:
 - Torc job status is `completed` for all 36 jobs, but adapter JSONs report failures.
 - Per the project contract, treat JSON `error` field as benchmark pass/fail source of truth.
 
+## Kestrel partial successful table (workflow 971)
+
+Built from `run_complete` events for jobs that finished successfully in workflow `971`.
+
+Artifacts:
+- `tests/framework_comparison/results/benchmark_wf971_partial.csv`
+- `tests/framework_comparison/results/benchmark_wf971_partial_comparison.csv`
+- `tests/framework_comparison/results/benchmark_wf971_partial_comparison.md`
+
+> [!NOTE]
+> Some fast jobs in workflow 971 reported `peak_mb=0` from Torc due to runner allocation sharing/sampling. Re-run the workflow with `torc submit --max-parallel-jobs 1 ...` to improve per-job memory attribution before publishing final memory comparisons.
+
+| framework | size | status | build_s | solve_s | total_s | objective |
+| --- | --- | --- | ---: | ---: | ---: | ---: |
+| gams-cplex | large | ok | 24.233 | 103.361 | 127.594 | 259111953154.042 |
+| arco-highs | medium | ok | 0.174 | 7.505 | 7.678 | 15385579143.525 |
+| arco-xpress | medium | ok | 0.182 | 8.594 | 8.776 | 15385579143.526 |
+| gams-cplex | medium | ok | 1.346 | 1.180 | 2.526 | 15385579143.525 |
+| linopy-highs | medium | ok | 0.245 | 7.947 | 8.192 | 15385579143.525 |
+| linopy-xpress | medium | ok | 0.230 | 13.957 | 14.187 | 15385579143.525 |
+| pyomo-highs | medium | ok | 0.582 | 9.632 | 10.213 | 15385579143.525 |
+| pyomo-xpress | medium | ok | 0.579 | 13.215 | 13.794 | 15385579143.525 |
+| pyoptinterface-xpress | medium | ok | 0.410 | 10.984 | 11.395 | 15385579143.525 |
+| arco-highs | small | ok | 0.035 | 0.186 | 0.221 | 1041838761.547 |
+| arco-xpress | small | ok | 0.036 | 0.525 | 0.561 | 1041838761.547 |
+| gams-cplex | small | ok | 0.209 | 0.048 | 0.257 | 1041838761.547 |
+| linopy-highs | small | ok | 0.234 | 0.352 | 0.586 | 1041838761.547 |
+| linopy-xpress | small | ok | 0.263 | 6.745 | 7.008 | 1041838761.547 |
+| pyomo-highs | small | ok | 0.042 | 0.184 | 0.226 | 1041838761.547 |
+| pyomo-xpress | small | ok | 0.051 | 2.156 | 2.207 | 1041838761.547 |
+| pyoptinterface-highs | small | ok | 0.137 | 0.440 | 0.577 | 1041838761.547 |
+| pyoptinterface-xpress | small | ok | 0.142 | 0.076 | 0.218 | 1041838761.547 |
+
 ---
 
 ## Quick-start: local smoke-test
