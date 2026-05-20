@@ -146,24 +146,45 @@ def optimize_period_weights(profiles_fitperiods, numclusters=100):
 
     ### Collect weights, scaled by total number of days
     weights = pd.Series({d:WEIGHT[d].varValue for d in days}) * numdays
-
+    print(f'weights: {weights}')
     ### Truncate based on numclusters, scale appropriately, and convert to integers
     ### Keep the the 'numclusters' highest-weighted days
     rweights = (weights.sort_values(ascending=False)[:numclusters])
     ### Scale so that the weights sum to numdays (have to do if numclusters is small)
     rweights *= numdays / rweights.sum()
+    print(f'rweights: \n{rweights}')
     ### Convert to integers
     iweights = rweights.round(0).astype(int)
+    print(f'iweights: \n{iweights}')
     ### Scale all weights little by little until they sum to number of actual days
     sumweights = iweights.sum()
+    print(f' ')
+    print(f'sumweights: {sumweights} and numdays: {numdays}')
     diffweights = sumweights - numdays
+    print(f'diffweights: {diffweights}')
     increment = 0.00001 * (1 if diffweights < 0 else -1)
+    print(f'increment: {increment}')
+    best_iweights = iweights.copy()
+    best_diff = abs(sumweights - numdays)
+    prev_sum = sumweights.copy()
     for i in range(1000000):
         iweights = (rweights * (1 + increment*i)).round(0).astype(int)
+        print(f'Iteration {i}: iweights sum: {iweights.sum()} and numdays: {numdays}')
+        # Track iweights over iteration
+        new_diff = iweights.sum() - numdays
+        if abs(new_diff) < best_diff:
+            best_diff = abs(new_diff)
+            best_iweights = iweights.copy()
         if iweights.sum() == numdays:
             break
+        # Detect overshoot:
+        if ((prev_sum - numdays) * new_diff < 0):
+            print(f'Incremental adjustment overshot target: change increment to {increment * 0.5} and continue')
+            increment *= 0.5
+        prev_sum = iweights.sum().copy()
 
     iweights = iweights.replace(0,np.nan).dropna().astype(int)
+    print(f'iweights post replace: {iweights}')
     ### Make sure it worked
     if iweights.sum() != numdays:
         raise ValueError(f'Sum of rounded weights = {iweights.sum()} != {numdays}')
