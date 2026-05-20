@@ -28,6 +28,9 @@ those sources win.
 - Do not use destructive git operations, force-push, rewrite published history,
   or modify CI secrets unless explicitly instructed.
 - Do not claim behavior or test outcomes you did not verify.
+- Treat `git status` and `git diff` as read-only context; do not assume
+  uncommitted changes were made by you.
+- Only add ReEDS-specific agent guidance here; avoid generic coding advice.
 - If a point is unclear, verify it from the repo instead of guessing.
 
 Ask the human before proceeding if:
@@ -192,4 +195,5 @@ python reeds/remote.py
 ```
 
 When in doubt, prefer the smallest correct change, document impact clearly,
-and ask before making a change that could affect default results.
+and ask before making a change that could affect default results. Always report
+commands run and their outcomes in the final handoff.
