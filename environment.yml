@@ -40,7 +40,9 @@ dependencies:
   - sphinxcontrib-bibtex=2.6 # for documentation
   ## ^^^
   - pip:
-    - gdxpds==1.4.0
+    - gamsapi[transfer]==53.5.0
+    - gdxpds==1.5.0
     ## vvv The next packages are optional for default settings and may
     ## vvv be excluded if they cause trouble building the environment.
     - gamspy_base==53.5.0 # for tests on the github runner
+    - highspy==1.14.0 # for future solver flexibility
