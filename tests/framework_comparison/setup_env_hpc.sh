@@ -6,7 +6,6 @@ readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 readonly DEFAULT_MODULES="gams/51.3.0 conda/2024.06.1"
 readonly TORC_API_URL_DEFAULT="http://torc.hpc.nrel.gov:8080/torc-service/v1"
-readonly VENV_PYTHON="${REPO_ROOT}/tests/framework_comparison/.venv/bin/python"
 
 log() { printf '[setup-hpc] %s\n' "$*" >&2; }
 die() { printf '[setup-hpc] ERROR: %s\n' "$*" >&2; exit 1; }
@@ -43,19 +42,12 @@ if [[ -z "${GAMS_EXE:-}" ]] && command -v gams >/dev/null 2>&1; then
   export GAMS_EXE
 fi
 
-[[ -x "${VENV_PYTHON}" ]] || die "Missing venv python: ${VENV_PYTHON}"
 export FRAMEWORK_MODULES
 export FRAMEWORK_COMPARISON_ARCO_PREFIX="${ARCO_PREFIX}"
 export TORC_API_URL="${TORC_API_URL:-${TORC_API_URL_DEFAULT}}"
 
 if (( $# == 0 )); then
   die "No command to execute. Usage: $0 <command> [args...]"
-fi
-
-if [[ "$1" == "python" ]]; then
-  shift
-  log "Running with venv python: ${VENV_PYTHON} $*"
-  exec "${VENV_PYTHON}" "$@"
 fi
 
 log "Running: $*"
