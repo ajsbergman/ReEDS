@@ -689,23 +689,24 @@ def get_switches(case=None, **kwargs):
             (case if case is not None else reeds_path),
             'reeds', 'resource_adequacy', 'ra_switches.csv',
         )
-        asw = pd.read_csv(fpath_asw, index_col='key')
-        for i, row in asw.iterrows():
+        dfra = pd.read_csv(fpath_asw, index_col='key', dtype='object')
+        ra_switches = {}
+        for key, row in dfra.iterrows():
             if row['dtype'] == 'list':
-                row.value = row.value.split(',')
+                ra_switches[key] = row.value.split(',')
                 try:
-                    row.value = [int(i) for i in row.value]
+                    ra_switches[key] = [int(i) for i in row.value]
                 except ValueError:
                     pass
             elif row['dtype'] == 'boolean':
-                row.value = False if row.value.lower() == 'false' else True
+                ra_switches[key] = False if row.value.lower() == 'false' else True
             elif row['dtype'] == 'str':
-                row.value = str(row.value)
+                ra_switches[key] = str(row.value)
             elif row['dtype'] == 'int':
-                row.value = int(row.value)
+                ra_switches[key] = int(row.value)
             elif row['dtype'] == 'float':
-                row.value = float(row.value)
-        sw = pd.concat([sw, asw.value])
+                ra_switches[key] = float(row.value)
+        sw = pd.concat([sw, pd.Series(ra_switches)])
     except FileNotFoundError:
         print(f"{fpath_asw} not found so leaving out resource adequacy switches")
     ### Add derivative switches
