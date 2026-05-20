@@ -417,7 +417,7 @@ def get_stress_metrics_sorted_periods(sw, t, iteration):
                              for s in sw.keys() if s.startswith('GSw_PRM_StressThreshold')
                              and not s.endswith('Metrics')
                              ]
-    stressThresholdMetrics.remove('')
+    
     for s in stressThresholdMetrics:
         if s not in stress_metric_switches:
             print(f"Warning: {s} is not included in GSw_PRM_StressThresholdMetrics, so it will not be evaluated")
