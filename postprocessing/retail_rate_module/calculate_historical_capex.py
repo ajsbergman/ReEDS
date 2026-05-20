@@ -58,12 +58,10 @@ def get_earliest_cap_costs(inputs_case):
     cost_cap = gdxpds.to_dataframe(
         os.path.join(inputs_case, 'inputs.gdx'),
         'cost_cap',
-        old_interface=False
     )
     cost_cap_energy = gdxpds.to_dataframe(
         os.path.join(inputs_case, 'inputs.gdx'),
         'cost_cap_energy',
-        old_interface=False
     )
     cost_cap = (
         pd.concat([cost_cap, cost_cap_energy])
@@ -83,7 +81,6 @@ def get_earliest_cap_costs(inputs_case):
     cost_cap_mult = gdxpds.to_dataframe(
         os.path.join(inputs_case, 'inputs.gdx'),
         'cost_cap_fin_mult_out',
-        old_interface=False
     )
     cost_cap_mult['t'] = cost_cap_mult['t'].astype(int)
     cost_cap_mult = cost_cap_mult.rename(
@@ -112,7 +109,6 @@ def get_earliest_cap_costs(inputs_case):
     rsc_dat = gdxpds.to_dataframe(
         os.path.join(inputs_case, 'inputs.gdx'),
         'rsc_dat',
-        old_interface=False
     )
     cost_cap_rsc = (
         rsc_dat.loc[~rsc_dat.i.isin(cost_cap_earliest['i'])]
