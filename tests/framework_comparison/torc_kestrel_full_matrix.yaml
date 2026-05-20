@@ -24,6 +24,10 @@ env:
   FRAMEWORK_UV_GROUPS: "framework-comparison"
   FRAMEWORK_COMPARISON_ARCO_PREFIX: "/scratch/psanchez/arco/latest"
   GAMS_LICENSE_FILE: "/home/psanchez/gamslice.txt"
+  OPENBLAS_NUM_THREADS: "4"
+  OMP_NUM_THREADS: "4"
+  MKL_NUM_THREADS: "4"
+  NUMEXPR_MAX_THREADS: "4"
   TORC_API_URL: "http://torc.hpc.nrel.gov:8080/torc-service/v1"
 
 # Resource requirement profiles
