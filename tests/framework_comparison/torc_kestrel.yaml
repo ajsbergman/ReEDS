@@ -11,13 +11,13 @@ slurm_defaults:
   account: "${SLURM_ACCOUNT:-ntps}"
 
 env:
-  BENCHMARK_SOLVER: "${BENCHMARK_SOLVER:-highs}"
+  BENCHMARK_SOLVER: "highs"
   FRAMEWORK_MODULES: "gams/51.3.0 conda/2024.06.1"
   FRAMEWORK_UV_PROJECT: "."
   FRAMEWORK_UV_GROUPS: "framework-comparison"
-  FRAMEWORK_COMPARISON_ARCO_PREFIX: "${FRAMEWORK_COMPARISON_ARCO_PREFIX:-/scratch/psanchez/arco/latest}"
-  GAMS_LICENSE_FILE: "${GAMS_LICENSE_FILE:-}"
-  TORC_API_URL: "${TORC_API_URL:-http://torc.hpc.nrel.gov:8080/torc-service/v1}"
+  FRAMEWORK_COMPARISON_ARCO_PREFIX: "/scratch/psanchez/arco/latest"
+  GAMS_LICENSE_FILE: "/home/psanchez/gamslice.txt"
+  TORC_API_URL: "http://torc.hpc.nrel.gov:8080/torc-service/v1"
 
 resource_requirements:
   - name: small_job
@@ -32,40 +32,40 @@ resource_requirements:
 jobs:
   - name: linopy_small
     invocation_script: bash tests/framework_comparison/setup_env_hpc.sh
-    command: python tests/framework_comparison/run_framework.py --module solve_linopy --solver "${BENCHMARK_SOLVER}" --size small --label linopy_${BENCHMARK_SOLVER}_small
+    command: python tests/framework_comparison/run_framework.py --module solve_linopy --solver highs --size small --label linopy_highs_small
     resource_requirements: small_job
 
   - name: linopy_medium
     invocation_script: bash tests/framework_comparison/setup_env_hpc.sh
-    command: python tests/framework_comparison/run_framework.py --module solve_linopy --solver "${BENCHMARK_SOLVER}" --size medium --label linopy_${BENCHMARK_SOLVER}_medium
+    command: python tests/framework_comparison/run_framework.py --module solve_linopy --solver highs --size medium --label linopy_highs_medium
     resource_requirements: medium_job
 
   - name: pyomo_small
     invocation_script: bash tests/framework_comparison/setup_env_hpc.sh
-    command: python tests/framework_comparison/run_framework.py --module solve_pyomo --solver "${BENCHMARK_SOLVER}" --size small --label pyomo_${BENCHMARK_SOLVER}_small
+    command: python tests/framework_comparison/run_framework.py --module solve_pyomo --solver highs --size small --label pyomo_highs_small
     resource_requirements: small_job
 
   - name: pyomo_medium
     invocation_script: bash tests/framework_comparison/setup_env_hpc.sh
-    command: python tests/framework_comparison/run_framework.py --module solve_pyomo --solver "${BENCHMARK_SOLVER}" --size medium --label pyomo_${BENCHMARK_SOLVER}_medium
+    command: python tests/framework_comparison/run_framework.py --module solve_pyomo --solver highs --size medium --label pyomo_highs_medium
     resource_requirements: medium_job
 
   - name: arco_small
     invocation_script: bash tests/framework_comparison/setup_env_hpc.sh
-    command: python tests/framework_comparison/run_framework.py --module solve_arco --solver "${BENCHMARK_SOLVER}" --size small --label arco_${BENCHMARK_SOLVER}_small
+    command: python tests/framework_comparison/run_framework.py --module solve_arco --solver highs --size small --label arco_highs_small
     resource_requirements: small_job
 
   - name: arco_medium
     invocation_script: bash tests/framework_comparison/setup_env_hpc.sh
-    command: python tests/framework_comparison/run_framework.py --module solve_arco --solver "${BENCHMARK_SOLVER}" --size medium --label arco_${BENCHMARK_SOLVER}_medium
+    command: python tests/framework_comparison/run_framework.py --module solve_arco --solver highs --size medium --label arco_highs_medium
     resource_requirements: medium_job
 
   - name: gams_small
     invocation_script: bash tests/framework_comparison/setup_env_hpc.sh
-    command: python tests/framework_comparison/run_framework.py --module solve_gams --solver "${BENCHMARK_SOLVER}" --size small --label gams_${BENCHMARK_SOLVER}_small
+    command: python tests/framework_comparison/run_framework.py --module solve_gams --solver highs --size small --label gams_highs_small
     resource_requirements: small_job
 
   - name: gams_medium
     invocation_script: bash tests/framework_comparison/setup_env_hpc.sh
-    command: python tests/framework_comparison/run_framework.py --module solve_gams --solver "${BENCHMARK_SOLVER}" --size medium --label gams_${BENCHMARK_SOLVER}_medium
+    command: python tests/framework_comparison/run_framework.py --module solve_gams --solver highs --size medium --label gams_highs_medium
     resource_requirements: medium_job
