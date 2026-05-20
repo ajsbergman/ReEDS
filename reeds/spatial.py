@@ -260,11 +260,13 @@ def apply_variable_disaggregation(
     # Save the dataframe's original columns
     # (used later to put the output in the correct format)
     original_columns = df.columns
+
     # Get legacy zone-to-county allocation factors for disagg_variable
     disagg_data = reeds.io.get_disagg_data(
         os.path.dirname(inputs_case),
         disagg_variable
     )
+
     # Append the allocation factors to the dataframe
     if disagg_variable == 'hydroexist':
         df = df.merge(
@@ -278,11 +280,13 @@ def apply_variable_disaggregation(
             left_on=region_col,
             right_on='PCA_REG'
         )
+
     # Replace legacy zones in region_col with the county FIPS codes
     df = (
         df.drop(columns=[region_col, 'PCA_REG'])
         .rename(columns={'FIPS': region_col})
     )
+
     # If the dataframe values are 'wide', set the dataframe index
     # and then multiply all values by their allocation factor.
     # Otherwise, multiply the 'value' and allocation factor columns.
@@ -333,9 +337,11 @@ def apply_supply_curve_disaggregation(
         inputs_case,
         disagg_variable
     )
+
     # Disaggregate zonal costs to counties uniformly
     df_cost = df.loc[df['sc_cat'] == 'cost'].drop(columns='sc_cat')
     df_cost = apply_uniform_disaggregation(df_cost, region_col)
+
     # Combine capacities and costs and return to original format
     df = (
         pd.concat(
@@ -498,10 +504,8 @@ def upscale_from_county_to_zone(
     Aggregate a dataframe with county-level regional scope (as specified in
     the dataframe's 'region_col' column) to the zone level (using zones
     corresponding to 'inputs_case') according to the specified aggregation
-    function ('aggfunc').
-
-    The 'fix_cols' argument lists columns that should be considered part of
-    the dataframe's index.
+    function ('aggfunc'). The 'fix_cols' argument lists columns that should
+    be considered part of the dataframe's index.
     """
     # If 'region_col' is 'r_cendiv', counties are stored in the 'r' column
     # and dataframe values are stored in columns whose headers are cendivs,
