@@ -1,5 +1,34 @@
 # User guide
 
+## General Suggestions
+### Document and Communicate Inputs
+Document and communicate inputs used and any changes made to the model. For example, published reports or journal articles should include enough information so that others can reproduce your work.
+
+### Emphasize Aggregated Results
+Emphasize aggregated results rather than results for a specific region or year, given that aggregate results will be more robust.  For example, the magnitude of new wind builds identified across a multistate region will be substantially more robust result than wind builds in a single ReEDS region. Similarly, the magnitude of natural gas combined cycle capacity additions across a multiyear period (e.g., 2030-2040) will be more robust result than the amount added in a single year (e.g., 2032).
+
+We recommend this practice because:
+- ReEDS results at their finest resolution can be sensitive to small changes in assumptions. For example, small differences in natural gas prices between two adjacent regions could lead to large disparities in gas-based capacity expansion in those regions that ignore practical constraints that might produce more even deployment.
+- ReEDS was designed as a national-scale model. That level of geographic scope means that many local conditions important to power plant build decisions might not be captured.
+
+### Emphasize Trends or Scenario Differences
+Emphasize trends or scenario differences over absolute results.  For example, the result that photovoltaic (PV) deployment is highly sensitive to natural gas price is more robust than the specific amounts of PV capacity deployed under high and low gas price scenarios.
+
+### Understand Calculations Behind Reported Numbers
+Do not rely on parameter names or labels alone when interpreting results. Explore the underlying calculations to ensure a robust understanding of the parameter and what it means. For example, reported electricity prices represent the marginal cost of meeting an additional infinitesimally small amount of load. They do not consider existing real-world market structure, rate design, or distribution costs, and thus should not be interpreted as estimates of retail rates.
+
+### Employ Scenario Sensitivity Analysis
+Always employ scenario sensitivity analysis. ReEDS is a deterministic model, so uncertainties are not captured in individual model runs.
+
+### Deliberately Choose Model Inputs
+Be deliberate in how you choose model inputs.  The ReEDS default values are not necessarily “most likely,” and “high” and “low” input options are not based on specific probabilities of occurrence.
+
+### Keep Questions Within Model's Scope
+Ensure that your questions are within the scope of the model. ReEDS is primarily meant to inform decisions at the investment or planning timescales in the bulk power sector.  For other questions at different timescales (such as unit commitment questions) or touching other sectors (such as distributed generation adoption), other models should be used.  However, ReEDS might be used to inform inputs or identify analysis questions for these other models.
+
+### Cautiously Use Near-Term Results
+Use near-term results with caution.  We have designed ReEDS primarily to consider long-term questions, and as such, not all near-term power sector changes are represented.
+
 ## Large input files
 
 Large input files,
@@ -68,38 +97,6 @@ Here is partial list of remotely hosted files used by ReEDS:
   - When using representative weks (5-day periods), timestamps are instead formatted as `y{year}w{wek of year}h{hour of wek}`. The numbering of weks begins at 1. In this format, the hour from 3am-4am on January 3, 2012 would be indicated as `y2012w001h052`.
 - Representative and stress **periods** (indexed as `szn` within ReEDS) are labeled similarly to timestamps but without the `h{hour of day}` component...
   - *Except stress periods and stress timeslices have an 's' prefix.* So if the time period above showed up as a stress period, it would be labeled as `h=sy2012d003h004` and `szn=sy2012d003` for representative days (or `h=sy2012w001h052` and `szn=sy2012w001` for representative weks). Stress periods are modeled using different loads and transmission capacities than representative periods, so they need to be indexed separately.
-
-
-
-## Hourly Resolution
-
-The model can be run at hourly resolution using the following switch settings:
-
-- `GSw_Hourly = 1`
-  - Turn on hourly resolution
-- `GSw_Canada = 2`
-  - Turn on hourly resolution for Canadian imports/exports
-- `GSw_AugurCurtailment = 0`
-  - Turn off the Augur calculation of curtailment
-- `GSw_StorageArbitrageMult = 0`
-  - Turn off the Augur calculation of storage arbitrage value
-- `GSw_Storage_in_Min = 0`
-  - Turn off the Augur calculation of storage charging
-- `capcredit_szn_hours = 3`
-  - The current default hourly representation is 18 representative 5-day weeks. Each representative period is treated as a 'season' and is thus active in the planning-reserve margin constraint. In h17 ReEDS we set `capcredit_szn_hours = 10`, giving 40 total hours considered for planning reserves (the top 10 hours in each of the 4 quarterly seasons). 18 'seasons' with 10 hours each would give 180 hours, so we switch to 3 hours per 'season' (for 54 hours total).
-
-To further reduce solve time, you can make the following changes:
-
-- `yearset = 2010_2015_2020_2025_2030_2035_2040_2045_2050`
-  - Solve in 5-year steps
-- `GSw_OpRes = 0`
-  - Turn off operating reserves
-- `GSw_MinLoading = 0`
-  - Turn off the sliding-window representation of minimum-generation limits
-- `GSw_PVB = 0`
-  - Turn off PV-battery hybrids
-- `GSw_calc_powfrac = 0`
-  - Turn off a post-processing calculation of power flows
 
 
 
@@ -600,7 +597,7 @@ Options are `capacity`, `generation`, `transmission`, `rasharing`, and `co2`.
 - `GSw_MGA_SubObjective` (default `gentech`): Technology subset to minimize or maximize the capacity of (only used for `GSw_MGA_Objective = (capacity or generation)`).
 Options are the column names in the `inputs/tech-subset-table.csv` file.
 
-Users familiar with GAMS can add alternative objective functions to the `c_mga.gms` file and associated options to the `GSw_MGA_Objective` switch in `cases.csv`.
+Users familiar with GAMS can add alternative objective functions to the `d_mga.gms` file and associated options to the `GSw_MGA_Objective` switch in `cases.csv`.
 
 
 
@@ -717,7 +714,6 @@ This section provides guidance on identifying and resolving common issues encoun
   - What to look for:
     - `1_inputs.lst`: errors will be preceded by `****`
     - `{batch_prefix}_{case}_{year}i0.lst`: there should be one file for each year of the model run
-    - `Augur_errors_{year}`: this file will appear in the event that there is an augur-related issue
 
 - GAMS Workfiles
   - Path: `/runs/{batch_prefix}_{case}/g00files/`
@@ -733,10 +729,10 @@ This section provides guidance on identifying and resolving common issues encoun
       - these files should contain data, an error message "GDX file not found" indicates an issue with the reporting script at the end of the model
     - `reeds-report/` and `reeds-report-reduced/`: if these folders are not present, it can indicate a problem with the post-processing scripts
 
-- Augur Data
-  - Path: `/runs/{batch_prefix}_{case}/ReEDS_Augur/augur_data/`
+- Resource adequacy data
+  - Path: `/runs/{batch_prefix}_{case}/handoff/reeds_data/`
   - What to look for:
-    - `ReEDS_Augur_{year}.gdx`: there should be a file for each year of the model run =
+    - `ccdata_{year}.gdx`: there should be a file for each year of the model run =
     - `reeds_data_{year}.gdx`: there should be a file for each year of the model run
 
 - Case Inputs
