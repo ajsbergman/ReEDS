@@ -1,0 +1,104 @@
+# Retry only workflow 973 jobs that Torc terminated at the 4h Slurm walltime.
+# Before submitting, generate Slurm schedulers with:
+#   torc slurm generate --profile kestrel --walltime-strategy max-partition-time --overwrite ...
+# Then verify generated walltime and squeue TIME_LIMIT are 2-00:00:00.
+name: framework-comparison-kestrel-wf973-timeout-retry
+description: Retry wf973 timeout-terminated framework comparison jobs with longer walltime
+
+slurm_defaults:
+  account: "ntps"
+
+env:
+  FRAMEWORK_MODULES: "gams/51.3.0 conda/2024.06.1"
+  FRAMEWORK_UV_PROJECT: "."
+  FRAMEWORK_UV_GROUPS: "framework-comparison"
+  FRAMEWORK_COMPARISON_ARCO_PREFIX: "/scratch/psanchez/arco/latest"
+  GAMS_LICENSE_FILE: "/home/psanchez/gamslice.txt"
+  OPENBLAS_NUM_THREADS: "4"
+  OMP_NUM_THREADS: "4"
+  MKL_NUM_THREADS: "4"
+  NUMEXPR_MAX_THREADS: "4"
+  TORC_API_URL: "http://torc.hpc.nrel.gov:8080/torc-service/v1"
+
+resource_requirements:
+  - name: retry_timeout_job
+    num_cpus: 34
+    memory: "240G"
+    runtime: "PT8H"
+
+jobs:
+  - name: linopy_highs_xlarge_retry_wf973
+    invocation_script: bash tests/framework_comparison/setup_env_hpc.sh
+    command: python tests/framework_comparison/run_framework.py --module solve_linopy --solver highs --size xlarge --label linopy_highs_xlarge_retry_wf973 --output tests/framework_comparison/torc_output_retry_wf973/framework_results/linopy_highs_xlarge_retry_wf973.json
+    resource_requirements: retry_timeout_job
+
+  - name: linopy_xpress_large_retry_wf973
+    invocation_script: bash tests/framework_comparison/setup_env_hpc.sh
+    command: python tests/framework_comparison/run_framework.py --module solve_linopy --solver xpress --size large --label linopy_xpress_large_retry_wf973 --output tests/framework_comparison/torc_output_retry_wf973/framework_results/linopy_xpress_large_retry_wf973.json
+    env:
+      FRAMEWORK_MODULES: "gams/51.3.0 xpressmp conda/2024.06.1"
+    resource_requirements: retry_timeout_job
+
+  - name: linopy_xpress_xlarge_retry_wf973
+    invocation_script: bash tests/framework_comparison/setup_env_hpc.sh
+    command: python tests/framework_comparison/run_framework.py --module solve_linopy --solver xpress --size xlarge --label linopy_xpress_xlarge_retry_wf973 --output tests/framework_comparison/torc_output_retry_wf973/framework_results/linopy_xpress_xlarge_retry_wf973.json
+    env:
+      FRAMEWORK_MODULES: "gams/51.3.0 xpressmp conda/2024.06.1"
+    resource_requirements: retry_timeout_job
+
+  - name: arco_highs_xlarge_retry_wf973
+    invocation_script: bash tests/framework_comparison/setup_env_hpc.sh
+    command: python tests/framework_comparison/run_framework.py --module solve_arco --solver highs --size xlarge --label arco_highs_xlarge_retry_wf973 --output tests/framework_comparison/torc_output_retry_wf973/framework_results/arco_highs_xlarge_retry_wf973.json
+    resource_requirements: retry_timeout_job
+
+  - name: arco_xpress_large_retry_wf973
+    invocation_script: bash tests/framework_comparison/setup_env_hpc.sh
+    command: python tests/framework_comparison/run_framework.py --module solve_arco --solver xpress --size large --label arco_xpress_large_retry_wf973 --output tests/framework_comparison/torc_output_retry_wf973/framework_results/arco_xpress_large_retry_wf973.json
+    env:
+      FRAMEWORK_MODULES: "gams/51.3.0 xpressmp conda/2024.06.1"
+    resource_requirements: retry_timeout_job
+
+  - name: arco_xpress_xlarge_retry_wf973
+    invocation_script: bash tests/framework_comparison/setup_env_hpc.sh
+    command: python tests/framework_comparison/run_framework.py --module solve_arco --solver xpress --size xlarge --label arco_xpress_xlarge_retry_wf973 --output tests/framework_comparison/torc_output_retry_wf973/framework_results/arco_xpress_xlarge_retry_wf973.json
+    env:
+      FRAMEWORK_MODULES: "gams/51.3.0 xpressmp conda/2024.06.1"
+    resource_requirements: retry_timeout_job
+
+  - name: pyomo_highs_xlarge_retry_wf973
+    invocation_script: bash tests/framework_comparison/setup_env_hpc.sh
+    command: python tests/framework_comparison/run_framework.py --module solve_pyomo --solver highs --size xlarge --label pyomo_highs_xlarge_retry_wf973 --output tests/framework_comparison/torc_output_retry_wf973/framework_results/pyomo_highs_xlarge_retry_wf973.json
+    resource_requirements: retry_timeout_job
+
+  - name: pyomo_xpress_large_retry_wf973
+    invocation_script: bash tests/framework_comparison/setup_env_hpc.sh
+    command: python tests/framework_comparison/run_framework.py --module solve_pyomo --solver xpress --size large --label pyomo_xpress_large_retry_wf973 --output tests/framework_comparison/torc_output_retry_wf973/framework_results/pyomo_xpress_large_retry_wf973.json
+    env:
+      FRAMEWORK_MODULES: "gams/51.3.0 xpressmp conda/2024.06.1"
+    resource_requirements: retry_timeout_job
+
+  - name: pyomo_xpress_xlarge_retry_wf973
+    invocation_script: bash tests/framework_comparison/setup_env_hpc.sh
+    command: python tests/framework_comparison/run_framework.py --module solve_pyomo --solver xpress --size xlarge --label pyomo_xpress_xlarge_retry_wf973 --output tests/framework_comparison/torc_output_retry_wf973/framework_results/pyomo_xpress_xlarge_retry_wf973.json
+    env:
+      FRAMEWORK_MODULES: "gams/51.3.0 xpressmp conda/2024.06.1"
+    resource_requirements: retry_timeout_job
+
+  - name: pyoptinterface_highs_xlarge_retry_wf973
+    invocation_script: bash tests/framework_comparison/setup_env_hpc.sh
+    command: python tests/framework_comparison/run_framework.py --module solve_pyoptinterface --solver highs --size xlarge --label pyoptinterface_highs_xlarge_retry_wf973 --output tests/framework_comparison/torc_output_retry_wf973/framework_results/pyoptinterface_highs_xlarge_retry_wf973.json
+    resource_requirements: retry_timeout_job
+
+  - name: pyoptinterface_xpress_large_retry_wf973
+    invocation_script: bash tests/framework_comparison/setup_env_hpc.sh
+    command: python tests/framework_comparison/run_framework.py --module solve_pyoptinterface --solver xpress --size large --label pyoptinterface_xpress_large_retry_wf973 --output tests/framework_comparison/torc_output_retry_wf973/framework_results/pyoptinterface_xpress_large_retry_wf973.json
+    env:
+      FRAMEWORK_MODULES: "gams/51.3.0 xpressmp conda/2024.06.1"
+    resource_requirements: retry_timeout_job
+
+  - name: pyoptinterface_xpress_xlarge_retry_wf973
+    invocation_script: bash tests/framework_comparison/setup_env_hpc.sh
+    command: python tests/framework_comparison/run_framework.py --module solve_pyoptinterface --solver xpress --size xlarge --label pyoptinterface_xpress_xlarge_retry_wf973 --output tests/framework_comparison/torc_output_retry_wf973/framework_results/pyoptinterface_xpress_xlarge_retry_wf973.json
+    env:
+      FRAMEWORK_MODULES: "gams/51.3.0 xpressmp conda/2024.06.1"
+    resource_requirements: retry_timeout_job

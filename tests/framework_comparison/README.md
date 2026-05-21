@@ -67,7 +67,7 @@ sizes for:
 Xpress, CPLEX, GAMSPy, and PyOptInterface are not in the default matrix.
 Add them when the required site access and licenses are confirmed.
 
-## Latest Kestrel full-matrix pull (workflow 964)
+## Earlier Kestrel full-matrix pull (workflow 964)
 
 Pulled with:
 
@@ -112,34 +112,66 @@ torc submit --max-parallel-jobs 1 \
 torc status <workflow-id>
 ```
 
-## Kestrel partial successful table (workflow 973)
+## Kestrel completed benchmark table (workflow 973)
 
-Built from successful `run_complete` events in workflow `973`.
+Built from workflow `973` rows where Torc status is `Completed` and the adapter JSON has no `error`.
+
+Pulled with:
+
+```bash
+./tests/framework_comparison/pull_results.sh --host psanchez@kestrel.hpc.nrel.gov \
+  > tests/framework_comparison/results/benchmark_20260520_101751_kestrel.csv
+```
+
+Workflow summary:
+
+| Metric | Value |
+| --- | ---: |
+| Workflow ID | 973 |
+| Torc results | 36 |
+| Torc `Completed` | 23 |
+| Torc `Failed` | 1 |
+| Torc `Terminated` | 12 |
+| Rows shown below | 23 |
 
 > [!NOTE]
-> `peak_mb=0` means Torc did not attribute a non-zero memory sample for that fast job in this run. Re-run with `torc submit --max-parallel-jobs 1 ...` for improved per-job memory attribution.
+> `peak_mb=0` means Torc did not attribute a non-zero memory sample for that fast job in this run.
+
+Retry notes:
+
+- Workflow `977` retried the 12 timeout-terminated workflow `973` jobs with an
+  8h48m Slurm allocation, but all 12 were terminated again when Torc reached
+  the allocation timeout window.
+- Workflow `986` reruns the same retry set using Kestrel's max partition
+  walltime. It was generated with
+  `torc slurm generate --profile kestrel --walltime-strategy max-partition-time`,
+  producing `walltime: 2-00:00:00`, then submitted with `--max-parallel-jobs 1`.
 
 | framework | size | status | build_s | solve_s | total_s | peak_mb | objective |
 | --- | --- | --- | ---: | ---: | ---: | ---: | ---: |
-| gams-cplex | large | ok | 22.994 | 90.196 | 113.190 | 5201.920 | 259111953154.042 |
-| arco-highs | medium | ok | 0.302 | 7.165 | 7.467 | 255.900 | 15385579143.525 |
-| arco-xpress | medium | ok | 0.178 | 9.188 | 9.366 | 187.800 | 15385579143.526 |
-| gams-cplex | medium | ok | 1.379 | 1.051 | 2.430 | 0.000 | 15385579143.525 |
-| linopy-highs | medium | ok | 0.243 | 8.607 | 8.850 | 190.800 | 15385579143.525 |
-| linopy-xpress | medium | ok | 0.379 | 22.029 | 22.408 | 1290.240 | 15385579143.525 |
-| pyomo-highs | medium | ok | 0.584 | 9.299 | 9.883 | 359.800 | 15385579143.525 |
-| pyomo-xpress | medium | ok | 0.588 | 13.541 | 14.130 | 380.200 | 15385579143.525 |
-| pyoptinterface-highs | medium | ok | 0.266 | 8.710 | 8.976 | 1075.200 | 15385579143.525 |
-| pyoptinterface-xpress | medium | ok | 0.400 | 10.076 | 10.476 | 181.300 | 15385579143.525 |
-| arco-highs | small | ok | 0.182 | 0.782 | 0.964 | 0.000 | 1041838761.547 |
-| arco-xpress | small | ok | 0.035 | 0.621 | 0.656 | 0.000 | 1041838761.547 |
-| gams-cplex | small | ok | 0.195 | 0.045 | 0.240 | 0.000 | 1041838761.547 |
-| linopy-highs | small | ok | 0.233 | 1.514 | 1.748 | 138.100 | 1041838761.547 |
-| linopy-xpress | small | ok | 0.372 | 12.000 | 12.372 | 577.100 | 1041838761.547 |
-| pyomo-highs | small | ok | 0.044 | 0.252 | 0.296 | 0.000 | 1041838761.547 |
-| pyomo-xpress | small | ok | 0.043 | 3.012 | 3.055 | 155.100 | 1041838761.547 |
-| pyoptinterface-highs | small | ok | 0.207 | 0.519 | 0.726 | 31.900 | 1041838761.547 |
-| pyoptinterface-xpress | small | ok | 0.230 | 0.102 | 0.331 | 0.000 | 1041838761.547 |
+| arco-highs | small | ok | 0.182 | 0.782 | 1.032 | 0.000 | 1041838761.547 |
+| arco-xpress | small | ok | 0.035 | 0.621 | 0.727 | 0.000 | 1041838761.547 |
+| gams-cplex | small | ok | 0.195 | 0.045 | 0.455 | 0.000 | 1041838761.547 |
+| linopy-highs | small | ok | 0.233 | 1.514 | 7.716 | 138.100 | 1041838761.547 |
+| linopy-xpress | small | ok | 0.372 | 12.000 | 15.052 | 577.100 | 1041838761.547 |
+| pyomo-highs | small | ok | 0.044 | 0.252 | 0.904 | 0.000 | 1041838761.547 |
+| pyomo-xpress | small | ok | 0.043 | 3.012 | 3.662 | 155.100 | 1041838761.547 |
+| pyoptinterface-highs | small | ok | 0.207 | 0.519 | 1.173 | 31.900 | 1041838761.547 |
+| pyoptinterface-xpress | small | ok | 0.230 | 0.102 | 0.612 | 0.000 | 1041838761.547 |
+| arco-highs | medium | ok | 0.302 | 7.165 | 7.543 | 255.900 | 15385579143.525 |
+| arco-xpress | medium | ok | 0.178 | 9.188 | 9.446 | 187.800 | 15385579143.526 |
+| gams-cplex | medium | ok | 1.379 | 1.051 | 2.675 | 0.000 | 15385579143.525 |
+| linopy-highs | medium | ok | 0.243 | 8.607 | 14.687 | 190.800 | 15385579143.525 |
+| linopy-xpress | medium | ok | 0.379 | 22.029 | 25.002 | 1290.240 | 15385579143.525 |
+| pyomo-highs | medium | ok | 0.584 | 9.299 | 10.538 | 359.800 | 15385579143.525 |
+| pyomo-xpress | medium | ok | 0.588 | 13.541 | 14.763 | 380.200 | 15385579143.525 |
+| pyoptinterface-highs | medium | ok | 0.266 | 8.710 | 9.204 | 1075.200 | 15385579143.525 |
+| pyoptinterface-xpress | medium | ok | 0.400 | 10.076 | 10.688 | 181.300 | 15385579143.525 |
+| arco-highs | large | ok | 4.060 | 3951.595 | 3956.053 | 2160.640 | 259111953154.049 |
+| gams-cplex | large | ok | 22.994 | 90.196 | 113.799 | 5201.920 | 259111953154.042 |
+| linopy-highs | large | ok | 0.558 | 3600.725 | 3608.375 | 2816.000 | 259111953154.019 |
+| pyomo-highs | large | ok | 10.901 | 3642.356 | 3654.320 | 3635.200 | 259111953154.027 |
+| gams-cplex | xlarge | ok | 104.153 | 2094.032 | 2200.584 | 19148.800 | 1213777350852.881 |
 
 ---
 

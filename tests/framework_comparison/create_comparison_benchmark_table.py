@@ -9,6 +9,7 @@ from pathlib import Path
 
 
 NUMERIC_COLUMNS = ("build_s", "solve_s", "total_s", "peak_mb", "objective")
+SIZE_ORDER = {"small": 0, "medium": 1, "large": 2, "xlarge": 3}
 
 
 def fmt_float(value: str) -> str:
@@ -76,6 +77,44 @@ def pick_input(path: Path) -> Path:
     if not candidates:
         raise FileNotFoundError(f"No benchmark_*.csv files found under: {path}")
     return candidates[-1]
+
+
+def framework_name(row: dict[str, str]) -> str:
+    """Return a display name for the framework/solver combination in a result row.
+
+    Parameters
+    ----------
+    row : dict[str, str]
+        A CSV row dictionary. Newer result pulls use ``label`` instead of a
+        precomputed ``framework`` column.
+
+    Returns
+    -------
+    str
+        Hyphen-separated framework name without a trailing size suffix.
+
+    Examples
+    --------
+    >>> framework_name({"framework": "linopy-highs", "size": "small"})
+    'linopy-highs'
+    >>> framework_name({"label": "linopy_highs_small", "size": "small"})
+    'linopy-highs'
+    """
+    framework = (row.get("framework") or "").strip()
+    if framework:
+        return framework
+
+    module = (row.get("module") or "").strip()
+    solver = (row.get("solver") or "").strip()
+    if module and solver:
+        return f"{module.removeprefix('solve_').replace('_', '-')}-{solver}"
+
+    label = (row.get("label") or "").strip()
+    size = (row.get("size") or "").strip()
+    suffix = f"_{size}"
+    if size and label.endswith(suffix):
+        label = label[: -len(suffix)]
+    return label.replace("_", "-")
 
 
 def row_status(row: dict[str, str]) -> str:
@@ -152,7 +191,9 @@ def build_table(input_csv: Path) -> str:
     with input_csv.open(newline="", encoding="utf-8") as f:
         rows = list(csv.DictReader(f))
 
-    rows.sort(key=lambda r: (r.get("size", ""), r.get("framework", "")))
+    rows.sort(
+        key=lambda r: (SIZE_ORDER.get(r.get("size", ""), 99), framework_name(r))
+    )
 
     header = [
         "framework",
@@ -175,7 +216,7 @@ def build_table(input_csv: Path) -> str:
 
     for row in rows:
         out = {
-            "framework": row.get("framework", ""),
+            "framework": framework_name(row),
             "size": row.get("size", ""),
             "status": row_status(row),
             "error": truncate(row.get("error", "")),
