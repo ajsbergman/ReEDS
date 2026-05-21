@@ -26,6 +26,7 @@ import json
 import os
 import sys
 import datetime
+import numpy as np
 import pandas as pd
 import scipy
 import sklearn.neighbors
@@ -572,6 +573,10 @@ def main(
         period_szn_write['season'].drop_duplicates() if sw['GSw_HourlyType'] == 'year'
         else period_szn_write['actual_period'])
 
+    nextszn = pd.Series(
+        index=set_actualszn, data=np.roll(set_actualszn.values, -1), name='actualszn',
+    ).rename_axis('*actualszn')
+
     stress_period_szn = (
         stressperiods_write.assign(rep_period=stressperiods_write.szn)
         [['rep_period','year','yperiod','szn']].rename(columns={'szn':'actual_period'})
@@ -631,6 +636,8 @@ def main(
 
     set_allh.to_csv(
         os.path.join(inputs_case, 'set_allh.csv'), header=False, index=False)
+
+    nextszn.to_csv(os.path.join(inputs_case, 'nextszn.csv'))
 
     #%% Write the seed stress periods to use for the PRM constraint
     if 'user' in sw.GSw_PRM_StressModel:
