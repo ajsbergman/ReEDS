@@ -233,12 +233,32 @@ def get_clusters(
     return cluster_assignment
 
 
+def round_to_integers(rweights, numdays):
+    ### Convert to integers
+    iweights = rweights.round(0).astype(int)
+    ### Scale all weights little by little until they sum to number of actual days
+    sumweights = iweights.sum()
+    diffweights = sumweights - numdays
+    increment = 0.00001 * (1 if diffweights < 0 else -1)
+    for i in range(1000000):
+        iweights = (rweights * (1 + increment*i)).round(0).astype(int)
+        if iweights.sum() == numdays:
+            break
+
+    iweights = iweights.replace(0,np.nan).dropna().astype(int)
+    ### Make sure it worked
+    if iweights.sum() != numdays:
+        raise ValueError(f'Sum of rounded weights = {iweights.sum()} != {numdays}')
+    return iweights
+
+
 def minimize_abs_error_in_means(basis_periods, target_feature_mean):
     """
     """
     import pulp
     ### Input processing
     assert (target_feature_mean.index == basis_periods.columns).all()
+
     days = basis_periods.index.values
     ### Optimization: minimize sum of absolute errors
     m = pulp.LpProblem('LinearDaySelection', pulp.LpMinimize)
@@ -303,8 +323,8 @@ def optimize_period_weights(
         assert target_feature_mean.isnull().sum() == 0
 
     numdays = len(profiles_day)
-    days = profiles_day.index.values
 
+    days = profiles_day.index.values
     ### Optimization: minimize sum of absolute errors
     m = pulp.LpProblem('LinearDaySelection', pulp.LpMinimize)
     ###### Variables
@@ -344,21 +364,7 @@ def optimize_period_weights(
     rweights = (weights.sort_values(ascending=False)[:numclusters])
     ### Scale so that the weights sum to numdays (have to do if numclusters is small)
     rweights *= numdays / rweights.sum()
-    ### Convert to integers
-    iweights = rweights.round(0).astype(int)
-    ### Scale all weights little by little until they sum to number of actual days
-    sumweights = iweights.sum()
-    diffweights = sumweights - numdays
-    increment = 0.00001 * (1 if diffweights < 0 else -1)
-    for i in range(1000000):
-        iweights = (rweights * (1 + increment*i)).round(0).astype(int)
-        if iweights.sum() == numdays:
-            break
-
-    iweights = iweights.replace(0,np.nan).dropna().astype(int)
-    ### Make sure it worked
-    if iweights.sum() != numdays:
-        raise ValueError(f'Sum of rounded weights = {iweights.sum()} != {numdays}')
+    iweights = round_to_integers(rweights, numdays)
 
     return profiles_day, iweights, weights
 
@@ -380,26 +386,12 @@ def optimize_defined_period_weights(
     rweights = (weights.sort_values(ascending=False)[:len(basis_periods)])
     ### Scale so that the weights sum to numdays (have to do if numclusters is small)
     rweights *= numdays / rweights.sum()
-    ### Convert to integers
-    iweights = rweights.round(0).astype(int)
-    ### Scale all weights little by little until they sum to number of actual days
-    sumweights = iweights.sum()
-    diffweights = sumweights - numdays
-    increment = 0.00001 * (1 if diffweights < 0 else -1)
-    for i in range(1000000):
-        iweights = (rweights * (1 + increment*i)).round(0).astype(int)
-        if iweights.sum() == numdays:
-            break
-
-    iweights = iweights.replace(0,np.nan).dropna().astype(int)
-    ### Make sure it worked
-    if iweights.sum() != numdays:
-        raise ValueError(f'Sum of rounded weights = {iweights.sum()} != {numdays}')
+    iweights = round_to_integers(rweights, numdays)
 
     return iweights, weights
 
 
-def match_act2rep_milp(profiles_day, rweights):
+def match_act2rep_milp(profiles_day, iweights):
     """
     Assign representative periods to actual periods to minimize sum of errors in
     feature values by period (MILP optimization)
@@ -409,7 +401,7 @@ def match_act2rep_milp(profiles_day, rweights):
 
     ### Input processing
     actualdays = profiles_day.index.values
-    repdays = list(rweights.index)
+    repdays = list(iweights.index)
 
     ### Optimization: minimize sum of absolute errors
     m = pulp.LpProblem('RepDayAssignment', pulp.LpMinimize)
@@ -432,7 +424,7 @@ def match_act2rep_milp(profiles_day, rweights):
         m += pulp.lpSum([WEIGHT[a,r] for r in repdays]) == 1
     ### Each representative day must be used a number of times equal to its weight
     for r in repdays:
-        m += pulp.lpSum([WEIGHT[a,r] for a in actualdays]) == rweights[r]
+        m += pulp.lpSum([WEIGHT[a,r] for a in actualdays]) == iweights[r]
     ### Define the error variables
     for a in actualdays:
         for c in profiles_day.columns:
@@ -462,17 +454,26 @@ def match_act2rep_milp(profiles_day, rweights):
     return a2r
 
 
-def match_act2rep_bestfirst(profiles_day, rweights, metric='euclidean'):
+def match_act2rep_bestfirst(profiles_day, iweights, metric='euclidean'):
     """
-    TODO
-    - Add a seasonal distance
-        - "Summeriness": 0 in winter, 1 in summer, 0.5 in spring/fall
-        - So take the diff between each day (not year, just month/day)
-        - Would have to weight it relative to feature match
+    Assign actual periods to representative periods using a simple heuristic algorithm:
+
+    1. Begin with a table of weights for each representative (rep) period
+    2. Calculate the distance in (feature × region)-dimensional space between each actual
+       and rep period.
+    3. While there is still weight remaining in the rep-period weight table:
+        a. Match each rep period to the single remaining actual period that is closest to it,
+           recording its match in the actual-to-rep-period table
+        b. Decrement the remaining weight for each rep period. If any weights reach zero,
+           remove them from future consideration for matches. (So the lowest-weighted rep
+           periods will fill up and drop out of consideration first.)
+        c. Remove the actual periods that were matched from the table of distances
+        d. Return to 3.a. and repeat until there are no remaining weights in the rep-period
+           weight table (and no remaining unmatched actual periods)
     """
     import scipy.spatial
     ### Get the distance
-    keep_basis = profiles_day.loc[rweights.index]
+    keep_basis = profiles_day.loc[iweights.index]
     distance = pd.DataFrame(
         data=scipy.spatial.distance.cdist(
             keep_basis,
@@ -485,7 +486,7 @@ def match_act2rep_bestfirst(profiles_day, rweights, metric='euclidean'):
 
     a2r = {}
     numdays = len(profiles_day)
-    remaining_weights = rweights.copy()
+    remaining_weights = iweights.copy()
     remaining_distance = distance.copy()
     for i in range(numdays):
         ## Loop over the remaining weights

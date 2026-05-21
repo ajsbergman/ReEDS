@@ -171,7 +171,7 @@ def cluster_profiles(profiles_fitperiods, sw, forceperiods_yearperiod):
 
     elif sw['GSw_HourlyClusterAlgorithm'] in ['opt','optimized','optimize']:
         ### Optimize the weights of representative days
-        profiles_day, rweights, weights = reeds.timeseries.optimize_period_weights(
+        profiles_day, iweights, weights = reeds.timeseries.optimize_period_weights(
             profiles_fitperiods=profiles_fitperiods,
             numclusters=int(sw['GSw_HourlyNumClusters']),
         )
@@ -182,13 +182,13 @@ def cluster_profiles(profiles_fitperiods, sw, forceperiods_yearperiod):
         }[sw.get('GSw_HourlyClusterMapMethod', 'milp')]
         a2r = mapfunc(
             profiles_day=profiles_day.round(4),
-            rweights=rweights,
+            iweights=iweights,
         )
 
-        if len(rweights) < int(sw['GSw_HourlyNumClusters']):
+        if len(iweights) < int(sw['GSw_HourlyNumClusters']):
             print(
                 'Asked for {} representative periods but only needed {}'.format(
-                    sw['GSw_HourlyNumClusters'], len(rweights)))
+                    sw['GSw_HourlyNumClusters'], len(iweights)))
 
         period_szn = pd.concat([
             a2r.reset_index().rename(columns={'act':'period','rep':'szn'}),
