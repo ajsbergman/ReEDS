@@ -1134,7 +1134,6 @@ class MCS_Sampler:
         # sampling method (random or latin hypercube)
         if lhs_samples is None:
             self.sampling_method = 'random'
-            self.sample_num = mcs_run_number
         else:
             self.sampling_method = 'latin hypercube'
             self.lhs_samples = lhs_samples
@@ -1877,7 +1876,7 @@ def main(
         inputs_case (str): Path to the inputs_case directory.
         n_samples (int): Number of samples to generate.
         lhs_sampling (int): whether to use random (0) or latin hypercube (1) sampling.
-        seed (int): Seed for the random number generator.
+        seed (int): global seed value for the random number generator.
 
     """
 
@@ -1894,7 +1893,7 @@ def main(
         # number of dimensions for lhs = number of sample groups 
         lhs_dim = df_input_dist_instructions.shape[0]
         # lhs requires drawing all samples simultaneously, so rather than using
-        # a run-specific seed we draw for all samples the seed value 
+        # a run-specific seed we draw for all runs at once using the global seed value 
         lhs_sampler = scipy.stats.qmc.LatinHypercube(d=lhs_dim, seed=seed)
         # lhs_samples are arranged n x d (n = samples, d = dimensions)
         lhs_samples = lhs_sampler.random(n=n_samples)
@@ -1905,7 +1904,7 @@ def main(
         )
         lhs_samples_out.to_csv(os.path.join(inputs_case, "mcs_latin_hypercube_samples.csv"), index=False)
 
-    # if using random sampling, set random seed using seed + MCS run number 
+    # if using random sampling, set random seed using the global seed + MCS run number 
     # to allow reproducibility without having the same sample for each MCS-ReEDS call
     else:
         np.random.seed(seed + mcs_run_number)
@@ -1938,7 +1937,6 @@ if __name__ == '__main__' and not hasattr(sys, 'ps1'):
     reeds_path = os.path.abspath(args.reeds_path)
     inputs_case = os.path.abspath(args.inputs_case)
     nolog = args.nolog
-    random_vector = args.random_vector
 
     # ---- Settings for testing ----
     # reeds_path = reeds.io.reeds_path
@@ -1959,9 +1957,13 @@ if __name__ == '__main__' and not hasattr(sys, 'ps1'):
     MCS_runs = int(sw.get('MCS_runs', 0))
     MCS_lhs = int(sw.get('MCS_lhs', 0))
 
+    # get global seed from scalars (used to set the seed for a batch of runs)
+    scalars = reeds.io.get_scalars()
+    seed = int(scalars['MCS_seed'])
+
     if MCS_runs >= 1:
         print('Starting mcs_sampler.py')
-        main(reeds_path, inputs_case, n_samples=MCS_runs, lhs_sampling=MCS_lhs)
+        main(reeds_path, inputs_case, n_samples=MCS_runs, lhs_sampling=MCS_lhs, seed=seed)
     else:
         print('MCS_runs switch is set to 0 or not found. No Monte Carlo sampling will be performed')
 

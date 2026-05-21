@@ -559,8 +559,12 @@ This enables state level uncertainty in siting supply curves for wind and solar 
 There are two sampling approaches available for Monte Carlo analysis: random sampling and Latin Hypercube sampling. 
 
 Random sampling uses the numpy `random` method for the relevant distribution to sample a set of weights. 
-These weights are applied to the assignment values specified in the distribution group to generate the value for each run.
-To ensure reproducibility, the Monte Carlo run number is used as the seed value. 
+These weights are applied to the assignment values specified in the distribution group to generate the value for each run. 
+To ensure reproducibility, the Monte Carlo run number is used as the seed value. This means that, for a given 
+run configuration, run MC001 will always have the same sampled values. A global seed value (set by `MCS_seed` in `inputs/scalars.csv`) 
+can be used to shift the seed values for a batch of runs; this can be useful for extending a set of runs; 
+for example, if you ran already 200 runs and now want to add 100 more, set the seed value to 200 to generate 
+new sampled runs.
 
 The second approach, Latin Hypercube sampling (LHS), utilizes a quasi-Monte Carlo sampling method that is 
 designed to improve efficiency by reducing overlap of the sampled values. An overview of this method
@@ -568,7 +572,8 @@ can be found in {cite}`sheikholeslamiProgressiveLatinHypercube2017`. For this me
 for all model runs based on the number of samples (N) and the independent dimensions being sampled (D). 
 The values in this matrix represent sampling of the cumulative probability distribution functions, 
 and are later used by the inverse CDF (percent point) functions to derive the actual sample values. 
-A single seed value is used for all runs, resulting in unique sampling matrices for a given set of values of N and D.
+A single global seed value (set by `MCS_seed` in `inputs/scalars.csv`) is used for all runs, 
+resulting in unique sampling matrices for a given set of values of N and D.
 
 The LHS method tends to result in sampling values that converge on the true input distributions for lower numbers of samples.
 However, it does not currently support sampling for any spatial resolution besides country 
