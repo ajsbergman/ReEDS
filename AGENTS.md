@@ -1,14 +1,17 @@
 # AGENTS.md - Guidance for AI Coding Assistants
 
 This file gives AI coding tools the minimum repo-specific guidance needed to
-make safe, useful changes in ReEDS.
-
-If this file conflicts with
+make safe, useful changes in ReEDS. Keep it short and operational. If guidance
+needs extended explanation, move it to
 [`docs/source/developer_best_practices.md`](docs/source/developer_best_practices.md)
-or with explicit user instructions, those sources win.
+and link to it.
 
-Keep this file short. When adding new guidance, remove or condense superseded
-guidance rather than letting the file grow indefinitely.
+For files in nested folders that contain their own `AGENTS.md`, the nearer file
+takes precedence for that subtree.
+
+If this file conflicts with explicit user instructions or
+[`docs/source/developer_best_practices.md`](docs/source/developer_best_practices.md),
+those sources win.
 
 ---
 
@@ -22,8 +25,12 @@ guidance rather than letting the file grow indefinitely.
 - Reuse existing helpers in the `reeds/` package before adding new utilities.
 - Do not add dependencies or change [`environment.yml`](environment.yml) or
   [`Project.toml`](Project.toml) without explicit approval.
-- Do not use destructive git operations, force-push, rewrite published
-  history, or modify CI secrets unless explicitly instructed.
+- Do not use destructive git operations, force-push, rewrite published history,
+  or modify CI secrets unless explicitly instructed.
+- Do not claim behavior or test outcomes you did not verify.
+- Treat `git status` and `git diff` as read-only context; do not assume
+  uncommitted changes were made by you.
+- Only add ReEDS-specific agent guidance here; avoid generic coding advice.
 - If a point is unclear, verify it from the repo instead of guessing.
 
 Ask the human before proceeding if:
@@ -91,8 +98,8 @@ Documentation is part of the change.
 - If you add or rename an input file, update
   [`reeds/input_processing/runfiles.csv`](reeds/input_processing/runfiles.csv)
   and the relevant `inputs/*/README.md` if one exists.
-- If you change sourced data, regenerate [`sources.csv`](sources.csv) and
-  [`sources_documentation.md`](sources_documentation.md) using
+- If you change sourced data, regenerate [`docs/sources.csv`](docs/sources.csv)
+  and [`docs/sources_documentation.md`](docs/sources_documentation.md) using
   [`docs/source/documentation_tools/`](docs/source/documentation_tools).
 - Do not hand-edit [`docs/source/references.bib`](docs/source/references.bib)
   unless explicitly asked.
@@ -188,4 +195,5 @@ python reeds/remote.py
 ```
 
 When in doubt, prefer the smallest correct change, document impact clearly,
-and ask before making a change that could affect default results.
+and ask before making a change that could affect default results. Always report
+commands run and their outcomes in the final handoff.
