@@ -888,7 +888,7 @@ def setupEnvironment(
                     f'Specified single={single} but available cases are:\n'
                     + '\n> '.join([c for c in df_cases.columns])
                 )
-                raise KeyError(err)
+                raise ValueError(err)
         df_cases = df_cases[single.split(',')].copy()
         casenames = single.split(',')
 
@@ -908,6 +908,9 @@ def setupEnvironment(
                 shutil.rmtree(outpath)
         else:
             keep = [i for (i,c) in enumerate(outpaths) if c not in existing_outpaths]
+            if len(keep) == 0:
+                print('All output directories already exist and were not overwritten. Exiting without starting runs.')
+                quit()
             caseList = [caseList[i] for i in keep]
             casenames = [casenames[i] for i in keep]
             caseSwitches = [caseSwitches[i] for i in keep]
@@ -920,6 +923,12 @@ def setupEnvironment(
             skip = str(input('Do you want to run them and skip the rest? [y]/n: ') or 'y')
             if skip.lower() not in ['y','yes']:
                 raise IsADirectoryError('\n'+'\n'.join(existing_outpaths))
+
+    # Exit early if no runnable cases remain after filtering
+    all_case_names = list(df_cases.columns)
+    if len(caseList) == 0:
+        print(f"All {len(all_case_names)} scenario(s) in {cases_filename} have ignore=1. Exiting without starting runs.")
+        quit()
 
     #%% User warnings
     if (df_cases.loc['cleanup_level'].astype(int) > 0).any() and not skip_checks:
@@ -950,7 +959,9 @@ def setupEnvironment(
     elif simult_runs > 0:
         WORKERS = simult_runs
     else:
-        WORKERS = int(input('Number of simultaneous runs [integer]: '))
+        WORKERS = int(input('Number of simultaneous runs [positive integer]: '))
+        if WORKERS <= 0:
+            raise ValueError(f'Provided {WORKERS} but must be a positive integer')
 
     if 'int' in df_cases.loc['timetype'].tolist() or 'win' in df_cases.loc['timetype'].tolist():
         ccworkers = int(input('Number of simultaneous CC/Curt runs [integer]: '))
