@@ -134,6 +134,16 @@ $include inputs_case%ds%stress%stress_year%%ds%nexth.csv
 $offdelim
 $onlisting
 /
+
+nextszn(actualszn,actualszn) "Mapping between one actual period (actualszn) and the next"
+/
+$offlisting
+$ondelim
+$include inputs_case%ds%nextszn.csv
+$offdelim
+$onlisting
+/
+
 $ONEMPTY
 nextpartition(allszn,allszn) "Mapping between one partition (allszn) and the next"
 /
@@ -180,13 +190,6 @@ starting_hour_nowrap(h)$[sum{szn, h_szn_start(szn,h) }$(not Sw_HourlyWrap)] = ye
 
 final_hour_nowrap(allh) = no ;
 final_hour_nowrap(h)$[sum{szn, h_szn_end(szn,h) }$(not Sw_HourlyWrap)] = yes ;
-
-* Get the order of actual periods
-nextszn(actualszn,actualsznn)$[(ord(actualsznn) = ord(actualszn) + 1)] = yes ;
-nextszn(actualszn,actualsznn)
-    $[(ord(actualszn) = smax(actualsznnn, ord(actualsznnn)))
-    $(ord(actualsznn) = smin(actualsznnn, ord(actualsznnn)))]
-    = yes ;
 
 $onOrder
 

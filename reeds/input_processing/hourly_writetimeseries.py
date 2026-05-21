@@ -1576,7 +1576,7 @@ def main(sw, reeds_path, inputs_case, periodtype='rep', make_plots=1, logging=Tr
             ## Capacity factor and load
             hourly_plots.plot_maps(sw, inputs_case, reeds_path, figpath)
             ## Representative days
-            for year in sw.GSw_HourlyWeatherYears.split('_'):
+            for year in sw.GSw_HourlyWeatherYears:
                 f, ax, _ = reeds.reedsplots.plot_repdays(
                     case=os.path.dirname(os.path.abspath(inputs_case)),
                     year=int(year),
