@@ -146,6 +146,10 @@ Retry notes:
   walltime. It was generated with
   `torc slurm generate --profile kestrel --walltime-strategy max-partition-time`,
   producing `walltime: 2-00:00:00`, then submitted with `--max-parallel-jobs 1`.
+- Latest check of workflow `986`: 2 active Slurm allocations, 10 jobs still
+  ready, 2 jobs running, and no completed Torc results yet. Until workflow
+  `986` emits JSON result files, the table below remains the latest completed
+  benchmark result set.
 
 | framework | size | status | build_s | solve_s | total_s | peak_mb | objective |
 | --- | --- | --- | ---: | ---: | ---: | ---: | ---: |
