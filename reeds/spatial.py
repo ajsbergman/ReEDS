@@ -224,8 +224,7 @@ def apply_uniform_disaggregation(
     """
     Disaggregate a dataframe whose regional scope is the 134 legacy
     zones (as specified in the dataframe's 'region_col' column) to
-    the county level by assigning zonal values to their corresponding
-    counties uniformly.
+    the county level by copying the zonal values to their constituent counties.
     """
     county2zone = reeds.io.get_county2zone(GSw_ZoneSet='z134', as_map=False)
     county2zone['FIPS'] = 'p' + county2zone.FIPS
