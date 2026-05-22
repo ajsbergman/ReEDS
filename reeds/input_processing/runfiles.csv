@@ -466,7 +466,7 @@ yearafter.csv,inputs/sets/yearafter.csv,1,ignore,ignore,,,,,,,,set,yearafter,set
 inputs.gdx,,1,ignore,ignore,,,,,0,,,,,,
 inputs.h5,,1,ignore,ignore,,,,,0,,,,,,
 plexos_inputs.gdx,,1,ignore,ignore,,,,,0,,,,,,
-load.h5,,1,sum,ignore,wide,"year,hour",,1,keepindex,,1,,,,Disaggregation handled in hourly_load.py
+load.h5,,1,ignore,ignore,wide,"year,hour",,1,keepindex,,1,,,,Disaggregation and aggregation handled in hourly_load.py
 recf.h5,,1,recf,ignore,wide,datetime,,1,keepindex,,1,,,,
 csp.h5,,1,csp,ignore,wide,datetime,,1,keepindex,,1,,,,
 gswitches.txt,,1,ignore,ignore,,,,,0,,,,,,
@@ -474,4 +474,5 @@ scalars.txt,,1,ignore,ignore,,,,,0,,,,,,
 Project.toml,Project.toml,1,ignore,ignore,,,,,,,,,,,
 gamslice.txt,gamslice.txt,0,ignore,ignore,,,,,,,,,,,
 max_hintage_number.txt,,1,ignore,ignore,,,,,0,,,,,,
+mcs_latin_hypercube_samples.csv,,0,ignore,ignore,,,,,,,,,,,
 runreeds.py,runreeds.py,1,ignore,ignore,,,,,,,,,,,
