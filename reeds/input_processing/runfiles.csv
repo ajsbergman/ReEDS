@@ -465,7 +465,7 @@ val_transreg.csv,,1,ignore,ignore,,,,0,none,,,,,,
 val_usda_region.csv,,1,ignore,ignore,,,,0,none,,,,,,
 var_map.csv,inputs/valuestreams/var_map.csv,1,ignore,ignore,,,,,0,,,,,,
 wat_access_cap_cost.csv,inputs/waterclimate/wat_access_cap_cost.csv,int(sw.GSw_WaterMain) != 0,sc_cat,geosize,r,*wst,,0,0,value,,,,,
-water_req_psh_10h_1_51.csv,inputs/waterclimate/water_req_psh_10h_1_51.csv,(int(sw.GSw_PSHwatercon) != 0) and (int(sw.GSw_WaterMain) != 0),mean,uniform,r,wide,,1,0,,,,,,not yet ready for county-level disaggregation
+water_req_psh_10h_1_51.csv,inputs/waterclimate/water_req_psh_10h_1_51.csv,(int(sw.GSw_PSHwatercon) != 0) and (int(sw.GSw_WaterMain) != 0),sum,geosize,r,wide,,1,0,,,,,,not yet ready for county-level disaggregation
 water_with_cons_rate.csv,inputs/waterclimate/water_with_cons_rate.csv,int(sw.GSw_WaterMain) != 0,ignore,ignore,,,,,0,,,,,,
 wind_retirements.csv,,1,ignore,ignore,r,"i,v,wide",,1,0,,1,,,,disaggfunc set to ignore because data will be written at county resolution by writecapdat.py
 windcfmult.csv,,1,ignore,ignore,,,,1,0,,,,,,
