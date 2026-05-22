@@ -1137,50 +1137,6 @@ def map_and_aggregate(
 
     return df
 
-def upscale_from_county_to_ba(
-    df,
-    region_file_entry,
-    agglevel_variables,
-    regions_and_agglevel,
-    aggfunc=None
-):
-    """
-    Changes the resolution of the provided region_col from county to BA
-    or mixed resolution and aggregates according to the provided aggfunc.
-    """
-    original_cols = df.columns
-    region_col = region_file_entry['region_col']
-
-    # Exception for cendiv
-    if region_col.strip('*') == 'r_cendiv':
-        val_cendiv = regions_and_agglevel['valid_regions']['cendiv']
-        df = df.loc[df['r'].isin(regions_and_agglevel['r_county']['county'])]
-        df = df.loc[:, df.columns.isin(["r"] + val_cendiv)].reset_index(drop=True)
-        region_col = 'r'
-
-    # Aggregate values to ba resolution if not running county-level resolution
-    # and if county level is not a desired resolution in mixed resolution runs
-    if 'county' not in agglevel_variables['agglevel']:
-        df = map_and_aggregate(df,regions_and_agglevel,region_file_entry,region_col,aggfunc)
-
-
-    # Mixed resolution procedure
-    elif agglevel_variables['lvl'] == 'mult':
-        df_ba = df[df[region_col].isin(agglevel_variables['BA_county_list'])]
-        df_ba = map_and_aggregate(df_ba,regions_and_agglevel,region_file_entry,region_col,aggfunc)
-
-        # Filter out county regions
-        df_county = df[df[region_col].isin(agglevel_variables['county_regions'])]
-        # Combine county and BA
-        df = pd.concat([df_ba, df_county])
-
-    else:
-         pass
-
-    df = df[original_cols]
-
-    return df
-
 
 def write_region_indexed_file(
     df,
