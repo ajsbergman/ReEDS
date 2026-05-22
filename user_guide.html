@@ -103,6 +103,7 @@
 <li class="toctree-l2"><a class="reference internal" href="#monte-carlo-sampling-mcs">Monte Carlo Sampling (MCS)</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#quick-start-monte-carlo">Quick start: Monte Carlo</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#yaml-distribution-file-format">YAML distribution file format</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#sampling-method">Sampling method</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#tips">Tips</a></li>
 </ul>
 </li>
@@ -819,9 +820,10 @@ This approach should therefore be used with caution.</p></li>
 For example, <code class="docutils literal notranslate"><span class="pre">default</span></code> will use <code class="docutils literal notranslate"><span class="pre">inputs/userinput/mcs_distributions_default.yaml</span></code>.</p></li>
 <li><p>Set <code class="docutils literal notranslate"><span class="pre">MCS_dist_groups</span></code> to one or more YAML group names. Separate multiple groups with a dot.
 For example <code class="docutils literal notranslate"><span class="pre">tech.load_st.ng_fuel_price</span></code>.</p></li>
+<li><p>Choose the sampling method; <code class="docutils literal notranslate"><span class="pre">MCS_lhs=1</span></code> uses a Latin Hypercube sampling method and <code class="docutils literal notranslate"><span class="pre">MCS_lhs=0</span></code> uses random sampling.</p></li>
 <li><p>Run ReEDS as usual. Each Monte Carlo draw will create its own run using the sampled inputs.</p></li>
 </ol>
-<p>These three switches (<code class="docutils literal notranslate"><span class="pre">MCS_runs</span></code>,<code class="docutils literal notranslate"><span class="pre">MCS_dist</span></code>, and  <code class="docutils literal notranslate"><span class="pre">MCS_dist_groups</span></code>) are the only required controls.
+<p>These four switches (<code class="docutils literal notranslate"><span class="pre">MCS_runs</span></code>, <code class="docutils literal notranslate"><span class="pre">MCS_dist</span></code>, <code class="docutils literal notranslate"><span class="pre">MCS_dist_groups</span></code>, and <code class="docutils literal notranslate"><span class="pre">MCS_lhs</span></code>) are the only required controls.
 All other settings live in the YAML file (<code class="docutils literal notranslate"><span class="pre">inputs/userinput/mcs_distributions_{MCS_dist}.yaml</span></code>).</p>
 </section>
 <section id="yaml-distribution-file-format">
@@ -958,6 +960,28 @@ with the same <code class="docutils literal notranslate"><span class="pre">W1,</
 </div>
 <p>This enables state level uncertainty in siting supply curves for wind and solar technologies through a random draw between <code class="docutils literal notranslate"><span class="pre">limited</span></code> and <code class="docutils literal notranslate"><span class="pre">reference</span></code> conditions.</p>
 </section>
+</section>
+<section id="sampling-method">
+<h3>Sampling method<a class="headerlink" href="#sampling-method" title="Link to this heading"></a></h3>
+<p>There are two sampling approaches available for Monte Carlo analysis: random sampling and Latin Hypercube sampling.</p>
+<p>Random sampling uses the numpy <code class="docutils literal notranslate"><span class="pre">random</span></code> method for the relevant distribution to sample a set of weights.
+These weights are applied to the assignment values specified in the distribution group to generate the value for each run.
+To ensure reproducibility, the Monte Carlo run number is used as the seed value. This means that, for a given
+run configuration, run MC001 will always have the same sampled values. A global seed value (set by <code class="docutils literal notranslate"><span class="pre">MCS_seed</span></code> in <code class="docutils literal notranslate"><span class="pre">inputs/scalars.csv</span></code>)
+can be used to shift the seed values for a batch of runs; this can be useful for extending a set of runs;
+for example, if you ran already 200 runs and now want to add 100 more, set the seed value to 200 to generate
+new sampled runs.</p>
+<p>The second approach, Latin Hypercube sampling (LHS), utilizes a quasi-Monte Carlo sampling method that is
+designed to improve efficiency by reducing overlap of the sampled values. An overview of this method
+can be found in <span id="id2">[<a class="reference internal" href="model_documentation.html#id2282" title="Razi Sheikholeslami and Saman Razavi. Progressive Latin Hypercube Sampling: An efficient approach for robust sampling-based analysis of environmental models. Environmental Modelling &amp; Software, 93:109–126, July 2017. URL: https://www.sciencedirect.com/science/article/pii/S1364815216305096 (visited on 2025-10-13), doi:10.1016/j.envsoft.2017.03.010.">Sheikholeslami and Razavi, 2017</a>]</span>. For this method, an NxD matrix is generated upfront
+for all model runs based on the number of samples (N) and the independent dimensions being sampled (D).
+The values in this matrix represent sampling of the cumulative probability distribution functions,
+and are later used by the inverse CDF (percent point) functions to derive the actual sample values.
+A single global seed value (set by <code class="docutils literal notranslate"><span class="pre">MCS_seed</span></code> in <code class="docutils literal notranslate"><span class="pre">inputs/scalars.csv</span></code>) is used for all runs,
+resulting in unique sampling matrices for a given set of values of N and D.</p>
+<p>The LHS method tends to result in sampling values that converge on the true input distributions for lower numbers of samples.
+However, it does not currently support sampling for any spatial resolution besides country
+or using multivariate distributions such as the Dirichlet.</p>
 </section>
 <section id="tips">
 <h3>Tips<a class="headerlink" href="#tips" title="Link to this heading"></a></h3>
@@ -1266,8 +1290,8 @@ python<span class="w"> </span>run_hourlize.py<span class="w"> </span>resource<sp
 <p>Other key/value pairs in the <code class="docutils literal notranslate"><span class="pre">cases.json</span></code> file can also be used as subsetting variables for downselecting relevant rows from the corresponding rev_paths file. This can helpful when running hourlize for cases that don’t just differ by access and tech. To use this add the key/value pair from the rev_paths_file to the relevant cases and to the list of <code class="docutils literal notranslate"><span class="pre">subsetvars</span></code> in the base config.</p>
 <p>The current <code class="docutils literal notranslate"><span class="pre">cases.json</span></code> file in the repository contains all the settings to run the supply curves currently maintained by ReEDS.</p>
 </section>
-<section id="id2">
-<h4>Tips<a class="headerlink" href="#id2" title="Link to this heading"></a></h4>
+<section id="id3">
+<h4>Tips<a class="headerlink" href="#id3" title="Link to this heading"></a></h4>
 <ul class="simple">
 <li><p>If you want the hourlize runs to be copied back the shared supply curve folder, set <code class="docutils literal notranslate"><span class="pre">copy_to_shared</span> <span class="pre">=</span> <span class="pre">true</span></code>.</p>
 <ul>
@@ -1751,7 +1775,7 @@ These characteristics include:</p>
 
   <div role="contentinfo">
     <p>&#169; Copyright 2024, NREL.
-      <span class="lastupdated">Last updated on May 21, 2026.
+      <span class="lastupdated">Last updated on May 22, 2026.
       </span></p>
   </div>
 
