@@ -425,7 +425,7 @@ transmission_cost_dc.csv,inputs/transmission/transmission_cost_dc_{lvl}.csv,1,tr
 transmission_distance.csv,inputs/transmission/transmission_distance_{lvl}.h5,1,trans_lookup,ignore,"r,rr",,,0,0,drop_dup_r,,,,,Stored in wide-format h5 to reduce county filesize but converted to long in copy_files.py
 transmission_line_fom.csv,,1,trans_lookup,ignore,"*r,rr",trtype,,0,0,drop_dup_r,1,,,,disaggfunc set to ignore because all transmisison data will be read into model at the correct spatial resolution
 trtype.csv,inputs/sets/trtype.csv,1,ignore,ignore,,,,,,,,set,trtype,transmission capacity type,
-unapp_water_sea_distr.csv,inputs/waterclimate/unapp_water_sea_distr.csv,int(sw.GSw_WaterMain) != 0,mean,geosize,r,"wst,wide",,1,0,,,,,,
+unapp_water_sea_distr.csv,inputs/waterclimate/unapp_water_sea_distr.csv,int(sw.GSw_WaterMain) != 0,mean,uniform,r,"wst,wide",,1,0,,,,,,
 UnappWaterMult.csv,inputs/climate/{climatescen}/UnappWaterMult.csv,int(sw.GSw_ClimateWater) != 0,mean,uniform,r,"wst,month,t",,0,0,,,,,,
 UnappWaterMultAnn.csv,inputs/climate/{climatescen}/UnappWaterMultAnn.csv,int(sw.GSw_ClimateWater) != 0,mean,uniform,r,"wst,t",,0,0,,,,,,
 UnappWaterSeaAnnDistr.csv,inputs/climate/{climatescen}/UnappWaterSeaAnnDistr.csv,int(sw.GSw_ClimateWater) != 0,mean,uniform,r,"wst,month,t",,0,0,,,,,,
