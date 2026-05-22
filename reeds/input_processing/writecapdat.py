@@ -767,7 +767,7 @@ def main(reeds_path, inputs_case, agglevel, regions):
     fpath = Path(reeds.io.reeds_path, 'inputs', 'sets', '_pcat.csv')
     _pcat = pd.read_csv(fpath, header=None).squeeze(1).tolist()
     i = reeds.io.read_input(inputs_case, 'i').squeeze(1).tolist()
-    pcat = pd.Series(i + _pcat, name='*')
+    pcat = pd.Series(i + _pcat)
 
 
     #%%----------------------------------------------------------------------------

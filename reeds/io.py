@@ -1776,7 +1776,7 @@ def write_to_inputs_h5(
     df:pd.DataFrame|pd.Series,
     key:str,
     case:str|Path,
-    gamstype:Literal['set','parameter']='set',
+    gamstype:Literal['set','parameter'],
     comment:str='',
     units:str='',
     verbose:int|bool=1,
@@ -1787,7 +1787,11 @@ def write_to_inputs_h5(
 
     Args:
         df (pd.Series or pd.DataFrame): Long-formatted series/dataframe (where "long
-        format" means there is a single data column; all the other columns are indices)
+            format" means there is a single data column; all the other columns are indices).
+            If an unnamed pd.Series is provided, it is assumed to be a primary set and
+            is renamed to '*'. Otherwise, the name of the pd.Series (or the column names of
+            a pd.DataFrame) should match the indices used by the corresponding set/parameter
+            in GAMS.
         key (str): Name of the key to be written to inputs.h5
         case (str or Path): Absolute path to a ReEDS case OR inputs_case OR inputs.h5.
             That is, any of the following work as inputs:
@@ -1815,6 +1819,8 @@ def write_to_inputs_h5(
     ## We write all the info in the dataframe but ignore the index, so if sets are used
     ## as the index, move them into the dataframe
     if isinstance(dfwrite, pd.Series):
+        if dfwrite.name is None:
+            dfwrite.name = '*'
         dfwrite = dfwrite.to_frame()
     if isinstance(dfwrite.index, pd.MultiIndex) or dfwrite.index.name:
         dfwrite = dfwrite.reset_index()
@@ -1843,7 +1849,7 @@ def write_to_inputs_h5(
 def write_csv_to_inputs_h5(
     filepath:str|Path,
     case:str|Path,
-    gamstype:Literal['set','parameter']='set',
+    gamstype:Literal['set','parameter'],
     comment:str='',
     **kwargs,
 ):

@@ -523,7 +523,7 @@ def main(reeds_path, inputs_case):
     ### Overwrite the original hierarchy.csv based on capcredit_hierarchy_level
     hierarchy.rename_axis('*r').to_csv(
         os.path.join(inputs_case, 'hierarchy.csv'), index=True, header=True)
-    ccreg = pd.Series(hierarchy.ccreg.unique(), name='*')
+    ccreg = pd.Series(hierarchy.ccreg.unique())
     reeds.io.write_to_inputs_h5(
         ccreg, 'ccreg', inputs_case, gamstype='set', comment='capacity credit region',
     )

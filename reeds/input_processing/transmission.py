@@ -494,7 +494,7 @@ for col, label in labels.items():
         index=False,
     )
 reeds.io.write_to_inputs_h5(
-    df=transmission_cost_ac.tscbin.drop_duplicates().rename('*').to_frame(),
+    df=transmission_cost_ac.tscbin.drop_duplicates().rename(),
     key='tscbin',
     case=inputs_case,
     gamstype='set',

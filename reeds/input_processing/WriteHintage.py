@@ -624,7 +624,7 @@ def main(reeds_path, inputs_case):
     v = initv + newv
 
     reeds.io.write_to_inputs_h5(
-        pd.Series(v, name='*'), 'v', inputs_case, gamstype='set',
+        pd.Series(v), 'v', inputs_case, gamstype='set',
         comment='technology class',
     )
     for (name, ds, comment) in [

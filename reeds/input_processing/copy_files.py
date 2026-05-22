@@ -355,7 +355,7 @@ def get_regions_and_agglevel(
     hier_sub[['r','itlgrp']].rename(columns={'r':'*r'}).to_csv(
         os.path.join(inputs_case, 'hierarchy_itlgrp.csv'), index=False)
 
-    itlgrp = hier_sub['itlgrp'].drop_duplicates().rename('*')
+    itlgrp = hier_sub['itlgrp'].drop_duplicates().rename()
     reeds.io.write_to_inputs_h5(
         itlgrp, 'itlgrp', inputs_case, gamstype='set',
         comment='zone for additional interface transfer limit constraint',
@@ -384,12 +384,12 @@ def get_regions_and_agglevel(
             'usda_region': 'biomass supply curve region',
         }
         for level, comment in comments.items():
-            df = pd.Series(hier_sub[level].unique(), name='*')
+            df = pd.Series(hier_sub[level].unique())
             reeds.io.write_to_inputs_h5(df, level, inputs_case, gamstype='set', comment=comment)
 
         # Use a modified version of val_st that includes 'voluntary'
         reeds.io.write_to_inputs_h5(
-            pd.Series(val_st, name='*'), 'st', inputs_case, gamstype='set',
+            pd.Series(val_st), 'st', inputs_case, gamstype='set',
             comment="state (or special 'voluntary' entry for corporate procurements)",
         )
 
@@ -414,7 +414,7 @@ def get_regions_and_agglevel(
     # Export region files
     if save_regions_and_agglevel:
         reeds.io.write_to_inputs_h5(
-            pd.Series(val_r, name='*'), 'r', inputs_case, gamstype='set',
+            pd.Series(val_r), 'r', inputs_case, gamstype='set',
             comment='regions',
         )
 
@@ -1498,7 +1498,7 @@ def write_miscellaneous_files(
     )[sw['GSw_PRM_CapCreditSeasons']].rename('ccseason')
     ccseason_dates.to_csv(os.path.join(inputs_case, 'ccseason_dates.csv'))
     reeds.io.write_to_inputs_h5(
-        df=ccseason_dates.drop_duplicates().rename('*').reset_index(drop=True),
+        df=ccseason_dates.drop_duplicates().rename().reset_index(drop=True),
         key='ccseason',
         case=inputs_case,
         gamstype='set',
