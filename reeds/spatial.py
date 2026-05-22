@@ -3,6 +3,7 @@ import sys
 import pandas as pd
 import geopandas as gpd
 from pathlib import Path
+from typing import Literal
 sys.path.append(str(Path(__file__).parent.parent))
 import reeds
 
@@ -244,7 +245,7 @@ def apply_variable_disaggregation(
     region_col: str,
     fix_cols: list[str],
     inputs_case: str,
-    disagg_variable: str
+    disagg_variable: Literal['hydroexist', 'geosize', 'population']
 ):
     """
     Disaggregate a dataframe whose regional scope is the 134 legacy zones
@@ -314,7 +315,7 @@ def apply_supply_curve_disaggregation(
     region_col: str,
     fix_cols: list[str],
     inputs_case: str,
-    disagg_variable: str
+    disagg_variable: Literal['hydroexist', 'geosize', 'population']
 ):
     """
     Disaggregate a supply curve dataframe whose regional scope is the 134
