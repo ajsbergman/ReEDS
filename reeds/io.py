@@ -1772,7 +1772,7 @@ def write_to_h5(
                 )
 
 
-def write_input_to_h5(
+def write_to_inputs_h5(
     df:pd.DataFrame|pd.Series,
     key:str,
     case:str|Path,
@@ -1840,7 +1840,7 @@ def write_input_to_h5(
         print(f'{Path(h5path).name}: Wrote {key} from {calling_file}')
 
 
-def write_csv_to_h5(
+def write_csv_to_inputs_h5(
     filepath:str|Path,
     case:str|Path,
     gamstype:Literal['set','parameter']='set',
@@ -1875,7 +1875,7 @@ def write_csv_to_h5(
         )
         raise ValueError(err)
     ## Write it
-    reeds.io.write_input_to_h5(
+    reeds.io.write_to_inputs_h5(
         df=df,
         key=key,
         case=case,

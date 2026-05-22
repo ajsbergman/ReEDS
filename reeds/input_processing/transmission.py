@@ -493,7 +493,7 @@ for col, label in labels.items():
         os.path.join(inputs_case, f'tsc_{label}.csv'),
         index=False,
     )
-reeds.io.write_input_to_h5(
+reeds.io.write_to_inputs_h5(
     df=transmission_cost_ac.tscbin.drop_duplicates().rename('*').to_frame(),
     key='tscbin',
     case=inputs_case,

@@ -868,11 +868,11 @@ def main(
         return period_szn_write
 
     #%% Write the sets over all possible periods (representative and stress)
-    reeds.io.write_input_to_h5(
+    reeds.io.write_to_inputs_h5(
         pd.Series(set_allszn, name='*'), 'allszn', inputs_case, gamstype='set',
         comment='all potentially modeled time periods (days/weks)',
     )
-    reeds.io.write_input_to_h5(
+    reeds.io.write_to_inputs_h5(
         pd.Series(set_allh, name='*'), 'allh', inputs_case, gamstype='set',
         comment='all potentially modeled time chunks (hour groupings)',
     )

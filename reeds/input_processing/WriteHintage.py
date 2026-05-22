@@ -623,7 +623,7 @@ def main(reeds_path, inputs_case):
     newv = [f'new{i}' for i in range(1, int(sw.numclass)+1)]
     v = initv + newv
 
-    reeds.io.write_input_to_h5(
+    reeds.io.write_to_inputs_h5(
         pd.Series(v, name='*'), 'v', inputs_case, gamstype='set',
         comment='technology class',
     )
@@ -631,7 +631,7 @@ def main(reeds_path, inputs_case):
         ('initv', initv, 'initial technologies'),
         ('newv', newv, 'new technologies'),
     ]:
-        reeds.io.write_input_to_h5(
+        reeds.io.write_to_inputs_h5(
             pd.Series(ds, name='v'), name, inputs_case, gamstype='set',
             comment=comment,
         )

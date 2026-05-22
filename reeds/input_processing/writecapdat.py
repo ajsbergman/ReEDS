@@ -910,7 +910,7 @@ if __name__ == '__main__':
     }
     for key, df in data.items():
         if gamstype.get(key, False):
-            reeds.io.write_input_to_h5(
+            reeds.io.write_to_inputs_h5(
                 df=df, key=outname.get(key, key), case=inputs_case, gamstype=gamstype[key],
                 comment=comments.get(key, ''),
             )

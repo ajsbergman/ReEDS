@@ -524,7 +524,7 @@ def main(reeds_path, inputs_case):
     hierarchy.rename_axis('*r').to_csv(
         os.path.join(inputs_case, 'hierarchy.csv'), index=True, header=True)
     ccreg = pd.Series(hierarchy.ccreg.unique(), name='*')
-    reeds.io.write_input_to_h5(
+    reeds.io.write_to_inputs_h5(
         ccreg, 'ccreg', inputs_case, gamstype='set', comment='capacity credit region',
     )
 

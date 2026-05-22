@@ -356,7 +356,7 @@ def get_regions_and_agglevel(
         os.path.join(inputs_case, 'hierarchy_itlgrp.csv'), index=False)
 
     itlgrp = hier_sub['itlgrp'].drop_duplicates().rename('*')
-    reeds.io.write_input_to_h5(
+    reeds.io.write_to_inputs_h5(
         itlgrp, 'itlgrp', inputs_case, gamstype='set',
         comment='zone for additional interface transfer limit constraint',
     )
@@ -385,10 +385,10 @@ def get_regions_and_agglevel(
         }
         for level, comment in comments.items():
             df = pd.Series(hier_sub[level].unique(), name='*')
-            reeds.io.write_input_to_h5(df, level, inputs_case, gamstype='set', comment=comment)
+            reeds.io.write_to_inputs_h5(df, level, inputs_case, gamstype='set', comment=comment)
 
         # Use a modified version of val_st that includes 'voluntary'
-        reeds.io.write_input_to_h5(
+        reeds.io.write_to_inputs_h5(
             pd.Series(val_st, name='*'), 'st', inputs_case, gamstype='set',
             comment="state (or special 'voluntary' entry for corporate procurements)",
         )
@@ -402,7 +402,7 @@ def get_regions_and_agglevel(
 
         # Write offshore zones
         offshore = hier_sub.loc[hier_sub.offshore == 1, 'r']
-        reeds.io.write_input_to_h5(
+        reeds.io.write_to_inputs_h5(
             offshore, 'offshore', inputs_case, gamstype='set', comment='offshore zones',
         )
 
@@ -413,7 +413,7 @@ def get_regions_and_agglevel(
 
     # Export region files
     if save_regions_and_agglevel:
-        reeds.io.write_input_to_h5(
+        reeds.io.write_to_inputs_h5(
             pd.Series(val_r, name='*'), 'r', inputs_case, gamstype='set',
             comment='regions',
         )
@@ -986,7 +986,7 @@ def write_non_region_file(
 
         else:
             if str(row.GAMStype).lower() == 'set':
-                reeds.io.write_csv_to_h5(
+                reeds.io.write_csv_to_inputs_h5(
                     filepath=row.full_filepath,
                     case=case,
                     gamstype=row.GAMStype.lower(),
@@ -1381,7 +1381,7 @@ def write_miscellaneous_files(
 
     gwp_write['H2'] = scalars.loc['h2_gwp','value'].copy()
 
-    reeds.io.write_input_to_h5(
+    reeds.io.write_to_inputs_h5(
         gwp_write, 'gwp', inputs_case, gamstype='parameter',
         comment='--metric ton CO2-equivalents-- global warming potential',
     )
@@ -1414,7 +1414,7 @@ def write_miscellaneous_files(
     # Apply the emission share to national cap to get the emission cap trajectory of GSw_Region
     co2_cap *= region_em_share
 
-    reeds.io.write_input_to_h5(
+    reeds.io.write_to_inputs_h5(
         co2_cap, 'co2_cap', inputs_case, gamstype='parameter',
         comment='--metric tons-- CO2 emissions cap used when Sw_AnnualCap is on',
     )
@@ -1423,7 +1423,7 @@ def write_miscellaneous_files(
     co2_tax = pd.read_csv(
         os.path.join(reeds_path,'inputs','emission_constraints','co2_tax.csv'), index_col='t',
     )[sw['GSw_CarbTaxOption']].rename_axis('allt')
-    reeds.io.write_input_to_h5(
+    reeds.io.write_to_inputs_h5(
         co2_tax, 'co2_tax', inputs_case, gamstype='parameter',
         comment='--$/metric ton-- CO2 tax used when Sw_CarbTax is on',
     )
@@ -1435,13 +1435,13 @@ def write_miscellaneous_files(
     solveyears = [y for y in solveyears if (y >= int(sw['startyear'])) and (y <= int(sw['endyear']))]
     pd.DataFrame(columns=solveyears).to_csv(
         os.path.join(inputs_case,'modeledyears.csv'), index=False)
-    reeds.io.write_input_to_h5(
+    reeds.io.write_to_inputs_h5(
         pd.Series(solveyears, name='allt'), 'tmodel_new', inputs_case, gamstype='set',
         comment='years to run the model',
     )
 
     t = pd.Series(range(int(sw.startyear), int(sw.endyear)+1), name='allt')
-    reeds.io.write_input_to_h5(
+    reeds.io.write_to_inputs_h5(
         pd.Series(t, name='allt'), 't', inputs_case, gamstype='set',
         comment='full set of years',
     )
@@ -1450,7 +1450,7 @@ def write_miscellaneous_files(
         os.path.join(reeds_path,'inputs','national_generation','gen_mandate_trajectory.csv'),
         index_col='GSw_GenMandateScen'
     ).loc[sw['GSw_GenMandateScen']].rename_axis('allt')
-    reeds.io.write_input_to_h5(
+    reeds.io.write_to_inputs_h5(
         gen_mandate_trajectory, 'national_gen_frac', inputs_case, gamstype='parameter',
         comment='--fraction-- national fraction of load + losses that must be met by RE',
     )
@@ -1459,7 +1459,7 @@ def write_miscellaneous_files(
         os.path.join(reeds_path,'inputs','national_generation','nat_gen_tech_frac.csv'),
         index_col='*i',
     )[sw['GSw_GenMandateList']].rename_axis('i')
-    reeds.io.write_input_to_h5(
+    reeds.io.write_to_inputs_h5(
         nat_gen_tech_frac, 'nat_gen_tech_frac', inputs_case, gamstype='parameter',
         comment='--fraction-- fraction of each tech generation that may be counted toward eq_national_gen',
     )
@@ -1497,7 +1497,7 @@ def write_miscellaneous_files(
         index_col=['month', 'day'],
     )[sw['GSw_PRM_CapCreditSeasons']].rename('ccseason')
     ccseason_dates.to_csv(os.path.join(inputs_case, 'ccseason_dates.csv'))
-    reeds.io.write_input_to_h5(
+    reeds.io.write_to_inputs_h5(
         df=ccseason_dates.drop_duplicates().rename('*').reset_index(drop=True),
         key='ccseason',
         case=inputs_case,
