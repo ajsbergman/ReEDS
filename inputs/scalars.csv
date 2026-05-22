@@ -53,6 +53,7 @@ inverter_efficiency,0.98,"--fraction-- one-way efficiency of AC-DC or DC-AC conv
 lb_per_tonne,2204.62,"--lb/metric ton-- pound per metric ton"
 maxage_default,100,"--years-- maximum age for technogies (default if no entry in maxage.csv)"
 min_co2_spurline_miles,20,"--miles-- minimum distance for a CO2 spur line (used to provide a floor for pipeline distances in r_cs_distance)"
+MCS_seed,0,"global seed for sampling in Monte Carlo analysis (see mcs_sampler.py)"
 minCF_nuclear_flex,0.06,"--fraction-- fleet mincf for nuclear when using flexible nuclear"
 minloadfrac_coal,0.5,"--fraction-- coal mingen"
 minloadfrac_csp,0.15,"--fraction-- CSP mingen"
