@@ -233,33 +233,37 @@ def get_clusters(
     return cluster_assignment
 
 
-def round_to_integers(rweights, numdays):
+def round_to_integers(rweights, numperiods):
     ### Convert to integers
     iweights = rweights.round(0).astype(int)
     ### Scale all weights little by little until they sum to number of actual days
     sumweights = iweights.sum()
-    diffweights = sumweights - numdays
+    diffweights = sumweights - numperiods
     increment = 0.00001 * (1 if diffweights < 0 else -1)
     for i in range(1000000):
         iweights = (rweights * (1 + increment*i)).round(0).astype(int)
-        if iweights.sum() == numdays:
+        if iweights.sum() == numperiods:
             break
 
     iweights = iweights.replace(0,np.nan).dropna().astype(int)
     ### Make sure it worked
-    if iweights.sum() != numdays:
-        raise ValueError(f'Sum of rounded weights = {iweights.sum()} != {numdays}')
+    if iweights.sum() != numperiods:
+        raise ValueError(f'Sum of rounded weights = {iweights.sum()} != {numperiods}')
     return iweights
 
 
 def minimize_abs_error_in_means(basis_periods, target_feature_mean):
     """
+    Weight days from basis_periods to minimize the sum of absolute error vs
+    target_feature_mean values by feature & region.
+    The method is described at https://doi.org/10.1016/j.energy.2025.135830.
     """
     import pulp
     ### Input processing
     assert (target_feature_mean.index == basis_periods.columns).all()
 
     days = basis_periods.index.values
+
     ### Optimization: minimize sum of absolute errors
     m = pulp.LpProblem('LinearDaySelection', pulp.LpMinimize)
     ###### Variables
@@ -291,7 +295,7 @@ def minimize_abs_error_in_means(basis_periods, target_feature_mean):
     ### Solve it
     m.solve(solver=pulp.PULP_CBC_CMD(msg=True))
 
-    ### Collect weights, scaled by total number of days
+    ### Collect weights
     weights = pd.Series({d:WEIGHT[d].varValue for d in days})
     return weights
 
@@ -299,18 +303,10 @@ def minimize_abs_error_in_means(basis_periods, target_feature_mean):
 def optimize_period_weights(
     profiles_fitperiods,
     target_feature_mean=None,
-    numclusters=35,
+    numperiods=35,
 ):
     """
-    The optimization approach (minimizing sum of absolute errors) is described at
-    https://optimization.mccormick.northwestern.edu/index.php/Optimization_with_absolute_values
-    The general idea of optimizing period weights to reproduce regional variability is similar
-    to the method used in the EPRI US-REGEN model, described at
-    https://www.epri.com/research/products/000000003002016601
     """
-    ### Imports
-    import pulp
-
     ### Input processing
     profiles_day = (
         profiles_fitperiods.groupby(['property','region'], axis=1)
@@ -322,49 +318,20 @@ def optimize_period_weights(
         assert (target_feature_mean.index == profiles_day.mean().index).all()
         assert target_feature_mean.isnull().sum() == 0
 
-    numdays = len(profiles_day)
+    ### Get weights and scale by number of days
+    weights = minimize_abs_error_in_means(
+        basis_periods=profiles_day,
+        target_feature_mean=target_feature_mean,
+    )
+    numperiods = len(profiles_day)
+    weights *= numperiods
 
-    days = profiles_day.index.values
-    ### Optimization: minimize sum of absolute errors
-    m = pulp.LpProblem('LinearDaySelection', pulp.LpMinimize)
-    ###### Variables
-    ### day weights
-    WEIGHT = pulp.LpVariable.dicts('WEIGHT', (d for d in days), lowBound=0, cat='Continuous')
-    ### errors
-    ERROR_POS = pulp.LpVariable.dicts(
-        'ERROR_POS', (c for c in profiles_day.columns), lowBound=0, cat='Continuous')
-    ERROR_NEG = pulp.LpVariable.dicts(
-        'ERROR_NEG', (c for c in profiles_day.columns), lowBound=0, cat='Continuous')
-    ###### Constraints
-    ### weights must sum to 1
-    m += pulp.lpSum([WEIGHT[d] for d in days]) == 1
-    ### definition of errors
-    for c in profiles_day.columns:
-        m += (
-            ### Full error for column (given by positive component minus negative component)...
-            ERROR_POS[c] - ERROR_NEG[c]
-            ### ...plus sum of values for weighted representative days...
-            + pulp.lpSum([WEIGHT[d] * profiles_day[c][d] for d in days])
-            ### ...equals the mean for that column
-            == target_feature_mean[c])
-    ###### Objective: minimize the sum of absolute values of errors across all columns
-    m += pulp.lpSum([
-        ERROR_POS[c] + ERROR_NEG[c]
-        for c in profiles_day.columns
-    ])
-
-    ### Solve it
-    m.solve(solver=pulp.PULP_CBC_CMD(msg=True))
-
-    ### Collect weights, scaled by total number of days
-    weights = pd.Series({d:WEIGHT[d].varValue for d in days}) * numdays
-
-    ### Truncate based on numclusters, scale appropriately, and convert to integers
-    ### Keep the the 'numclusters' highest-weighted days
-    rweights = (weights.sort_values(ascending=False)[:numclusters])
-    ### Scale so that the weights sum to numdays (have to do if numclusters is small)
-    rweights *= numdays / rweights.sum()
-    iweights = round_to_integers(rweights, numdays)
+    ### Truncate based on numperiods, scale appropriately, and convert to integers
+    ### Keep the the 'numperiods' highest-weighted days
+    rweights = (weights.sort_values(ascending=False)[:numperiods])
+    ### Scale so that the weights sum to numperiods (have to do if numperiods is small)
+    rweights *= numperiods / rweights.sum()
+    iweights = round_to_integers(rweights, numperiods)
 
     return profiles_day, iweights, weights
 
@@ -372,7 +339,7 @@ def optimize_period_weights(
 def optimize_defined_period_weights(
     basis_periods,
     target_feature_mean,
-    numdays=365,
+    numperiods=365,
 ):
     """
     Similar to optimize_period_weights(), but here we provide the basis set instead of
@@ -381,12 +348,12 @@ def optimize_defined_period_weights(
     ### Get weights
     weights = minimize_abs_error_in_means(basis_periods, target_feature_mean)
 
-    ### Truncate based on numclusters, scale appropriately, and convert to integers
-    ### Keep the the 'numclusters' highest-weighted days
+    ### Truncate based on numperiods, scale appropriately, and convert to integers
+    ### Keep the the 'numperiods' highest-weighted days
     rweights = (weights.sort_values(ascending=False)[:len(basis_periods)])
-    ### Scale so that the weights sum to numdays (have to do if numclusters is small)
-    rweights *= numdays / rweights.sum()
-    iweights = round_to_integers(rweights, numdays)
+    ### Scale so that the weights sum to numperiods (have to do if numperiods is small)
+    rweights *= numperiods / rweights.sum()
+    iweights = round_to_integers(rweights, numperiods)
 
     return iweights, weights
 
