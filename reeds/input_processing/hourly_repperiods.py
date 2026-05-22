@@ -173,7 +173,7 @@ def cluster_profiles(profiles_fitperiods, sw, forceperiods_yearperiod):
         ### Optimize the weights of representative days
         profiles_day, iweights, weights = reeds.timeseries.optimize_period_weights(
             profiles_fitperiods=profiles_fitperiods,
-            numclusters=int(sw['GSw_HourlyNumClusters']),
+            numperiods=int(sw['GSw_HourlyNumClusters']),
         )
         ### Optimize the assignment of actual days to representative days
         mapfunc = {
@@ -694,10 +694,10 @@ if __name__ == '__main__':
     inputs_case = args.inputs_case
 
     # #%% Settings for testing
-    # reeds_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    # reeds_path = reeds.io.reeds_path
     # inputs_case = os.path.join(
     #     reeds_path,'runs',
-    #     'v20260411_itlM0_USA_faster','inputs_case','')
+    #     'v20260521_rep15M0_Pacific','inputs_case','')
     # interactive = True
 
     #%% Set up logger
