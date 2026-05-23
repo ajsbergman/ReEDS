@@ -22,6 +22,11 @@ def get_pras_stress_metric(case, t, iteration=0, stress_metric='EUE'):
     """
     """
     ### Get PRAS outputs
+    # NEUE load division takes place in the caller function
+    # get_stress_metric_periods() or get_annual_stress_metric() based on agg_period
+    if stress_metric.upper() == 'NEUE':
+        stress_metric = 'EUE'
+
     dfpras = reeds.io.read_pras_results(
         os.path.join(case, 'handoff', 'PRAS', f"PRAS_{t}i{iteration}.h5")
     )
@@ -79,7 +84,7 @@ def get_stress_metric_periods(
     )
 
     ###### Calculate the stress metric by period
-    if stress_metric.upper() in ['EUE', 'LOLE']:
+    if stress_metric.upper() != 'NEUE':
         ### Aggregate according to period_agg_method
         dfmetric_period = (
             dfmetric
@@ -87,7 +92,7 @@ def get_stress_metric_periods(
             .agg(period_agg_method)
             .rename_axis(['y','m','d'])
         )
-    elif stress_metric.upper() == 'NEUE':
+    else:
         ### Get load at hierarchy_level
         dfload = reeds.io.read_h5py_file(
             os.path.join(
@@ -413,15 +418,7 @@ def get_stress_metrics_sorted_periods(sw, t, iteration):
     # Validation check: Display any GSw_PRM_StressThreshold{metric}
     # that is not specified in GSw_PRM_StressThresholdMetrics
     stress_metric_switches = sw.GSw_PRM_StressThresholdMetrics.split('/')
-    stressThresholdMetrics = [s.split('GSw_PRM_StressThreshold')[1] 
-                             for s in sw.keys() if s.startswith('GSw_PRM_StressThreshold')
-                             and not s.endswith('Metrics')
-                             ]
     
-    for s in stressThresholdMetrics:
-        if s not in stress_metric_switches:
-            print(f"Warning: {s} is not included in GSw_PRM_StressThresholdMetrics, so it will not be evaluated")
-
     # stress periods column names for writing outputs
     stress_metrics_units = {'EUE':'MWh', 'NEUE':'ppm', 'LOLE':'days'}
     stress_metrics_col_names = {m:f'{m}_{stress_metrics_units[m]}' for m in 
