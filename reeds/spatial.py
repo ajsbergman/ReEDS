@@ -245,7 +245,7 @@ def apply_variable_disaggregation(
     region_col: str,
     fix_cols: list[str],
     inputs_case: str,
-    disagg_variable: Literal['hydroexist', 'geosize', 'population']
+    disagg_variable: Literal['hydroexist', 'geosize', 'population', 'state_lpf']
 ):
     """
     Disaggregate a dataframe whose regional scope is the 134 legacy zones
@@ -315,7 +315,7 @@ def apply_supply_curve_disaggregation(
     region_col: str,
     fix_cols: list[str],
     inputs_case: str,
-    disagg_variable: Literal['hydroexist', 'geosize', 'population']
+    disagg_variable: Literal['hydroexist', 'geosize', 'population', 'state_lpf']
 ):
     """
     Disaggregate a supply curve dataframe whose regional scope is the 134
@@ -387,7 +387,7 @@ def downscale_from_legacy_zone_to_county(
     match disaggfunc:
         case 'uniform':
             df = apply_uniform_disaggregation(df, region_col)
-        case 'geosize' | 'hydroexist' | 'population':
+        case 'geosize' | 'hydroexist' | 'population' | 'state_lpf':
             if 'sc_cat' in df.columns:
                 df = apply_supply_curve_disaggregation(
                     df,
