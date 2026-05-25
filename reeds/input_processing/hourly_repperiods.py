@@ -134,7 +134,7 @@ def cluster_profiles(profiles_fitperiods, sw, forceperiods_yearperiod):
         or sw['GSw_HourlyClusterAlgorithm'].lower().startswith('kme')
     ):
         ### Generate the fits
-        cluster_assignment = reeds.temporal.get_clusters(
+        cluster_assignment = reeds.timeseries.get_clusters(
             profiles_fitperiods,
             GSw_HourlyClusterAlgorithm=sw.GSw_HourlyClusterAlgorithm,
             GSw_HourlyNumClusters=int(sw.GSw_HourlyNumClusters),
@@ -170,10 +170,14 @@ def cluster_profiles(profiles_fitperiods, sw, forceperiods_yearperiod):
         ]).sort_values('period').set_index('period').szn
 
     elif sw['GSw_HourlyClusterAlgorithm'] in ['opt','optimized','optimize']:
+        profiles_period_mean = (
+            profiles_fitperiods.groupby(['property','region'], axis=1)
+            .mean()
+        )
         ### Optimize the weights of representative days
-        profiles_day, iweights, weights = reeds.timeseries.optimize_period_weights(
-            profiles_fitperiods=profiles_fitperiods,
-            numperiods=int(sw['GSw_HourlyNumClusters']),
+        iweights, weights = reeds.timeseries.optimize_period_weights(
+            profiles_period_mean=profiles_period_mean,
+            GSw_HourlyNumClusters=int(sw['GSw_HourlyNumClusters']),
         )
         ### Optimize the assignment of actual days to representative days
         mapfunc = {
@@ -181,7 +185,7 @@ def cluster_profiles(profiles_fitperiods, sw, forceperiods_yearperiod):
             'bestfirst': reeds.timeseries.match_act2rep_bestfirst,
         }[sw.get('GSw_HourlyClusterMapMethod', 'milp')]
         a2r = mapfunc(
-            profiles_day=profiles_day.round(4),
+            profiles_period_mean=profiles_period_mean.round(4),
             iweights=iweights,
         )
 
@@ -697,7 +701,7 @@ if __name__ == '__main__':
     # reeds_path = reeds.io.reeds_path
     # inputs_case = os.path.join(
     #     reeds_path,'runs',
-    #     'v20260521_rep15M0_Pacific','inputs_case','')
+    #     'v20260525_repM0_USA_fast','inputs_case','')
     # interactive = True
 
     #%% Set up logger

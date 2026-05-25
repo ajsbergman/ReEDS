@@ -233,22 +233,22 @@ def get_clusters(
     return cluster_assignment
 
 
-def round_to_integers(rweights, numperiods):
+def round_to_integers(rweights, num_actual_periods):
     ### Convert to integers
     iweights = rweights.round(0).astype(int)
     ### Scale all weights little by little until they sum to number of actual days
     sumweights = iweights.sum()
-    diffweights = sumweights - numperiods
+    diffweights = sumweights - num_actual_periods
     increment = 0.00001 * (1 if diffweights < 0 else -1)
     for i in range(1000000):
         iweights = (rweights * (1 + increment*i)).round(0).astype(int)
-        if iweights.sum() == numperiods:
+        if iweights.sum() == num_actual_periods:
             break
 
     iweights = iweights.replace(0,np.nan).dropna().astype(int)
     ### Make sure it worked
-    if iweights.sum() != numperiods:
-        raise ValueError(f'Sum of rounded weights = {iweights.sum()} != {numperiods}')
+    if iweights.sum() != num_actual_periods:
+        raise ValueError(f'Sum of rounded weights = {iweights.sum()} != {num_actual_periods}')
     return iweights
 
 
@@ -301,42 +301,37 @@ def minimize_abs_error_in_means(basis_periods, target_feature_mean):
 
 
 def optimize_period_weights(
-    profiles_fitperiods,
+    profiles_period_mean,
     target_feature_mean=None,
-    numperiods=35,
+    GSw_HourlyNumClusters=35,
 ):
     """
     """
     ### Input processing
-    profiles_day = (
-        profiles_fitperiods.groupby(['property','region'], axis=1)
-        .mean()
-    )
     if target_feature_mean is None:
-        target_feature_mean = profiles_day.mean()
+        target_feature_mean = profiles_period_mean.mean()
     else:
-        assert (target_feature_mean.index == profiles_day.mean().index).all()
+        assert (target_feature_mean.index == profiles_period_mean.mean().index).all()
         assert target_feature_mean.isnull().sum() == 0
 
     ### Get weights and scale by number of days
     weights = minimize_abs_error_in_means(
-        basis_periods=profiles_day,
+        basis_periods=profiles_period_mean,
         target_feature_mean=target_feature_mean,
     )
-    numperiods = len(profiles_day)
-    weights *= numperiods
 
-    ### Truncate based on numperiods, scale appropriately, and convert to integers
-    ### Keep the the 'numperiods' highest-weighted days
-    rweights = (weights.sort_values(ascending=False)[:numperiods])
-    ### Scale so that the weights sum to numperiods (have to do if numperiods is small)
-    rweights *= numperiods / rweights.sum()
-    iweights = round_to_integers(rweights, numperiods)
+    ### Truncate based on GSw_HourlyNumClusters, scale appropriately, and convert to integers
+    ### Keep the the 'GSw_HourlyNumClusters' highest-weighted days
+    rweights = (weights.sort_values(ascending=False)[:GSw_HourlyNumClusters])
+    ### Scale so that the weights sum to numperiods (have to do if GSw_HourlyNumClusters is small)
+    num_actual_periods = len(profiles_period_mean)
+    rweights *= num_actual_periods / rweights.sum()
+    iweights = round_to_integers(rweights, num_actual_periods)
 
-    return profiles_day, iweights, weights
+    return iweights, weights
 
 
-def match_act2rep_milp(profiles_day, iweights):
+def match_act2rep_milp(profiles_period_mean, iweights):
     """
     Assign representative periods to actual periods to minimize sum of errors in
     feature values by period (MILP optimization)
@@ -345,7 +340,7 @@ def match_act2rep_milp(profiles_day, iweights):
     import pulp
 
     ### Input processing
-    actualdays = profiles_day.index.values
+    actualdays = profiles_period_mean.index.values
     repdays = list(iweights.index)
 
     ### Optimization: minimize sum of absolute errors
@@ -358,10 +353,10 @@ def match_act2rep_milp(profiles_day, iweights):
         lowBound=0, upBound=1, cat=pulp.LpInteger)
     ### Errors. These are defined for features (c) and for actual days (a).
     ERROR_POS = pulp.LpVariable.dicts(
-        'ERROR_POS', ((a,c) for a in actualdays for c in profiles_day.columns),
+        'ERROR_POS', ((a,c) for a in actualdays for c in profiles_period_mean.columns),
         lowBound=0, cat='Continuous')
     ERROR_NEG = pulp.LpVariable.dicts(
-        'ERROR_NEG', ((a,c) for a in actualdays for c in profiles_day.columns),
+        'ERROR_NEG', ((a,c) for a in actualdays for c in profiles_period_mean.columns),
         lowBound=0, cat='Continuous')
     ###### Constraints
     ### Each actual day can only be assigned to one representative day
@@ -372,19 +367,19 @@ def match_act2rep_milp(profiles_day, iweights):
         m += pulp.lpSum([WEIGHT[a,r] for a in actualdays]) == iweights[r]
     ### Define the error variables
     for a in actualdays:
-        for c in profiles_day.columns:
+        for c in profiles_period_mean.columns:
             m += (
                 ### Full error for column on actual day (given by positive
                 ### component minus negative component)...
                 ERROR_POS[a,c] - ERROR_NEG[a,c]
                 ### ...plus value for its representative day (since WEIGHT is binary)...
-                + pulp.lpSum([WEIGHT[a,r] * profiles_day[c][r] for r in repdays])
+                + pulp.lpSum([WEIGHT[a,r] * profiles_period_mean[c][r] for r in repdays])
                 ### ...equals the actual value for that column and day
-                == profiles_day[c][a])
+                == profiles_period_mean[c][a])
     ###### Objective: minimize the sum of absolute values of errors
     m += pulp.lpSum([
         ERROR_POS[a,c] + ERROR_NEG[a,c]
-        for a in actualdays for c in profiles_day.columns
+        for a in actualdays for c in profiles_period_mean.columns
     ])
 
     ### Solve it
@@ -399,7 +394,7 @@ def match_act2rep_milp(profiles_day, iweights):
     return a2r
 
 
-def match_act2rep_bestfirst(profiles_day, iweights, metric='euclidean'):
+def match_act2rep_bestfirst(profiles_period_mean, iweights, metric='euclidean'):
     """
     Assign actual periods to representative periods using a simple heuristic algorithm:
 
@@ -418,22 +413,22 @@ def match_act2rep_bestfirst(profiles_day, iweights, metric='euclidean'):
     """
     import scipy.spatial
     ### Get the distance
-    keep_basis = profiles_day.loc[iweights.index]
+    keep_basis = profiles_period_mean.loc[iweights.index]
     distance = pd.DataFrame(
         data=scipy.spatial.distance.cdist(
             keep_basis,
-            profiles_day,
+            profiles_period_mean,
             metric=metric,
         ),
         index=keep_basis.index,
-        columns=profiles_day.index,
+        columns=profiles_period_mean.index,
     )
 
     a2r = {}
-    numdays = len(profiles_day)
+    num_actual_periods = len(profiles_period_mean)
     remaining_weights = iweights.copy()
     remaining_distance = distance.copy()
-    for i in range(numdays):
+    for i in range(num_actual_periods):
         ## Loop over the remaining weights
         for repday in remaining_weights.index:
             ## Keep the best match
