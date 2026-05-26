@@ -326,9 +326,6 @@ def check_compatibility(sw):
                              and not s.endswith('Metrics')
                              ]
     stressTresholdMetrics = sw['GSw_PRM_StressThresholdMetrics'].split('/')
-
-    print(f"stressTresholdMetrics: {stressTresholdMetrics}")
-    print(f"stressThresholdMetricSwitches: {stressThresholdMetricSwitches}")   
     
     # Threshold metric added but not specified as a switch
     for metric in stressTresholdMetrics:
