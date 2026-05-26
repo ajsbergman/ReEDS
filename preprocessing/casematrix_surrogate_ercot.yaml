@@ -7,6 +7,7 @@
 ### Settings applied to all cases. ERCOT-only, solve through 2050.
 shared:
   GSw_Region: interconnect/texas
+  GSw_GasCurve: "2"
 
 ##################
 ### Dimensions ###
