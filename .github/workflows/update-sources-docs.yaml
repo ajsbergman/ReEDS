@@ -14,12 +14,16 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: write
+  contents: read
 
 jobs: 
     update-sources-docs:
+        name: update sources-documentation.md
         runs-on: ubuntu-latest
-        
+        permissions:
+            contents: write # needs write permissions to push updated sources_documentation.md back to the PR branch
+        env: 
+            REEDS_PATH: ${{ github.workspace }}
         steps:
             - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
               with: 
@@ -40,7 +44,7 @@ jobs:
                 
             - name: Generate & commit sources_documentation.md
               run: |
-                python docs/source/documentation_tools/generate_markdown.py -r ${{ github.workspace }}
+                python docs/source/documentation_tools/generate_markdown.py -r "$REEDS_PATH"
                 git config user.name  "github-actions[bot]"
                 git config user.email "github-actions[bot]@users.noreply.github.com"
                 git add docs/sources_documentation.md
