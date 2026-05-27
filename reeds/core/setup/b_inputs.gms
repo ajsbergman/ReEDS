@@ -285,8 +285,8 @@ set
   geo_extra(i)         "geothermal technologies not typically considered in model runs",
   geo_egs_allkm(i)     "egs (covering deep egs depths of all km) technologies",
   geo_egs_nf(i)        "egs (near-field) technologies",
-  h2_combustion(i)     "h2-ct and h2-cc technologies",
-  h2_cc(i)             "h2-cc technologies"
+  h2_combustion(i)     "h2-ct, h2-cc and fuel cell technologies",
+  h2_cc(i)             "h2-cc technologies",
   h2_ct(i)             "h2-ct technologies",
   h2(i)                "hydrogen-producing technologies",
   hyd_add_pump(i)      "hydro techs with an added pump",

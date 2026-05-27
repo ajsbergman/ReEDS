@@ -42,6 +42,7 @@ pshsupplycurve,PSH Supply Curve,(8|10|12)hr_(ref|wEphemeral|wExist|wEph|wExist_w
 pvbscen,PVB cost-sharing scenario,benchmark2020,benchmark2020,
 dacscen,Electrical DAC cost and performance inputs (see inputs/consume/[dacscen].csv starting with 'dac_elec_').,BVRE_2021_(high|mid|low),BVRE_2021_mid,
 h2combustionfuelscen,H2-CT/CC Fuel Price Scenarios (only used if endogenous H2 production is turned off),10; reference; 30,reference,
+fuelcellscen,fuel cell H2 cost scenario (inputs/plant_characteristics/{fuelcellscen}.csv),fc_midcost; fc_highcost; fc_lowcost,fc_midcost,
 upgradescen,Exogenous upgrade capital cost specification (see inputs\upgrades). 'default' calculates cost using diff between from- and to- tech,N/A,default,
 retscen,Retirement Scenario,Nuke60RetireYear; Nuke80RetireYear; NukeEarlyRetireYear; NukeRefRetireYear,Nuke80RetireYear,
 supplycurve,Wind and Solar Supply Curves,default; 0; naris; 2018,default,

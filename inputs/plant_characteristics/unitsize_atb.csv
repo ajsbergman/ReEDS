@@ -64,3 +64,4 @@ hydend,94,hydro assumption
 can-imports,20000,arbitrarily high (not disaggregated so doesn't matter)
 evmc,20000,arbitrarily high (not disaggregated so doesn't matter)
 dr_shed,20000,arbitrarily high (not disaggregated so doesn't matter)
+fuel-cell,100,"Reznicek et al., IDES_BOP_reort_v2.doc - Draft"
