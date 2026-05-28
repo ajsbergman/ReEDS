@@ -226,7 +226,6 @@ def get_yearly_demand(sw, hmap_myr, hmap_allyrs, inputs_case, periodtype='rep'):
 
     return load_in, load_out
 
-
 def format_climate_inputs(filename, inputs_case, szn_month_weights):
         """
         This function converts climate data from monthly to repperiod resolution using the
