@@ -11,6 +11,7 @@ interface Props {
   onSelectSession: (id: string) => void;
   onNewChat: () => void;
   refreshKey: number; // increment to trigger refresh
+  width?: number;
 }
 
 export default function ChatHistory({
@@ -18,6 +19,7 @@ export default function ChatHistory({
   onSelectSession,
   onNewChat,
   refreshKey,
+  width,
 }: Props) {
   const [sessions, setSessions] = useState<SessionSummary[]>([]);
   const [loading, setLoading] = useState(false);
@@ -49,7 +51,7 @@ export default function ChatHistory({
   }
 
   return (
-    <div className="chat-history">
+    <div className="chat-history" style={width ? { width, minWidth: width } : undefined}>
       <button className="new-chat-btn" onClick={onNewChat}>
         + New Chat
       </button>

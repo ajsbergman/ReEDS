@@ -218,6 +218,9 @@ export default function HpcBrowser() {
   // selection changes.
   const [gdxSymbol, setGdxSymbol] = useState<string | null>(() => hpcExplorerCache?.gdxSymbol ?? null);
   const [h5Dataset, setH5Dataset] = useState<string | null>(() => hpcExplorerCache?.h5Dataset ?? null);
+  // Track previous symbol/dataset to detect Back (non-null → null) vs new file (null → null)
+  const prevGdxSymbolRef = useRef<string | null>(gdxSymbol);
+  const prevH5DatasetRef = useRef<string | null>(h5Dataset);
 
   /* -- Run form state (mirrors RunPanel) -- */
   const [reedsPath, setReedsPath] = useState(() => hpcExplorerCache?.reedsPath ?? "");
@@ -381,10 +384,35 @@ export default function HpcBrowser() {
   }
 
   /* Re-fetch the preview when the user drills into a GDX symbol or HDF5
-     dataset (drill-back is handled by clearing the state from the child). */
+     dataset. When clearing gdxSymbol/h5Dataset (Back button), re-fetch the
+     file without a symbol to get back to the symbol/dataset list. */
   useEffect(() => {
     if (!selectedFile) return;
-    if (!gdxSymbol && !h5Dataset) return;
+    if (!gdxSymbol && !h5Dataset) {
+      // Only re-fetch if user pressed Back (was non-null → now null),
+      // not when a new file is initially selected (null → null).
+      const wasGdx = prevGdxSymbolRef.current !== null;
+      const wasH5 = prevH5DatasetRef.current !== null;
+      prevGdxSymbolRef.current = gdxSymbol;
+      prevH5DatasetRef.current = h5Dataset;
+      if (!wasGdx && !wasH5) return;
+      // Back was pressed — reload the file to show the symbol/dataset list
+      setPreviewLoading(true);
+      previewHpcFileAPI(hpcHost, hpcUser, selectedFile, "", 200, hpcSessionToken)
+        .then(setPreview)
+        .catch((err) => {
+          setPreview({
+            rel_path: selectedFile,
+            file_type: getExtension(selectedFile),
+            content: `Error reloading file: ${err instanceof Error ? err.message : String(err)}`,
+            truncated: false,
+          });
+        })
+        .finally(() => setPreviewLoading(false));
+      return;
+    }
+    prevGdxSymbolRef.current = gdxSymbol;
+    prevH5DatasetRef.current = h5Dataset;
     setPreviewLoading(true);
     previewHpcFileAPI(hpcHost, hpcUser, selectedFile, "", 200,
                       hpcSessionToken, gdxSymbol, h5Dataset)

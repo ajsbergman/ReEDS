@@ -377,8 +377,16 @@ export default function PostProcessPanel({ onClose, onSelectFile, filterRunNames
             <strong style={{ fontSize: "0.88rem" }}>
               {activeJob.type === "compare_cases" ? "Compare Cases" : "Bokeh Report"}
             </strong>
-            <span style={{ color: "var(--text-muted)", fontSize: "0.78rem" }}>
-              {activeJob.status}
+            <span style={{
+              fontSize: "0.78rem", fontWeight: 600,
+              color: activeJob.status === "completed" ? "#4ade80"
+                : activeJob.status === "failed" ? "#f87171"
+                : "var(--text-muted)",
+            }}>
+              {activeJob.status === "completed" ? "✅ Completed"
+                : activeJob.status === "failed" ? "❌ Failed"
+                : activeJob.status === "running" ? "⏳ Running…"
+                : activeJob.status}
               {activeJob.report && ` · ${activeJob.report}`}
             </span>
           </div>

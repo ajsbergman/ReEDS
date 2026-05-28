@@ -2126,6 +2126,7 @@ def run_hpc_postprocess(req: HpcPostProcessRequest):
             "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf",
         ] * 10
         csv_lines = ["name,color,path"]
+        base_label = req.cases[0]  # default: first case folder name
         if req.scenarios:
             scen_by_name = {s.get("name"): s for s in req.scenarios if s.get("name")}
             for i, (name, path) in enumerate(zip(req.cases, case_paths)):
@@ -2133,6 +2134,8 @@ def run_hpc_postprocess(req: HpcPostProcessRequest):
                 label = str(s.get("label") or name).replace(",", " ")
                 color = str(s.get("color") or default_colors[i])
                 csv_lines.append(f"{label},{color},{path}")
+                if i == 0:
+                    base_label = label
         else:
             for i, (name, path) in enumerate(zip(req.cases, case_paths)):
                 csv_lines.append(f"{name},{default_colors[i]},{path}")
@@ -2142,7 +2145,7 @@ def run_hpc_postprocess(req: HpcPostProcessRequest):
             f"cat > {shlex.quote(scen_csv)} <<'__EOF__'\n{csv_body}\n__EOF__\n"
             f"python {shlex.quote(interface)} 'ReEDS 2.0' "
             f"{shlex.quote(scen_csv)} all No "
-            f"{shlex.quote(req.cases[0])} {shlex.quote(report_py)} "
+            f"{shlex.quote(base_label)} {shlex.quote(report_py)} "
             f"html,excel one {shlex.quote(out_path)} No"
         )
         if req.extra_args:

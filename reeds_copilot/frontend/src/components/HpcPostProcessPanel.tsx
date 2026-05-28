@@ -46,8 +46,10 @@ export default function HpcPostProcessPanel({
   const [report, setReport] = useState<string>(BOKEH_REPORTS[0]);
   const [bashPrefix, setBashPrefix] = useState<string>("module load conda && conda activate reeds2");
   const [extraArgs, setExtraArgs] = useState<string>("");
+  const [basecase, setBasecase] = useState<string>("");
+  const [skipBokeh, setSkipBokeh] = useState(true);
 
-  // Editable per-case scenarios (label + color) for the bokeh report.
+  // Editable per-case scenarios (label + color) — used by both tools for rename.
   // Keyed by case name; auto-synced with `selected`.
   const [scenarios, setScenarios] = useState<Record<string, { label: string; color: string }>>({});
 
@@ -110,22 +112,57 @@ export default function HpcPostProcessPanel({
     setResult(null);
     setError(null);
     try {
+      const cases = Array.from(selected);
       const scenariosArr: HpcScenarioRow[] | undefined =
         tool === "bokeh_report"
-          ? Array.from(selected).map((name) => ({
+          ? cases.map((name) => ({
               name,
               label: scenarios[name]?.label ?? name,
               color: scenarios[name]?.color ?? "#1f77b4",
             }))
           : undefined;
+
+      // Build extra args for compare_cases: --skipbp, --basecase, --casenames
+      let finalExtraArgs = extraArgs;
+      if (tool === "compare_cases") {
+        if (skipBokeh) {
+          finalExtraArgs = "--skipbp" + (finalExtraArgs ? " " + finalExtraArgs : "");
+        }
+        const effectiveBase = basecase || cases[0];
+        if (effectiveBase) {
+          finalExtraArgs += ` --basecase ${effectiveBase}`;
+        }
+        // Casenames: comma-separated display names (from scenarios labels)
+        const hasRenames = cases.some((c) => scenarios[c]?.label && scenarios[c].label !== c);
+        if (hasRenames) {
+          const names = cases.map((c) => (scenarios[c]?.label || c).replace(/,/g, " "));
+          finalExtraArgs += ` --casenames ${names.join(",")}`;
+        }
+      }
+      // For bokeh_report, pass --basecase via the base scenario label
+      if (tool === "bokeh_report") {
+        const effectiveBase = basecase || cases[0];
+        // The backend uses the first scenario as the base in the bokeh command
+        // Reorder scenarios so the base case comes first if it's not already
+        if (effectiveBase && scenariosArr && scenariosArr[0]?.name !== effectiveBase) {
+          const baseIdx = scenariosArr.findIndex((s) => s.name === effectiveBase);
+          if (baseIdx > 0) {
+            const [baseScen] = scenariosArr.splice(baseIdx, 1);
+            scenariosArr.unshift(baseScen);
+          }
+        }
+      }
+
       const res = await runHpcPostProcessAPI({
         host, user, session_token: sessionToken,
         reeds_path: reedsPath,
         tool,
-        cases: Array.from(selected),
+        cases: tool === "bokeh_report" && scenariosArr
+          ? scenariosArr.map((s) => s.name)
+          : cases,
         report: tool === "bokeh_report" ? report : undefined,
         bash_prefix: bashPrefix,
-        extra_args: extraArgs,
+        extra_args: finalExtraArgs.trim(),
         scenarios: scenariosArr,
       });
       setResult(res);
@@ -253,6 +290,26 @@ export default function HpcPostProcessPanel({
         )}
       </div>
 
+      {/* Base case + compare_cases options */}
+      {selected.size >= 1 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: "4px 0 8px", fontSize: "0.82rem" }}>
+          <label style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--text-muted)" }}>
+            Reference (base) case:
+            <select value={basecase || Array.from(selected)[0] || ""}
+              onChange={(e) => setBasecase(e.target.value)}
+              style={{ padding: "2px 6px", fontSize: "0.78rem" }}>
+              {Array.from(selected).map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </label>
+          {tool === "compare_cases" && (
+            <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", color: "var(--text-muted)" }}>
+              <input type="checkbox" checked={skipBokeh} onChange={() => setSkipBokeh((v) => !v)} />
+              Skip bokehpivot report (faster, PPTX only)
+            </label>
+          )}
+        </div>
+      )}
+
       <details style={{ margin: "4px 0 8px" }}>
         <summary style={{ cursor: "pointer", fontSize: "0.82rem", color: "var(--text-muted)" }}>
           Advanced (shell prefix / extra CLI args)
@@ -300,7 +357,7 @@ export default function HpcPostProcessPanel({
         }}>
           {/* Run picker (left) */}
           <div style={{
-            flex: tool === "bokeh_report" && selected.size > 0 ? 1.4 : 1,
+            flex: selected.size > 0 ? 1.4 : 1,
             minWidth: 0, overflow: "auto",
             border: "1px solid var(--border)", borderRadius: "var(--radius)",
           }}>
@@ -328,8 +385,8 @@ export default function HpcPostProcessPanel({
             )}
           </div>
 
-          {/* Scenarios editor (right, bokeh only) */}
-          {tool === "bokeh_report" && selected.size > 0 && (
+          {/* Scenarios editor (right, both tools for rename) */}
+          {selected.size > 0 && (
             <div style={{
               flex: 1, minWidth: 320, display: "flex", flexDirection: "column",
               border: "1px solid var(--border)", borderRadius: "var(--radius)",
@@ -340,9 +397,9 @@ export default function HpcPostProcessPanel({
                 background: "var(--bg-elev)", borderBottom: "1px solid var(--border)",
                 display: "flex", alignItems: "center", justifyContent: "space-between",
               }}>
-                <span>Scenarios ({selected.size}) — label</span>
+                <span>Display Names ({selected.size})</span>
                 <span style={{ fontSize: "0.7rem", fontWeight: 400, color: "var(--text-muted)" }}>
-                  shown in plots
+                  {tool === "bokeh_report" ? "shown in plots" : "used as --casenames"}
                 </span>
               </div>
               <div style={{ overflow: "auto", flex: 1 }}>

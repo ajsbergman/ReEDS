@@ -51,12 +51,16 @@ export default function App() {
   // Resizable panel widths
   const [sidebarWidth, setSidebarWidth] = useState(220);
   const [rightWidth, setRightWidth] = useState(380);
+  const [chatHistoryWidth, setChatHistoryWidth] = useState(230);
 
   const handleSidebarResize = useCallback((delta: number) => {
     setSidebarWidth((w) => Math.max(140, Math.min(400, w + delta)));
   }, []);
   const handleRightResize = useCallback((delta: number) => {
     setRightWidth((w) => Math.max(200, Math.min(1200, w - delta)));
+  }, []);
+  const handleChatHistoryResize = useCallback((delta: number) => {
+    setChatHistoryWidth((w) => Math.max(160, Math.min(400, w + delta)));
   }, []);
 
   useEffect(() => {
@@ -251,12 +255,16 @@ export default function App() {
 
       {/* ── Chat history (visible on chat tab) ───────── */}
       {tab === "chat" && (
-        <ChatHistory
-          activeSessionId={sessionId}
-          onSelectSession={handleSelectSession}
-          onNewChat={handleNewChat}
-          refreshKey={historyRefreshKey}
-        />
+        <>
+          <ChatHistory
+            activeSessionId={sessionId}
+            onSelectSession={handleSelectSession}
+            onNewChat={handleNewChat}
+            refreshKey={historyRefreshKey}
+            width={chatHistoryWidth}
+          />
+          <ResizeHandle direction="horizontal" onResize={handleChatHistoryResize} />
+        </>
       )}
 
       {/* ── Main content ─────────────────────────────── */}
@@ -317,9 +325,11 @@ export default function App() {
           {tab === "inputs" && (
             <FileBrowser rootPath="inputs" onSelectFile={handleSelectFile} />
           )}
-          {tab === "outputs" && (
+          {/* Keep OutputExplorer mounted (hidden) so post-processing state
+              (active job, form selections) survives tab switches. */}
+          <div style={{ display: tab === "outputs" ? "contents" : "none" }}>
             <OutputExplorer onSelectFile={handleSelectFile} />
-          )}
+          </div>
           {tab === "hpc" && <HpcBrowser />}
           {tab === "settings" && <SettingsPanel />}
 
