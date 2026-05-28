@@ -29,7 +29,6 @@ euros_dollar,1.124,"--USD/Euro-- dollars per euro exchange rate from treasury de
 forced_outage_rate_h2_smr,0.1,"--fraction-- forced outage rate of steam methane reforming"
 gas_elasticity,0.76,"--fraction-- gas supply curve elasticity. long run price elasticity as estimated by: https://www.diw.de/documents/publikationen/73/diw_01.c.441773.de/dp1372.pdf"
 gas_scale,1000000,"--unitless-- conversion factor for gas-related parameters to help in scaling the problem"
-gasprice_ref_frac_adder,0.04,"--fraction-- fraction by which to multiply gasprice_ref for winter"
 gassupplyscale,-0.5,"shifting of reference gas price bin. gassupply scale determines how far the bins reference quantity should deviate from its reference price. With gassupply scale = -0.5, the center of the reference price bin will be the reference quantity. with gassupplyscale = 0, the end of the reference gas price's bin will the limit for that reference bin."
 geothermal_availability,0.75,"--fraction-- Existing geothermal plants have a 75% availability rate based on historical capacity factors"
 h2_crp_compressor,15,"--years-- capital recovery period (i.e., financial lifetime / evaluation period) for hydrogen compressors."
