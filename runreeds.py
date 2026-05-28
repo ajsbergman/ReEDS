@@ -826,7 +826,7 @@ def setupEnvironment(
 
     #%% Check whether the ReEDS conda environment is activated
     if (not skip_checks) and (
-        ('reeds3' not in os.environ['CONDA_DEFAULT_ENV'].lower())
+        ('reeds2' not in os.environ['CONDA_DEFAULT_ENV'].lower())
         or (not pd.__version__.startswith('2'))
     ):
         print(
