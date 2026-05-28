@@ -828,8 +828,11 @@ maxload_szn(r,h,t,szn)
        = load_exog_static(r,h,t))
     $h_szn(h,szn)$Sw_OpRes] = yes ;
 
-
 parameter gas_price_multipliers_r(r,allh,allt) "--unitless-- gas price multipliers by region, timeslice, and year"
+parameter gas_price_multipliers_cendiv(cendiv,allh,allt) "--unitless-- gas price multipliers by region, timeslice, and year"
+
+$ifthen.dailygasprices %GSw_GasPriceTimestep% == "day"
+parameter daily_gas_price_multipliers_r(r,allh,allt) "--unitless-- gas price multipliers by region, timeslice, and year"
 / 
 $offlisting
 $ondelim
@@ -837,8 +840,7 @@ $include inputs_case%ds%%temporal_inputs%%ds%gas_price_multipliers_r.csv
 $offdelim
 $onlisting
 / ;
-
-parameter gas_price_multipliers_cendiv(cendiv,allh,allt) "--unitless-- gas price multipliers by region, timeslice, and year"
+parameter daily_gas_price_multipliers_cendiv(cendiv,allh,allt) "--unitless-- gas price multipliers by region, timeslice, and year"
 / 
 $offlisting
 $ondelim
@@ -846,6 +848,16 @@ $include inputs_case%ds%%temporal_inputs%%ds%gas_price_multipliers_cendiv.csv
 $offdelim
 $onlisting
 / ;
+gas_price_multipliers_r(r,allh,allt) = daily_gas_price_multipliers_r(r,allh,allt)
+gas_price_multipliers_cendiv(cendiv,allh,allt) = daily_gas_price_multipliers_cendiv(cendiv,allh,allt)
+$else.dailygasprices
+gas_price_multipliers_r(r,allh,allt) = 1 ;
+gas_price_multipliers_r(r,h,allt)$frac_h_quarter_weights(h,"wint") =
+    gas_price_multipliers_r(r,h,allt) + frac_h_quarter_weights(h,"wint") * szn_adj_gas_winter ;
+gas_price_multipliers_cendiv(cendiv,allh,allt) = 1 ;
+gas_price_multipliers_cendiv(cendiv,h,allt)$frac_h_quarter_weights(h,"wint") =
+    gas_price_multipliers_cendiv(cendiv,h,allt) + frac_h_quarter_weights(h,"wint") * szn_adj_gas_winter ;
+$endif.dailygasprices
 
 
 set h_ccseason_prm(allh,ccseason) "peak-load hour for the entire modeled system by ccseason"
@@ -896,15 +908,6 @@ peakdem_static_h(r,h,t) = peak_h(r,h,t) * (1 - sum{flex_type, flex_demand_frac(f
 gasadder_cd(cendiv,t,allh) = 0 ;
 gasadder_cd(cendiv,t,h) = (gasprice_ref(cendiv,t) - gasprice_nat(t))/2 ;
 
-*winter gas gets marked up
-gasadder_cd(cendiv,t,h) =
-    gasadder_cd(cendiv,t,h)
-    + gasprice_ref_frac_adder * frac_h_quarter_weights(h,"wint") * gasprice_ref(cendiv,t) ;
-
-szn_adj_gas(allh) = 0 ;
-szn_adj_gas(h) = 1 ;
-szn_adj_gas(h)$frac_h_quarter_weights(h,"wint") =
-    szn_adj_gas(h) + frac_h_quarter_weights(h,"wint") * szn_adj_gas_winter ;
 
 *=============================================
 * -- Round parameters for GAMS --
