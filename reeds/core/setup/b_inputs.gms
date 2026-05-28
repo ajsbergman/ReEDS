@@ -6131,7 +6131,6 @@ Parameter
     minloadfrac(r,i,allh)                  "--fraction-- minimum loading fraction - final used in model"
 * Fossil gas supply curve
     gasadder_cd(cendiv,t,allh)             "--$/MMbtu-- adder for NG census division"
-    szn_adj_gas(allh)                      "--fraction-- seasonal adjustment for gas prices"
     gas_price_multipliers_r(r,allh,allt)   "--unitless-- multiplier for zonal gas prices"
     gas_price_multipliers_cendiv(cendiv,allh,allt)   "--unitless-- multiplier for cendiv-level gas prices"
 ;
