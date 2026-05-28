@@ -828,8 +828,8 @@ maxload_szn(r,h,t,szn)
        = load_exog_static(r,h,t))
     $h_szn(h,szn)$Sw_OpRes] = yes ;
 
-parameter gas_price_multipliers_r(r,allh,allt) "--unitless-- gas price multipliers by region, timeslice, and year"
-parameter gas_price_multipliers_cendiv(cendiv,allh,allt) "--unitless-- gas price multipliers by region, timeslice, and year"
+parameter gas_price_multipliers_r(r,allh,allt) "--unitless-- gas price multipliers by region, timeslice, and year" ;
+parameter gas_price_multipliers_cendiv(cendiv,allh,allt) "--unitless-- gas price multipliers by region, timeslice, and year" ;
 
 $ifthen.dailygasprices %GSw_GasPriceTimestep% == "day"
 parameter daily_gas_price_multipliers_r(r,allh,allt) "--unitless-- gas price multipliers by region, timeslice, and year"
@@ -848,15 +848,13 @@ $include inputs_case%ds%%temporal_inputs%%ds%gas_price_multipliers_cendiv.csv
 $offdelim
 $onlisting
 / ;
-gas_price_multipliers_r(r,allh,allt) = daily_gas_price_multipliers_r(r,allh,allt)
-gas_price_multipliers_cendiv(cendiv,allh,allt) = daily_gas_price_multipliers_cendiv(cendiv,allh,allt)
+gas_price_multipliers_r(r,allh,allt) = daily_gas_price_multipliers_r(r,allh,allt) ;
+gas_price_multipliers_cendiv(cendiv,allh,allt) = daily_gas_price_multipliers_cendiv(cendiv,allh,allt) ;
 $else.dailygasprices
 gas_price_multipliers_r(r,allh,allt) = 1 ;
-gas_price_multipliers_r(r,h,allt)$frac_h_quarter_weights(h,"wint") =
-    gas_price_multipliers_r(r,h,allt) + frac_h_quarter_weights(h,"wint") * szn_adj_gas_winter ;
+gas_price_multipliers_r(r,h,allt)$frac_h_quarter_weights(h,"wint") = gas_price_multipliers_r(r,h,allt) + frac_h_quarter_weights(h,"wint") * szn_adj_gas_winter ;
 gas_price_multipliers_cendiv(cendiv,allh,allt) = 1 ;
-gas_price_multipliers_cendiv(cendiv,h,allt)$frac_h_quarter_weights(h,"wint") =
-    gas_price_multipliers_cendiv(cendiv,h,allt) + frac_h_quarter_weights(h,"wint") * szn_adj_gas_winter ;
+gas_price_multipliers_cendiv(cendiv,h,allt)$frac_h_quarter_weights(h,"wint") = gas_price_multipliers_cendiv(cendiv,h,allt) + frac_h_quarter_weights(h,"wint") * szn_adj_gas_winter ;
 $endif.dailygasprices
 
 
@@ -920,7 +918,8 @@ h_weight_csapr(h)$h_weight_csapr(h) = round(h_weight_csapr(h),3) ;
 load_exog(r,h,t)$load_exog(r,h,t) = round(load_exog(r,h,t),3) ;
 load_exog_static(r,h,t)$load_exog_static(r,h,t) = round(load_exog_static(r,h,t),3) ;
 minloadfrac(r,i,h)$minloadfrac(r,i,h) = round(minloadfrac(r,i,h),3) ;
-szn_adj_gas(h)$szn_adj_gas(h) = round(szn_adj_gas(h), 3) ;
+gas_price_multipliers_r(r,h,t)$gas_price_multipliers_r(r,h,t) = round(gas_price_multipliers_r(r,h,t), 3) ;
+gas_price_multipliers_cendiv(cendiv,h,t)$gas_price_multipliers_cendiv(cendiv,h,t) = round(gas_price_multipliers_cendiv(cendiv,h,t), 3) ;
 cap_hyd_szn_adj(i,szn,r)$cap_hyd_szn_adj(i,szn,r) = round(cap_hyd_szn_adj(i,szn,r),3) ;
 peakdem_static_ccseason(r,ccseason,t)$peakdem_static_ccseason(r,ccseason,t) = round(peakdem_static_ccseason(r,ccseason,t),2) ;
 seas_cap_frac_delta(i,v,r,szn,t)$seas_cap_frac_delta(i,v,r,szn,t) = round(seas_cap_frac_delta(i,v,r,szn,t),3) ;
