@@ -167,6 +167,7 @@ def launch_batch_file(casename, configpath, outpath, args):
         if os.environ.get('NREL_CLUSTER') == 'kestrel':
             OPATH.writelines("source /nopt/nrel/apps/env.sh \n")
             OPATH.writelines("module load anaconda3 \n")
+            OPATH.writelines("conda deactivate \n\n")
             OPATH.writelines("conda activate reeds2 \n\n")
         elif os.environ.get('NREL_CLUSTER') == 'eagle':
             OPATH.writelines("module load conda \n")
@@ -476,7 +477,7 @@ def setup_resource(args):
             traceback.print_exc()
             print(f"\nSkipping {casename}.")
             continue
-    print("-"*65)
+    print("-"*80)
     print("All resource runs set up")
 
 
