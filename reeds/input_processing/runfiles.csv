@@ -412,6 +412,7 @@ techs_banned_rps.csv,inputs/state_policies/techs_banned_rps.csv,int(sw.GSw_State
 temp_UnappWaterMult.csv,,1,ignore,ignore,,,,,0,,1,,,,intermediate file created in climateprep.py to create climate_UnappWaterMult.csv
 temp_UnappWaterSeaAnnDistr.csv,,1,ignore,ignore,,,,,0,,1,,,,intermediate file created in climateprep.py to create climate_UnappWaterSeaAnnDistr.csv
 temp_hydadjsea.csv,,1,ignore,ignore,,,,,0,,1,,,,intermediate file created in climateprep.py to create climate_hydadjsea.csv
+temperature_celcius-st.h5,inputs/profiles_temperature/temperature_celsius_{temperatureprofile}-st.h5,1,ignore,ignore,,,,,0,,,,,,
 tg_rsc_cspagg.csv,inputs/sets/tg_rsc_cspagg.csv,1,ignore,ignore,,,,,0,,,,tg_rsc_cspagg,,
 tg_rsc_cspagg_tmp.csv,inputs/waterclimate/tg_rsc_cspagg_tmp.csv,(int(sw.GSw_CSP) != 0) and (int(sw.GSw_WaterMain) != 0),ignore,ignore,,,,,0,,,,,,
 tg_rsc_upvagg.csv,inputs/sets/tg_rsc_upvagg.csv,1,ignore,ignore,,,,,0,,,,tg_rsc_upvagg,,
@@ -485,6 +486,7 @@ plexos_inputs.gdx,,1,ignore,ignore,,,,,0,,,,,,
 load.h5,,1,sum,ignore,wide,"year,hour",,1,keepindex,,1,,,,Disaggregation handled in hourly_load.py
 recf.h5,,1,recf,ignore,wide,datetime,,1,keepindex,,1,,,,
 csp.h5,,1,csp,ignore,wide,datetime,,1,keepindex,,1,,,,
+recf_distpv.h5,inputs/profiles_cf/cf_distpv_{distpvprofile}_county.h5,int(sw.GSw_distpv) != 0,ignore,ignore,wide,datetime,,1,keepindex,,1,,,,
 gswitches.txt,,1,ignore,ignore,,,,,0,,,,,,
 scalars.txt,,1,ignore,ignore,,,,,0,,,,,,
 Project.toml,Project.toml,1,ignore,ignore,,,,,,,,,,,
