@@ -227,6 +227,38 @@ def get_yearly_demand(sw, hmap_myr, hmap_allyrs, inputs_case, periodtype='rep'):
     return load_in, load_out
 
 
+def format_climate_inputs(filename, inputs_case, szn_month_weights):
+    """
+    This function converts climate data from monthly to repperiod resolution using the
+    szn_month_weights
+    """
+    climate_index = {
+        'temp_hydadjsea': ['r','season','t'],
+        'temp_UnappWaterMult': ['wst','r','season','t'],
+        'temp_UnappWaterSeaAnnDistr': ['wst','r','season','t']
+    }
+
+    df = pd.read_csv(os.path.join(inputs_case,filename+'.csv'))
+    df_out = szn_month_weights.merge(df, on='month', how='outer')
+    df_out['value'] = df_out['weight'] * df_out['Value']
+    df_out = (
+        df_out
+        .groupby(climate_index[filename]).agg({'value':'sum'})
+        .value
+        ## For rep periods, sum of season weights is 1, so the next line has no effect.
+        ## For full chronological year (GSw_HourlyType=year), we use four seasons,
+        ## so the sum of season weights is the number of months in that season and
+        ## we need to divide sum{cf*weight} by sum{weight}.
+        / szn_month_weights.groupby('season').weight.sum()
+    ).rename('value').reset_index().rename(columns={'season':'szn'})
+    # Convert to GAMS-readable wide format
+    climate_index = [x if x != 'season' else 'szn' for x in climate_index[filename]]
+    climate_index = [x for x in climate_index if x != 't']
+    df_out = df_out.pivot_table(index=climate_index, columns='t', values='value')
+
+    return df_out
+
+
 def get_gas_price_multipliers(sw, hmap_myr, inputs_case, periodtype='rep', regionlevel='r'):
     """
     This function takes the inputs_case/natgas_price_diffs.h5 and turns it into a
@@ -259,37 +291,6 @@ def get_gas_price_multipliers(sw, hmap_myr, inputs_case, periodtype='rep', regio
 
     return dfout
 
-    
-def format_climate_inputs(filename, inputs_case, szn_month_weights):
-    """
-    This function converts climate data from monthly to repperiod resolution using the
-    szn_month_weights
-    """
-    climate_index = {
-        'temp_hydadjsea': ['r','season','t'],
-        'temp_UnappWaterMult': ['wst','r','season','t'],
-        'temp_UnappWaterSeaAnnDistr': ['wst','r','season','t']
-    }
-
-    df = pd.read_csv(os.path.join(inputs_case,filename+'.csv'))
-    df_out = szn_month_weights.merge(df, on='month', how='outer')
-    df_out['value'] = df_out['weight'] * df_out['Value']
-    df_out = (
-        df_out
-        .groupby(climate_index[filename]).agg({'value':'sum'})
-        .value
-        ## For rep periods, sum of season weights is 1, so the next line has no effect.
-        ## For full chronological year (GSw_HourlyType=year), we use four seasons,
-        ## so the sum of season weights is the number of months in that season and
-        ## we need to divide sum{cf*weight} by sum{weight}.
-        / szn_month_weights.groupby('season').weight.sum()        
-    ).rename('value').reset_index().rename(columns={'season':'szn'})
-    # Convert to GAMS-readable wide format
-    climate_index = [x if x != 'season' else 'szn' for x in climate_index[filename]]
-    climate_index = [x for x in climate_index if x != 't']
-    df_out = df_out.pivot_table(index=climate_index, columns='t', values='value')
-
-    return df_out
 
 def get_yearly_flexibility(
     sw,
