@@ -250,6 +250,47 @@ export default function HpcBrowser() {
   const [expandedDetail, setExpandedDetail] = useState<RunRecord | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  /* ── Saved paths (bookmarks stored in localStorage) ──────────────  */
+  const SAVED_PATHS_KEY = "hpc_saved_paths";
+  const [savedPaths, setSavedPaths] = useState<{ path: string; label: string }[]>(() => {
+    try {
+      const raw = localStorage.getItem(SAVED_PATHS_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch { return []; }
+  });
+  const [showSavedPaths, setShowSavedPaths] = useState(false);
+  const savedPathsRef = useRef<HTMLDivElement | null>(null);
+
+  // Close saved paths dropdown when clicking outside
+  useEffect(() => {
+    if (!showSavedPaths) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (savedPathsRef.current && !savedPathsRef.current.contains(e.target as Node)) {
+        setShowSavedPaths(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [showSavedPaths]);
+
+  function persistSavedPaths(paths: { path: string; label: string }[]) {
+    setSavedPaths(paths);
+    localStorage.setItem(SAVED_PATHS_KEY, JSON.stringify(paths));
+  }
+  function savePath(path: string) {
+    if (!path.trim()) return;
+    const trimmed = path.trim();
+    if (savedPaths.some((p) => p.path === trimmed)) return; // already saved
+    const label = trimmed.split("/").filter(Boolean).pop() || trimmed;
+    persistSavedPaths([...savedPaths, { path: trimmed, label }]);
+  }
+  function removeSavedPath(path: string) {
+    persistSavedPaths(savedPaths.filter((p) => p.path !== path));
+  }
+  function renameSavedPath(path: string, newLabel: string) {
+    persistSavedPaths(savedPaths.map((p) => p.path === path ? { ...p, label: newLabel } : p));
+  }
+
   /* ── File browser logic ──────────────────────────────────────────  */
   const loadDirectory = useCallback(
     (path: string) => {
@@ -752,6 +793,67 @@ export default function HpcBrowser() {
                   onKeyDown={(e) => { if (e.key === "Enter") loadDirectory(currentPath); }}
                   placeholder="/home/user/ReEDS" />
                 <button onClick={() => loadDirectory(currentPath)}>Go</button>
+                <button
+                  onClick={() => savePath(currentPath)}
+                  title="Bookmark this path"
+                  style={{ fontSize: "0.9rem", padding: "5px 8px" }}>
+                  ⭐
+                </button>
+                <div style={{ position: "relative" }} ref={savedPathsRef}>
+                  <button
+                    onClick={() => setShowSavedPaths((v) => !v)}
+                    title="Saved paths"
+                    style={{ fontSize: "0.82rem", padding: "5px 10px" }}>
+                    📂 Saved{savedPaths.length > 0 ? ` (${savedPaths.length})` : ""}
+                  </button>
+                  {showSavedPaths && (
+                    <div style={{
+                      position: "absolute", top: "100%", right: 0, zIndex: 100,
+                      background: "var(--bg-elevated)", border: "1px solid var(--border)",
+                      borderRadius: "var(--radius)", minWidth: 300, maxWidth: 500,
+                      maxHeight: 320, overflowY: "auto", boxShadow: "0 4px 16px rgba(0,0,0,0.4)",
+                      marginTop: 4,
+                    }}>
+                      {savedPaths.length === 0 ? (
+                        <div style={{ padding: "12px 14px", color: "var(--text-muted)", fontSize: "0.82rem" }}>
+                          No saved paths yet. Click ⭐ to bookmark the current path.
+                        </div>
+                      ) : (
+                        savedPaths.map((sp) => (
+                          <div key={sp.path} style={{
+                            display: "flex", alignItems: "center", gap: 6,
+                            padding: "6px 10px", borderBottom: "1px solid var(--border)",
+                            fontSize: "0.82rem",
+                          }}>
+                            <span
+                              onClick={() => { loadDirectory(sp.path); setShowSavedPaths(false); }}
+                              style={{ flex: 1, cursor: "pointer", fontFamily: "var(--font-mono)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
+                              title={sp.path}>
+                              {sp.label !== sp.path.split("/").filter(Boolean).pop()
+                                ? <><strong>{sp.label}</strong> <span style={{ color: "var(--text-muted)", fontSize: "0.75rem" }}>({sp.path})</span></>
+                                : sp.path}
+                            </span>
+                            <button
+                              onClick={() => {
+                                const name = prompt("Rename bookmark:", sp.label);
+                                if (name && name.trim()) renameSavedPath(sp.path, name.trim());
+                              }}
+                              title="Rename"
+                              style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)", fontSize: "0.78rem", padding: "2px 4px" }}>
+                              ✏️
+                            </button>
+                            <button
+                              onClick={() => removeSavedPath(sp.path)}
+                              title="Remove"
+                              style={{ background: "none", border: "none", cursor: "pointer", color: "var(--danger)", fontSize: "0.78rem", padding: "2px 4px" }}>
+                              ✕
+                            </button>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
           </div>
 
@@ -783,7 +885,13 @@ export default function HpcBrowser() {
 
               {loading && <div className="loading">Loading…</div>}
               {!loading && sortedEntries.length === 0 && (
-                <div className="loading" style={{ opacity: 0.6 }}>Empty directory</div>
+                <div style={{ padding: "16px 12px", color: "var(--text-muted)", fontSize: "0.85rem" }}>
+                  📂 Empty directory (or no read permission).
+                  <br />
+                  <span style={{ fontSize: "0.78rem" }}>
+                    Try navigating to a subdirectory by typing the full path above.
+                  </span>
+                </div>
               )}
               {sortedEntries.map((e) => (
                 <div key={e.rel_path}

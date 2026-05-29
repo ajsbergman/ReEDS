@@ -1382,8 +1382,21 @@ def list_hpc_files(req: HpcListRequest):
 
     host, user, password = _resolve_creds(
         req.session_token, req.host, req.user, req.password)
-    remote_cmd = f'ls -lLA --time-style=+%s {req.path} 2>/dev/null'
-    out = _ssh_exec(host, user, remote_cmd, password=password)
+    # Use separate stderr capture so we can report permission errors
+    remote_cmd = f'ls -lLA --time-style=+%s {req.path}'
+    try:
+        out = _ssh_exec(host, user, remote_cmd, password=password)
+    except Exception as exc:
+        # SSH exec may raise on non-zero exit code or connection issues.
+        # Try a simpler ls as fallback (no -L to avoid broken symlink issues).
+        msg = str(exc)
+        if "Permission denied" in msg or "cannot open" in msg:
+            raise HTTPException(status_code=403, detail=f"Permission denied: {req.path}")
+        # Try without -L (some systems have issues with dangling symlinks)
+        try:
+            out = _ssh_exec(host, user, f'ls -lA --time-style=+%s {req.path}', password=password)
+        except Exception:
+            raise HTTPException(status_code=500, detail=f"Cannot list {req.path}: {msg}")
 
     # Parse `ls -lA --time-style=+%s` output
     # drwxr-xr-x 2 user group 4096 1715270400 dirname

@@ -1917,7 +1917,8 @@ details[open] > .settings-api-guide-toggle::before {
 
 .hpc-content-split {
   display: flex;
-  flex: 1;
+  flex: 1 1 0;
+  min-height: 0;
   overflow: hidden;
 }
 
@@ -1925,6 +1926,7 @@ details[open] > .settings-api-guide-toggle::before {
   flex: 1 1 0;
   overflow-y: auto;
   min-width: 0;
+  min-height: 0;
 }
 
 .hpc-splitter {
@@ -1942,6 +1944,22 @@ details[open] > .settings-api-guide-toggle::before {
 .hpc-file-list .file-entry.selected {
   background: rgba(44, 134, 184, 0.15);
   border-left: 3px solid var(--accent);
+}
+
+.hpc-file-list .breadcrumb {
+  font-family: var(--font-mono);
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+  padding: 8px 10px 0;
+  word-break: break-all;
+}
+.hpc-file-list .breadcrumb span {
+  cursor: pointer;
+  color: var(--accent);
+}
+.hpc-file-list .breadcrumb span:hover {
+  text-decoration: underline;
 }
 
 .hpc-preview-pane {
