@@ -228,7 +228,7 @@ def main():
         help="Path to runs directory. Default: <repo_root>/runs",
     )
     parser.add_argument(
-        "--output", type=str, default="stage2_regional_ml.csv",
+        "--output", type=str, default="surrogate_ml_data/stage2_regional_ml.csv",
         help="Output CSV filename.",
     )
     parser.add_argument(
@@ -275,6 +275,7 @@ def main():
 
     # Save
     output_path = Path(args.output)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(output_path, index=False)
     print(f"\nSaved: {output_path.resolve()}")
 
