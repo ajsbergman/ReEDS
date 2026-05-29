@@ -440,6 +440,11 @@ alpha = pd.read_csv(os.path.join(inputs_case, 'alpha.csv'), index_col='t')
 alpha = alpha[alpha.columns[alpha.columns.isin(val_cendiv)]]
 alpha = alpha.round(6)
 
+### Daily gas price multipliers
+daily_gas_price_multipliers_r, daily_gas_price_multipliers_cendiv = (
+    calculate_daily_gas_price_multipliers(reeds_path, inputs_case)
+)
+
 
 #%%###################
 ### Data Write-Out ###
@@ -450,22 +455,16 @@ ngprice_cendiv.to_csv(os.path.join(inputs_case,'gasprice_ref.csv'))
 ngdemand.to_csv(os.path.join(inputs_case,'ng_demand_elec.csv'))
 ngtotdemand.to_csv(os.path.join(inputs_case,'ng_demand_tot.csv'))
 alpha.to_csv(os.path.join(inputs_case,'alpha.csv'))
-
-### Daily gas price multipliers
-if sw['GSw_GasPriceTimestep'] == 'day':
-    daily_gas_price_multipliers_r, daily_gas_price_multipliers_cendiv = (
-        calculate_daily_gas_price_multipliers(reeds_path, inputs_case)
-    )
-    reeds.io.write_profile_to_h5(
-        daily_gas_price_multipliers_r,
-        'daily_gas_price_multipliers_r.h5',
-        inputs_case
-    )
-    reeds.io.write_profile_to_h5(
-        daily_gas_price_multipliers_cendiv,
-        'daily_gas_price_multipliers_cendiv.h5',
-        inputs_case
-    )
+reeds.io.write_profile_to_h5(
+    daily_gas_price_multipliers_r,
+    'daily_gas_price_multipliers_r.h5',
+    inputs_case
+)
+reeds.io.write_profile_to_h5(
+    daily_gas_price_multipliers_cendiv,
+    'daily_gas_price_multipliers_cendiv.h5',
+    inputs_case
+)
 
 reeds.log.toc(tic=tic, year=0, process='input_processing/fuelcostprep.py', 
     path=os.path.join(inputs_case,'..'))
