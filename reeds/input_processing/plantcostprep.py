@@ -117,8 +117,7 @@ beccs = deflate_func(beccs, sw.plantchar_beccs)
 h2combustion = pd.read_csv(os.path.join(inputs_case,'plantchar_h2combustion.csv'))
 h2combustion = deflate_func(h2combustion, sw.plantchar_h2combustion)
 
-fuel_cell = pd.read_csv(os.path.join(inputs_case,'plantchar_fuel-cell.csv'))
-fuel_cell = deflate_func(fuel_cell, sw.fuelcellscen)
+fuel_cell = pd.read_csv(os.path.join(inputs_case,'plantchar_h2-fuel-cell.csv'))
 
 if sw.upgradescen != 'default':
     upgrade = pd.read_csv(os.path.join(inputs_case,'plantchar_upgrades.csv'))
