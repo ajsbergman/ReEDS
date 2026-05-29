@@ -991,7 +991,7 @@ _ssh_lock = threading.Lock()
 # lives in _ssh_pool. Tokens expire after IDLE_TIMEOUT_SECS of inactivity.
 _sessions: dict[str, dict] = {}
 _session_lock = threading.Lock()
-SESSION_IDLE_TIMEOUT_SECS = 30 * 60   # 30 minutes
+SESSION_IDLE_TIMEOUT_SECS = 4 * 60 * 60   # 4 hours
 
 
 def _mint_session(host: str, user: str) -> str:
