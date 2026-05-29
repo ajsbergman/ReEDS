@@ -876,13 +876,7 @@ peakdem_static_h(r,h,t) = peak_h(r,h,t) * (1 - sum{flex_type, flex_demand_frac(f
 gasadder_cd(cendiv,t,allh) = 0 ;
 gasadder_cd(cendiv,t,h) = (gasprice_ref(cendiv,t) - gasprice_nat(t))/2 ;
 
-*winter gas gets marked up if GSw_GasPriceAdjMethod = 0
-szn_adj_gas(allh) = 0 ;
-szn_adj_gas(h) = 1 ;
-szn_adj_gas(h)$frac_h_quarter_weights(h,"wint") =
-    szn_adj_gas(h) + frac_h_quarter_weights(h,"wint") * szn_adj_gas_winter ;
-
-*daily temperature-based gas price adjustments apply if GSw_GasPriceAdjMethod = 1
+* Written by hourly_writetimeseries.py
 $onempty
 parameter gasprice_adj_r(r,allh,allt) "--unitless-- daily gas price multipliers by region, timeslice, and year"
 / 
@@ -893,7 +887,6 @@ $offdelim
 $onlisting
 / ;
 $offempty
-gasprice_adj_r(r,h,t)$(Sw_GasPriceAdjMethod = 0) = szn_adj_gas(h) ;
 
 $onempty
 parameter gasprice_adj_cendiv(cendiv,allh,allt) "--unitless-- daily gas price multipliers by region, timeslice, and year"
@@ -905,6 +898,14 @@ $offdelim
 $onlisting
 / ;
 $offempty
+
+* If GSw_GasPriceAdjMethod = 0, apply a uniform winter gas markup instead of daily adjustments
+szn_adj_gas(allh) = 0 ;
+szn_adj_gas(h) = 1 ;
+szn_adj_gas(h)$frac_h_quarter_weights(h,"wint") =
+    szn_adj_gas(h) + frac_h_quarter_weights(h,"wint") * szn_adj_gas_winter ;
+
+gasprice_adj_r(r,h,t)$(Sw_GasPriceAdjMethod = 0) = szn_adj_gas(h) ;
 gasprice_adj_cendiv(cendiv,h,t)$(Sw_GasPriceAdjMethod = 0) = szn_adj_gas(h) ;
 
 
