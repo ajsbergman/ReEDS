@@ -6132,8 +6132,8 @@ Parameter
 * Fossil gas supply curve
     gasadder_cd(cendiv,t,allh)             "--$/MMbtu-- adder for NG census division"
     szn_adj_gas(allh)                      "--fraction-- seasonal adjustment for gas prices"
-    daily_gas_price_multipliers_r(r,allh,allt)   "--unitless-- multiplier for zonal gas prices"
-    daily_gas_price_multipliers_cendiv(cendiv,allh,allt)   "--unitless-- multiplier for cendiv-level gas prices"
+    gas_price_adj_r(r,allh,allt)           "--fraction-- adjustment for zonal gas prices"
+    gas_price_adj_cendiv(cendiv,allh,allt) "--fraction-- adjustment for cendiv-level gas prices"
 ;
 
 * Initialize some parameters
