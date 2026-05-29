@@ -885,7 +885,7 @@ szn_adj_gas(h)$frac_h_quarter_weights(h,"wint") =
 
 *daily temperature-based gas price adjustments apply if GSw_GasPriceAdjMethod = 1
 $onempty
-parameter gas_price_adj_r(r,allh,allt) "--unitless-- daily gas price multipliers by region, timeslice, and year"
+parameter gasprice_adj_r(r,allh,allt) "--unitless-- daily gas price multipliers by region, timeslice, and year"
 / 
 $offlisting
 $ondelim
@@ -894,10 +894,10 @@ $offdelim
 $onlisting
 / ;
 $offempty
-gas_price_adj_r(r,h,t)$(Sw_GasPriceAdjMethod = 0) = szn_adj_gas(h) ;
+gasprice_adj_r(r,h,t)$(Sw_GasPriceAdjMethod = 0) = szn_adj_gas(h) ;
 
 $onempty
-parameter gas_price_adj_cendiv(cendiv,allh,allt) "--unitless-- daily gas price multipliers by region, timeslice, and year"
+parameter gasprice_adj_cendiv(cendiv,allh,allt) "--unitless-- daily gas price multipliers by region, timeslice, and year"
 / 
 $offlisting
 $ondelim
@@ -906,7 +906,7 @@ $offdelim
 $onlisting
 / ;
 $offempty
-gas_price_adj_cendiv(cendiv,h,t)$(Sw_GasPriceAdjMethod = 0) = szn_adj_gas(h) ;
+gasprice_adj_cendiv(cendiv,h,t)$(Sw_GasPriceAdjMethod = 0) = szn_adj_gas(h) ;
 
 
 *=============================================
@@ -920,8 +920,9 @@ h_weight_csapr(h)$h_weight_csapr(h) = round(h_weight_csapr(h),3) ;
 load_exog(r,h,t)$load_exog(r,h,t) = round(load_exog(r,h,t),3) ;
 load_exog_static(r,h,t)$load_exog_static(r,h,t) = round(load_exog_static(r,h,t),3) ;
 minloadfrac(r,i,h)$minloadfrac(r,i,h) = round(minloadfrac(r,i,h),3) ;
-gas_price_adj_r(r,h,t)$gas_price_adj_r(r,h,t) = round(gas_price_adj_r(r,h,t), 3) ;
-gas_price_adj_cendiv(cendiv,h,t)$gas_price_adj_cendiv(cendiv,h,t) = round(gas_price_adj_cendiv(cendiv,h,t), 3) ;
+szn_adj_gas(h)$szn_adj_gas(h) = round(szn_adj_gas(h), 3) ;
+gasprice_adj_r(r,h,t)$gasprice_adj_r(r,h,t) = round(gasprice_adj_r(r,h,t), 3) ;
+gasprice_adj_cendiv(cendiv,h,t)$gasprice_adj_cendiv(cendiv,h,t) = round(gasprice_adj_cendiv(cendiv,h,t), 3) ;
 cap_hyd_szn_adj(i,szn,r)$cap_hyd_szn_adj(i,szn,r) = round(cap_hyd_szn_adj(i,szn,r),3) ;
 peakdem_static_ccseason(r,ccseason,t)$peakdem_static_ccseason(r,ccseason,t) = round(peakdem_static_ccseason(r,ccseason,t),2) ;
 seas_cap_frac_delta(i,v,r,szn,t)$seas_cap_frac_delta(i,v,r,szn,t) = round(seas_cap_frac_delta(i,v,r,szn,t),3) ;

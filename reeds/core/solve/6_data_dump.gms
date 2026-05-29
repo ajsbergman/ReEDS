@@ -194,18 +194,18 @@ repgasquant(cendiv,t)$[(Sw_GasCurve = 1 or Sw_GasCurve = 2)$tcur(t)] =
        } ;
 
 repgasprice(cendiv,t)$[(Sw_GasCurve = 0)$tcur(t)] =
-    smax{gb$[sum{h, GASUSED.l(cendiv,gb,h,t) * gas_price_adj_cendiv(cendiv,h,t)}], gasprice(cendiv,gb,t) } ;
+    smax{gb$[sum{h, GASUSED.l(cendiv,gb,h,t) * gasprice_adj_cendiv(cendiv,h,t)}], gasprice(cendiv,gb,t) } ;
 
 repgasprice(cendiv,t)$[(Sw_GasCurve = 2)$tcur(t)$repgasquant(cendiv,t)] =
     sum{(i,v,r,h)$[r_cendiv(r,cendiv)$valgen(i,v,r,t)$gas(i)$heat_rate(i,v,r,t)],
-          hours(h)*heat_rate(i,v,r,t)*fuel_price(i,r,t)*GEN.l(i,v,r,h,t)*gas_price_adj_r(r,h,t)
+          hours(h)*heat_rate(i,v,r,t)*fuel_price(i,r,t)*GEN.l(i,v,r,h,t)*gasprice_adj_r(r,h,t)
        } / (repgasquant(cendiv,t)) ;
 
 repgasprice_r(r,t)$[(Sw_GasCurve = 0 or Sw_GasCurve = 2)$tcur(t)] = sum{cendiv$r_cendiv(r,cendiv), repgasprice(cendiv,t) } ;
 
 repgasprice_r(r,t)$[(Sw_GasCurve = 1)$tcur(t)] =
               ( sum{(h,cendiv),
-                   gasmultterm(cendiv,t) * cendiv_weights(r,cendiv) * hours(h) * gas_price_adj_cendiv(cendiv,h,t)} / sum{h, hours(h) }
+                   gasmultterm(cendiv,t) * cendiv_weights(r,cendiv) * hours(h) * gasprice_adj_cendiv(cendiv,h,t)} / sum{h, hours(h) }
 
               + smax((fuelbin,cendiv)$[VGASBINQ_REGIONAL.l(fuelbin,cendiv,t)$r_cendiv(r,cendiv)], gasbinp_regional(fuelbin,cendiv,t) )
 
