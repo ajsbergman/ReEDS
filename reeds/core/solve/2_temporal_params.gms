@@ -829,28 +829,6 @@ maxload_szn(r,h,t,szn)
     $h_szn(h,szn)$Sw_OpRes] = yes ;
 
 
-$onempty
-parameter daily_gas_price_multipliers_r(r,allh,allt) "--unitless-- daily gas price multipliers by region, timeslice, and year"
-/ 
-$offlisting
-$ondelim
-$include inputs_case%ds%%temporal_inputs%%ds%daily_gas_price_multipliers_r.csv
-$offdelim
-$onlisting
-/ ;
-$offempty
-$onempty
-parameter daily_gas_price_multipliers_cendiv(cendiv,allh,allt) "--unitless-- daily gas price multipliers by region, timeslice, and year"
-/ 
-$offlisting
-$ondelim
-$include inputs_case%ds%%temporal_inputs%%ds%daily_gas_price_multipliers_cendiv.csv
-$offdelim
-$onlisting
-/ ;
-$offempty
-
-
 set h_ccseason_prm(allh,ccseason) "peak-load hour for the entire modeled system by ccseason"
 /
 $offlisting
@@ -904,6 +882,28 @@ szn_adj_gas(allh) = 0 ;
 szn_adj_gas(h) = 1 ;
 szn_adj_gas(h)$frac_h_quarter_weights(h,"wint") =
     szn_adj_gas(h) + frac_h_quarter_weights(h,"wint") * szn_adj_gas_winter ;
+
+*daily temperature-based gas price adjustments apply if GSw_GasPriceAdjMethod = 1
+$onempty
+parameter daily_gas_price_multipliers_r(r,allh,allt) "--unitless-- daily gas price multipliers by region, timeslice, and year"
+/ 
+$offlisting
+$ondelim
+$include inputs_case%ds%%temporal_inputs%%ds%daily_gas_price_multipliers_r.csv
+$offdelim
+$onlisting
+/ ;
+$offempty
+$onempty
+parameter daily_gas_price_multipliers_cendiv(cendiv,allh,allt) "--unitless-- daily gas price multipliers by region, timeslice, and year"
+/ 
+$offlisting
+$ondelim
+$include inputs_case%ds%%temporal_inputs%%ds%daily_gas_price_multipliers_cendiv.csv
+$offdelim
+$onlisting
+/ ;
+$offempty
 
 
 *=============================================
