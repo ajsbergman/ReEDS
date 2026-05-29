@@ -99,7 +99,7 @@ upv_stack = pd.concat(
 ###########################
 
 conv_in = []
-conv_techs = ['gas', 'gas_ccs', 'coal', 'coal_ccs', 'biopower', 'nuclear', 'nuclear_smr','h2-fuel-cell', 'other']
+conv_techs = ['gas', 'gas_ccs', 'coal', 'coal_ccs', 'biopower', 'nuclear', 'nuclear_smr','fuelcell','h2-fuelcell' 'other']
 for ct in conv_techs:
     print(f"Loading plantchar_{ct}")
     df = pd.read_csv(os.path.join(inputs_case,f'plantchar_{ct}.csv'))
@@ -116,9 +116,6 @@ beccs = deflate_func(beccs, sw.plantchar_beccs)
 
 h2combustion = pd.read_csv(os.path.join(inputs_case,'plantchar_h2combustion.csv'))
 h2combustion = deflate_func(h2combustion, sw.plantchar_h2combustion)
-
-h2-fuel-cell = pd.read_csv(os.path.join(inputs_case,'plantchar_h2-fuel-cell.csv'))
-h2-fuel-cell = deflate_func(h2-fuel-cell, sw.plantchar_h2_fuel_cell)
 
 if sw.upgradescen != 'default':
     upgrade = pd.read_csv(os.path.join(inputs_case,'plantchar_upgrades.csv'))
@@ -232,7 +229,7 @@ evmc_shape = deflate_func(evmc_shape, 'evmc_shape_' + sw.evmcscen)
 ###############################
 
 alldata = pd.concat([conv,upv_stack,wind_stack,geo_stack,csp_stack,battery,
-                     evmc_storage,evmc_shape,beccs,ccsflex,h2combustion,fuel_cell],sort=False)
+                     evmc_storage,evmc_shape,beccs,ccsflex,h2combustion],sort=False)
 
 if sw.upgradescen != 'default':
     alldata = pd.concat([alldata,upgrade])
