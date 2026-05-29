@@ -828,7 +828,6 @@ maxload_szn(r,h,t,szn)
        = load_exog_static(r,h,t))
     $h_szn(h,szn)$Sw_OpRes] = yes ;
 
-
 set h_ccseason_prm(allh,ccseason) "peak-load hour for the entire modeled system by ccseason"
 /
 $offlisting
