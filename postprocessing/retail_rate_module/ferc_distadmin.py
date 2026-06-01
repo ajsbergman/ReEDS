@@ -12,8 +12,11 @@ import numpy as np
 import os
 import sys
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from bokehpivot.defaults import REEDS_DOLLAR_YEAR
+from pathlib import Path
+sys.path.append(str(Path(__file__).parent.parent.parent))
+import reeds
+
+dollar_year = int(reeds.io.get_scalars().dollar_year)
 
 
 #################
