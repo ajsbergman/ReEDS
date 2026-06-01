@@ -694,10 +694,14 @@ def main(sw, t, iteration=0, logging=True):
     """
     #%% Write consolidated stress metrics so far
     try:
-        ## TODO: Check whether to keep _neue_simple or not.
-        # _neue_simple = get_and_write_neue(sw, write=True)
-        # Check if EUE is added, if not add it since it's needed for selection of shoulder stress periods
+        ## TODO: Check if get_and_write_neue() is still needed
+        _neue_simple = get_and_write_neue(sw, write=True)
         stress_metrics = sw.GSw_PRM_StressThresholdMetrics.split('/')
+        ## TODO: check if need to refactor or remove
+        # Include NEUE if not already specified, used for plots - only used for writing files
+        if 'NEUE' not in stress_metrics:
+            stress_metrics.append('NEUE')
+
         for stress_metric in stress_metrics:
             print(f"Calculating and writing annual {stress_metric} for iteration {iteration}")
             dfmetric = get_annual_stress_metric(sw.casedir, t, stress_metric, iteration=iteration)
