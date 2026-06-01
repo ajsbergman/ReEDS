@@ -93,7 +93,7 @@ positive variables
   CONVERSION_PRM(r,ccseason,intype,outtype,t)    "--MW-- planning reserve margin capacity sent through VSC AC/DC converters"
   CAP_SPUR(x,t)                                  "--MW-- capacity of spur lines"
   INV_SPUR(x,t)                                  "--MW-- investment in spur line capacity"
-  INV_POI(r,t)                                   "--MW-- investment in new POI capacity (for network reinforcement costs)"
+  INV_POI(r,rtscbin,t)                           "--MW-- investment in new POI capacity by reinforcement cost bin (for network reinforcement costs)"
   TRAN_CAPEX_BINS(r,rr,tscbin,t)                 "--$-- transmission capex cost bins (defined for r < rr)"
 
 * production-, CO2-, and hydrogen-specific variables
@@ -289,6 +289,7 @@ eq_interconnection_queues(tg,r,t)         "--MW-- capacity deployment limit base
  eq_CONVERSION_limit_prm(r,ccseason,t)       "--MW-- AC/DC PRM conversion is limited to converter capacity"
  eq_PRMTRADE_VSC(r,ccseason,t)               "--MW-- PRM capacity can flow through VSC lines but doesn't directly contribute to PRM"
  eq_POI_cap(r,t)                             "--MW-- POI capacity accounting (for network reinforcement costs)"
+ eq_POI_binlim(r,rtscbin,t)                  "--MW-- cumulative POI investment in each bin cannot exceed the bin's available capacity"
  eq_CAPTRAN_GRP(transgrp,transgrpp,t)        "--MW-- combined flow capacity between transmission groups"
  eq_transgrp_limit_energy(transgrp,transgrpp,allh,t) "--MW-- limit on combined interface energy flows"
  eq_transgrp_limit_prm(transgrp,transgrpp,ccseason,t) "--MW-- limit on combined interface PRM flows"
@@ -2007,7 +2008,8 @@ eq_POI_cap(r,t)
 
 * The sum of POI capacity...
     poi_cap_init(r)
-    + sum{tt$[(yeart(tt)<=yeart(t))$(tmodel(tt) or tfix(tt))], INV_POI(r,tt) }
+    + sum{(rtscbin,tt)$[(yeart(tt)<=yeart(t))$(tmodel(tt) or tfix(tt))$poi_bin_feas(r,rtscbin)],
+          INV_POI(r,rtscbin,tt) }
 
     =g=
 
@@ -2022,6 +2024,27 @@ eq_POI_cap(r,t)
     + sum{(rr,tt)$[routes_inv(r,rr,"LCC",t)$(yeart(tt)<=yeart(t))$(tmodel(tt) or tfix(tt))],
           INVTRAN(r,rr,"LCC",tt)
     }
+;
+
+* ---------------------------------------------------------------------------
+
+* Cumulative POI investment in each reinforcement cost bin cannot exceed the incremental
+* capacity available in that bin. Because cost_poi_bin increases across bins, the LP fills
+* the cheapest bins first, producing an increasing marginal reinforcement cost (same mechanism
+* as the VRE resource supply curve, eq_rsc_INVlim). Bins with cap_poi_bin = 0 are treated as
+* unlimited (no constraint generated), e.g. the legacy single-bin case or an unbounded top bin.
+eq_POI_binlim(r,rtscbin,t)
+    $[tmodel(t)
+    $Sw_TransIntraCost
+    $poi_bin_feas(r,rtscbin)
+    $cap_poi_bin(r,rtscbin)
+    $(not Sw_PCM)]..
+
+    cap_poi_bin(r,rtscbin)
+
+    =g=
+
+    sum{tt$[(yeart(tt)<=yeart(t))$(tmodel(tt) or tfix(tt))], INV_POI(r,rtscbin,tt) }
 ;
 
 * ---------------------------------------------------------------------------

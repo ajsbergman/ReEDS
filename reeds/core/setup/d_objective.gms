@@ -69,9 +69,9 @@ eq_ObjFn_inv(t)$tmodel(t)..
                         spurline_cost(x) * Sw_SpurCostMult * INV_SPUR(x,t) }
 
 * --- cost of intra-zone network reinforcement (a.k.a. point-of-interconnection capacity or POI)
-* Sw_TransIntraCost is in $/kW, so multiply by 1000 to convert to $/MW
-                  + sum{r$Sw_TransIntraCost,
-                        trans_cost_cap_fin_mult(t) * Sw_TransIntraCost * 1000 * INV_POI(r,t) }
+* cost_poi_bin is already in $/MW and increases across bins (cheapest bin fills first)
+                  + sum{(r,rtscbin)$[Sw_TransIntraCost$poi_bin_feas(r,rtscbin)],
+                        trans_cost_cap_fin_mult(t) * cost_poi_bin(r,rtscbin) * INV_POI(r,rtscbin,t) }
 
 * --- cost of water access---
                   + [ (8760/1E6) * sum{ (i,v,w,r)$[i_w(i,w)$valinv(i,v,r,t)], sum{wst$i_wst(i,wst),
@@ -200,8 +200,9 @@ eq_Objfn_op(t)$tmodel(t)..
 * intra-zone network reinforcement (only for new capacity; don't include it for existing POI
 * capacity because it's not a great estimate of the actual FOM cost of all existing transmission)
               + sum{r$Sw_TransIntraCost,
-                    Sw_TransIntraCost * 1000 * trans_fom_frac
-                    * sum{tt$[(yeart(tt)<=yeart(t))$(tmodel(tt) or tfix(tt))], INV_POI(r,tt) } }
+                    trans_fom_frac
+                    * sum{(rtscbin,tt)$[(yeart(tt)<=yeart(t))$(tmodel(tt) or tfix(tt))$poi_bin_feas(r,rtscbin)],
+                          cost_poi_bin(r,rtscbin) * INV_POI(r,rtscbin,tt) } }
 
 * --- penalty for retiring a technology (represents friction in retirements)---
               - sum{(i,v,r)$[valcap(i,v,r,t)$retiretech(i,v,r,t)$Sw_RetirePenalty],

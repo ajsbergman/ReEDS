@@ -330,6 +330,11 @@ hyd_add_pump('hydED_pumped-hydro-flex') = yes ;
 set rscbin "Resource supply curves bins" /bin1*bin%numbins%/,
     rscfeas(i,r,rscbin) "feasibility set for technologies that have resource supply curves" ;
 
+* Sets involved with the POI / network-reinforcement cost supply curve (increasing cost bins
+* for new capacity in each region; applies to all technologies via eq_POI_cap)
+set rtscbin "POI / network-reinforcement supply curve bins" /bin1*bin%numpoibins%/,
+    poi_bin_feas(r,rtscbin) "feasibility set for POI bins that have a defined reinforcement cost" ;
+
 parameter yeart(t) "numeric value for year",
           year(allt) "numeric year value for allt" ;
 
@@ -1277,6 +1282,48 @@ $include inputs_case%ds%poi_cap_init.csv
 $offdelim
 $onlisting
 / ;
+
+* POI / network-reinforcement cost supply curve. Costs are provided in $/kW of new POI
+* capacity above the existing capacity (poi_cap_init), binned so that the marginal cost
+* increases with cumulative new capacity (cheapest bin fills first under cost minimization).
+* cost_poi_bin is stored internally in $/MW (input $/kW is converted with *1000, as for the
+* flat Sw_TransIntraCost), so it can be multiplied directly by INV_POI [MW] in the objective.
+parameter cost_poi_bin(r,rtscbin) "--$/MW-- POI / network-reinforcement cost in each bin (strictly increasing across bins)" ;
+parameter cap_poi_bin(r,rtscbin)  "--MW-- incremental capacity width available in each POI bin (0 = unlimited, e.g. the top bin)" ;
+
+* Binned POI supply curve loaded from inputs_case/poi_supply_curve.csv (long format:
+* r, rtscbin, sc_cat in {cost ($/kW), cap (MW)}, value). copy_files selects the file matching the
+* run's zone set, poi_supply_curve_{GSw_ZoneSet}.csv, so the regions match the resolution. The
+* region dimension is still read against the GAMS universe (*) rather than the model region set r
+* so that regions present in the zone-set file but filtered out of the model by GSw_Region do not
+* raise a domain error; those regions are simply ignored when transferred to cost/cap below.
+parameter poi_sc_dat(*,rtscbin,sc_cat) "--$/kW or MW-- POI / network-reinforcement supply curve data by region, bin, and category"
+/
+$onempty
+$offlisting
+$ondelim
+$include inputs_case%ds%poi_supply_curve.csv
+$offdelim
+$onlisting
+$offempty
+/ ;
+
+* Default (single-bin) supply curve reproduces the legacy flat Sw_TransIntraCost behavior:
+* all reinforcement capacity is available in bin1 at the flat cost, with no bin-width limit.
+* Sw_TransIntraCost is in $/kW, so multiply by 1000 to convert to $/MW. This also serves as the
+* fallback for any region the poi_supply_curve.csv file does not cover.
+cost_poi_bin(r,"bin1")$Sw_TransIntraCost = Sw_TransIntraCost * 1000 ;
+
+* Overlay the supply-curve data for any (region,bin) it covers (only model regions r match).
+* Costs are converted from input $/kW to $/MW with *1000; capacities (MW) are used as-is.
+* With the default per-zone-set files (bin1 cost = 65 $/kW = GSw_TransIntraCost, no cap), this
+* reproduces the flat cost exactly. To activate increasing bins, supply cost AND cap for each
+* bin in poi_supply_curve_{GSw_ZoneSet}.csv (a 0/absent cap means an unlimited, e.g. top, bin).
+cost_poi_bin(r,rtscbin)$poi_sc_dat(r,rtscbin,"cost") = poi_sc_dat(r,rtscbin,"cost") * 1000 ;
+cap_poi_bin(r,rtscbin)$poi_sc_dat(r,rtscbin,"cap")   = poi_sc_dat(r,rtscbin,"cap") ;
+
+* A POI bin is feasible (i.e. can be built into) if it has a defined cost.
+poi_bin_feas(r,rtscbin)$cost_poi_bin(r,rtscbin) = yes ;
 
 *created by reeds/input_processing/writecapdat.py
 table capnonrsc(i,r,*) "--MW-- raw power capacity data for non-RSC tech"

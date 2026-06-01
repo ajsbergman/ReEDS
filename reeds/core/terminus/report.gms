@@ -1482,8 +1482,9 @@ loop(t$[tmodel_new(t)$(not tfirst(t))],
 ) ;
 
 systemcost_ba("inv_transmission_intrazone_investment",r,t)$[tmodel_new(t)$Sw_TransIntraCost] =
-* cost of intra-zone network reinforcement
-              trans_cost_cap_fin_mult(t) * Sw_TransIntraCost * 1000 * INV_POI.l(r,t)
+* cost of intra-zone network reinforcement (cost_poi_bin in $/MW, increasing across bins)
+              sum{rtscbin$poi_bin_feas(r,rtscbin),
+                  trans_cost_cap_fin_mult(t) * cost_poi_bin(r,rtscbin) * INV_POI.l(r,rtscbin,t) }
 ;
 
 systemcost_ba("op_transmission_fom",r,t)$tmodel_new(t) =
@@ -1499,8 +1500,9 @@ systemcost_ba("op_transmission_fom",r,t)$tmodel_new(t) =
 
 systemcost_ba("op_transmission_intrazone_fom",r,t)$[tmodel_new(t)$Sw_TransIntraCost] =
 * FOM cost for intra-zone network reinforcement
-              Sw_TransIntraCost * 1000 * trans_fom_frac
-              * sum{tt$[(yeart(tt)<=yeart(t))$(tmodel(tt) or tfix(tt))], INV_POI.l(r,tt) }
+              trans_fom_frac
+              * sum{(rtscbin,tt)$[(yeart(tt)<=yeart(t))$(tmodel(tt) or tfix(tt))$poi_bin_feas(r,rtscbin)],
+                    cost_poi_bin(r,rtscbin) * INV_POI.l(r,rtscbin,tt) }
 ;
 
 systemcost_ba("inv_converter_costs",r,t)$tmodel_new(t)  =
@@ -1881,7 +1883,8 @@ net_import_ann_stress(r,t)
 
 poi_capacity(r,t)$tmodel_new(t) =
   poi_cap_init(r)
-  + sum{tt$[(yeart(tt)<=yeart(t))$(tmodel(tt) or tfix(tt))], INV_POI.l(r,tt) }
+  + sum{(rtscbin,tt)$[(yeart(tt)<=yeart(t))$(tmodel(tt) or tfix(tt))$poi_bin_feas(r,rtscbin)],
+        INV_POI.l(r,rtscbin,tt) }
 ;
 
 *==========================

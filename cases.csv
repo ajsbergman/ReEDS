@@ -70,6 +70,7 @@ numbins_upv,Number of interconnection supply curve bins for upv; options are 20 
 numbins_csp,Number of interconnection supply curve bins for csp,int,5,
 numbins_geohydro_allkm,Number of interconnection supply curve bins for hydrothermal geothermal,int,10,
 numbins_egs_allkm,Number of interconnection supply curve bins for deep enhanced geothermal,int,10,
+numpoibins,Number of POI / network-reinforcement interconnection cost bins (increasing cost per MW of new capacity above existing); 1 reproduces the legacy flat Sw_TransIntraCost,int,5,
 mindev,minimum deviation for a hintage to qualify for a new bin,int,50,
 unitdata,"Unit Database: ""EIA-NEMS"" for NEMS",EIA-NEMS,EIA-NEMS,
 marg_vre_mw,MW for marginal VRE curt/cc calcs,N/A,1000,
