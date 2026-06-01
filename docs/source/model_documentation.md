@@ -1815,9 +1815,12 @@ Substation POIs incur a substation upgrade cost of \$15/kW; transmission line PO
 Network reinforcement represents upgrades to the existing transmission network required to avoid congestion when moving power from the POI for a new generator to load centers.
 It is intended to represent the costs associated with interconnection queues, which represent a major bottleneck for the deployment of new wind and solar in the United States. {cite}`gormanGridConnectionBarriers2025`.
 Network reinforcement costs are approximated by tracing a path along existing transmission lines from each wind/solar POI to a nearby urban center.
+An urban center is defined as the centroid of a ≥100 km<sup>2</sup> urban area from [2020 U.S. Census data](https://www.census.gov/cgi-bin/geo/shapefiles/index.php?year=2025&layergroup=Urban+Areas).
+POIs are assumed to connect to the urban center that minimizes the combined interconnection cost;
+the least-cost urban center for a reV site is usually, but not always, in the same state as the reV site.
 A cost for each reinforcement route is calculated using the cost surface described above.
 The single lowest-cost route for each POI is then selected; the associated reinforcement cost [\$/MW] and transmission distance [MW-miles] are incurred for every MW of new wind/solar capacity added at all reV sites associated with that POI.
-(This heuristic method of tracing a path from the POI to the largest load center in the zone is highly simplified and does not represent all the considerations involved in an actual interconnection study.)
+(This heuristic method of tracing a path from the POI to an urban center is highly simplified and does not represent all the considerations involved in an actual interconnection study.)
 {numref}`figure-local-generation-interconnection-components` illustrates the concepts of spur lines and reinforcement lines.
 
 ```{figure} figs/docs/local-generation-interconnection-components.png
