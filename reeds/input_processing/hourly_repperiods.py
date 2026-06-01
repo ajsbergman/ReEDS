@@ -794,10 +794,7 @@ def main(
     timestamps_day = make_timestamps(sw=pd.Series({**sw, **{'GSw_HourlyType':'day'}}))
     timestamps_wek = make_timestamps(sw=pd.Series({**sw, **{'GSw_HourlyType':'wek'}}))
     ## Include all possible seasons so dispatch mode can be rerun with any of them
-    quarters = pd.read_csv(
-        os.path.join(inputs_case, 'sets', 'quarter.csv'),
-        header=None,
-    ).squeeze(1).tolist()
+    quarters = reeds.io.read_input(inputs_case, 'quarter').squeeze(1).tolist()
     set_allszn = pd.Series(
         list(timestamps_day.period.unique())
         + list(timestamps_wek.period.unique())
@@ -871,11 +868,14 @@ def main(
         return period_szn_write
 
     #%% Write the sets over all possible periods (representative and stress)
-    set_allszn.to_csv(
-        os.path.join(inputs_case, 'set_allszn.csv'), header=False, index=False)
-
-    set_allh.to_csv(
-        os.path.join(inputs_case, 'set_allh.csv'), header=False, index=False)
+    reeds.io.write_to_inputs_h5(
+        set_allszn.rename(), 'allszn', inputs_case, gamstype='set',
+        comment='all potentially modeled time periods (days/weks)',
+    )
+    reeds.io.write_to_inputs_h5(
+        set_allh.rename(), 'allh', inputs_case, gamstype='set',
+        comment='all potentially modeled time chunks (hour groupings)',
+    )
 
     #%% Write the seed stress periods to use for the PRM constraint
     if 'user' in sw.GSw_PRM_StressModel:
@@ -924,8 +924,8 @@ if __name__ == '__main__':
     #%% Parse arguments
     parser = argparse.ArgumentParser(
         description='Create the necessary 8760 and capacity factor data for hourly resolution')
-    parser.add_argument('reeds_path', help='ReEDS-2.0 directory')
-    parser.add_argument('inputs_case', help='ReEDS-2.0/runs/{case}/inputs_case directory')
+    parser.add_argument('reeds_path', help='ReEDS directory')
+    parser.add_argument('inputs_case', help='ReEDS/runs/{case}/inputs_case directory')
 
     args = parser.parse_args()
     reeds_path = args.reeds_path

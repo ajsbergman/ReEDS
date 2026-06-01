@@ -98,7 +98,7 @@ def pm_to_tech(df, inputs_case):
         index = timeseries
         top column level = prime movers
     inputs_case: str
-        path to ReEDS-2.0/runs/{case}/inputs_case
+        path to ReEDS/runs/{case}/inputs_case
 
     Returns
     -------
@@ -132,10 +132,10 @@ def fill_empty_techs(df_prefill, inputs_case, fillvalues_tech=None, during_quart
     -------
     """
     ### Parse inputs
-    quarters = pd.read_csv(
-        os.path.join(inputs_case, 'sets', 'quarter.csv'),
-        header=None,
-    ).squeeze(1).map(lambda x: x[:4]).tolist()
+    quarters = (
+        reeds.io.read_input(inputs_case, 'quarter')
+        .squeeze(1).map(lambda x: x[:4]).tolist()
+    )
     if isinstance(during_quarters, str):
         assert during_quarters == 'all'
     elif isinstance(during_quarters, list):
@@ -477,8 +477,8 @@ if __name__ == '__main__':
         description='Calculate temperature-dependent forced-outage rates',
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    parser.add_argument('reeds_path', help='ReEDS-2.0 directory')
-    parser.add_argument('inputs_case', help='ReEDS-2.0/runs/{case}/inputs_case directory')
+    parser.add_argument('reeds_path', help='ReEDS directory')
+    parser.add_argument('inputs_case', help='ReEDS/runs/{case}/inputs_case directory')
 
     args = parser.parse_args()
     reeds_path = args.reeds_path

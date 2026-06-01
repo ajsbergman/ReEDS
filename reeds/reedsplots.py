@@ -1239,9 +1239,7 @@ def plot_transmission_utilization(
             dftrans['trans_flow_power'].loc[dftrans['trans_flow_power'].Value < 0, ['rr','r']].values
         )
         dftrans['trans_flow_power'].Value = dftrans['trans_flow_power'].Value.abs()
-    val_r = pd.read_csv(
-        os.path.join(case,'inputs_case','val_r.csv'), header=None,
-    ).squeeze(1).values.tolist()
+    val_r = reeds.io.read_input(case, 'r').squeeze(1).tolist()
     ### Combine all transmission types
     for data in ['trans_flow_power','trans_cap']:
         dftrans[data]['trtype'] = 'all'
@@ -1736,9 +1734,7 @@ def plot_prmtrade(
     dfba = dfmap['r']
     dfstates = dfmap['st']
     ## Downselect to modeled regions
-    val_r = pd.read_csv(
-        os.path.join(case,'inputs_case','val_r.csv'), header=None,
-    ).squeeze(1).values.tolist()
+    val_r = reeds.io.read_input(case, 'r').squeeze(1).tolist()
     dfba = dfba.loc[val_r].copy()
 
     if sw.get('GSw_RegionResolution', 'ba') != 'county':
@@ -1825,9 +1821,7 @@ def plot_average_flow(
     dfmap = reeds.io.get_dfmap(case)
     dfba = dfmap['r']
     dfstates = dfmap['st']
-    val_r = pd.read_csv(
-        os.path.join(case,'inputs_case','val_r.csv'), header=None,
-    ).squeeze(1).values.tolist()
+    val_r = reeds.io.read_input(case, 'r').squeeze(1).tolist()
     if extent.lower() not in ['usa','full','nation','us','country','all']:
         dfba = dfba.loc[val_r]
 
@@ -2034,7 +2028,7 @@ def plot_interreg_transfer_cap_ratio(
     """Plot interregional transfer capability / peak demand over time"""
     ### Inputs for debugging
     # case = (
-    #     '/Users/pbrown/github2/ReEDS-2.0/runs/'
+    #     '/Users/pbrown/github2/ReEDS/runs/'
     #     'v20240212_transopM0_WECC_CPNP_GP1_TFY2035_PTL2035_TRc_MITCg0p3')
     # casenames = 'base'
     # level = 'transreg'; tstart=2020;

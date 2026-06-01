@@ -26,15 +26,15 @@ tic = datetime.datetime.now()
 #%% Parse arguments
 parser = argparse.ArgumentParser(description="""This file organizes fuel cost data by techonology""")
 
-parser.add_argument("reeds_path", help='ReEDS-2.0 directory')
-parser.add_argument("inputs_case", help='ReEDS-2.0/runs/{case}/inputs_case directory')
+parser.add_argument("reeds_path", help='ReEDS directory')
+parser.add_argument("inputs_case", help='ReEDS/runs/{case}/inputs_case directory')
 
 args = parser.parse_args()
 reeds_path = args.reeds_path
 inputs_case = args.inputs_case
 
 # #%% Settings for testing
-# reeds_path = 'd:\\Danny_ReEDS\\ReEDS-2.0'
+# reeds_path = 'd:\\Danny_ReEDS\\ReEDS'
 # reeds_path = os.getcwd()
 # inputs_case = os.path.join('runs','nd5_ND','inputs_case')
 
@@ -49,10 +49,8 @@ print("Starting fuelcostprep.py")
 sw = reeds.io.get_switches(inputs_case)
 
 # Load valid regions
-val_r = pd.read_csv(
-    os.path.join(inputs_case, 'val_r.csv'), header=None).squeeze(1).tolist()
-val_cendiv = pd.read_csv(
-    os.path.join(inputs_case, 'val_cendiv.csv'), header=None).squeeze(1).tolist()
+val_r = reeds.io.read_input(inputs_case, 'r').squeeze(1).tolist()
+val_cendiv = reeds.io.read_input(inputs_case, 'cendiv').squeeze(1).tolist()
 
 r_cendiv = pd.read_csv(os.path.join(inputs_case,"r_cendiv.csv"))
 
