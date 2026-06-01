@@ -473,12 +473,12 @@ for case in tqdm(cases, desc='runtime'):
 dictin_neue = {}
 dictin_neue_all = {}
 for case in tqdm(cases, desc='NEUE'):
-    infiles = sorted(glob(os.path.join(cases[case],'outputs','neue_*.csv')))
+    infiles = sorted(glob(os.path.join(cases[case],'outputs','NEUE_*.csv')))
     if not len(infiles):
         continue
     df = {}
     for f in infiles:
-        y, i = [int(s) for s in os.path.basename(f).strip('neue_.csv').split('i')]
+        y, i = [int(s) for s in os.path.basename(f).strip('NEUE_.csv').split('i')]
         df[y,i] = pd.read_csv(f, index_col=['level', 'metric', 'region']).squeeze(1)
     dictin_neue_all[case] = pd.concat(df, names=('t', 'iteration'))
     indices = ['t', 'level', 'metric', 'region']
