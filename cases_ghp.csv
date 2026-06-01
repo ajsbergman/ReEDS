@@ -1,53 +1,16 @@
-case,Description,Default Value,66rep_3h_midcase
-ignore,"0=run this case, 1=ignore this case",0,
-GSw_ZoneSet,,z54,
-GSw_HourlyNumClusters,,33,
-GSw_HourlyClusterWeights,,load_1/upv_1/wind-ons_1/wind-ofs_1,
-GSw_HourlyType,,day,
-timetype,Sequential or Intertemporal,seq,
-distpvscen,Setting for distpv scenario,stscen2023_mid_case,
-plantchar_battery,Battery cost and performance characteristics,battery_ATB_2024_moderate,
-convscen,Conventional generators cost and performance characteristics,conv_ATB_2024,
-cspscen,CSP cost and performance characteristics,csp_ATB_2024_moderate,
-geodiscov,Annual discover rates for new geothermal sites,BAU,
-geoscen,Geothermal cost projections,geo_ATB_2024_moderate,
-hydroscen,Hydropower cost setting,hydro_ATB_2019_mid,
-incentives_suffix,File suffix for incentive definition,ira,
-ngscen,Natural gas price scenario,AEO_2025_reference,
-upvscen,UPV cost and performance characteristics,upv_ATB_2024_moderate,
-onswindscen,Onshore wind cost and performance characteristics,ons-wind_ATB_2024_moderate,
-ofswindscen,Offshore wind cost and performance characteristics,ofs-wind_ATB_2024_moderate,
-GSw_AnnualCap,"Turn on/off CO2/CO2e cap, 0=no cap, 1=CO2 cap, 2=CO2e cap",0,
-GSw_AnnualCapScen,Scenario for CO2 cap pathway,default,
-GSw_BECCS,Turn on/off BECCS technology,1,
-GSw_CCS,Turn on/off all CCS,1,
-GSw_Clean_Air_Act,"Turn on/off the provisions under the Clean Air Act, Section 111",1,
-GSw_DAC,"Turn on or off the representation of direct air capture [0 = off, 1 = on with projection specified by dacscen]",0,
-GSw_LoadProfiles,"Switch to choose EFS profiles - e.g. historic, EFS_REFERENCE, EFS_MEDIUM, EFS_HIGH",EER2023_IRAlow,
-GSw_Geothermal,"Geothermal can be turned off [0], left to the default representation [1], or have an extended representation [2]",2,
-GSw_gopt,Select opt file to be used,1,
-GSw_GrowthPenalties,Turn on/off relative growth penalties,1,
-GSw_H2,Turn on/off the representation of the production of hydrogen at a national (1) or regional(2) level,2,
-GSw_H2_Demand_Case,H2 demand case as indicated by the column headers in inputs/consume/h2_exogenous_demand.csv,None,
-GSw_H2Combustion,Switch to turn on/off H2CT and H2CC techs,1,
-GSw_HourlyChunkLengthRep,Length of representative-period dispatch timeslices in hours,3,
-GSw_HourlyChunkLengthStress,Length of stress-period dispatch timeslices in hours,3,
-GSw_NoFossilOffsetCDR,If on (=1) then CO2 removal from DAC/BECCS is only allowed to offset emissions from fossil+CCS,0,
-GSw_NuclearSMR,Turn on [1] / off [0] Nuclear-SMR,1,
-GSw_NukeNoRetireYear,If GSw_NukeNoRetire is enabled nuclear cannot retire through the end of this year,2032,
-GSw_Precombustion,Include both precombustion and combustion emissions in CO2 and CO2e calculation,1,
-GSw_PRM_NetImportLimit,Turn on [1] / off [0] eq_firm_transfer_limit constraint on max firm net imports,1,
-GSw_ReducedResource,Turn on/off switch to reduce the RE resource available,0,
-GSw_SitingUPV,"Specify the UPV siting scenario [reference, open, limited]",reference,
-GSw_SitingWindOfs,"Specify the offshore wind siting scenario [open, reference, limited]",reference,
-GSw_SitingWindOns,"Specify the onshore wind siting scenario [reference, open, limited, limitedplus]",reference,
-GSw_TCPhaseout,"Switch for whether tax credit Phaseout is enabled (0=no, 1=yes)",1,
-GSw_TransCapMaxAllTypes,[GW] maximum transmission capacity allowed across each individual BA-BA interface for all trtypes together (constraint is off if set to 0; must be 0 or >= existing capacity (26.13 for AC)),0,
-GSw_TransHurdleLevel1,Region whose hurdle rate rate1 is applied to (defined in cost_hurdle_intra.csv and should match with GSw_TransHurdleLevel1),transgrp,
-GSw_TransHurdleLevel2,Region whose hurdle rate rate2 is applied to (defined in cost_hurdle_intra.csv and should match with GSw_TransHurdleLevel2),hurdlereg,
-GSw_TransHurdleRate,Turn on / off hurdle rate,1,
-GSw_TransInvMaxLongTerm,[TW-mile/year] maximum transmission capacity investment per year IN/AFTER firstyear_trans_longterm (constraint is OFF if set to 0 meaning unlimited trans investment; annual max since 2009 is ~3.64),0,
-GSw_TransRestrict,hierarchy level within which to allow new transmission lines,country,
-GSw_TransScen,"Select Transmission Scenario [default, LCC_all, LCC_SeamsD3_certain, etc]",default,
-GSw_UpgradeCost_Mult,CCS upgrade cost scenario: 0=mid 1=adv 2=con,0,
-GSw_Upgrades,Turn on/off upgrades,1,
+case,Default Value
+ignore,1
+GSw_Region,country/USA
+endyear,2050
+GSw_ZoneSet,z54
+GSw_HourlyNumClusters,142
+GSw_HourlyClusterRegionLevel,st
+GSw_HourlyClusterWeights,load_1/upv_1/wind-ons_1/wind-ofs_1
+GSw_HourlyType,day
+GSw_LoadCalibrate,0
+GSw_LoadProfiles,EER2025_IRAlow
+GSw_GasCurve,1
+GSw_Geothermal,2
+GSw_GrowthPenalties,1
+GSw_Upstream,1
+GSw_TransHurdleRate,1
