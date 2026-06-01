@@ -1,0 +1,122 @@
+*** GAMS/XPRESS option file for ReEDS
+*** Docs: https://www.gams.com/latest/docs/S_XPRESS.html
+*** Activate with: model.OptFile = 1;
+***
+*** GAMS/XPRESS, GAMS/XPRESS-NLP, and GAMS/XPRESS-MINLP all read the same
+*** xpress.opt file. XPRESS-MINLP is the license tier that also includes the
+*** XPRESS SLP / XPRESS Knitro modules for non-linear models. ReEDS is a pure
+*** LP, so the LP-specific options below are what matters; the xslp_* options
+*** are appended at the end for completeness but are no-ops on an LP.
+***
+*** Option names below use the GAMS/XPRESS naming convention (which mostly
+*** mirrors the underlying XPRESS Optimizer "control" names).
+
+*** ------------------------------------------------------------------------------
+*** Algorithm selection
+*** ------------------------------------------------------------------------------
+*** defaultAlg controls which algorithm Xpress runs:
+***   1 automatic, 2 dual simplex, 3 primal simplex, 4 barrier (Newton interior point)
+*** Use 4 (barrier) to match the CPLEX baseline (lpmethod=4).
+defaultAlg 4
+
+*** ------------------------------------------------------------------------------
+*** Parallelism (matches the CPLEX baseline of 8 threads)
+*** ------------------------------------------------------------------------------
+threads 8
+
+*** Cores assumed available to the barrier (negative = auto). Setting positive
+*** forces Xpress to size the parallel barrier for exactly that many cores.
+barCores 8
+
+*** ------------------------------------------------------------------------------
+*** Time / iteration limits
+*** ------------------------------------------------------------------------------
+*** Wall-clock time limit in seconds (2 days, matches cplex.opt reslim=172800)
+*** timeLimit replaces the deprecated maxTime. Negative = absolute, positive ok.
+timeLimit 172800
+
+*** LP iteration limit (-1 = no explicit limit, default 2.1B)
+lpIterLimit 2147483647
+
+*** ------------------------------------------------------------------------------
+*** Tolerances - matched to ReEDS cplex.opt where possible
+*** ------------------------------------------------------------------------------
+*** Primal feasibility tolerance (CPLEX eprhs 1e-5)
+feasTol 1e-5
+
+*** Dual / optimality tolerance (CPLEX epopt 1e-6)
+optimalityTol 1e-6
+
+*** Target feasibility for the solution refiner
+feasTolTarget 1e-9
+optimalityTolTarget 1e-9
+
+*** Matrix coefficient tolerance (entries below this treated as zero)
+matrixTol 1e-9
+
+*** Barrier convergence: relative duality gap target (CPLEX barepcomp 1e-8)
+barGapTarget 1e-8
+
+*** Barrier dual feasibility tolerance
+barDualStop 1e-8
+
+*** Barrier primal feasibility tolerance
+barPrimalStop 1e-8
+
+*** ------------------------------------------------------------------------------
+*** Pre-processing / scaling
+*** ------------------------------------------------------------------------------
+*** Presolve: -1 default (on), 0 off
+*** Use the bitmap value to enable aggressive presolve; default is fine for ReEDS.
+presolve -1
+
+*** Scaling: 0 off, 35 default, 163 = default + bigM scaling + dual objective scaling.
+*** ReEDS has wide coefficient ranges, so keep automatic scaling on.
+autoScaling 1
+scaling 163
+
+*** ------------------------------------------------------------------------------
+*** Crossover (barrier -> basic solution)
+*** ReEDS needs basic marginals, so leave crossover on.
+*** crossover: 0 off (interior solution only), 1 standard, 2 dual then primal
+*** ------------------------------------------------------------------------------
+crossover 1
+
+*** ------------------------------------------------------------------------------
+*** Barrier-specific knobs
+*** ------------------------------------------------------------------------------
+*** Barrier ordering algorithm:
+***   -1 auto, 0 minimum-degree, 1 minimum-local-fill, 2 nested dissection
+barOrder -1
+
+*** Maximum barrier iterations
+barIterLimit 500
+
+*** Allow barrier failure to fall back to simplex
+* reRun 0
+
+*** ------------------------------------------------------------------------------
+*** Logging / diagnostics
+*** ------------------------------------------------------------------------------
+*** Frequency of barrier log lines (in iterations)
+barOutput 1
+
+*** Print every N simplex iterations (0 = let Xpress choose)
+lpLog 0
+
+*** Compute an IIS automatically on infeasibility (mirrors cplex.opt iis 1)
+*** iisFinder: 0 off, 1 first feasible, 2 isolated IIS
+iisFinder 1
+
+*** ------------------------------------------------------------------------------
+*** XPRESS-MINLP specific (ignored on a pure LP - listed for completeness)
+*** ------------------------------------------------------------------------------
+*** Choose the underlying NL solver: auto, xslp, knitro
+xslp_solver auto
+
+*** If you ever submit an actual NLP/MINLP through this link, the SLP linear
+*** subproblems will use the LP settings above.
+* xslp_iterLimit 1000
+* xslp_postsolve -1
+
+threads = 8

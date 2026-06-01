@@ -1,10 +1,95 @@
-Threads 8
+*** GAMS/GUROBI option file for ReEDS
+*** Docs: https://www.gams.com/latest/docs/S_GUROBI.html
+*** Activate with: model.OptFile = 1;
+*** Gurobi is the most direct CPLEX swap-in and is widely used for ReEDS.
+
+*** ------------------------------------------------------------------------------
+*** Algorithm selection
+*** ------------------------------------------------------------------------------
+*** Method: -1 auto, 0 primal simplex, 1 dual simplex, 2 barrier,
+***         3 concurrent, 4 deterministic concurrent, 5 det. concurrent simplex,
+***         6 PDHG (Gurobi 13+)
+*** 2 (barrier) is the standard ReEDS recipe and matches cplex.opt lpmethod=4.
 Method 2
+
+*** Threads. Default uses all cores; pinning to 8 matches the CPLEX baseline.
+Threads 8
+
+*** ------------------------------------------------------------------------------
+*** Time / iteration limits
+*** ------------------------------------------------------------------------------
+*** Wall-clock time limit in seconds (2 days, matches cplex.opt)
 TimeLimit 172800
-ScaleFlag 2
-Aggregate 1
-PrePasses 5
-IISMethod 1
+
+*** ------------------------------------------------------------------------------
+*** Tolerances - matched to ReEDS cplex.opt where possible
+*** ------------------------------------------------------------------------------
+*** Primal feasibility tolerance (CPLEX eprhs 1e-5)
 FeasibilityTol 1e-5
+
+*** Dual feasibility / reduced-cost tolerance (CPLEX epopt 1e-6)
 OptimalityTol 1e-6
+
+*** Barrier convergence tolerance (CPLEX barepcomp 1e-8)
 BarConvTol 1e-8
+
+*** Markowitz pivot tolerance (CPLEX epmrk; left at default - uncomment to raise)
+* MarkowitzTol 0.0078125
+
+*** ------------------------------------------------------------------------------
+*** Preprocessing / scaling
+*** ------------------------------------------------------------------------------
+*** Presolve: -1 auto, 0 off, 1 conservative, 2 aggressive
+Presolve 2
+
+*** Aggregator passes (CPLEX aggind 5 -> Gurobi uses Aggregate fill)
+*** Aggregate: 0 off, 1 on (default), 2 enable extra
+Aggregate 1
+AggFill 10
+
+*** Scaling: -1 auto, 0 off, 1 standard, 2 aggressive, 3 geometric-mean
+ScaleFlag 2
+
+*** ------------------------------------------------------------------------------
+*** Barrier-specific tuning
+*** ------------------------------------------------------------------------------
+*** Ordering for the barrier (0 AMD, 1 nested dissection, -1 auto)
+BarOrder -1
+
+*** Number of barrier iterations between log lines (and for convergence checks)
+BarIterLimit 1000
+
+*** Set BarHomogeneous=1 if barrier reports primal/dual infeasibility on a
+*** model you believe to be feasible - improves numerical robustness.
+* BarHomogeneous 1
+
+*** ------------------------------------------------------------------------------
+*** Crossover (barrier -> basic solution)
+*** Crossover: -1 auto, 0 none, 1 push primal then dual, 2 push dual then primal,
+***            3 push primal only, 4 push dual only
+*** ReEDS needs basic marginals, so leave crossover on (-1 = auto).
+*** To skip crossover for diagnostic speed tests, set Crossover 0.
+*** ------------------------------------------------------------------------------
+Crossover -1
+CrossoverBasis 0
+
+*** ------------------------------------------------------------------------------
+*** Numerical robustness (uncomment if barrier struggles on hard years)
+*** ------------------------------------------------------------------------------
+*** NumericFocus: 0 auto, 1-3 increasing care with numerics (slower but safer)
+* NumericFocus 1
+
+*** Use quad-precision arithmetic in simplex when numerics are bad
+* Quad 1
+
+*** ------------------------------------------------------------------------------
+*** Logging / IIS
+*** ------------------------------------------------------------------------------
+*** Console output: 1 on (default), 0 off
+OutputFlag 1
+
+*** Display interval (seconds) for barrier log lines
+DisplayInterval 30
+
+*** Compute IIS automatically if the model is infeasible (mirrors cplex.opt iis 1)
+IIS 1

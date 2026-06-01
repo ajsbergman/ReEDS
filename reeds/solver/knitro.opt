@@ -1,0 +1,105 @@
+*** GAMS/KNITRO option file for ReEDS
+*** Docs: https://www.gams.com/latest/docs/S_KNITRO.html
+***       https://www.artelys.com/app/docs/knitro/3_referenceManual/userOptions.html
+*** Activate with: model.OptFile = 1;
+***
+*** IMPORTANT: Knitro is primarily an NLP/MINLP solver, but it does include
+*** dedicated LP and QP solvers that can call CPLEX or Xpress as the underlying
+*** LP engine. For pure LP testing on ReEDS:
+***   - Cleanest: have Knitro recognize ReEDS as an LP and call the bundled
+***     LP solver via act_lpsolver and act_lpalg.
+***   - To submit ReEDS to Knitro from GAMS, you typically need to allow NLP:
+***       option NLP = KNITRO;
+***       solve ReEDSmodel using NLP minimizing Z_obj;
+*** Knitro will detect linearity and dispatch the LP solver.
+
+*** ------------------------------------------------------------------------------
+*** Algorithm selection
+*** ------------------------------------------------------------------------------
+*** algorithm: 0 auto (recommended), 1 Interior/Direct, 2 Interior/CG,
+***            3 Active Set, 4 SQP, 5 Multi-algorithm
+***
+*** For an LP, Knitro's auto picker will choose the LP path; an explicit choice
+*** of 1 (Interior/Direct) also resolves to LP barrier internally on LP input.
+algorithm 0
+
+*** LP-subproblem algorithm when Active Set / SQP is used.
+*** 0 default, 1 primal simplex, 2 dual simplex, 3 barrier
+act_lpalg 3
+
+*** LP solver used by Knitro for LP problems / LP subproblems.
+*** 1 = internal Knitro LP, 2 = CPLEX (recommended for ReEDS-scale), 3 = Xpress
+act_lpsolver 1
+
+*** ------------------------------------------------------------------------------
+*** Parallelism
+*** ------------------------------------------------------------------------------
+*** Total threads (matches the CPLEX baseline)
+numthreads 8
+
+*** Linear-algebra threads (for the underlying KKT solves in interior-point)
+blas_numthreads 8
+linsolver_numthreads 8
+
+*** ------------------------------------------------------------------------------
+*** Linear system / inertia handling
+*** ------------------------------------------------------------------------------
+*** linsolver: 0 auto, 1 internal, 2 hybrid, 3 dense QR, 4 MA27, 5 MA57,
+***            6 MKL Pardiso, 7 MA97, 8 SPRAL
+*** MA57 is a good default on Linux for ReEDS-scale problems if HSL is licensed.
+linsolver 5
+
+*** ------------------------------------------------------------------------------
+*** Convergence tolerances - matched to ReEDS cplex.opt
+*** ------------------------------------------------------------------------------
+*** Relative feasibility tolerance (CPLEX eprhs 1e-5)
+feastol 1e-5
+feastol_abs 1e-5
+
+*** Relative optimality tolerance (CPLEX epopt 1e-6)
+opttol 1e-6
+opttol_abs 1e-6
+
+*** Stop on tiny feasible changes in the objective
+ftol 1e-12
+ftol_iters 5
+
+*** ------------------------------------------------------------------------------
+*** Iteration / time limits
+*** ------------------------------------------------------------------------------
+*** Wall-clock limit in seconds (2 days, matches cplex.opt reslim)
+maxtime_real 172800
+
+*** Maximum major iterations
+maxit 10000
+
+*** ------------------------------------------------------------------------------
+*** Presolve / scaling
+*** ------------------------------------------------------------------------------
+*** presolve: -1 auto, 0 off, 1 on
+presolve 1
+
+*** scale: 0 no scaling, 1 user, 2 internal scaling (default), 3 dynamic
+scale 2
+
+*** ------------------------------------------------------------------------------
+*** Barrier-specific knobs
+*** ------------------------------------------------------------------------------
+*** bar_maxcrossit: 0 = no crossover after IPM (default - faster but no basic solution)
+***                 positive = at most that many crossover iterations to an Active-Set
+***                 solution. ReEDS uses marginals downstream, so request crossover.
+bar_maxcrossit 5
+
+*** Initial barrier parameter mu - "auto" lets Knitro choose
+bar_initmu -1
+
+*** ------------------------------------------------------------------------------
+*** Output
+*** ------------------------------------------------------------------------------
+*** outlev: 0 quiet, 1 summary, 2 iteration, 3 detailed, 4-6 debug
+outlev 4
+
+*** Print frequency for iteration log
+outmode 1
+
+threads = 8

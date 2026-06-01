@@ -1,0 +1,105 @@
+*** GAMS/MOSEK option file for ReEDS
+*** Docs: https://www.gams.com/latest/docs/S_MOSEK.html
+*** Activate with: model.OptFile = 1;
+***
+*** MOSEK uses MSK_IPAR_* (integer), MSK_DPAR_* (double), and MSK_SPAR_* (string)
+*** parameter names. Symbolic constants like MSK_OPTIMIZER_INTPNT can be used
+*** in place of numeric codes.
+
+*** ------------------------------------------------------------------------------
+*** Algorithm selection - interior point with basis identification
+*** ------------------------------------------------------------------------------
+*** MSK_IPAR_OPTIMIZER selects the optimizer:
+***   MSK_OPTIMIZER_FREE             let MOSEK choose
+***   MSK_OPTIMIZER_INTPNT           interior point (recommended for large ReEDS LPs)
+***   MSK_OPTIMIZER_CONIC            conic interior point (extension of intpnt)
+***   MSK_OPTIMIZER_PRIMAL_SIMPLEX
+***   MSK_OPTIMIZER_DUAL_SIMPLEX
+***   MSK_OPTIMIZER_FREE_SIMPLEX     simplex with auto primal/dual choice
+MSK_IPAR_OPTIMIZER MSK_OPTIMIZER_INTPNT
+
+*** ------------------------------------------------------------------------------
+*** Parallelism (matches the CPLEX baseline of 8 threads)
+*** ------------------------------------------------------------------------------
+MSK_IPAR_NUM_THREADS 8
+
+*** Use multiple threads inside the interior-point Cholesky / KKT solves
+MSK_IPAR_INTPNT_MULTI_THREAD MSK_ON
+
+*** ------------------------------------------------------------------------------
+*** Time / iteration limits
+*** ------------------------------------------------------------------------------
+*** Wall-clock optimizer time limit in seconds (2 days, matches cplex.opt)
+MSK_DPAR_OPTIMIZER_MAX_TIME 172800
+
+*** Maximum number of interior-point iterations (default 400 is usually plenty)
+MSK_IPAR_INTPNT_MAX_ITERATIONS 1000
+
+*** ------------------------------------------------------------------------------
+*** Tolerances - matched to ReEDS cplex.opt where possible
+*** ------------------------------------------------------------------------------
+*** Primal feasibility for interior point (CPLEX eprhs 1e-5)
+MSK_DPAR_INTPNT_TOL_PFEAS 1e-7
+
+*** Dual feasibility for interior point (CPLEX epopt 1e-6)
+MSK_DPAR_INTPNT_TOL_DFEAS 1e-7
+
+*** Relative optimality gap for interior point (CPLEX barepcomp 1e-8)
+MSK_DPAR_INTPNT_TOL_REL_GAP 1e-8
+
+*** Infeasibility tolerance
+MSK_DPAR_INTPNT_TOL_INFEAS 1e-10
+
+*** Co-tolerance (basis identification): mirror the LP tolerances above
+MSK_DPAR_BASIS_TOL_X 1e-6
+MSK_DPAR_BASIS_TOL_S 1e-6
+MSK_DPAR_BASIS_REL_TOL_S 1e-12
+
+*** ------------------------------------------------------------------------------
+*** Preprocessing / scaling
+*** ------------------------------------------------------------------------------
+*** Use presolve
+MSK_IPAR_PRESOLVE_USE MSK_PRESOLVE_MODE_ON
+
+*** Presolve max number of passes
+MSK_IPAR_PRESOLVE_MAX_NUM_PASS -1
+
+*** Presolve linear dependency check (slow but useful for ill-posed LPs)
+MSK_IPAR_PRESOLVE_LINDEP_USE MSK_ON
+
+*** Scaling for the interior point
+***   MSK_SCALING_FREE (default), MSK_SCALING_NONE, MSK_SCALING_AGGRESSIVE
+MSK_IPAR_INTPNT_SCALING MSK_SCALING_FREE
+
+*** ------------------------------------------------------------------------------
+*** Basis identification (crossover-equivalent for interior point)
+*** ReEDS uses marginals downstream, so we want a basic solution.
+*** MSK_IPAR_INTPNT_BASIS: MSK_BI_NEVER, MSK_BI_ALWAYS (default), MSK_BI_NO_ERROR
+*** ------------------------------------------------------------------------------
+MSK_IPAR_INTPNT_BASIS MSK_BI_ALWAYS
+
+*** Basis identification cleanup optimizer
+MSK_IPAR_BI_CLEAN_OPTIMIZER MSK_OPTIMIZER_FREE_SIMPLEX
+
+*** Max simplex iterations during basis identification
+MSK_IPAR_BI_MAX_ITERATIONS 1000000
+
+*** ------------------------------------------------------------------------------
+*** Output
+*** ------------------------------------------------------------------------------
+*** Overall log level (0 quiet ... 10 maximum)
+MSK_IPAR_LOG 10
+
+*** Interior point log level (every N iterations)
+MSK_IPAR_LOG_INTPNT 1
+
+*** Print solver summary when MOSEK finishes
+MSK_IPAR_LOG_RESPONSE 1
+
+*** ------------------------------------------------------------------------------
+*** Infeasibility analysis (mirrors cplex.opt iis 1)
+*** ------------------------------------------------------------------------------
+MSK_IPAR_INFEAS_REPORT_AUTO MSK_ON
+MSK_IPAR_INFEAS_REPORT_LEVEL 3
+
+threads = 8

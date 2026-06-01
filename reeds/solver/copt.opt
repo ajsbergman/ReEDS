@@ -1,0 +1,84 @@
+*** GAMS/COPT option file for ReEDS
+*** Docs: https://www.gams.com/latest/docs/S_COPT.html
+*** Activate with: model.OptFile = 1;  (in b1_solve.gms or wherever the SOLVE lives)
+*** COPT is a state-of-the-art LP/MIP solver from Cardinal Operations, with a strong
+*** parallel barrier and GPU-PDLP first-order method that can be very competitive on
+*** large sparse LPs like the ReEDS sequential solve.
+
+*** ------------------------------------------------------------------------------
+*** Solver selection / parallelism
+*** ------------------------------------------------------------------------------
+*** LpMethod: -1 auto, 1 dual simplex, 2 barrier, 3 crossover-only, 4 concurrent, 5 PDLP
+*** 2 (barrier) matches the CPLEX baseline; switch to 5 (PDLP) to test the GPU first-order
+*** method on very large instances (requires CUDA + NVIDIA GPU).
+LpMethod 2
+
+*** Total thread count (matches the 8 threads used in cplex.opt for fair comparison)
+Threads 8
+
+*** Threads dedicated to barrier (-1 = inherit from Threads)
+BarThreads -1
+
+*** Threads dedicated to crossover (-1 = inherit)
+CrossoverThreads -1
+
+*** ------------------------------------------------------------------------------
+*** Time / iteration limits
+*** ------------------------------------------------------------------------------
+*** Solve time limit in seconds (172800 s = 2 days, matches cplex.opt)
+TimeLimit 172800
+
+*** ------------------------------------------------------------------------------
+*** Tolerances - matched to ReEDS cplex.opt where possible
+*** ------------------------------------------------------------------------------
+*** Primal feasibility tolerance (cplex.opt uses eprhs = 1e-5)
+FeasTol 1e-5
+
+*** Dual feasibility / reduced-cost tolerance (cplex.opt uses epopt = 1e-6)
+DualTol 1e-6
+
+*** Barrier convergence tolerance on relative gap (CPLEX barepcomp 1e-8)
+BarGapTol 1e-8
+
+*** Matrix coefficient tolerance (entries below this treated as zero)
+MatrixTol 1e-10
+
+*** ------------------------------------------------------------------------------
+*** Preprocessing
+*** ------------------------------------------------------------------------------
+*** Presolve level: -1 auto, 0 off, 1 standard, 2 aggressive
+Presolve 2
+
+*** Scaling: -1 auto, 0 off, 1 on
+Scaling 1
+
+*** Dualize before solve: -1 auto, 0 off, 1 on. ReEDS LPs are often tall (many rows);
+*** dualizing rarely helps - leave on auto.
+Dualize -1
+
+*** ------------------------------------------------------------------------------
+*** Crossover (barrier -> basic solution)
+*** Set Crossover 0 to skip crossover and return only the interior-point solution -
+*** much faster but you lose a basic solution (no marginals on bounds).
+*** ReEDS uses marginals downstream, so keep crossover on.
+*** ------------------------------------------------------------------------------
+Crossover 1
+
+*** ------------------------------------------------------------------------------
+*** Logging / diagnostics
+*** ------------------------------------------------------------------------------
+*** Log level: 0 quiet, 1 normal, 2 verbose
+LogToConsole 1
+
+*** Enable IIS on infeasibility (mirrors cplex.opt iis 1).
+*** Compute an Irreducible Infeasible Subsystem when the model is infeasible.
+IISMethod 0
+
+*** ------------------------------------------------------------------------------
+*** Optional GPU acceleration (uncomment to try)
+*** ------------------------------------------------------------------------------
+*** GPUMode: -1 auto, 0 off, 1 on
+* GPUMode 1
+*** When LpMethod=4 (concurrent), control which engines run where:
+*** 0 CPU only, 1 CPU + GPU PDLP, 2 CPU + GPU barrier, 3 CPU + both GPU engines
+* ConcurrentLpMode 3

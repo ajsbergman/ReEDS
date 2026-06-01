@@ -1,0 +1,36 @@
+# Algorithm - dual simplex 
+int:algorithm = 1
+
+# Representation - auto lets SoPlex pick column vs row based on problem shape
+int:representation = 0
+
+# Scaling - geometric-equilibrium is best for large energy models with mixed units
+int:scaler = 6
+
+# Presolve - use PaPILO 
+int:simplifier = 2
+
+# Pricing - steepest edge is best for highly degenerate LPs
+int:pricer = 5
+
+# Ratio test - bound flipping helps escape degeneracy
+int:ratiotester = 3
+
+# Crash basis - weight-based crash for a better starting point
+int:starter = 1
+
+# Hyper sparse pricing - auto mode
+int:hyperpricing = 1
+
+# Tolerances - tighten slightly vs defaults to match CPLEX quality
+real:feastol = 1e-7
+real:opttol = 1e-7
+
+# Refactorization - increase threshold for large sparse matrices
+int:factor_update_max = 200
+int:factor_update_type = 1
+
+# Verbosity - normal output
+int:verbosity = 3
+
+threads 8

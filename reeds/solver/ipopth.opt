@@ -1,0 +1,96 @@
+*** GAMS/IPOPTH option file for ReEDS
+*** Docs: https://www.gams.com/latest/docs/S_IPOPT.html
+*** Activate with: model.OptFile = 1;
+***
+*** IMPORTANT: IPOPT is an NLP interior-point solver, not an LP solver.
+*** It can solve LPs (since LP is a degenerate NLP), but for a high-density LP
+*** the size of ReEDS this is generally MUCH slower than a dedicated LP barrier
+*** like CPLEX/Gurobi/HiGHS, because IPOPT does not exploit linear sparsity
+*** patterns as aggressively and has no specialized LP presolve.
+***
+*** To submit ReEDS to IPOPTH from GAMS you must allow NLP solves on the model:
+***   option NLP = IPOPTH;
+***   solve ReEDSmodel using NLP minimizing Z_obj;
+*** (or use the LP -> NLP wrapper / option LP = IPOPTH in newer GAMS where it is allowed).
+***
+*** IPOPTH is the *commercial* variant - it bundles the HSL linear-algebra routines
+*** (MA27/MA57/MA86/MA97/MC19). Use one of those for ReEDS-scale linear systems;
+*** MUMPS (the default in plain IPOPT) is too slow on big sparse KKT systems.
+
+*** ------------------------------------------------------------------------------
+*** Linear solver inside the barrier - MOST IMPORTANT TUNING KNOB for ReEDS
+*** ------------------------------------------------------------------------------
+*** Options: ma27, ma57, ma77, ma86, ma97, mumps, pardiso, pardisomkl, spral, wsmp
+*** MA97 is the multi-threaded HSL solver and is usually the best choice for
+*** large sparse symmetric indefinite KKT systems like ReEDS produces.
+linear_solver ma97
+
+*** Number of threads MA97 / Pardiso may use
+ma97_print_level -1
+
+*** Use MC19 scaling on the linear system (HSL only). Strongly recommended for ReEDS.
+linear_system_scaling mc19
+
+*** ------------------------------------------------------------------------------
+*** Convergence tolerances - matched to ReEDS cplex.opt
+*** ------------------------------------------------------------------------------
+*** Overall relative tolerance (CPLEX barepcomp ~ 1e-8)
+tol 1e-8
+
+*** Acceptable convergence tolerance (early-stop quality floor)
+acceptable_tol 1e-6
+
+*** Primal feasibility tolerance (CPLEX eprhs 1e-5)
+constr_viol_tol 1e-5
+acceptable_constr_viol_tol 1e-4
+
+*** Dual feasibility tolerance (CPLEX epopt 1e-6)
+dual_inf_tol 1e-6
+
+*** Complementarity tolerance for the barrier
+compl_inf_tol 1e-6
+
+*** ------------------------------------------------------------------------------
+*** Iteration and time limits
+*** ------------------------------------------------------------------------------
+*** Wall-clock limit in seconds (2 days, matches cplex.opt)
+max_wall_time 172800
+
+*** Maximum interior-point iterations
+max_iter 3000
+
+*** ------------------------------------------------------------------------------
+*** Algorithmic options helpful for large LPs treated as NLPs
+*** ------------------------------------------------------------------------------
+*** Use the linear-elimination treatment for fixed variables (much faster than
+*** "relax_bounds" on big LPs)
+fixed_variable_treatment make_parameter_nodual
+
+*** mu_strategy: monotone (default) or adaptive. Adaptive often wins on LPs.
+mu_strategy adaptive
+
+*** NLP scaling - "gradient-based" is usually best when MC19 is doing the linear scaling
+nlp_scaling_method gradient-based
+
+*** Honor original bounds in the returned solution (avoid tiny bound violations)
+honor_original_bounds yes
+
+*** ------------------------------------------------------------------------------
+*** Output
+*** ------------------------------------------------------------------------------
+*** print_level: 0 silent ... 12 maximum. 5 is a good default for ReEDS logs.
+print_level 5
+print_user_options yes
+print_timing_statistics yes
+
+*** ------------------------------------------------------------------------------
+*** Notes / warnings for the ReEDS user
+*** ------------------------------------------------------------------------------
+*** 1. IPOPT does not return a basic (vertex) solution. Crossover is not available,
+***    so downstream code in ReEDS that relies on marginals of degenerate bounds
+***    may see different (interior) values than CPLEX produces.
+*** 2. Expect 3x-10x longer solve times vs CPLEX/Gurobi/HiGHS on the same hardware.
+*** 3. If you do not have an HSL license, set linear_solver to mumps but expect
+***    much slower behavior; consider switching to HiGHS instead.
+
+threads = 8

@@ -1,0 +1,87 @@
+*** GAMS/LINDO option file for ReEDS
+*** Docs: https://www.gams.com/latest/docs/S_LINDO.html
+*** Activate with: model.OptFile = 1;
+***
+*** LINDO API uses all-caps parameter names (LS_ / SPLEX_ / SOLVER_ / SOLVERIPM_).
+*** It auto-detects problem class, so submitting ReEDS with "option LP = LINDO"
+*** is sufficient - LINDO will dispatch its LP solver.
+
+*** ------------------------------------------------------------------------------
+*** Algorithm selection - barrier with crossover, matching the CPLEX baseline
+*** ------------------------------------------------------------------------------
+*** LP method: 1 free (auto), 2 primal simplex, 3 dual simplex,
+***            4 barrier (no crossover), 5 barrier + crossover, 6 concurrent
+*** Use 5 (barrier + crossover) for ReEDS to get the basic solution downstream code expects.
+*** Selects the LP method. Note: integer code as shown above.
+LS_IPARAM_SOL_TYPE_LP 5
+
+*** Dual simplex strategy: 1 single-phase, 2 two-phase
+SPLEX_DUAL_PHASE 1
+
+*** Run barrier and simplex concurrently if at least 2 threads are available.
+*** 0 off, 1 on if >= 2 threads, 2 always concurrent
+SOLVER_CONCURRENT_OPTMODE 1
+
+*** ------------------------------------------------------------------------------
+*** Parallelism (matches CPLEX baseline of 8 threads)
+*** ------------------------------------------------------------------------------
+LS_IPARAM_NUM_THREADS 8
+
+*** Use threads aggressively in MIP / sub-solves (irrelevant for pure LP, but harmless)
+LS_IPARAM_MIP_PARA_FLAG 1
+
+*** ------------------------------------------------------------------------------
+*** Time / iteration limits
+*** ------------------------------------------------------------------------------
+*** LP time limit in seconds (-1 = no limit). 2 days matches cplex.opt.
+LS_DPARAM_SOLVER_TIMLMT 172800
+
+*** Global LP iteration limit (-1 = no limit)
+LS_IPARAM_LP_ITRLMT -1
+
+*** ------------------------------------------------------------------------------
+*** Tolerances - matched to ReEDS cplex.opt where possible
+*** ------------------------------------------------------------------------------
+*** Primal feasibility tolerance (CPLEX eprhs 1e-5)
+LS_DPARAM_SOLVER_FEASTOL 1e-5
+
+*** Dual feasibility / optimality tolerance (CPLEX epopt 1e-6)
+LS_DPARAM_SOLVER_OPTTOL 1e-6
+
+*** Barrier convergence tolerance (CPLEX barepcomp 1e-8)
+LS_DPARAM_SOLVERIPM_TOL_OPT 1e-8
+
+*** Pivot tolerance
+LS_DPARAM_SOLVER_PIVTOL 1e-7
+
+*** ------------------------------------------------------------------------------
+*** Crossover (barrier -> basic solution)
+*** ------------------------------------------------------------------------------
+*** Run crossover after barrier. ReEDS needs basic marginals downstream.
+*** 0 off, 1 on
+LS_IPARAM_SOLVER_DO_BASIS_CROSSOVER 1
+
+*** ------------------------------------------------------------------------------
+*** Pre-processing / scaling
+*** ------------------------------------------------------------------------------
+*** Presolve level: 0 off, > 0 enables presolve (default is auto)
+LS_IPARAM_SOLVER_PRE_LP -1
+
+*** Scaling: 0 off, > 0 progressively stronger scaling
+LS_IPARAM_SOLVER_IUSOL 1
+
+*** ------------------------------------------------------------------------------
+*** Warm start
+*** ------------------------------------------------------------------------------
+*** 1 = use any basis already in memory (warm start), 0 = cold start.
+*** ReEDS sequentially advances years, so warm-starting between SOLVEs is helpful
+*** when feasible.
+LS_IPARAM_SOL_USE_BASIS 1
+
+*** ------------------------------------------------------------------------------
+*** Output
+*** ------------------------------------------------------------------------------
+*** Verbosity 0 quiet, ..., 4 maximum
+LS_IPARAM_SOLVER_OUTPUT_LEVEL 3
+
+threads = 8
