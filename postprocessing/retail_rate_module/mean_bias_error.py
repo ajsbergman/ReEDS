@@ -16,8 +16,9 @@ import sys
 import argparse
 import retail_rate_calculations
 
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from bokehpivot.defaults import REEDS_DOLLAR_YEAR
+from pathlib import Path
+sys.path.append(str(Path(__file__).parent.parent.parent))
+import reeds
 
 pd.options.display.max_columns = 200
 pd.options.display.max_rows = 50
@@ -47,12 +48,13 @@ validationyears = list(range(2010,2020))
 
 retailmodulepath = os.path.join(reeds_path,'postprocessing','retail_rate_module','')
 inputs_default_path = retailmodulepath+'inputs_default.csv'
+dollar_year = int(reeds.io.get_scalars().dollar_year)
 
 inflation = pd.read_csv(
     os.path.join(reeds_path,'inputs','financials','inflation_default.csv'),
     index_col=['t'])
 inf_adjust = inflation.loc[
-    REEDS_DOLLAR_YEAR+1:out_dollar_year,
+    dollar_year+1:out_dollar_year,
     'inflation_rate'
 ].cumprod()[out_dollar_year]
 

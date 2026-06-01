@@ -179,7 +179,7 @@ def get_inflatable(inflationpath=None):
     inflatable = pd.Series(inflatable)
     return inflatable
 
-def get_excluded_costs(excludecells=excludecells, inflationpath=None, dollar_year=REEDS_DOLLAR_YEAR):
+def get_excluded_costs(excludecells=excludecells, inflationpath=None, dollar_year=dollar_year):
     """
     Get subtracted cells so we can add them back in with special treatment.
     Returns monetary values in dollar_year dollars.
