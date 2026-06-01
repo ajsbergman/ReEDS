@@ -632,12 +632,13 @@ def main(reeds_path, inputs_case):
                 state_load_hourly,
                 endyear
             )
-            state_load_hourly = (
-                calibrate_hourly_state_load_to_historical_annuals(
-                    state_load_hourly,
-                    historical_state_load_annual
+            if sw.GSw_LoadCalibrate == 1:
+                state_load_hourly = (
+                    calibrate_hourly_state_load_to_historical_annuals(
+                        state_load_hourly,
+                        historical_state_load_annual
+                    )
                 )
-            )
             historical_state_load_hourly = reeds.io.get_load_hourly(
                 GSw_LoadProfiles='historic'
             )
