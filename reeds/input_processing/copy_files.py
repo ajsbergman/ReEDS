@@ -1175,50 +1175,6 @@ def map_and_aggregate(
 
     return df
 
-def upscale_from_county_to_ba(
-    df,
-    region_file_entry,
-    agglevel_variables,
-    regions_and_agglevel,
-    aggfunc=None
-):
-    """
-    Changes the resolution of the provided region_col from county to BA
-    or mixed resolution and aggregates according to the provided aggfunc.
-    """
-    original_cols = df.columns
-    region_col = region_file_entry['region_col']
-
-    # Exception for cendiv
-    if region_col.strip('*') == 'r_cendiv':
-        val_cendiv = regions_and_agglevel['valid_regions']['cendiv']
-        df = df.loc[df['r'].isin(regions_and_agglevel['r_county']['county'])]
-        df = df.loc[:, df.columns.isin(["r"] + val_cendiv)].reset_index(drop=True)
-        region_col = 'r'
-
-    # Aggregate values to ba resolution if not running county-level resolution
-    # and if county level is not a desired resolution in mixed resolution runs
-    if 'county' not in agglevel_variables['agglevel']:
-        df = map_and_aggregate(df,regions_and_agglevel,region_file_entry,region_col,aggfunc)
-
-
-    # Mixed resolution procedure
-    elif agglevel_variables['lvl'] == 'mult':
-        df_ba = df[df[region_col].isin(agglevel_variables['BA_county_list'])]
-        df_ba = map_and_aggregate(df_ba,regions_and_agglevel,region_file_entry,region_col,aggfunc)
-
-        # Filter out county regions
-        df_county = df[df[region_col].isin(agglevel_variables['county_regions'])]
-        # Combine county and BA
-        df = pd.concat([df_ba, df_county])
-
-    else:
-         pass
-
-    df = df[original_cols]
-
-    return df
-
 
 def write_region_indexed_file(
     df,
@@ -1226,8 +1182,7 @@ def write_region_indexed_file(
     source_deflator_map,
     sw,
     region_file_entry,
-    regions_and_agglevel,
-    agglevel_variables
+    regions_and_agglevel
 ):
     """
     Write a single region-indexed file to the dir_dst directory
@@ -1235,6 +1190,35 @@ def write_region_indexed_file(
     filename = region_file_entry['filename']
     # Get the filetype of the output file from the filename string
     filetype_out = os.path.splitext(filename)[1].strip('.')
+
+    transmission_files = [
+        'transmission_capacity_future.csv',
+        'transmission_capacity_future_baseline.csv',
+        'transmission_cost_ac.csv',
+        'transmission_cost_dc.csv',
+        'transmission_distance.csv',
+    ]
+    if filename not in transmission_files:
+        region_col = region_file_entry['region_col']
+        fix_cols = region_file_entry['fix_cols'].split(',')
+
+        if region_file_entry['disaggfunc'] != 'ignore':
+            df = reeds.spatial.downscale_from_legacy_zone_to_county(
+                df=df,
+                region_col=region_col,
+                fix_cols=fix_cols,
+                inputs_case=inputs_case,
+                disaggfunc=region_file_entry['disaggfunc']
+            )
+
+        if region_file_entry['aggfunc'] != 'ignore':
+            df = reeds.spatial.upscale_from_county_to_zone(
+                df=df,
+                region_col=region_col,
+                fix_cols=fix_cols,
+                inputs_case=inputs_case,
+                aggfunc=region_file_entry['aggfunc']
+            )
 
     #---- Write data to dir_dst (inputs_case) folder ----
     if filetype_out == 'h5':
@@ -1246,27 +1230,6 @@ def write_region_indexed_file(
             case 'bio_supplycurve.csv':
                 # Adjust for inflation
                 df['price'] = df['price'].astype(float) * source_deflator_map[filepath]
-            case (
-                'can_exports.csv'
-                | 'can_imports.csv'
-                | 'demonstration_plants.csv'
-                | 'distpvcap.csv'
-                | 'h2_ba_share.csv'
-                | 'regional_cap_cost_diff.csv'
-                | 'cendivweights.csv'
-                | 'cap_existing_psh.csv'
-            ):
-                # The upscale_from_county_to_ba function correctly handles the different spatial resolution options
-                # This sections just needs to check if the run is at pure county resolution
-                # The above listed data need to be upscaled if the run includes anything coarser than county resolution
-                if agglevel_variables['lvl'] != 'county':
-                        df = upscale_from_county_to_ba(
-                            df=df,
-                            region_file_entry=region_file_entry,
-                            agglevel_variables=agglevel_variables,
-                            regions_and_agglevel=regions_and_agglevel,
-                            aggfunc=region_file_entry.aggfunc
-                        )
             case 'unitdata.csv':
                 fips_ba_map = regions_and_agglevel['ba_county'].dropna().set_index('county')['ba']
                 df['reeds_ba'] = df['FIPS'].map(fips_ba_map)
@@ -1321,8 +1284,7 @@ def write_region_indexed_files(
                 source_deflator_map,
                 sw,
                 region_file_entry,
-                regions_and_agglevel,
-                agglevel_variables
+                regions_and_agglevel
             )
 
 
@@ -1685,6 +1647,9 @@ def main(reeds_path, inputs_case):
 
     # Copy non-region files
     write_non_region_files(non_region_files, sw, inputs_case, regions_and_agglevel, source_deflator_map)
+    
+    # Write files used for disaggregation
+    write_disagg_data_files(runfiles, inputs_case)
 
     # Copy region files
     write_region_indexed_files(
@@ -1695,9 +1660,6 @@ def main(reeds_path, inputs_case):
         agglevel_variables,
         source_deflator_map
     )
-
-    # Write files used for disaggregation
-    write_disagg_data_files(runfiles, inputs_case)
 
     # Create a maps.gpkg for this run
     # Skip if using region dis/aggregation, maps will be written in aggregation_regions.py.
