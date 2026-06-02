@@ -547,8 +547,8 @@ $ifthene.finitogasprice Sw_FINITO_Link == 1
 repgasprice_finito(cendiv,h,t)$[tmodel_new(t)$(not tfuel(t))] =
     ( 1/obj_scale * 1/pvf_onm(t) * deflator('2018') * 
         [ max{  
-            smax{(eus,usep)$[map_roe_ec_usep("NG",eus,usep)], eq_supplydemand_fe_pool.m("NG",eus,usep,cendiv,h,t)}, 
-            smax{(usep)$[map_roi_ec_usep("NG",usep)],eq_supplydemand_fe_roi.m("NG",usep,cendiv,h,t)},
+            smax{(eus,usep,r)$[map_roe_ec_usep("NG",eus,usep)$r_cendiv(r,cendiv)], eq_supplydemand_fe_pool.m("NG",eus,usep,r,h,t)},
+            smax{(usep,r)$[map_roi_ec_usep("NG",usep)$r_cendiv(r,cendiv)],eq_supplydemand_fe_roi.m("NG",usep,r,h,t)},
             smax{(cfp2,cfvin2,fi,r)$[map_ec_ei("NG",fi)$valei_cf(cfp2,cfvin2,fi,r,t)$r_cendiv(r,cendiv)],eq_use_fi_cf.m(cfp2,cfvin2,fi,r,h,t)},
             smax{(tech,vin,fi,r)$[map_ec_ei("NG",fi)$valei_ind(tech,vin,fi,r,t)$r_cendiv(r,cendiv)],eq_use_fi_ind.m(tech,vin,fi,r,h,t)}
             } / hours(h)
