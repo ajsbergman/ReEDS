@@ -413,10 +413,23 @@ def get_dfmap(case=None, levels=None, exclude_water_areas=False):
 
     return dfmap
 
-def get_disagg_data(case, disagg_variable='population'):
+def get_disagg_data(
+    case: str | Path,
+    disagg_variable: Literal['hydroexist', 'geosize', 'population', 'state_lpf']
+):
     """
     Get state/region-to-county disaggregation factors for the given variable.
     """
+    if disagg_variable not in [
+        'hydroexist',
+        'geosize',
+        'population',
+        'state_lpf'
+    ]:
+        raise NotImplementedError(
+            f"'{disagg_variable}' is not a valid disagg variable."
+        )
+
     return pd.read_csv(
         os.path.join(case, 'inputs_case', f'disagg_{disagg_variable}.csv')
     )
