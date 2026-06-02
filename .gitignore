@@ -66,3 +66,7 @@ slurm_parallel_runs/
 
 # documentation files 
 docs/build/*
+
+# temp
+srun_debug.sh
+load.sh
