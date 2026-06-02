@@ -640,6 +640,7 @@ export function runHpcPostProcessAPI(args: {
   extra_args?: string;
   timeout_seconds?: number;
   scenarios?: HpcScenarioRow[];
+  include_diff?: boolean;
 }): Promise<HpcPostProcessResult> {
   return post<HpcPostProcessResult>("/files/hpc/run-postprocess", {
     password: "",

@@ -48,6 +48,8 @@ export default function HpcPostProcessPanel({
   const [extraArgs, setExtraArgs] = useState<string>("");
   const [basecase, setBasecase] = useState<string>("");
   const [skipBokeh, setSkipBokeh] = useState(true);
+  const [includeDiff, setIncludeDiff] = useState(true);
+  const [gdxDiff, setGdxDiff] = useState(false);
 
   // Editable per-case scenarios (label + color) — used by both tools for rename.
   // Keyed by case name; auto-synced with `selected`.
@@ -122,11 +124,14 @@ export default function HpcPostProcessPanel({
             }))
           : undefined;
 
-      // Build extra args for compare_cases: --skipbp, --basecase, --casenames
+      // Build extra args for compare_cases: --skipbp, --basecase, --casenames, --gdxdiff
       let finalExtraArgs = extraArgs;
       if (tool === "compare_cases") {
         if (skipBokeh) {
           finalExtraArgs = "--skipbp" + (finalExtraArgs ? " " + finalExtraArgs : "");
+        }
+        if (gdxDiff) {
+          finalExtraArgs += " --gdxdiff";
         }
         const effectiveBase = basecase || cases[0];
         if (effectiveBase) {
@@ -164,6 +169,7 @@ export default function HpcPostProcessPanel({
         bash_prefix: bashPrefix,
         extra_args: finalExtraArgs.trim(),
         scenarios: scenariosArr,
+        include_diff: tool === "bokeh_report" ? includeDiff : undefined,
       });
       setResult(res);
     } catch (e) {
@@ -305,6 +311,18 @@ export default function HpcPostProcessPanel({
             <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", color: "var(--text-muted)" }}>
               <input type="checkbox" checked={skipBokeh} onChange={() => setSkipBokeh((v) => !v)} />
               Skip bokehpivot report (faster, PPTX only)
+            </label>
+          )}
+          {tool === "compare_cases" && (
+            <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", color: "var(--text-muted)" }}>
+              <input type="checkbox" checked={gdxDiff} onChange={() => setGdxDiff((v) => !v)} />
+              GDX diff (compare inputs.gdx between cases, 2 cases only)
+            </label>
+          )}
+          {tool === "bokeh_report" && (
+            <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", color: "var(--text-muted)" }}>
+              <input type="checkbox" checked={includeDiff} onChange={() => setIncludeDiff((v) => !v)} />
+              Include diff (difference vs. base case)
             </label>
           )}
         </div>

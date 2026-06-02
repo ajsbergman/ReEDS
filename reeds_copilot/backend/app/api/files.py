@@ -2082,6 +2082,10 @@ class HpcPostProcessRequest(BaseModel):
         default=None,
         description="List of {name, label, color} dicts for bokeh scenarios CSV",
     )
+    include_diff: bool = Field(
+        default=False,
+        description="When true, include diff (difference vs. base) in bokeh report",
+    )
 
 
 # Same regex used elsewhere in the codebase to keep run names harmless when
@@ -2130,7 +2134,8 @@ def run_hpc_postprocess(req: HpcPostProcessRequest):
         interface = f"{bp}/reports/interface_report_model.py"
         report_py = f"{bp}/reports/templates/reeds2/{report}.py"
         scen_csv = f"{output_dir}/scenarios_hpc.csv"
-        out_path = f"{output_dir}/{report}-multicase"
+        out_suffix = "-diff-multicase" if req.include_diff else "-multicase"
+        out_path = f"{output_dir}/{report}{out_suffix}"
         # Build a scenarios CSV. Each row: <label>,<color>,<full case path>
         # If the caller supplied custom scenarios, use those (label/color);
         # otherwise default to label=name and rotate through a palette.
@@ -2153,11 +2158,12 @@ def run_hpc_postprocess(req: HpcPostProcessRequest):
             for i, (name, path) in enumerate(zip(req.cases, case_paths)):
                 csv_lines.append(f"{name},{default_colors[i]},{path}")
         csv_body = "\n".join(csv_lines)
+        diff_flag = "Yes" if req.include_diff else "No"
         py_cmd = (
             f"mkdir -p {shlex.quote(output_dir)} && "
             f"cat > {shlex.quote(scen_csv)} <<'__EOF__'\n{csv_body}\n__EOF__\n"
             f"python {shlex.quote(interface)} 'ReEDS 2.0' "
-            f"{shlex.quote(scen_csv)} all No "
+            f"{shlex.quote(scen_csv)} all {diff_flag} "
             f"{shlex.quote(base_label)} {shlex.quote(report_py)} "
             f"html,excel one {shlex.quote(out_path)} No"
         )
