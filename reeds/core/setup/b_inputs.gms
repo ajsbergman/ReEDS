@@ -516,7 +516,11 @@ if(Sw_H2Combustionupgrade = 0,
 ) ;
 
 if(Sw_FuelCell = 0,
-  ban(i)$i_subsets(i,'fuel_cell') = yes ;
+  ban('ng-fuel-cell') = yes ;
+) ;
+
+if(Sw_H2FuelCell = 0,
+  ban('h2-fuel-cell') = yes ;
 ) ;
 
 if(Sw_LfillGas = 0,
