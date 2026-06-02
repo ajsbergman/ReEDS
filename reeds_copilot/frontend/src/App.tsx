@@ -330,7 +330,11 @@ export default function App() {
           <div style={{ display: tab === "outputs" ? "contents" : "none" }}>
             <OutputExplorer onSelectFile={handleSelectFile} />
           </div>
-          {tab === "hpc" && <HpcBrowser />}
+          {/* Keep HpcBrowser mounted (hidden) so compare/post-process panels
+              and the SSH session survive tab switches. */}
+          <div style={{ display: tab === "hpc" ? "contents" : "none" }}>
+            <HpcBrowser />
+          </div>
           {tab === "settings" && <SettingsPanel />}
 
           {/* Right panel – always visible except on settings/setup */}
