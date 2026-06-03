@@ -222,7 +222,7 @@ def calculate_daily_gas_price_multipliers(reeds_path, inputs_case):
     dd_gas_price_regression_params = pd.read_csv(
         os.path.join(
             inputs_case,
-            'degree_day_gas_price_regression_parameters.csv'
+            'gasreg_degree_day_price_regression_parameters.csv'
         ),
         index_col='param'
     )
