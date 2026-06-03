@@ -22,18 +22,34 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent.parent))
 import reeds
 
-def calculate_state_weights(
-    inputs_case,
-    st2gasreg
-):
-    ## Calculate state population to calculate
-    ## population-weighted degree days
+
+def calculate_region_aggregion_population_weights(
+    inputs_case: str,
+    region_level: str,
+    aggregion_level: str,
+) -> pd.Series:
+    """
+    For a given region level and aggregated region (aggregion)
+    level, calculate each region's share of its corresponding
+    aggregion's total population.
+    
+    
+    Args:
+        inputs_case: Path to the inputs case directory.
+        region_level: Region level (example: 'state')
+        aggregion_level: Aggregated region level
+            (example: 'cendiv')
+
+    Returns:
+        pd.Series
+    """
     # Get county populations
     county_populations = reeds.io.get_county_populations()
     county_populations = county_populations.rename(
         columns={'value': 'population'}
     )
-    # Get county-state map
+
+    # Get county-to-region mapping
     county2zone = reeds.io.get_county2zone(
         os.path.dirname(inputs_case),
         as_map=False
@@ -41,89 +57,147 @@ def calculate_state_weights(
     county2zone['FIPS'] = (
         'p' + county2zone['FIPS'].astype(str).str.zfill(5)
     )
-    county_state_map = county2zone.set_index('FIPS')['state']
-    # Calculate state populations
-    county_populations['state'] = (
-        county_populations['FIPS'].map(county_state_map)
+    state_groups = reeds.io.get_state_groups()
+    county2zone = county2zone.merge(
+        state_groups,
+        left_on='st',
+        right_on='state'
     )
-    state_populations = (
-        county_populations.groupby('state', as_index=False)
+    county_region_map = county2zone.set_index('FIPS')[region_level]
+
+    # Calculate regional populations
+    county_populations[region_level] = (
+        county_populations['FIPS'].map(county_region_map)
+    )
+    region_populations = (
+        county_populations.groupby(region_level, as_index=False)
         ['population']
         .sum()
     )
-    # Calculate state weights
-    state_populations['gasreg'] = (
-        state_populations['state'].map(st2gasreg)
+
+    # Calculate each region's percentage of aggregion population
+    region2aggregion = dict(zip(
+        county2zone[region_level],
+        county2zone[aggregion_level]
+    ))
+    region_populations[aggregion_level] = (
+        region_populations['state'].map(region2aggregion)
     )
-    state_populations['weight'] = (
-        state_populations['population']
+    region_populations['weight'] = (
+        region_populations['population']
         / (
-            state_populations.groupby('gasreg')
+            region_populations.groupby(aggregion_level)
             ['population']
             .transform('sum')
         )
     )
-    state_weights = (
-        state_populations.set_index('state')['weight']
+    region_aggregion_weights = (
+        region_populations.set_index(region_level)['weight']
     )
 
-    return state_weights
+    return region_aggregion_weights
 
-def calculate_historical_daily_state_degree_days(inputs_case):
-    # Get hourly state-level temperatures
+def calculate_historical_daily_state_degree_days(
+    inputs_case: str
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Calculate daily historical heating and cooling degree days for each state
+    and each weather year (based on the GSw_HourlyWeatherYears switch) using
+    hourly state-level temperature data.
+
+    Args:
+        inputs_case: Path to the inputs case directory.
+
+    Returns:
+        (pd.DataFrame, pd.DataFrame)
+    """
+    # Get hourly state-level temperatures for the given weather year(s)
     sw = reeds.io.get_switches(inputs_case)
     weather_years = [int(y) for y in sw.GSw_HourlyWeatherYears.split('_')]
     temp_hourly = reeds.io.get_temperatures(inputs_case, subset_years=False)
     temp_hourly = temp_hourly.loc[temp_hourly.index.year.isin(weather_years)]
 
-    # Get baseline temperature
+    # Get baseline temperature for calculating degree days
     scalars = reeds.io.get_scalars(inputs_case)
     base_temp = scalars['degree_days_base_temperature']
 
-    # Calculate state-level, daily heating and cooling degree days
+    # Calculate each state's average temperature for each day
     temp_daily = temp_hourly.resample('D').agg(['min', 'max'])
     avg_temp_daily = (
         temp_daily.xs('min', axis=1, level=1)
         + temp_daily.xs('max', axis=1, level=1)
     ) / 2
+
+    # Take differences between baseline and average temperatures
     hdd_daily = (base_temp - avg_temp_daily).clip(lower=0)
     cdd_daily = (avg_temp_daily - base_temp).clip(lower=0)
 
     return hdd_daily, cdd_daily
 
-def calculate_historical_daily_gasreg_popweighted_degree_days(
-    historical_daily_state_degree_days,
-    state_weights,
-    st2gasreg
-):
-    historical_daily_gasreg_popweighted_degree_days = (
-        (historical_daily_state_degree_days * state_weights)
+def aggregate_state_degree_days_to_gasreg(
+    state_degree_days: pd.DataFrame,
+    state_weights: pd.Series,
+    st2gasreg: dict[str, str]
+) -> pd.DataFrame:
+    """
+    Aggregate state-level degree days to the gasreg level via
+    population-weighted average.
+
+    Args:
+        historical_daily_state_degree_days: Daily historical
+            state-level degree days.
+        state_weights: The percentage of each state's share of
+            gasreg population.
+        st2gasreg: State-to-gasreg mapping.
+
+    Returns:
+        pd.DataFrame
+    """
+    gasreg_degree_days = (
+        (state_degree_days * state_weights)
         .transpose()
         .rename(st2gasreg)
         .groupby(level=0)
         .sum()
         .transpose()
     )
-    return historical_daily_gasreg_popweighted_degree_days
+    return gasreg_degree_days
 
-def calculate_projected_daily_gasreg_popweighted_degree_days(
-    historical_daily_gasreg_popweighted_degree_days,
-    annual_gasreg_degree_day_projections
-):
-    # Apply historical degree day shapes to annual projections
-    historical_gasreg_popweighted_degree_day_shapes = (
-        historical_daily_gasreg_popweighted_degree_days.div(
-            historical_daily_gasreg_popweighted_degree_days.groupby(
-                historical_daily_gasreg_popweighted_degree_days.index.year
+def rescale_historical_daily_degree_days_to_projected_annuals(
+    historical_daily_degree_days: pd.DataFrame,
+    projected_annual_degree_days: pd.DataFrame
+) -> pd.DataFrame:
+    """
+    Rescale daily, historical degree days so that they match
+    annual degree day projections. This is used to estimate
+    daily degree day projections for model solve years.
+
+    Args:
+        historical_daily_degree_days: Daily historical degree days.
+        projected_annual_degree_days: Annual degree day projections.
+
+    Returns:
+        pd.DataFrame
+    """
+    # Normalize the daily degree day profile annually to get daily
+    # shapes for each historical year
+    historical_degree_day_shapes = (
+        historical_daily_degree_days.div(
+            historical_daily_degree_days.groupby(
+                historical_daily_degree_days.index.year
             )
             .transform('sum')
         )
         .reset_index()
     )
-    daily_gasreg_popweighted_degree_days = (
+
+    # Combine the historical daily normalized values and projected
+    # annual degree day magnitudes via cartesian product to line
+    # them up row-by-row for each region
+    projected_daily_degree_days = (
         pd.merge(
-            historical_gasreg_popweighted_degree_day_shapes,
-            annual_gasreg_degree_day_projections,
+            historical_degree_day_shapes,
+            projected_annual_degree_days,
             how='cross',
             suffixes=('_shape', '_magnitude')
         )
@@ -131,168 +205,225 @@ def calculate_projected_daily_gasreg_popweighted_degree_days(
         .rename_axis(['year', 'datetime'])
         .sort_index()
     )
-    gasregs = (
-        annual_gasreg_degree_day_projections
+
+    # For each region, multiply the daily normalized value by the
+    # annual projection to calculate a degree day projection for
+    # each day
+    regions = (
+        projected_annual_degree_days
         .drop(columns='t')
         .columns
         .tolist()
     )
-    for gasreg in gasregs:
-        daily_gasreg_popweighted_degree_days[gasreg] = (
-            daily_gasreg_popweighted_degree_days[f"{gasreg}_shape"]
-            * daily_gasreg_popweighted_degree_days[f"{gasreg}_magnitude"]
+    for region in regions:
+        projected_daily_degree_days[region] = (
+            projected_daily_degree_days[f"{region}_shape"]
+            * projected_daily_degree_days[f"{region}_magnitude"]
         )
-        daily_gasreg_popweighted_degree_days = (
-            daily_gasreg_popweighted_degree_days.drop(
-                columns=[f"{gasreg}_shape", f"{gasreg}_magnitude"]
+        projected_daily_degree_days = (
+            projected_daily_degree_days.drop(
+                columns=[f"{region}_shape", f"{region}_magnitude"]
             )
         )
     
-    return daily_gasreg_popweighted_degree_days
+    return projected_daily_degree_days
 
-def calculate_daily_gasreg_population_weighted_degree_days(
-    reeds_path,
-    inputs_case,
-):
-    # state -> gasreg mapping
-    state_groups = pd.read_csv(
-        os.path.join(reeds_path, 'inputs', 'zones', 'state_groups.csv')
-    )
+def calculate_daily_gasreg_degree_days(
+    reeds_path: str,
+    inputs_case: str,
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Calculate daily gasreg-level heating and cooling degree days.
+    This is done by calculating historical daily state-level degree
+    days for the given weather year(s), aggregating them to the
+    gasreg level via population-weighted average, and then rescaling
+    the historical daily degree days to match projected annual
+    degree days (corresponding to model solve years) for each gasreg.
+
+    Args:
+        reeds_path: Path to ReEDS directory.
+        inputs_case: Path to the inputs case directory.
+
+    Returns:
+        (pd.DataFrame, pd.DataFrame)
+    """
+    # Get state-to-gasreg mapping
+    state_groups = reeds.io.get_state_groups
     st2gasreg = state_groups.set_index('st')['gasreg']
-    # Get population-based state weights
-    state_weights = calculate_state_weights(
+
+    # Calculate population-based state-gasreg weights for
+    # calculating population-weighted gasreg-level degree days
+    state_gasreg_weights = calculate_region_aggregion_population_weights(
         inputs_case,
-        st2gasreg
+        region_level='state',
+        aggregion_level='gasreg'
     )
-    # Get historical state-level daily HDD/CDDs
+
+    # Calculate historical state-level daily HDDs and CDDs
     historical_hdd_daily_st, historical_cdd_daily_st = (
         calculate_historical_daily_state_degree_days(inputs_case)
     )
-    # Calculate historical gasreg-level population-weighted degree days
-    historical_popweighted_hdd_daily_gasreg = (
-        calculate_historical_daily_gasreg_popweighted_degree_days(
+
+    # Aggregate historical daily state-level degree days to
+    # the gasreg level via population-weighted average
+    historical_hdd_daily_gasreg = (
+        aggregate_state_degree_days_to_gasreg(
             historical_hdd_daily_st,
-            state_weights,
+            state_gasreg_weights,
             st2gasreg
         )
     )
-    historical_popweighted_cdd_daily_gasreg = (
-        calculate_historical_daily_gasreg_popweighted_degree_days(
+    historical_cdd_daily_gasreg = (
+        aggregate_state_degree_days_to_gasreg(
             historical_cdd_daily_st,
-            state_weights,
+            state_gasreg_weights,
             st2gasreg
         )
     )
-    # Get gasreg-level annual HDD/CDD projections and
-    # subset to solve years only
+
+    # Get gasreg-level annual HDD/CDD projections
+    # for the model solve years
     solveyears = reeds.io.get_years(os.path.dirname(inputs_case))
-    gasreg_degree_days = pd.read_csv(
+    annual_degree_days_gasreg = pd.read_csv(
         os.path.join(inputs_case, 'gasreg_degree_days.csv')
     )
-    gasreg_degree_days = (
-        gasreg_degree_days.loc[gasreg_degree_days['t'].isin(solveyears)]
+    annual_degree_days_gasreg = (
+        annual_degree_days_gasreg
+        .loc[annual_degree_days_gasreg['t'].isin(solveyears)]
     )
-    gasreg_hdd = (
-        gasreg_degree_days.loc[gasreg_degree_days.ddtype == 'HDD']
+    annual_hdd_gasreg = (
+        annual_degree_days_gasreg
+        .loc[annual_degree_days_gasreg.ddtype == 'HDD']
         .drop(columns='ddtype')
     )
-    gasreg_cdd = (
-        gasreg_degree_days.loc[gasreg_degree_days.ddtype == 'CDD']
+    annual_cdd_gasreg = (
+        annual_degree_days_gasreg
+        .loc[annual_degree_days_gasreg.ddtype == 'CDD']
         .drop(columns='ddtype')
     )
-    # Apply annual HDD/CDD projections to historical degree day shapes
-    popweighted_hdd_daily_gasreg = (
-        calculate_projected_daily_gasreg_popweighted_degree_days(
-            historical_popweighted_hdd_daily_gasreg,
-            gasreg_hdd
+
+    # Apply annual HDD/CDD projections to historical daily degree day shapes to
+    # estimate daily gasreg-level HDD/CDD projections for each model solve year
+    hdd_daily_gasreg = (
+        rescale_historical_daily_degree_days_to_projected_annuals(
+            historical_hdd_daily_gasreg,
+            annual_hdd_gasreg
         )
     )
-    popweighted_cdd_daily_gasreg = (
-        calculate_projected_daily_gasreg_popweighted_degree_days(
-            historical_popweighted_cdd_daily_gasreg,
-            gasreg_cdd
+    cdd_daily_gasreg = (
+        rescale_historical_daily_degree_days_to_projected_annuals(
+            historical_cdd_daily_gasreg,
+            annual_cdd_gasreg
         )
     )
 
-    return popweighted_hdd_daily_gasreg, popweighted_cdd_daily_gasreg
+    return hdd_daily_gasreg, cdd_daily_gasreg
 
-def calculate_daily_gas_price_multipliers(reeds_path, inputs_case):
-    # Get temperature-price regression parameters and daily
-    # population-weighted degree days for each gasreg
-    dd_gas_price_regression_params = pd.read_csv(
+def calculate_daily_gasprice_multipliers(
+    reeds_path: str,
+    inputs_case: str
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """
+    Calculate daily gas price multipliers at the r and cendiv levels.
+    This is done by first calculating daily, gasreg-level heating and cooling
+    degree days, where the daily degree day shapes correspond to temperature
+    patterns of the given weather year(s) and annual degree day totals
+    correspond to projections for the model solve years. Then, degree
+    day-price multiplier regression parameters are applied to derive
+    gasreg-level price multipliers. To derive r-level multipliers, the
+    gasreg-level multipliers are copied to their constituent zones. To
+    derive cendiv-level multipliers, gasreg-level multipliers are
+    aggregated via population-weighted average. 
+
+    Args:
+        reeds_path: Path to ReEDS directory.
+        inputs_case: Path to the inputs case directory.
+
+    Returns:
+        (pd.DataFrame, pd.DataFrame)
+    """
+    # Get degree day-price multiplier regression parameters. These
+    # parameters represent a regression model where heating and
+    # cooling degree days were regressed on the log of the multiplicative
+    # difference between daily gas prices and the annual price for each
+    # gasreg with monthly fixed effects.
+    regression_params = pd.read_csv(
         os.path.join(
             inputs_case,
-            'gasreg_degree_day_price_regression_parameters.csv'
+            'gasreg_degree_day_price_mult_regression_parameters.csv'
         ),
         index_col='param'
     )
-    popweighted_hdd_daily_gasreg, popweighted_cdd_daily_gasreg = (
-        calculate_daily_gasreg_population_weighted_degree_days(
+
+    # Calculate daily gasreg-level HDDs and CDDs
+    hdd_daily_gasreg, cdd_daily_gasreg = (
+        calculate_daily_gasreg_degree_days(
             reeds_path,
             inputs_case,
         )
     )
-    # Apply regression parameters to get daily price multipliers
-    df_out = pd.DataFrame(index=popweighted_hdd_daily_gasreg.index)
-    for gasreg in dd_gas_price_regression_params.columns:
-        beta_cdd = dd_gas_price_regression_params.loc['beta_CDD', gasreg]
-        beta_hdd = dd_gas_price_regression_params.loc['beta_HDD', gasreg]
-        alpha = dd_gas_price_regression_params.loc['alpha', gasreg]
-        # monthly effects
+
+    # Apply regression parameters to daily HDD/CDDs
+    # to get daily gasreg-level price multipliers
+    year_datetime_index = hdd_daily_gasreg.index
+    df_out = pd.DataFrame(index=year_datetime_index)
+    for gasreg in regression_params.columns:
+        beta_cdd = regression_params.loc['beta_CDD', gasreg]
+        beta_hdd = regression_params.loc['beta_HDD', gasreg]
+        alpha = regression_params.loc['alpha', gasreg]
         month_effects_map = (
-            dd_gas_price_regression_params
-            .loc[dd_gas_price_regression_params.index.str.contains('alpha_')]
+            regression_params
+            .loc[regression_params.index.str.contains('alpha_')]
             [gasreg]
         )
         month_effects_map.index = month_effects_map.index.str.removeprefix('alpha_')
         month_effects = (
-            popweighted_hdd_daily_gasreg.index
+            year_datetime_index
             .get_level_values('datetime')
             .strftime('%b')
             .str
             .upper()
             .map(month_effects_map)
         )
-        gasreg_price_log_returns = (
+        # Applying the regression parameters gives the log of the
+        # daily multiplicative difference from the annual average
+        # price, so exponentiate to get daily price multipliers.
+        gasreg_price_log_mult_diffs = (
             alpha
-            + beta_cdd * popweighted_cdd_daily_gasreg[gasreg]
-            + beta_hdd * popweighted_hdd_daily_gasreg[gasreg]
+            + beta_cdd * cdd_daily_gasreg[gasreg]
+            + beta_hdd * hdd_daily_gasreg[gasreg]
             + month_effects.values
         )
-        gasreg_price_multipliers = np.exp(gasreg_price_log_returns)
+        gasreg_price_multipliers = np.exp(gasreg_price_log_mult_diffs)
+        # Divide each multiplier by the annual average of the multipliers
+        # to ensure a mean of 1 (so that the year-round average gas price
+        # doesn't change). 
         gasreg_price_multipliers = gasreg_price_multipliers.div(
             gasreg_price_multipliers.groupby(level=0).mean()
         )
         df_out[gasreg] = gasreg_price_multipliers
 
+    # Get hierarchy
     hierarchy = reeds.io.get_hierarchy(os.path.dirname(inputs_case))
-    # Create one set of multipliers for model zones
-    # (needed if GSw_GasCurve == 2)
+
+    # Create one set of multipliers at the r hierarchy level
+    # by copying the gasreg-level multipliers to their constitutent zones
     df_out_r = pd.DataFrame(data={
         r: df_out[gasreg] for r, gasreg in hierarchy['gasreg'].items()
     })
-    # Create another set of multipliers for census divisions
-    # (needed if GSw_GasCurve != 2)
-    popweighted_dd_daily_gasreg = (
-        popweighted_hdd_daily_gasreg + popweighted_cdd_daily_gasreg
-    )
-    annual_gasreg_dd = (
-        popweighted_dd_daily_gasreg.groupby(
-            popweighted_dd_daily_gasreg.index.get_level_values('year')
-        )
-        .sum()
+
+    breakpoint()
+
+    # Create another set of multipliers for census divisions by aggregating
+    # the gasreg-level multipliers via population-weighted average
+    gasreg_cendiv_weights = calculate_region_aggregion_population_weights(
+        inputs_case,
+        region_level='gasreg',
+        aggregion_level='cendiv'
     )
     gasreg_cendiv_map = dict(zip(hierarchy['gasreg'], hierarchy['cendiv']))
-    annual_cendiv_dd = (
-        annual_gasreg_dd.transpose()
-        .assign(cendiv=gasreg_cendiv_map)
-        .groupby('cendiv', as_index=False)
-        .transform('sum')
-        .transpose()
-    )
-    annual_gasreg_cendiv_weights = annual_gasreg_dd / annual_cendiv_dd
     df_out_cendiv = (
-        df_out.mul(annual_gasreg_cendiv_weights, level=0)
+        df_out.mul(gasreg_cendiv_weights, level=0)
         .transpose()
         .rename(gasreg_cendiv_map)
         .groupby(level=0)
@@ -441,8 +572,8 @@ alpha = alpha[alpha.columns[alpha.columns.isin(val_cendiv)]]
 alpha = alpha.round(6)
 
 ### Daily gas price multipliers
-daily_gas_price_multipliers_r, daily_gas_price_multipliers_cendiv = (
-    calculate_daily_gas_price_multipliers(reeds_path, inputs_case)
+daily_gasprice_multipliers_r, daily_gasprice_multipliers_cendiv = (
+    calculate_daily_gasprice_multipliers(reeds_path, inputs_case)
 )
 
 
@@ -452,19 +583,20 @@ daily_gas_price_multipliers_r, daily_gas_price_multipliers_cendiv = (
 
 fuel.to_csv(os.path.join(inputs_case,'fprice.csv'),index=False)
 ngprice_cendiv.to_csv(os.path.join(inputs_case,'gasprice_ref.csv'))
+reeds.io.write_profile_to_h5(
+    daily_gasprice_multipliers_r,
+    'daily_gasprice_multipliers_r.h5',
+    inputs_case
+)
+reeds.io.write_profile_to_h5(
+    daily_gasprice_multipliers_cendiv,
+    'daily_gasprice_multipliers_cendiv.h5',
+    inputs_case
+)
+
 ngdemand.to_csv(os.path.join(inputs_case,'ng_demand_elec.csv'))
 ngtotdemand.to_csv(os.path.join(inputs_case,'ng_demand_tot.csv'))
 alpha.to_csv(os.path.join(inputs_case,'alpha.csv'))
-reeds.io.write_profile_to_h5(
-    daily_gas_price_multipliers_r,
-    'daily_gas_price_multipliers_r.h5',
-    inputs_case
-)
-reeds.io.write_profile_to_h5(
-    daily_gas_price_multipliers_cendiv,
-    'daily_gas_price_multipliers_cendiv.h5',
-    inputs_case
-)
 
 reeds.log.toc(tic=tic, year=0, process='input_processing/fuelcostprep.py', 
     path=os.path.join(inputs_case,'..'))

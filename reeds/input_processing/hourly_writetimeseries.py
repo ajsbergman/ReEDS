@@ -258,27 +258,40 @@ def format_climate_inputs(filename, inputs_case, szn_month_weights):
         return df_out
 
 
-def get_daily_gas_price_multipliers(sw, hmap_myr, inputs_case, periodtype='rep', regionlevel='r'):
+def get_daily_gasprice_multipliers(
+    sw,
+    hmap_myr,
+    inputs_case,
+    periodtype='rep',
+    region_level='r'
+):
     """
-    This function takes the inputs_case/natgas_price_diffs.h5 and turns it into a
-    GAMS-compatible file. The h5 contains daily multiplicative natural gas price
-    factors indexed by (year [model year t], datetime) with model region columns.
-    Repeat daily value across hours.
+    After identifying the modeled days, load the daily gas price
+    multipliers for the given region level and extract the multipliers
+    on the modeled days for each year.
     """
-    ### Load daily natgas price diffs from fuelcostprep.py
+    ### Get daily gas price multipliers for region_level
     dfin = reeds.io.read_file(
-        os.path.join(inputs_case, f'daily_gas_price_multipliers_{regionlevel}.h5'),
+        os.path.join(inputs_case, f'daily_gasprice_multipliers_{region_level}.h5'),
         parse_timestamps=True
     )
     dfin = dfin.unstack(level=0)
-    dfin.columns = dfin.columns.rename([regionlevel,'t'])
+    dfin.columns = dfin.columns.rename([region_level,'t'])
+
+    ### Add time index and forward fill so that the multiplier for
+    ### each day is copied to each hour of that day
     dfin = dfin.reindex(hmap_myr.timestamp).ffill()
     dfin.index = (
-        dfin.index.map(hmap_myr.set_index('timestamp')['actual_h'])
+        dfin.index
+        .map(hmap_myr.set_index('timestamp')['actual_h'])
         .rename('h')
     )
 
+    breakpoint()
+
     ### For full year, keep all periods in the modeled years
+    ### Note the daily multipliers are already filtered to contain
+    ### only the modeled years
     if (sw.GSw_HourlyType == 'year') and (periodtype == 'rep'):
         dfout = dfin.copy()
     ### Otherwise, pull out the specified periods
@@ -286,7 +299,11 @@ def get_daily_gas_price_multipliers(sw, hmap_myr, inputs_case, periodtype='rep',
         dfout = dfin.loc[hmap_myr.h.unique()].copy()
 
     ### Reshape for ReEDS
-    dfout = dfout.stack(regionlevel).reorder_levels([regionlevel, "h"], axis=0).sort_index()
+    dfout = (
+        dfout.stack(region_level)
+        .reorder_levels([region_level, "h"], axis=0)
+        .sort_index()
+    )
 
     return dfout
 
@@ -532,8 +549,8 @@ def main(sw, reeds_path, inputs_case, periodtype='rep', make_plots=1, logging=Tr
             'evmc_storage_energy': ['*i','r','h','t'],
             'flex_frac_all': ['*flex_type','r','h','t'],
             'peak_h': ['*r','h','t','MW'],
-            'daily_gas_price_multipliers_r': ['*r','h','t','multiplier'],
-            'daily_gas_price_multipliers_cendiv': ['*cendiv','h','t','multiplier'],
+            'daily_gasprice_multipliers_r': ['*r','h','t','multiplier'],
+            'daily_gasprice_multipliers_cendiv': ['*cendiv','h','t','multiplier'],
         }
         for f, columns in write.items():
             pd.DataFrame(columns=columns).to_csv(
@@ -1352,9 +1369,9 @@ def main(sw, reeds_path, inputs_case, periodtype='rep', make_plots=1, logging=Tr
     #################################################################
     #    -- Weather-based daily natural gas price multipliers --    #
     #################################################################
-    daily_gas_price_multipliers_dict = {}
+    daily_gasprice_multipliers_dict = {}
     for regionlevel in ['r', 'cendiv']:
-        df = get_daily_gas_price_multipliers(
+        df = get_daily_gasprice_multipliers(
             sw=sw,
             hmap_myr=hmap_myr,
             inputs_case=inputs_case,
@@ -1368,7 +1385,7 @@ def main(sw, reeds_path, inputs_case, periodtype='rep', make_plots=1, logging=Tr
             .rename('multiplier')
             .reset_index()
         )
-        daily_gas_price_multipliers_dict[regionlevel] = df
+        daily_gasprice_multipliers_dict[regionlevel] = df
 
     # %%###################################################################################
     #    -- Write outputs, aggregating hours to GSw_HourlyChunkLength if necessary --    #
@@ -1558,13 +1575,13 @@ def main(sw, reeds_path, inputs_case, periodtype='rep', make_plots=1, logging=Tr
             False,
         ],
         ## Annual timeslice gas price multipliers
-        'daily_gas_price_multipliers_r': [
-            daily_gas_price_multipliers_dict['r'].round(decimals),
+        'daily_gasprice_multipliers_r': [
+            daily_gasprice_multipliers_dict['r'].round(decimals),
             False,
             False
         ],
-        'daily_gas_price_multipliers_cendiv': [
-            daily_gas_price_multipliers_dict['cendiv'].round(decimals),
+        'daily_gasprice_multipliers_cendiv': [
+            daily_gasprice_multipliers_dict['cendiv'].round(decimals),
             False,
             False
         ],

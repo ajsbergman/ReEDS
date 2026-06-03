@@ -1324,15 +1324,22 @@ def get_distpv_cf_hourly():
     return read_file(h5path, parse_timestamps=True)
 
 def get_county_populations():
-    """
-    Get county populations.
-    """
     return pd.read_csv(
         os.path.join(
             reeds_path,
             'inputs',
             'disaggregation',
             'county_population.csv'
+        )
+    )
+
+def get_state_groups():
+    return pd.read_csv(
+        os.path.join(
+            reeds_path,
+            'inputs',
+            'zones',
+            'state_groups.csv'
         )
     )
 
