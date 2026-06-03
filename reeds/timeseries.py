@@ -394,7 +394,64 @@ def match_act2rep_milp(profiles_period_mean, iweights):
     return a2r
 
 
-def match_act2rep_bestfirst(profiles_period_mean, iweights, metric='euclidean'):
+def _plot_weights(iweights, remaining_weights, i):
+    import cmocean
+    from pathlib import Path
+    from datetime import datetime
+    import matplotlib as mpl
+    import matplotlib.pyplot as plt
+    today = datetime.now().strftime("%Y%m%d")
+
+    plotweights = remaining_weights.copy()
+    plotweights.index = plotweights.index.map(
+        lambda x: pd.to_datetime(f'y{x[0]}d{x[1]}h0', format='y%Yd%jh%H').strftime('%-m/%-d')
+    )
+    monthday2val = reeds.reedsplots.make_dayofyear_colormap()
+
+    plt.close()
+    f,ax = plt.subplots(figsize=(3,7))
+    ax.barh(
+        plotweights.index, plotweights.values,
+        color=[cmocean.cm.phase(monthday2val[i]) for i in plotweights.index],
+    )
+    ax.plot(
+        [1]*len(plotweights), range(len(plotweights)),
+        marker='|', color='k', lw=0, markersize=9,
+    )
+    ax.set_ylim(-0.5,len(iweights)-0.5)
+    ax.set_xlim(0, iweights.max())
+    ax.xaxis.set_minor_locator(mpl.ticker.MultipleLocator(1))
+    reeds.plots.despine(ax)
+    fpath = Path(f'~/scratch/{today}/weights_{i}.png').expanduser()
+    fpath.parent.mkdir(exist_ok=True, parents=True)
+    plt.savefig(fpath)
+
+
+def _plot_act2repday(a2r, i):
+    from pathlib import Path
+    from datetime import datetime
+    import matplotlib.pyplot as plt
+
+    today = datetime.now().strftime("%Y%m%d")
+    actualday2repday = pd.Series(a2r).map(
+        lambda x: pd.to_datetime(f'y{x[0]}d{x[1]}h0', format='y%Yd%jh%H')
+    )
+    actualday2repday.index = actualday2repday.index.map(
+        lambda x: pd.to_datetime(f'y{x[0]}d{x[1]}h0', format='y%Yd%jh%H')
+    )
+
+    plt.close()
+    f, ax, df = reeds.reedsplots.plot_repdays(actualday2repday=actualday2repday)
+    fpath = Path(f'~/scratch/{today}/a2r_{i}.png').expanduser()
+    plt.savefig(fpath)
+
+
+def match_act2rep_bestfirst(
+    profiles_period_mean,
+    iweights,
+    metric:str='seuclidean',
+    verbose:int=0,
+):
     """
     Assign actual periods to representative periods using a simple heuristic algorithm:
 
@@ -410,6 +467,14 @@ def match_act2rep_bestfirst(profiles_period_mean, iweights, metric='euclidean'):
         c. Remove the actual periods that were matched from the table of distances
         d. Return to 3.a. and repeat until there are no remaining weights in the rep-period
            weight table (and no remaining unmatched actual periods)
+
+    Args:
+        profiles_period_mean (pd.DataFrame): (year, yperiod) x (feature, region)
+        iweights (pd.Series): Integer weights for rep periods; (year, yperiod) index
+        metric (string): Passed to scipy.spatial.distance.cdist()
+        verbose (int): How much extra information to print for debugging.
+            If ≥3, saves plots to your ~/scratch/{today} folder.
+
     """
     import scipy.spatial
     ### Get the distance
@@ -428,15 +493,28 @@ def match_act2rep_bestfirst(profiles_period_mean, iweights, metric='euclidean'):
     num_actual_periods = len(profiles_period_mean)
     remaining_weights = iweights.copy()
     remaining_distance = distance.copy()
+    if verbose:
+        print('Original weights:')
+        print(remaining_weights)
     for i in range(num_actual_periods):
+        if verbose:
+            print(f'Iteration {i}:')
+        if verbose > 2:
+            _plot_weights(iweights, remaining_weights, i)
         ## Loop over the remaining weights
         for repday in remaining_weights.index:
             ## Keep the best match
             actday = remaining_distance.columns[np.argmin(remaining_distance.loc[repday])]
             a2r[actday] = repday
+            if verbose > 1:
+                print(f'{actday} → {repday}')
             ## Decrement the remaining weight
             remaining_distance.drop(columns=actday, inplace=True)
             remaining_weights.loc[repday] -= 1
+        if verbose:
+            print(remaining_weights)
+        if verbose > 2:
+            _plot_act2repday(a2r, i)
         ## If any remaining rep days have zero weight, drop them
         if (remaining_weights == 0).any():
             remaining_weights = remaining_weights.loc[remaining_weights > 0]
