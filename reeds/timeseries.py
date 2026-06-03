@@ -233,15 +233,15 @@ def get_clusters(
     return cluster_assignment
 
 
-def round_to_integers(rweights, num_actual_periods):
+def round_to_integers(rweights, num_actual_periods, increment=1e-6):
     ### Convert to integers
     iweights = rweights.round(0).astype(int)
     ### Scale all weights little by little until they sum to number of actual days
     sumweights = iweights.sum()
     diffweights = sumweights - num_actual_periods
-    increment = 0.00001 * (1 if diffweights < 0 else -1)
-    for i in range(1000000):
-        iweights = (rweights * (1 + increment*i)).round(0).astype(int)
+    _increment = increment * (1 if diffweights < 0 else -1)
+    for i in range(int(10/increment)):
+        iweights = (rweights * (1 + _increment*i)).round(0).astype(int)
         if iweights.sum() == num_actual_periods:
             break
 
