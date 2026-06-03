@@ -1887,6 +1887,12 @@ poi_capacity(r,t)$tmodel_new(t) =
         INV_POI.l(r,rtscbin,tt) }
 ;
 
+* Cumulative POI capacity by reinforcement cost bin (for the POI supply-curve plot)
+poi_capacity_bin(r,rtscbin,t)$[tmodel_new(t)$poi_bin_feas(r,rtscbin)] =
+  sum{tt$[(yeart(tt)<=yeart(t))$(tmodel(tt) or tfix(tt))],
+        INV_POI.l(r,rtscbin,tt) }
+;
+
 *==========================
 * Expenditures Exchanged
 *==========================

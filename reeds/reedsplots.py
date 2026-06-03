@@ -1574,6 +1574,119 @@ def plot_max_imports(
     return f, ax, (pd.concat(dictplot, names=('case',)) if len(cases) > 1 else dfplot)
 
 
+def plot_poi_supply_curve(
+        case, region, years=None, figsize=(7, 5), cmap='viridis', x_units='GW',
+    ):
+    """
+    Plot the POI / network-reinforcement supply curve for one region as a cost-vs-capacity
+    staircase, with a vertical line at the cumulative POI capacity deployed in each modeled
+    year (x = total capacity, including the free existing poi_cap_init; y = $/kW).
+
+    If the per-bin output poi_capacity_bin is available, a marker is placed on the staircase
+    at each year's marginal reinforcement cost (the most expensive bin with capacity that year).
+
+    Args:
+        case: path to a ReEDS run folder
+        region: model region (r) to plot
+        years (optional): list of solve years to draw (default: all modeled years)
+        x_units: 'MW', 'GW', or 'TW'
+
+    Returns:
+        (f, ax)
+    """
+    xscale = {'MW': 1, 'GW': 1e3, 'TW': 1e6}[x_units]
+
+    ### Supply curve: cost ($/kW) and incremental cap (MW) per bin
+    sc = pd.read_csv(os.path.join(case, 'inputs_case', 'poi_supply_curve.csv'))
+    sc = sc.rename(columns={sc.columns[0]: 'r'})
+    sc = sc.loc[sc['r'] == region]
+    if not len(sc):
+        raise ValueError(f'No POI supply-curve data for region {region}')
+    curve = sc.pivot_table(index='rtscbin', columns='sc_cat', values='value', aggfunc='first')
+    if 'cap' not in curve.columns:
+        curve['cap'] = np.nan
+    ### Order by cost; among equal-cost bins put finite-cap bins before the unlimited backstop
+    curve = (
+        curve.assign(_capsort=curve['cap'].fillna(np.inf))
+        .sort_values(['cost', '_capsort']).drop(columns='_capsort')
+    )
+
+    ### Free existing capacity (poi_cap_init)
+    poi_init = reeds.io.read_input(case, 'poi_cap_init')
+    poi_init = poi_init.rename(
+        columns={poi_init.columns[0]: 'r', poi_init.columns[1]: 'MW'}).set_index('r')['MW']
+    poi_cap_init = float(poi_init.reindex([region]).fillna(0).iloc[0])
+
+    ### Cumulative deployed capacity by year
+    poi_cap = reeds.io.read_output(case, 'poi_capacity', valname='MW')
+    poi_cap = (
+        poi_cap.loc[poi_cap['r'] == region]
+        .astype({'t': int}).set_index('t')['MW'].sort_index()
+    )
+    if years is not None:
+        poi_cap = poi_cap.loc[poi_cap.index.isin([int(y) for y in years])]
+    if not len(poi_cap):
+        raise ValueError(f'No poi_capacity output for region {region}')
+
+    ### Per-bin cumulative capacity by year (optional; used to mark each year's marginal bin)
+    try:
+        poi_bin = reeds.io.read_output(case, 'poi_capacity_bin', valname='MW')
+        poi_bin = poi_bin.loc[poi_bin['r'] == region].astype({'t': int})
+    except (KeyError, FileNotFoundError):
+        poi_bin = None
+
+    ### Build the staircase (x = total capacity, starting above poi_cap_init)
+    edges, costs, binnames = [poi_cap_init], [], []
+    for b in curve.index:
+        cap, cost = curve.loc[b, 'cap'], curve.loc[b, 'cost']
+        costs.append(cost)
+        binnames.append(b)
+        edges.append(edges[-1] + cap if (np.isfinite(cap) and (cap > 0)) else np.inf)
+    xmax = max([e for e in edges if np.isfinite(e)] + [poi_cap.max()]) * 1.1
+    edges_fin = [e if np.isfinite(e) else xmax for e in edges]
+    bincost = dict(zip(binnames, costs))
+
+    x, y = [], []
+    for k, cost in enumerate(costs):
+        x += [edges_fin[k] / xscale, edges_fin[k + 1] / xscale]
+        y += [cost, cost]
+
+    ### Plot
+    f, ax = plt.subplots(figsize=figsize)
+    ax.plot([0, poi_cap_init / xscale], [0, 0],
+            color='C7', lw=3, solid_capstyle='butt', label='existing (free)')
+    ax.plot(x, y, color='k', lw=2, label='reinforcement supply curve')
+
+    norm = mpl.colors.Normalize(int(poi_cap.index.min()), int(poi_cap.index.max()))
+    sm = mpl.cm.ScalarMappable(norm=norm, cmap=cmap)
+    sm.set_array([])
+    for t, mw in poi_cap.items():
+        c = sm.to_rgba(int(t))
+        ax.axvline(mw / xscale, color=c, lw=1.0, alpha=0.85, zorder=1)
+        ### Marginal reinforcement cost reached that year
+        if poi_bin is not None:
+            filled = poi_bin.loc[(poi_bin['t'] == int(t)) & (poi_bin['MW'] > 1e-3), 'rtscbin']
+            mcost = max([bincost.get(b, 0) for b in filled], default=0)
+        else:
+            ## Infer from the staircase: cost of the step the total capacity falls in
+            mcost = 0
+            for k in range(len(costs)):
+                if mw > edges_fin[k] + 1e-6:
+                    mcost = costs[k]
+        if mcost > 0:
+            ax.scatter([mw / xscale], [mcost], color=c, s=28, zorder=3, edgecolor='k', lw=0.4)
+    f.colorbar(sm, ax=ax, label='year')
+
+    ax.set_xlabel(f'cumulative POI capacity [{x_units}]')
+    ax.set_ylabel('reinforcement cost [$/kW]')
+    ax.set_title(f'POI supply curve — {region}')
+    ax.set_xlim(0, xmax / xscale)
+    ax.set_ylim(bottom=0)
+    ax.legend(loc='upper left', frameon=False, fontsize='small')
+    plots.despine(ax)
+    return f, ax
+
+
 def plot_vresites_transmission(
         case, year=2050, crs='ESRI:102008',
         wscale=1.5, show_overlap=False,

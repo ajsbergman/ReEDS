@@ -566,6 +566,42 @@ for i in hurdle_levels:
     cost_hurdle_rate[i].to_csv(os.path.join(inputs_case, f'cost_hurdle_rate{i}.csv'))
 
 
+#%%### POI / network-reinforcement cost supply curve
+# poi_supply_curve.csv is copied verbatim by copy_files.py and contains every cost bin
+# (bin1, bin2, ...). The GAMS set rtscbin is sized to numpoibins (/bin1*bin{numpoibins}/),
+# so any bin in the csv beyond numpoibins would raise a domain violation. Here we prefilter
+# the csv to keep only bins bin1..bin{numpoibins}. When numpoibins=1 we fall back to the flat
+# GSw_TransIntraCost: a single bin1 cost row (in $/kW) with no cap row, which leaves the bin
+# unlimited and reproduces the legacy flat reinforcement cost.
+numpoibins = int(sw.numpoibins)
+poi_supply_curve = pd.read_csv(os.path.join(inputs_case, 'poi_supply_curve.csv'))
+rcol = poi_supply_curve.columns[0]  # region column header ('*r', commented for GAMS)
+if numpoibins <= 1:
+    poi_supply_curve = poi_supply_curve.loc[
+        (poi_supply_curve['rtscbin'] == 'bin1')
+        & (poi_supply_curve['sc_cat'] == 'cost')
+    ].copy()
+    # flat cost in $/kW; the model converts to $/MW via *1000
+    poi_supply_curve['value'] = float(sw.GSw_TransIntraCost)
+else:
+    keep_bins = [f'bin{n}' for n in range(1, numpoibins + 1)]
+    poi_supply_curve = poi_supply_curve.loc[
+        poi_supply_curve['rtscbin'].isin(keep_bins)
+    ].copy()
+    # GSw_POIUpperCost: append an unlimited backstop bin (bin_upper) priced at GSw_POIUpperCost
+    # ($/kW) for every region in the curve. It has only a cost row (no cap), so cap_poi_bin=0
+    # leaves it unlimited -- this ensures reinforcement above the binned supply-curve capacities
+    # stays feasible at this (high) cost. Only added when numpoibins>1.
+    poi_upper = pd.DataFrame({
+        rcol: poi_supply_curve[rcol].unique(),
+        'rtscbin': 'bin_upper',
+        'sc_cat': 'cost',
+        'value': float(sw.GSw_POIUpperCost),
+    })
+    poi_supply_curve = pd.concat([poi_supply_curve, poi_upper], ignore_index=True)
+poi_supply_curve.to_csv(os.path.join(inputs_case, 'poi_supply_curve.csv'), index=False)
+
+
 #%%### H2 pipeline cost multipliers
 # Calculate H2 pipeline cost multipliers by dividing the [$/mile] cost of DC transmission
 # between each pair of regions by the minimum interface [$/mile] cost for DC transmission

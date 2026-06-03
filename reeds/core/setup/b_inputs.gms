@@ -331,8 +331,10 @@ set rscbin "Resource supply curves bins" /bin1*bin%numbins%/,
     rscfeas(i,r,rscbin) "feasibility set for technologies that have resource supply curves" ;
 
 * Sets involved with the POI / network-reinforcement cost supply curve (increasing cost bins
-* for new capacity in each region; applies to all technologies via eq_POI_cap)
-set rtscbin "POI / network-reinforcement supply curve bins" /bin1*bin%numpoibins%/,
+* for new capacity in each region; applies to all technologies via eq_POI_cap).
+* bin_upper is an unlimited backstop bin priced at GSw_POIUpperCost that catches reinforcement
+* above the binned supply-curve capacities (populated by transmission.py only when numpoibins>1).
+set rtscbin "POI / network-reinforcement supply curve bins" /bin1*bin%numpoibins%, bin_upper/,
     poi_bin_feas(r,rtscbin) "feasibility set for POI bins that have a defined reinforcement cost" ;
 
 parameter yeart(t) "numeric value for year",
