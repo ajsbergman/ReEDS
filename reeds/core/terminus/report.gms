@@ -543,6 +543,7 @@ repgasprice(cendiv,t)$[(Sw_GasCurve = 2)$tmodel_new(t)$repgasquant(cendiv,t)$tfu
 
 
 * gas price by timeslice when linked with FINITO (see similar calculation in finito_report.gms) [$2004/MMBtu] 
+* We maybe should be taking weighted averages instead of max across regions and categories (pool vs roi etc.)
 $ifthene.finitogasprice Sw_FINITO_Link == 1
 repgasprice_finito(cendiv,h,t)$[tmodel_new(t)$(not tfuel(t))] =
     ( 1/obj_scale * 1/pvf_onm(t) * deflator('2018') * 
