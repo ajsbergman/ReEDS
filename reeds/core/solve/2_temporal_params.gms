@@ -899,18 +899,17 @@ $onlisting
 / ;
 $offempty
 
-* If GSw_GasPriceAdjMethod = 0, apply a uniform winter gas markup instead of daily adjustments
+*winter gas gets marked up if GSw_GasPriceAdjMethod = 0
 szn_adj_gas(allh) = 0 ;
 szn_adj_gas(h) = 1 ;
 szn_adj_gas(h)$frac_h_quarter_weights(h,"wint") =
     szn_adj_gas(h) + frac_h_quarter_weights(h,"wint") * szn_adj_gas_winter ;
-
 * Renormalize so hour-weighted average of szn_adj_gas is 1
 scalar szn_adj_gas_avg "--unitless-- hour-weighted average of natural gas seasonal adjustment" ;
-
 szn_adj_gas_avg = sum{h, szn_adj_gas(h) * hours(h) } / sum{h, hours(h) } ;
 szn_adj_gas(h) = szn_adj_gas(h) / szn_adj_gas_avg ;
 
+* If GSw_GasPriceAdjMethod = 0, apply the uniform winter gas markup instead of daily adjustments
 gasprice_adj_r(r,h,t)$(Sw_GasPriceAdjMethod = 0) = szn_adj_gas(h) ;
 gasprice_adj_cendiv(cendiv,h,t)$(Sw_GasPriceAdjMethod = 0) = szn_adj_gas(h) ;
 

@@ -215,6 +215,25 @@ cendiv_weights:
   - r_cendiv
   switchon:
     GSw_GasCurve: 1
+szn_adj_gas:
+  indexsets:
+  - h
+  switchon:
+    GSw_GasPriceAdjMethod: 0
+gasprice_adj_r:
+  indexsets:
+  - r
+  - h
+  - t
+  switchon:
+    GSw_GasPriceAdjMethod: 1
+gasprice_adj_cendiv:
+  indexsets:
+  - cendiv
+  - h
+  - t
+  switchon:
+    GSw_GasPriceAdjMethod: 1
 gasbinp_regional:
   indexsets:
   - t
