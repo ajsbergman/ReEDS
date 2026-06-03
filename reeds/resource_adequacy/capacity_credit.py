@@ -152,26 +152,16 @@ def reeds_cc(t, tnext, casedir):
     ### Get the non-duplicated profiles
     resource_profiles = resources.drop_duplicates('resource')
 
-    ### Get forced outage profiles, flatten, and melt
+    ### Get forced outage rates for thermal technologies
     forced_outage_rate = reeds.io.get_outage_hourly(inputs_case,'forced')
-
-    # drop techs that won't use this capacity credit before stacking
-    techs_to_drop = ['battery_li','can-imports','distpv', 'electrolyzer',
-                    'hydd', 'hyded', 'hydend', 'hydnd', 'hydnpd', 'hydnpnd',
-                    'hydro', 'hydsd', 'hydsnd', 'hydud', 'hydund', 'pumped-hydro']
+    
+    tech_subset_table = reeds.techs.expand_GAMS_tech_groups(
+    reeds.techs.get_tech_subset_table(casedir).reset_index()
+    ).set_index('tech_group').i
+    techs_to_keep = tech_subset_table.loc['THERMAL'].tolist()
+    techs_to_drop = [col for col in forced_outage_rate.columns.levels[0] if col not in techs_to_keep]
     
     forced_outage_rate = forced_outage_rate.drop(columns=techs_to_drop, level=0, errors='ignore')
-
-    forced_outage_rate = (forced_outage_rate
-                            .stack(level=1)
-                            .reset_index()
-                            .rename(columns={"level_0": "timestamp"})
-                            )
-
-    forced_outage_rate = pd.melt(
-        forced_outage_rate,
-        id_vars=['timestamp','r'], 
-    )
     
     # Remove the "8760" safety valve bin
     safety_bin = max(sdb['bin'].values)
@@ -491,32 +481,20 @@ def reeds_cc(t, tnext, casedir):
     # map back to regions from ccreg for ReEDS input
     top_net_load_hours = top_net_load_hours.merge(
         hierarchy[['r','ccreg']], on='ccreg', how='left'
-    ).drop(['ccreg','year','h','t','value'], axis=1)
+    ).drop(['ccreg','year','hour','t','value'], axis=1)
+    # map h to timestamp to match forced outage rate
+    top_net_load_hours['*timestamp'] = top_net_load_hours['h'].apply(reeds.timeseries.h2timestamp)
+    hours = top_net_load_hours.groupby(['ccseason', 'r'])['*timestamp'].agg(list)
 
-    # map hour to timestamp
-    top_net_load_hours = top_net_load_hours.merge(
-        hmap_allyrs[['hour','*timestamp','actual_h']], on='hour', how='left'
-    ).drop('hour', axis=1)
-    top_net_load_hours['*timestamp'] = pd.to_datetime(top_net_load_hours['*timestamp'])
-    top_net_load_hours['h'] = top_net_load_hours['actual_h']
-    
-    # join top hours to outage rates based on timestamp and region
-    forced_outage_rate_top_hours = top_net_load_hours.merge(
-        forced_outage_rate,
-        left_on=['*timestamp','r'],
-        right_on=['timestamp','r'],
-        how='left'
-    ).drop('*timestamp', axis=1)
-
-    # Add t index
-    forced_outage_rate_top_hours['t'] = str(tnext)
-    
-    # Find mean forced outage rate across top hours for each region and ccseason
     mean_forced_outage_rate = (
-        forced_outage_rate_top_hours
-        .groupby(['i','r','ccseason','t'], as_index=False).mean('value')
-        .sort_values(['i','r','ccseason','t'])
-        .reset_index(drop=True)
+        pd.concat({  
+            (ccseason, r): forced_outage_rate.loc[h].xs(r, 1, 'r').mean()  
+            for (ccseason, r), h in hours.items()  
+        }, names=('ccseason', 'r'))  
+        .reset_index()
+        .rename(columns={0:'value'})
+        .assign(t=str(tnext))
+        .reindex(['i','r','ccseason','t','value'], axis=1)
     )
 
     if int(sw['GSw_EVMC']):
