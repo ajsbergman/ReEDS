@@ -1373,6 +1373,22 @@ $offempty
 
 prescribedrsc(allt,"wind-ofs",r,"value") = prescribed_wind_ofs(r,allt,"capacity") ;
 
+* ===========================================================================
+* --- ForceMandate: free the model from ForceStartYear onward (valcostfac) ---
+* ===========================================================================
+* When ForceMandate=1, remove all prescribed (forced) builds in/after
+* ForceStartYear so the model chooses capacity endogenously, and make every
+* (non-banned) technology buildable starting in ForceStartYear. The existing
+* fleet (capacity_exog, which is pre-tfirst existing capacity) is untouched,
+* so the historical period keeps its real fleet and prescriptions.
+$ifthen %ForceMandate% == 1
+prescribednonrsc(allt,pcat,r,"value")$(allt.val >= %ForceStartYear%) = 0 ;
+prescribednonrsc_energy(allt,pcat,r,"value")$(allt.val >= %ForceStartYear%) = 0 ;
+prescribedrsc(allt,pcat,r,"value")$(allt.val >= %ForceStartYear%) = 0 ;
+firstyear(i)$[(not ban(i))$firstyear(i)] = min(firstyear(i), %ForceStartYear%) ;
+firstyear_pcat(pcat)$firstyear_pcat(pcat) = min(firstyear_pcat(pcat), %ForceStartYear%) ;
+$endif
+
 *created by reeds/input_processing/writecapdat.py
 *following does not include wind
 *Retirements for techs binned by heatrates are handled in hintage_data.csv

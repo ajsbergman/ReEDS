@@ -382,7 +382,7 @@ MCS_runs,Number of Monte Carlo simulation runs. Set to 0 to disable MCS. Set to 
 MCS_dist,Name of the `.yaml` file defining the MCS distributions. Use 'default' or a string beginning with 'user' to reference `inputs/userinput/mcs_distributions_{MCS_dist}.yaml`,N/A,default,
 MCS_dist_groups,Define the distribution groups to use in a Monte Carlo Simulation. Each entry should refer to a key from `inputs/userinput/mcs_distributions_{MCS_dist}.yaml` with multiple entries separated by a dot (e.g. Example1.Example2.Example3),N/A,tech,
 MCS_lhs,Option to use random sampling (0) or latin hypercube sampling (1) for Monte Carlo simulation,0; 1,0,
-ForceMandate,"Enable the forced-technology cost ramp (valcostfac experiment). When 1, all cost components of ForceTech are scaled by forcetechmult, ramping linearly from ForceStartLevel in ForceStartYear to ForceEndLevel in endyear",0; 1,0,
+ForceMandate,"Enable the valcostfac experiment. When 1: (a) all cost components of ForceTech are scaled by forcetechmult, ramping linearly from ForceStartLevel in ForceStartYear to ForceEndLevel in endyear; (b) all prescribed (forced) builds in/after ForceStartYear are removed; and (c) every non-banned technology is made buildable starting in ForceStartYear. The existing fleet and pre-ForceStartYear prescriptions are unchanged.",0; 1,0,
 ForceStartYear,First year in which the forced-technology cost ramp is applied (used only when ForceMandate=1),N/A,2026,
 ForceStartLevel,Cost multiplier applied to ForceTech in ForceStartYear (used only when ForceMandate=1),N/A,1,
 ForceEndLevel,Cost multiplier applied to ForceTech in endyear; the multiplier ramps linearly between ForceStartLevel and this value (used only when ForceMandate=1),N/A,0.01,
