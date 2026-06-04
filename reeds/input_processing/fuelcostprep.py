@@ -60,8 +60,8 @@ def calculate_region_aggregion_population_weights(
     state_groups = reeds.io.get_state_groups()
     county2zone = county2zone.merge(
         state_groups,
-        left_on='st',
-        right_on='state'
+        left_on='state',
+        right_on='st'
     )
     county_region_map = county2zone.set_index('FIPS')[region_level]
 
@@ -81,7 +81,7 @@ def calculate_region_aggregion_population_weights(
         county2zone[aggregion_level]
     ))
     region_populations[aggregion_level] = (
-        region_populations['state'].map(region2aggregion)
+        region_populations[region_level].map(region2aggregion)
     )
     region_populations['weight'] = (
         region_populations['population']
@@ -136,8 +136,7 @@ def calculate_historical_daily_state_degree_days(
 
 def aggregate_state_degree_days_to_gasreg(
     state_degree_days: pd.DataFrame,
-    state_weights: pd.Series,
-    st2gasreg: dict[str, str]
+    state_weights: pd.Series
 ) -> pd.DataFrame:
     """
     Aggregate state-level degree days to the gasreg level via
@@ -153,6 +152,11 @@ def aggregate_state_degree_days_to_gasreg(
     Returns:
         pd.DataFrame
     """
+    # Get state-to-gasreg mapping
+    state_groups = reeds.io.get_state_groups()
+    st2gasreg = state_groups.set_index('st')['gasreg']
+
+    # Calculate weighted average
     gasreg_degree_days = (
         (state_degree_days * state_weights)
         .transpose()
@@ -229,7 +233,6 @@ def rescale_historical_daily_degree_days_to_projected_annuals(
     return projected_daily_degree_days
 
 def calculate_daily_gasreg_degree_days(
-    reeds_path: str,
     inputs_case: str,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
@@ -241,16 +244,11 @@ def calculate_daily_gasreg_degree_days(
     degree days (corresponding to model solve years) for each gasreg.
 
     Args:
-        reeds_path: Path to ReEDS directory.
         inputs_case: Path to the inputs case directory.
 
     Returns:
         (pd.DataFrame, pd.DataFrame)
     """
-    # Get state-to-gasreg mapping
-    state_groups = reeds.io.get_state_groups
-    st2gasreg = state_groups.set_index('st')['gasreg']
-
     # Calculate population-based state-gasreg weights for
     # calculating population-weighted gasreg-level degree days
     state_gasreg_weights = calculate_region_aggregion_population_weights(
@@ -266,19 +264,13 @@ def calculate_daily_gasreg_degree_days(
 
     # Aggregate historical daily state-level degree days to
     # the gasreg level via population-weighted average
-    historical_hdd_daily_gasreg = (
-        aggregate_state_degree_days_to_gasreg(
-            historical_hdd_daily_st,
-            state_gasreg_weights,
-            st2gasreg
-        )
+    historical_hdd_daily_gasreg = aggregate_state_degree_days_to_gasreg(
+        historical_hdd_daily_st,
+        state_gasreg_weights
     )
-    historical_cdd_daily_gasreg = (
-        aggregate_state_degree_days_to_gasreg(
-            historical_cdd_daily_st,
-            state_gasreg_weights,
-            st2gasreg
-        )
+    historical_cdd_daily_gasreg = aggregate_state_degree_days_to_gasreg(
+        historical_cdd_daily_st,
+        state_gasreg_weights
     )
 
     # Get gasreg-level annual HDD/CDD projections
@@ -320,7 +312,6 @@ def calculate_daily_gasreg_degree_days(
     return hdd_daily_gasreg, cdd_daily_gasreg
 
 def calculate_daily_gasprice_multipliers(
-    reeds_path: str,
     inputs_case: str
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
     """
@@ -336,7 +327,6 @@ def calculate_daily_gasprice_multipliers(
     aggregated via population-weighted average. 
 
     Args:
-        reeds_path: Path to ReEDS directory.
         inputs_case: Path to the inputs case directory.
 
     Returns:
@@ -356,11 +346,8 @@ def calculate_daily_gasprice_multipliers(
     )
 
     # Calculate daily gasreg-level HDDs and CDDs
-    hdd_daily_gasreg, cdd_daily_gasreg = (
-        calculate_daily_gasreg_degree_days(
-            reeds_path,
-            inputs_case,
-        )
+    hdd_daily_gasreg, cdd_daily_gasreg = calculate_daily_gasreg_degree_days(
+        inputs_case
     )
 
     # Apply regression parameters to daily HDD/CDDs
@@ -376,7 +363,11 @@ def calculate_daily_gasprice_multipliers(
             .loc[regression_params.index.str.contains('alpha_')]
             [gasreg]
         )
-        month_effects_map.index = month_effects_map.index.str.removeprefix('alpha_')
+        month_effects_map.index = (
+            month_effects_map.index
+            .str
+            .removeprefix('alpha_')
+        )
         month_effects = (
             year_datetime_index
             .get_level_values('datetime')
@@ -412,8 +403,6 @@ def calculate_daily_gasprice_multipliers(
         r: df_out[gasreg] for r, gasreg in hierarchy['gasreg'].items()
     })
 
-    breakpoint()
-
     # Create another set of multipliers for census divisions by aggregating
     # the gasreg-level multipliers via population-weighted average
     gasreg_cendiv_weights = calculate_region_aggregion_population_weights(
@@ -423,7 +412,7 @@ def calculate_daily_gasprice_multipliers(
     )
     gasreg_cendiv_map = dict(zip(hierarchy['gasreg'], hierarchy['cendiv']))
     df_out_cendiv = (
-        df_out.mul(gasreg_cendiv_weights, level=0)
+        df_out.mul(gasreg_cendiv_weights)
         .transpose()
         .rename(gasreg_cendiv_map)
         .groupby(level=0)
@@ -573,7 +562,7 @@ alpha = alpha.round(6)
 
 ### Daily gas price multipliers
 daily_gasprice_multipliers_r, daily_gasprice_multipliers_cendiv = (
-    calculate_daily_gasprice_multipliers(reeds_path, inputs_case)
+    calculate_daily_gasprice_multipliers(inputs_case)
 )
 
 

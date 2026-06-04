@@ -882,7 +882,7 @@ parameter gasprice_adj_r(r,allh,allt) "--unitless-- daily gas price multipliers 
 / 
 $offlisting
 $ondelim
-$include inputs_case%ds%%temporal_inputs%%ds%daily_gas_price_multipliers_r.csv
+$include inputs_case%ds%%temporal_inputs%%ds%daily_gasprice_multipliers_r.csv
 $offdelim
 $onlisting
 / ;
@@ -893,7 +893,7 @@ parameter gasprice_adj_cendiv(cendiv,allh,allt) "--unitless-- daily gas price mu
 / 
 $offlisting
 $ondelim
-$include inputs_case%ds%%temporal_inputs%%ds%daily_gas_price_multipliers_cendiv.csv
+$include inputs_case%ds%%temporal_inputs%%ds%daily_gasprice_multipliers_cendiv.csv
 $offdelim
 $onlisting
 / ;
