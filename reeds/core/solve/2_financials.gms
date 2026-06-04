@@ -161,14 +161,7 @@ cost_cap_fin_mult(i,r,t)$[gas(i)$valcap_irt(i,r,t)] =
 * When ForceMandate=1, scale every cost component of ForceTech by forcetechmult,
 * which ramps linearly from ForceStartLevel in ForceStartYear to ForceEndLevel in
 * endyear. This is used to force deployment of a technology and study its LCOE /
-* value factor as penetration grows. Defaults below keep manual GAMS runs safe.
-$if not set ForceMandate    $setglobal ForceMandate 0
-$if not set ForceStartYear  $setglobal ForceStartYear 2026
-$if not set ForceStartLevel $setglobal ForceStartLevel 1
-$if not set ForceEndLevel   $setglobal ForceEndLevel 0.01
-$if not set ForceTech       $setglobal ForceTech onswind
-$if not set endyear         $setglobal endyear 2050
-
+* value factor as penetration grows.
 $ifthen %ForceMandate% == 1
 * (Note: CO2_storage_cost and co2_captured_incentive are intentionally not scaled.)
 forcetechmult(i,t)$[tmodel(t)$%ForceTech%(i)$(yeart(t)>=%ForceStartYear%)] =
