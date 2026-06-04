@@ -257,7 +257,7 @@ Code within ReEDS should generally point to the links in <code class="docutils l
 </pre></div>
 </div>
 <ul class="simple">
-<li><p>If set to ‘optimized’, then a two-step custom optimization is performed using the <code class="docutils literal notranslate"><span class="pre">hourly_repperiods.optimize_period_weights()</span></code> and <code class="docutils literal notranslate"><span class="pre">hourly_repperiods.assign_representative_days()</span></code> functions to minimize the deviation in regional load and PV/wind CF between the weighted representative periods and the full year.</p></li>
+<li><p>If set to ‘optimized’, then a two-step custom optimization is performed using the <code class="docutils literal notranslate"><span class="pre">hourly_repperiods.optimize_period_weights()</span></code> and <code class="docutils literal notranslate"><span class="pre">hourly_repperiods.match_act2rep_milp()</span></code> functions to minimize the deviation in regional load and PV/wind CF between the weighted representative periods and the full year.</p></li>
 <li><p>If set to a string containing the substring ‘user’, then instead of optimizing the choice of representative periods for this run, the model reads a user-supplied file at <code class="docutils literal notranslate"><span class="pre">inputs/temporal/period_szn_{GSw_HourlyClusterAlgorithm}.csv</span></code>.</p>
 <ul>
 <li><p>So if you want to use the example period:szn map, set <code class="docutils literal notranslate"><span class="pre">GSw_HourlyClusterAlgorithm=user</span></code> and provide <code class="docutils literal notranslate"><span class="pre">inputs/temporal/period_szn_user.csv</span></code>.</p></li>
@@ -1775,7 +1775,7 @@ These characteristics include:</p>
 
   <div role="contentinfo">
     <p>&#169; Copyright 2024, NREL.
-      <span class="lastupdated">Last updated on June 03, 2026.
+      <span class="lastupdated">Last updated on June 04, 2026.
       </span></p>
   </div>
 

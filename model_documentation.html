@@ -902,6 +902,11 @@ Choices are <code class="docutils literal notranslate"><span class="pre">optimiz
 The default value of 33 periods is chosen as a trade-off between runtime and accuracy (both of which increase with the number of representative periods modeled).
 When using <code class="docutils literal notranslate"><span class="pre">GSw_HourlyClusterAlgorithm</span> <span class="pre">=</span> <span class="pre">optimized</span></code>, fewer periods may be required.
 If more periods are desired than the number identified by the optimized method, either set <code class="docutils literal notranslate"><span class="pre">GSw_HourlyClusterRegionLevel</span></code> to a finer region level (such as <code class="docutils literal notranslate"><span class="pre">r</span></code> or <code class="docutils literal notranslate"><span class="pre">st</span></code>) or set <code class="docutils literal notranslate"><span class="pre">GSw_HourlyClusterAlgorithm</span></code> to <code class="docutils literal notranslate"><span class="pre">hierarchical</span></code>.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">GSw_HourlyClusterMapMethod</span></code> (default <code class="docutils literal notranslate"><span class="pre">milp</span></code>): How to map actual periods to representative periods.
+‘milp’ minimizes the sum of absolute errors between representative and actual periods using a Mixed Integer Linear Program (MILP), but is slow;
+‘bestfirst’ is orders of magnitude faster when using many weather years in <code class="docutils literal notranslate"><span class="pre">GSw_HourlyWeatherYears</span></code>.
+The <code class="docutils literal notranslate"><span class="pre">bestfirst</span></code> algorithm iteratively matches representative periods to actual periods that are closest in (feature × region)-dimensional space,
+working its way out from each representative period until the representative period is mapped to a number of actual periods equal to its weight.</p></li>
 </ul>
 </div>
 </section>
@@ -6471,7 +6476,7 @@ Prescribed retirements are power plant retirements that are forced into the mode
 
   <div role="contentinfo">
     <p>&#169; Copyright 2024, NREL.
-      <span class="lastupdated">Last updated on June 03, 2026.
+      <span class="lastupdated">Last updated on June 04, 2026.
       </span></p>
   </div>
 

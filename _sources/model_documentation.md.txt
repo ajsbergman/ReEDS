@@ -489,6 +489,11 @@ Choices are `optimized` (for the method described above), `hierarchical` (for hi
 The default value of 33 periods is chosen as a trade-off between runtime and accuracy (both of which increase with the number of representative periods modeled).
 When using `GSw_HourlyClusterAlgorithm = optimized`, fewer periods may be required.
 If more periods are desired than the number identified by the optimized method, either set `GSw_HourlyClusterRegionLevel` to a finer region level (such as `r` or `st`) or set `GSw_HourlyClusterAlgorithm` to `hierarchical`.
+- `GSw_HourlyClusterMapMethod` (default `milp`): How to map actual periods to representative periods.
+'milp' minimizes the sum of absolute errors between representative and actual periods using a Mixed Integer Linear Program (MILP), but is slow;
+'bestfirst' is orders of magnitude faster when using many weather years in `GSw_HourlyWeatherYears`.
+The `bestfirst` algorithm iteratively matches representative periods to actual periods that are closest in (feature × region)-dimensional space,
+working its way out from each representative period until the representative period is mapped to a number of actual periods equal to its weight.
 ```
 
 
