@@ -1366,26 +1366,25 @@ def main(sw, reeds_path, inputs_case, periodtype='rep', make_plots=1, logging=Tr
     #################################################################
     #    -- Weather-based daily natural gas price multipliers --    #
     #################################################################
-    if periodtype == 'rep':
-        daily_gasprice_multipliers_dict = {}
-        for region_level in ['r', 'cendiv']:
-            df = get_daily_gasprice_multipliers(
-                sw=sw,
-                hmap_myr=hmap_myr,
-                inputs_case=inputs_case,
-                region_level=region_level
-            )
-            # Update to GSw_HourlyChunkLength resolution.
-            # Note no aggregation method is needed because all hours within
-            # a given day have the same multiplier value, so we just select
-            # the set of hours in chunkmap.
-            df = (
-                df.loc[df.index.get_level_values('h').isin(chunkmap.values())]
-                .stack('t')
-                .rename('multiplier')
-                .reset_index()
-            )
-            daily_gasprice_multipliers_dict[region_level] = df
+    daily_gasprice_multipliers_dict = {}
+    for region_level in ['r', 'cendiv']:
+        df = get_daily_gasprice_multipliers(
+            sw=sw,
+            hmap_myr=hmap_myr,
+            inputs_case=inputs_case,
+            region_level=region_level
+        )
+        # Update to GSw_HourlyChunkLength resolution.
+        # Note no aggregation method is needed because all hours within
+        # a given day have the same multiplier value, so we just select
+        # the set of hours in chunkmap.
+        df = (
+            df.loc[df.index.get_level_values('h').isin(chunkmap.values())]
+            .stack('t')
+            .rename('multiplier')
+            .reset_index()
+        )
+        daily_gasprice_multipliers_dict[region_level] = df
 
     # %%###################################################################################
     #    -- Write outputs, aggregating hours to GSw_HourlyChunkLength if necessary --    #
