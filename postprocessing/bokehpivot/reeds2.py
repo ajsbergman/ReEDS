@@ -539,7 +539,7 @@ def pre_valnew(df, **kw):
     val_cond = df['output'].str.startswith('val_')
     df.loc[val_cond, 'value'] = inflate_series(df.loc[val_cond, 'value'])
     df_bench = df[df['tech'] == 'benchmark'].copy().drop(columns=['tech'])
-    df = df[df['tech'] != 'benchmark'].copy()
+    df = df[df['rb'] != 'sys'].copy()
     df_bench['output'] = df_bench['output'] + '_bench'
     df_bench_loc = df_bench[df_bench['rb'] != 'sys'].copy()
     df_bench_sys = df_bench[df_bench['rb'] == 'sys'].copy()
@@ -1283,7 +1283,7 @@ columns_meta = {
         'type':'string',
         'join': 'inputs_case/hierarchy.csv',
         'join_in_run': True, #Get the join file from the first run folder
-        'join_keep_cols': ['*r','st','cendiv','interconnect','custreg'], #Allow an arbitrary 'custreg' column if desired.
+        'join_keep_cols': ['*r','st','cendiv','transreg','interconnect','custreg'], #Allow an arbitrary 'custreg' column if desired.
         'join_col_rename': {'*r':'rb'},
         'join_col_lowercase': ['st'],
     },
@@ -2454,6 +2454,7 @@ results_meta = collections.OrderedDict((
             ('LVOE Firm Capacity by Year', {'x':'year','y':'val_resmarg','y_b':'mwh','y_agg':'sum(a)/sum(b)','series':'scenario','explode':'tech','chart_type':'Dot-Line', 'sync_axes':'No'}),
             ('LVOE Operating Reserves by Year', {'x':'year','y':'val_opres','y_b':'mwh','y_agg':'sum(a)/sum(b)','series':'scenario','explode':'tech','chart_type':'Dot-Line', 'sync_axes':'No'}),
             ('LVOE State RPS by Year', {'x':'year','y':'val_rps','y_b':'mwh','y_agg':'sum(a)/sum(b)','series':'scenario','explode':'tech','chart_type':'Dot-Line', 'sync_axes':'No'}),
+            ('Benchmark Price by Year', {'x':'year','y':'val_tot','y_b':'mwh','y_agg':'sum(a)/sum(b)','series':'scenario','chart_type':'Dot-Line', 'sync_axes':'No', 'filter': {'tech':['benchmark']}}),
         )),
         }
     ),

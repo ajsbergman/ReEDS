@@ -1,0 +1,13 @@
+forcetech,tech
+onswind,wind-ons
+ofswind,wind-ofs
+upv,upv
+upv_bat,upv
+vre,wind-ons
+vre,wind-ofs
+vre,upv
+gas_cc_noccs,gas-cc
+gas_cc_ccs,gas-cc-ccs_mod
+nuclear,nuclear
+coal_new,coal
+geo,geothermal

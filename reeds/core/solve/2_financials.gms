@@ -154,3 +154,33 @@ cost_cap_fin_mult(i,r,t)$[gas(i)$valcap_irt(i,r,t)] =
           ng_crf_penalty_nat(i,t) ) ;
 
 * --- End calculations of cost_cap_fin_mult family of parameters --- *
+
+* ===========================================================================
+* --- ForceMandate: forced-technology cost ramp (valcostfac experiment) ---
+* ===========================================================================
+* When ForceMandate=1, scale every cost component of ForceTech by forcetechmult,
+* which ramps linearly from ForceStartLevel in ForceStartYear to ForceEndLevel in
+* endyear. This is used to force deployment of a technology and study its LCOE /
+* value factor as penetration grows. Defaults below keep manual GAMS runs safe.
+$if not set ForceMandate    $setglobal ForceMandate 0
+$if not set ForceStartYear  $setglobal ForceStartYear 2026
+$if not set ForceStartLevel $setglobal ForceStartLevel 1
+$if not set ForceEndLevel   $setglobal ForceEndLevel 0.01
+$if not set ForceTech       $setglobal ForceTech onswind
+$if not set endyear         $setglobal endyear 2050
+
+$ifthen %ForceMandate% == 1
+* (Note: CO2_storage_cost and co2_captured_incentive are intentionally not scaled.)
+forcetechmult(i,t)$[tmodel(t)$%ForceTech%(i)$(yeart(t)>=%ForceStartYear%)] =
+    %ForceStartLevel% + (%ForceEndLevel% - %ForceStartLevel%)/(%endyear% - %ForceStartYear%)*(yeart(t) - %ForceStartYear%) ;
+cost_cap(i,t)$[tmodel(t)$cost_cap(i,t)$(forcetechmult(i,t)<>1)] = round(cost_cap(i,t)*forcetechmult(i,t), 2) ;
+cost_fom(i,v,r,t)$[tmodel(t)$cost_fom(i,v,r,t)$(forcetechmult(i,t)<>1)] = round(cost_fom(i,v,r,t)*forcetechmult(i,t), 2) ;
+cost_vom(i,v,r,t)$[tmodel(t)$cost_vom(i,v,r,t)$(forcetechmult(i,t)<>1)] = round(cost_vom(i,v,r,t)*forcetechmult(i,t), 2) ;
+cost_opres(i,ortype,t)$[tmodel(t)$cost_opres(i,ortype,t)$(forcetechmult(i,t)<>1)] = round(cost_opres(i,ortype,t)*forcetechmult(i,t), 2) ;
+fuel_price(i,r,t)$[tmodel(t)$fuel_price(i,r,t)$(forcetechmult(i,t)<>1)] = round(fuel_price(i,r,t)*forcetechmult(i,t), 2) ;
+rsc_fin_mult(i,r,t)$[tmodel(t)$rsc_fin_mult(i,r,t)$(forcetechmult(i,t)<>1)] = round(rsc_fin_mult(i,r,t)*forcetechmult(i,t), 3) ;
+rsc_fin_mult_noITC(i,r,t)$[tmodel(t)$rsc_fin_mult_noITC(i,r,t)$(forcetechmult(i,t)<>1)] = round(rsc_fin_mult_noITC(i,r,t)*forcetechmult(i,t), 3) ;
+$endif
+
+rsc_fin_mult_out(i,r,t)$tmodel(t) = rsc_fin_mult(i,r,t) ;
+rsc_fin_mult_noITC_out(i,r,t)$tmodel(t) = rsc_fin_mult_noITC(i,r,t) ;

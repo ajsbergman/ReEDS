@@ -170,11 +170,11 @@ avg_cf(i,v,r,t)$[CAP.l(i,v,r,t)$(not rsc_i(i))] =
 *LCOE calculation is appropriate for sequential solve mode only where annual energy production is the same in every year.
 *In inter-temporal modes this isn't the case and energy production should be discounted appropriately.
 
-lcoe(i,v,r,t,"bin1")$[(not rsc_i(i))$valcap_init(i,v,r,t)$ivt(i,v,t)$avg_avail(i,v,r)] =
+lcoe(i,v,r,t,"bin1")$[(not rsc_i(i))$INV.l(i,v,r,t)$avg_cf(i,v,r,t)] =
 * cost of capacity divided by generation
    ((crf(t) * cost_cap_fin_mult(i,r,t) * cost_cap(i,t)$newv(v)
      + cost_fom(i,v,r,t)
-    ) / (avg_avail(i,v,r) * 8760))
+    ) / (avg_cf(i,v,r,t) * 8760))
 *plus VOM costs
    + cost_vom(i,v,r,t)
 * plus fuel costs - assuming constant fuel prices here (model prices might be different)
@@ -184,14 +184,11 @@ lcoe(i,v,r,t,"bin1")$[(not rsc_i(i))$valcap_init(i,v,r,t)$ivt(i,v,t)$avg_avail(i
 gen_rsc(i,v,r,t)$[valcap_init(i,v,r,t)$ivt(i,v,t)$rsc_i(i)] =
     sum{h, m_cf(i,v,r,h,t) * hours(h) } ;
 
-lcoe(i,v,r,t,rscbin)$[valcap_init(i,v,r,t)$ivt(i,v,t)$rsc_i(i)$m_rscfeas(r,i,rscbin)$gen_rsc(i,v,r,t)] =
+lcoe(i,v,r,t,rscbin)$[rsc_i(i)$INV_RSC.l(i,v,r,rscbin,t)$gen_rsc(i,v,r,t)] =
 * cost of capacity divided by generation
     (crf(t)
      * (cost_cap_fin_mult(i,r,t) * cost_cap(i,t)
-* Spur-line costs embedded in supply curve for techs without explicitly-modeled spurlines
-        + m_rsc_dat(r,i,rscbin,"cost")$[newv(v)$(not spur_techs(i))]
-* Spur-line costs assuming 1:1 ratio between gen cap and spur cap (i.e. no overbuilding)
-        + sum{x$[xfeas(x)$x_r(x,r)$spur_techs(i)], spurline_cost(x) * Sw_SpurCostMult}
+        + m_rsc_dat(r,i,rscbin,"cost") * rsc_fin_mult_out(i,r,t)
      )
      + cost_fom(i,v,r,t)
     ) / gen_rsc(i,v,r,t)
@@ -252,7 +249,7 @@ lcoe_built(i,r,t)$[ [sum{(v,h)$[valinv(i,v,r,t)$INV.l(i,v,r,t)], GEN.l(i,v,r,h,t
        + sum{v$[upgrade(i)$valcap(i,v,r,t)$Sw_Upgrades],
              UPGRADES.l(i,v,r,t) * (cost_upgrade(i,v,r,t) * cost_cap_fin_mult(i,r,t) ) }
        + sum{(v,rscbin)$[m_rscfeas(r,i,rscbin)$valinv(i,v,r,t)$rsc_i(i)],
-             INV_RSC.l(i,v,r,rscbin,t) * m_rsc_dat(r,i,rscbin,"cost") * rsc_fin_mult(i,r,t) }
+             INV_RSC.l(i,v,r,rscbin,t) * m_rsc_dat(r,i,rscbin,"cost") * rsc_fin_mult_out(i,r,t) }
                  )
        + sum{v$valinv(i,v,r,t), cost_fom(i,v,r,t) * INV.l(i,v,r,t) }
        + sum{v$[valinv(i,v,r,t)$battery(i)], cost_fom_energy(i,v,r,t) * INV_ENERGY.l(i,v,r,t) }
@@ -281,7 +278,7 @@ lcoe_pieces("upgradecost",i,r,t)$tmodel_new(t) =
 
 lcoe_pieces("rsccost",i,r,t)$tmodel_new(t) =
                   sum{(v,rscbin)$[m_rscfeas(r,i,rscbin)$valinv(i,v,r,t)$rsc_i(i)],
-                    INV_RSC.l(i,v,r,rscbin,t) * m_rsc_dat(r,i,rscbin,"cost") * rsc_fin_mult(i,r,t) } ;
+                    INV_RSC.l(i,v,r,rscbin,t) * m_rsc_dat(r,i,rscbin,"cost") * rsc_fin_mult_out(i,r,t) } ;
 
 lcoe_pieces("fomcost",i,r,t)$tmodel_new(t) =
                   sum{v$valinv(i,v,r,t), cost_fom(i,v,r,t) * INV.l(i,v,r,t) }
@@ -1214,11 +1211,11 @@ systemcost_techba("inv_investment_capacity_costs",i,r,t)$tmodel_new(t) =
                    INV_ENERGY.l(i,v,r,t) * (cost_cap_fin_mult_noITC(i,r,t) * cost_cap_energy(i,t) ) }
 *plus supply curve adjustment to capital cost (separated in outputs but part of m_rsc_dat(r,i,rscbin,"cost"))
               + sum{(v,rscbin)$[m_rscfeas(r,i,rscbin)$valinv(i,v,r,t)$rsc_i(i)$[not sccapcosttech(i)]$(not spur_techs(i))],
-                   INV_RSC.l(i,v,r,rscbin,t) * m_rsc_dat(r,i,rscbin,"cost_cap") * rsc_fin_mult_noITC(i,r,t) }
+                   INV_RSC.l(i,v,r,rscbin,t) * m_rsc_dat(r,i,rscbin,"cost_cap") * rsc_fin_mult_noITC_out(i,r,t) }
 * Plus geo, hydro, and pumped-hydro techs, where costs are in the supply curves
 *(Note that this deviates from the objective function structure)
               + sum{(v,rscbin)$[m_rscfeas(r,i,rscbin)$valinv(i,v,r,t)$rsc_i(i)$sccapcosttech(i)],
-                   INV_RSC.l(i,v,r,rscbin,t) * m_rsc_dat(r,i,rscbin,"cost") * rsc_fin_mult_noITC(i,r,t) }
+                   INV_RSC.l(i,v,r,rscbin,t) * m_rsc_dat(r,i,rscbin,"cost") * rsc_fin_mult_noITC_out(i,r,t) }
 *plus cost of upgrades
               + sum{v$[upgrade(i)$valcap(i,v,r,t)$Sw_Upgrades],
                    cost_upgrade(i,v,r,t) * cost_cap_fin_mult_noITC(i,r,t) * UPGRADES.l(i,v,r,t) }
@@ -1243,7 +1240,7 @@ systemcost_techba("inv_investment_spurline_costs_rsc_technologies",i,r,t)$tmodel
                   $(not spur_techs(i))
                   ],
 *investment in resource supply curve technologies
-                   INV_RSC.l(i,v,r,rscbin,t) * m_rsc_dat(r,i,rscbin,"cost_trans") * rsc_fin_mult_noITC(i,r,t) }
+                   INV_RSC.l(i,v,r,rscbin,t) * m_rsc_dat(r,i,rscbin,"cost_trans") * rsc_fin_mult_noITC_out(i,r,t) }
 ;
 
 systemcost_techba("inv_itc_payments_negative",i,r,t)$tmodel_new(t) =
@@ -1255,11 +1252,11 @@ systemcost_techba("inv_itc_payments_negative",i,r,t)$tmodel_new(t) =
                    INV_ENERGY.l(i,v,r,t) * (cost_cap_fin_mult_out(i,r,t) * cost_cap_energy(i,t) ) }
 *plus supply curve adjustment to capital cost (separated in outputs but part of m_rsc_dat(r,i,rscbin,"cost"))
               + sum{(v,rscbin)$[m_rscfeas(r,i,rscbin)$valinv(i,v,r,t)$rsc_i(i)$[not sccapcosttech(i)]$(not spur_techs(i))],
-                   INV_RSC.l(i,v,r,rscbin,t) * m_rsc_dat(r,i,rscbin,"cost_cap") * rsc_fin_mult(i,r,t) }
+                   INV_RSC.l(i,v,r,rscbin,t) * m_rsc_dat(r,i,rscbin,"cost_cap") * rsc_fin_mult_out(i,r,t) }
 * Plus geo, hydro, and pumped-hydro techs, where costs are in the supply curves
 *(Note that this deviates from the objective function structure)
               + sum{(v,rscbin)$[m_rscfeas(r,i,rscbin)$valinv(i,v,r,t)$rsc_i(i)$sccapcosttech(i)],
-                   INV_RSC.l(i,v,r,rscbin,t) * m_rsc_dat(r,i,rscbin,"cost") * rsc_fin_mult(i,r,t) }
+                   INV_RSC.l(i,v,r,rscbin,t) * m_rsc_dat(r,i,rscbin,"cost") * rsc_fin_mult_out(i,r,t) }
 *plus cost of upgrades
               + sum{v$[upgrade(i)$valcap(i,v,r,t)$Sw_Upgrades],
                    cost_upgrade(i,v,r,t) * cost_cap_fin_mult_out(i,r,t) * UPGRADES.l(i,v,r,t) }
@@ -1273,7 +1270,7 @@ systemcost_techba("inv_itc_payments_negative",i,r,t)$tmodel_new(t) =
               - systemcost_techba("inv_investment_capacity_costs",i,r,t)
 *plus supply curve transmission costs (including cost reductions from the ITC for applicable techs)
               +sum{(v,rscbin)$[m_rscfeas(r,i,rscbin)$valinv(i,v,r,t)$rsc_i(i)$[not sccapcosttech(i)]$(not spur_techs(i))],
-                    INV_RSC.l(i,v,r,rscbin,t) * m_rsc_dat(r,i,rscbin,"cost_trans") * rsc_fin_mult(i,r,t) }
+                    INV_RSC.l(i,v,r,rscbin,t) * m_rsc_dat(r,i,rscbin,"cost_trans") * rsc_fin_mult_out(i,r,t) }
 *minus rsc transmission costs without ITC
               - systemcost_techba("inv_investment_spurline_costs_rsc_technologies",i,r,t)
 ;
@@ -1823,15 +1820,6 @@ tran_util_ann_rep(r,rr,trtype,t)
     $[tmodel_new(t)$routes(r,rr,trtype,t)$tran_cap_energy(r,rr,trtype,t)] =
     sum{h, FLOW.l(r,rr,h,t,trtype) * hours(h) / tran_cap_energy(r,rr,trtype,t) }
     / sum{h, hours(h) }
-;
-
-tran_util_ann_stress(r,rr,trtype,t)
-    $[tmodel_new(t)
-    $routes(r,rr,trtype,t)$tran_cap_prm(r,rr,trtype,t)
-    $sum{allh$h_stress_t(allh,t), hours(allh)}] =
-    sum{allh$h_stress_t(allh,t),
-        FLOW.l(r,rr,allh,t,trtype) * hours(allh) / tran_cap_prm(r,rr,trtype,t) }
-    / sum{allh$h_stress_t(allh,t), hours(allh) }
 ;
 
 import_h_rep(r,h,t)

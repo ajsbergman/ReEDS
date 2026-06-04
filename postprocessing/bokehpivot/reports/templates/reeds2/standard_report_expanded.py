@@ -8,7 +8,6 @@ static_presets = [
     {'name': 'Annual Retirements (GW)', 'result': 'Annual Retirements National (GW)', 'preset': 'Stacked Bars'},
     {'name': 'Final Gen by timeslice (GW)', 'result': 'Gen by timeslice national (GW)', 'preset': 'Stacked Bars Final'},
     {'name': 'Final Gen by stress timeslice (GW)', 'result': 'Gen by stress timeslice national (GW)', 'preset': 'Stacked Bars Final'},
-    {'name': 'Regional Gen Final (TWh)', 'result': 'Generation BA (TWh) [no-index]', 'preset': 'Regional Gen Final'},
     {'name': 'Operating Reserves (TW-h)', 'result': 'Operating Reserves (TW-h)', 'preset': 'Stacked Bars'},
     {'name': 'Final OpRes by timeslice (GW)', 'result': 'Operating Reserves by Timeslice National (GW)', 'preset': 'Stacked Bars Final'},
     {'name': 'Firm Capacity (GW)', 'result': 'Firm Capacity National (GW)', 'preset': 'Stacked Bars'},

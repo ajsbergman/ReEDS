@@ -386,7 +386,9 @@ def solvestring_sequential(
             'debug',
             'startyear',
             'diagnose',
-            'diagnose_year'
+            'diagnose_year',
+            'ForceMandate', 'ForceStartYear', 'endyear',
+            'ForceStartLevel', 'ForceEndLevel', 'ForceTech',
         ]])
         + '\n'
     )

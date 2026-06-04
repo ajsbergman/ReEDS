@@ -173,8 +173,6 @@ EQUATION
  eq_growthbin_limit(gbin,st,tg,t)         "--MW-- capacity limit for each growth bin"
  eq_growthlimit_absolute(tg,t)            "--MW-- absolute growth limit on technologies"
 
-eq_interconnection_queues(tg,r,t)         "--MW-- capacity deployment limit based on interconnection queues"  
-
 * storage capacity credit supply curves
  eq_cap_sdbin_balance(i,v,r,ccseason,t)             "--MW-- total binned storage power capacity must be greater than total storage capacity"
  eq_cap_sdbin_energy_balance(i,v,r,ccseason,t)      "--MWh-- total binned storage energy capacity must be greater than total storage capacity"
@@ -1378,28 +1376,6 @@ eq_dhyd_dispatch(i,v,r,szn,t)
            )$[opres_h(h)]
         )
     }
-;
-
-* ---------------------------------------------------------------------------------------
-* Limit near-term capacity deployments by tech and region based on interconnection queues
-eq_interconnection_queues(tg,r,t)
-    $[tmodel(t)$(yeart(t)>=model_builds_start_yr)
-    $(sum{(tgg,rr), cap_limit(tgg,rr,t)})
-    $sum{(i,newv)$tg_i(tg,i), valinv(i,newv,r,t)}
-    $(not Sw_PCM)]..
-
-* the capacity limit from the interconnection queue data
-* (with CAP_ABOVE_LIM as a slack variable to address infeasibilities)
-    cap_limit(tg,r,t) + CAP_ABOVE_LIM(tg,r,t)
-
-    =g=
-
-* must be greater than the total capacity deployed since the
-* start of the interconnection queue data
-    sum{(i,newv,tt)$[valinv(i,newv,r,tt)$tg_i(tg,i)
-                                    $(yeart(tt)>=interconnection_start)
-                                    $(tmodel(tt) or tfix(tt))],
-        INV(i,newv,r,tt) + INV_REFURB(i,newv,r,tt)$[refurbtech(i)$Sw_Refurb] }
 ;
 
 *===============================

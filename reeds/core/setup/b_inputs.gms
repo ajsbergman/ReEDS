@@ -252,6 +252,7 @@ set
   ccsflex_sto(i)       "Flexible CCS technologies with storage",
   ccsflex(i)           "Flexible CCS technologies",
   cf_tech(i)           "technologies that have a specified capacity factor"
+  coal_new(i)          "coal-new",
   coal_ccs(i)          "technologies that use coal and have CCS",
   coal(i)              "technologies that use coal",
   cofire(i)            "cofire technologies",
@@ -275,6 +276,7 @@ set
   fossil(i)            "fossil technologies"
   fuel_cell(i)         "fuel cell technologies",
   gas_cc_ccs(i)        "techs that are gas combined cycle and have CCS",
+  gas_cc_noccs(i)      "techs that are gas combined cycle without CCS",
   gas_cc(i)            "techs that are gas combined cycle",
   gas_ct(i)            "techs that are gas combustion turbine",
   gas(i)               "techs that use gas (but not o-g-s)",
@@ -316,6 +318,7 @@ set
   thermal_storage(i)   "thermal storage technologies",
   upgrade(i)           "technologies that are upgrades from other technologies",
   upv(i)               "upv generation technologies",
+  upv_bat(i)           "upv and battery techs",
   vre_distributed(i)   "distributed PV technologies",
   vre_no_csp(i)        "variable renewable energy technologies that are not csp",
   vre_utility(i)       "utility scale wind and PV technologies",
@@ -710,6 +713,7 @@ ccsflex_dac(i)$(not ban(i))         = yes$i_subsets(i,'ccsflex_dac') ;
 ccsflex_sto(i)$(not ban(i))         = yes$i_subsets(i,'ccsflex_sto') ;
 ccsflex(i)$(not ban(i))             = yes$i_subsets(i,'ccsflex') ;
 cf_tech(i)$(not ban(i))             = yes$i_subsets(i,'cf_tech') ;
+coal_new(i)$(not ban(i))            = yes$i_subsets(i,'coal_new') ;
 coal_ccs(i)$(not ban(i))            = yes$i_subsets(i,'coal_ccs') ;
 coal(i)$(not ban(i))                = yes$i_subsets(i,'coal') ;
 cofire(i)$(not ban(i))              = yes$i_subsets(i,'cofire') ;
@@ -733,6 +737,7 @@ evmc_shape(i)$(not ban(i))          = yes$i_subsets(i,'evmc_shape') ;
 fossil(i)$(not ban(i))              = yes$i_subsets(i,'fossil') ;
 fuel_cell(i)$(not ban(i))           = yes$i_subsets(i,'fuel_cell') ;
 gas_cc_ccs(i)$(not ban(i))          = yes$i_subsets(i,'gas_cc_ccs') ;
+gas_cc_noccs(i)$(not ban(i))        = yes$i_subsets(i,'gas_cc_noccs') ;
 gas_cc(i)$(not ban(i))              = yes$i_subsets(i,'gas_cc') ;
 gas_ct(i)$(not ban(i))              = yes$i_subsets(i,'gas_ct') ;
 gas(i)$(not ban(i))                 = yes$i_subsets(i,'gas') ;
@@ -772,6 +777,7 @@ storage_standalone(i)$(not ban(i))  = yes$i_subsets(i,'storage_standalone') ;
 storage(i)$(not ban(i))             = yes$i_subsets(i,'storage') ;
 thermal_storage(i)$(not ban(i))     = yes$i_subsets(i,'thermal_storage') ;
 upv(i)$(not ban(i))                 = yes$i_subsets(i,'upv') ;
+upv_bat(i)$(not ban(i))             = yes$i_subsets(i,'upv_bat') ;
 vre_distributed(i)$(not ban(i))     = yes$i_subsets(i,'vre_distributed') ;
 vre_no_csp(i)$(not ban(i))          = yes$i_subsets(i,'vre_no_csp') ;
 vre_utility(i)$(not ban(i))         = yes$i_subsets(i,'vre_utility') ;
@@ -4592,7 +4598,15 @@ scalar nukebancostmult "--fraction-- penalty for constructing new nuclear in a r
 * For offshore wind, rsc_fin_mult(i,r,t) also carries the ITC that is applied to the transmission costs in the resource supply curve cost, while rsc_fin_mult_no_ITC(i,r,t) carries financing multipliers for its transmission costs without the ITC
 parameter rsc_fin_mult(i,r,t)       "--fraction-- financial cost multiplier for resource supply curve technologies that have their capital costs included in the supply curves (capital cost reduction multipliers are also included where relevant)"
           rsc_fin_mult_noITC(i,r,t) "--fraction-- financial cost multiplier excluding ITC for resource supply curve technologies that have their capital costs included in the supply curves"
+          rsc_fin_mult_out(i,r,t)   "--fraction-- copy of rsc_fin_mult for system cost / LCOE outputs (captures any ForceMandate cost scaling)"
+          rsc_fin_mult_noITC_out(i,r,t) "--fraction-- copy of rsc_fin_mult_noITC for system cost / LCOE outputs (captures any ForceMandate cost scaling)"
 ;
+
+* --- ForceMandate (valcostfac experiment) ---
+* forcetechmult scales the full cost stack of ForceTech over time when ForceMandate=1.
+* Defaults to 1 (no effect); populated in reeds/core/solve/2_financials.gms.
+parameter forcetechmult(i,t) "--fraction-- multiplier applied to all cost components of ForceTech when ForceMandate=1" ;
+forcetechmult(i,t) = 1 ;
 
 *=========================================
 * --- Emission Rate ---

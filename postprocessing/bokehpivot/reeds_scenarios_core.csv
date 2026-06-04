@@ -1,0 +1,9 @@
+name,path
+upv,/projects/cambium/mmowers/ReEDS_pub/runs/vcf5_upv
+onswind,/projects/cambium/mmowers/ReEDS_pub/runs/vcf5_onswind
+offwind,/projects/cambium/mmowers/ReEDS_pub/runs/vcf5_offwind
+gas,/projects/cambium/mmowers/ReEDS_pub/runs/vcf5_gas
+gas_ccs,/projects/cambium/mmowers/ReEDS_pub/runs/vcf5_gas_ccs
+nuclear,/projects/cambium/mmowers/ReEDS_pub/runs/vcf5_nuclear
+coal,/projects/cambium/mmowers/ReEDS_pub/runs/vcf5_coal
+geo,/projects/cambium/mmowers/ReEDS_pub/runs/vcf5_geo
