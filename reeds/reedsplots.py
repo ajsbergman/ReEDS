@@ -5212,7 +5212,7 @@ def plot_repdays(case=None, year=None, actualday2repday=None, cmap=cmocean.cm.ph
         row = actualday.month - 1
         xstart = actualday.day - 1
         xend = xstart + (5 if sw.GSw_HourlyType == 'wek' else 1)
-        monthday = repday.strftime('%m/%d')
+        monthday = repday.strftime(stylestring).split('/\n')[0]
         ## Background color
         ax[row].axvspan(xstart, xend, color=cmap(monthday2val[monthday]), alpha=alpha, lw=0)
         ## Date
