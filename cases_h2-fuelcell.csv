@@ -63,4 +63,4 @@ pras_vre_combine,,,,,,
 pras_samples,,,,,,
 GSw_FuelCell,,0,0,0,0,1
 GSw_H2FuelCell,,0,1,1,1,1
-plantchar_h2fuelcell,,,h2-fuelcell_moderate,h2-fuelcell_advanced,h2-fuelcell_conservative,h2-fuelcell_moderate
+plantchar_h2fuelcell,,,h2fuelcell_moderate,h2fuelcell_advanced,h2fuelcell_conservative,h2fuelcell_moderate

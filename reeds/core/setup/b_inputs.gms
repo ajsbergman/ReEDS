@@ -273,7 +273,7 @@ set
   evmc_storage(i)      "ev flexibility as direct load control",
   evmc_shape(i)        "ev flexibility as adoptable change to load from response to pricing",
   fossil(i)            "fossil technologies"
-  fuel_cell(i)         "fuel cell technologies",
+  fuel_cell(i)         "natural gas fuel cell technologies",
   gas_cc_ccs(i)        "techs that are gas combined cycle and have CCS",
   gas_cc(i)            "techs that are gas combined cycle",
   gas_ct(i)            "techs that are gas combustion turbine",
@@ -289,6 +289,7 @@ set
   h2_cc(i)             "h2-cc technologies",
   h2_ct(i)             "h2-ct technologies",
   h2(i)                "hydrogen-producing technologies",
+  h2_fuel_cell(i)      "H2 fuel cell technologies",
   hyd_add_pump(i)      "hydro techs with an added pump",
   hydro_d(i)           "dispatchable hydro technologies",
   hydro_nd(i)          "non-dispatchable hydro technologies",
@@ -751,6 +752,7 @@ h2_combustion(i)$(not ban(i))       = yes$i_subsets(i,'h2_combustion') ;
 h2_cc(i)$(not ban(i))               = yes$i_subsets(i,'h2_cc') ;
 h2_ct(i)$(not ban(i))               = yes$i_subsets(i,'h2_ct') ;
 h2(i)$(not ban(i))                  = yes$i_subsets(i,'h2') ;
+h2_fuel_cell(i)$(not ban(i))        = yes$i_subsets(i,'h2_fuel_cell') ;
 hydro_d(i)$(not ban(i))             = yes$i_subsets(i,'hydro_d') ;
 hydro_nd(i)$(not ban(i))            = yes$i_subsets(i,'hydro_nd') ;
 hydro(i)$(not ban(i))               = yes$i_subsets(i,'hydro') ;
