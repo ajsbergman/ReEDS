@@ -799,7 +799,7 @@ def calc_ng_crf_penalty_st(inputs_case, years, financials_sys, sw):
     function calculates how much of a plant's remaining economic life is cut
     short by the policy. The penalty is the ratio of the CRF over the
     truncated remaining life to the CRF over the full evaluation period:
-      - value = 100  if the plant comes online after the forced year 
+      - value = 100  for years after the forced retirement year 
       - value > 1    if the plant is forced to retire before its full life 
 
     States not present in hierarchy.csv (i.e. outside the modeled region) are
