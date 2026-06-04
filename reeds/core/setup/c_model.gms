@@ -173,7 +173,7 @@ EQUATION
  eq_growthbin_limit(gbin,st,tg,t)         "--MW-- capacity limit for each growth bin"
  eq_growthlimit_absolute(tg,t)            "--MW-- absolute growth limit on technologies"
 
- eq_interconnection_queues(tg,r,t)        "--MW-- capacity deployment limit based on interconnection queues"
+eq_interconnection_queues(tg,r,t)         "--MW-- capacity deployment limit based on interconnection queues"  
 
 * storage capacity credit supply curves
  eq_cap_sdbin_balance(i,v,r,ccseason,t)             "--MW-- total binned storage power capacity must be greater than total storage capacity"
