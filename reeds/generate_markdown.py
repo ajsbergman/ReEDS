@@ -164,17 +164,23 @@ def write_folder_sections(data, main_file,folder_hierarchy, githubURL, depth=1, 
             write_folder_sections(data, main_file, contents, githubURL, depth + 1, full_path)         
 
 
-def main():
+def main(app=None):
     """
     Main function to generate markdown documentation for ReEDS sources.
     Reads sources.csv, builds folder hierarchy, and writes a markdown file with file metadata and structure.
     """
-    parser = argparse.ArgumentParser()
-    parser.add_argument('--githubURL', '-g', type=str, default='', help='base github url')
-    parser.add_argument('--reedsPath', '-r', type=str, default='', help='path to reeds directory' )
-    args = parser.parse_args()
-    githubURL = args.githubURL
-    reedsPath = args.reedsPath
+    # When invoked by Sphinx (builder-inited), an app object is passed in.
+    # In that context, do not parse CLI args from sys.argv.
+    if app is None:
+        parser = argparse.ArgumentParser()
+        parser.add_argument('--githubURL', '-g', type=str, default='', help='base github url')
+        parser.add_argument('--reedsPath', '-r', type=str, default='', help='path to reeds directory' )
+        args = parser.parse_args()
+        githubURL = args.githubURL
+        reedsPath = args.reedsPath
+    else:
+        githubURL = os.environ.get("BASE_URL", "")
+        reedsPath = ''
 
     #Conversion of latest version of sources.csv to markdown/readme format
 
@@ -187,6 +193,8 @@ def main():
     current_path = os.getcwd()
     if reedsPath != '':
         reeds_path = reedsPath
+    elif app is not None and hasattr(app, "srcdir"):
+        reeds_path = os.path.dirname(os.path.dirname(app.srcdir))
     else: 
         reeds_path = os.path.dirname(os.path.dirname(os.path.dirname(current_path)))
         reeds_path = reeds_path.replace("\\","/")
@@ -195,9 +203,29 @@ def main():
                
     desc_file_path = os.path.join(reeds_docs_path, desc_holder).replace("\\","/")
 
+    # Create sources.csv if it doesn't exist yet so downstream reads succeed.
+    if not os.path.exists(desc_file_path):
+        os.makedirs(os.path.dirname(desc_file_path), exist_ok=True)
+        with open(desc_file_path, "w", newline="", encoding="utf-8") as csv_file:
+            writer = csv.DictWriter(
+                csv_file,
+                fieldnames=[
+                    "RelativeFilePath",
+                    "RelativeFolderPath",
+                    "FileExtension",
+                    "FileName_new",
+                    "Description_new",
+                    "Citation",
+                    "Indices",
+                    "DollarYear",
+                    "Filetype",
+                    "Units",
+                ],
+            )
+            writer.writeheader()
 
-    #Dataframe to store the newly generated sources.csv data
-    with open(desc_file_path, "r") as csv_file:
+    # Dataframe to store the newly generated sources.csv data
+    with open(desc_file_path, "r", newline="", encoding="utf-8") as csv_file:
         reader = csv.DictReader(csv_file)
         data = list(reader)
 
@@ -235,7 +263,7 @@ def main():
     main_readme_file_path = os.path.join(reeds_docs_path, main_readme_file).replace("\\","/")
 
     #Open markdown file for entries
-    with open(main_readme_file_path, "w") as main_file:
+    with open(main_readme_file_path, "w", encoding="utf-8") as main_file:
         main_file.write("## Table of Contents\n\n")    
 
                             

@@ -1,5 +1,10 @@
 import datetime
 import os
+import sys
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+import reeds
+from reeds import generate_markdown
+
 
 # Configuration file for the Sphinx documentation builder.
 #
@@ -13,7 +18,13 @@ project = "ReEDS"
 copyright = "2024, NREL"
 author = "NLR"
 
-# -- General configuration ---------------------------------------------------
+
+# --setup function to run generate_markdown.py on 'make html' ---------------------------------
+def setup(app):
+    app.connect("builder-inited", generate_markdown.main)
+
+
+# -- General configuration ----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = ["myst_parser", "sphinxcontrib.bibtex", "sphinx_design"]
