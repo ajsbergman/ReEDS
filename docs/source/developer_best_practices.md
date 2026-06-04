@@ -310,7 +310,7 @@ To edit the ReEDS documentation:
 3. Commit and push your changes as you normally would.
    - **When your pull request gets merged into main, there is a github action that will automatically recompile the documentation with your changes and publish the updated site.**
 
-Additionally, ensure you've updated the `docs/sources.csv` file when applicable.
+Make sure to update the `docs/sources.csv` file when applicable.
 
 ### Viewing the Documentation Locally
 
