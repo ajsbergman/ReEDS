@@ -192,27 +192,6 @@ def main(app=None):
                
     desc_file_path = os.path.join(reeds_docs_path, desc_holder).replace("\\","/")
 
-    # Create sources.csv if it doesn't exist yet so downstream reads succeed.
-    if not os.path.exists(desc_file_path):
-        os.makedirs(os.path.dirname(desc_file_path), exist_ok=True)
-        with open(desc_file_path, "w", newline="", encoding="utf-8") as csv_file:
-            writer = csv.DictWriter(
-                csv_file,
-                fieldnames=[
-                    "RelativeFilePath",
-                    "RelativeFolderPath",
-                    "FileExtension",
-                    "FileName_new",
-                    "Description_new",
-                    "Citation",
-                    "Indices",
-                    "DollarYear",
-                    "Filetype",
-                    "Units",
-                ],
-            )
-            writer.writeheader()
-
     # Dataframe to store the newly generated sources.csv data
     with open(desc_file_path, "r", newline="", encoding="utf-8") as csv_file:
         reader = csv.DictReader(csv_file)
