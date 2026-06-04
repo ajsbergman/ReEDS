@@ -1822,6 +1822,15 @@ tran_util_ann_rep(r,rr,trtype,t)
     / sum{h, hours(h) }
 ;
 
+tran_util_ann_stress(r,rr,trtype,t)
+    $[tmodel_new(t)
+    $routes(r,rr,trtype,t)$tran_cap_prm(r,rr,trtype,t)
+    $sum{allh$h_stress_t(allh,t), hours(allh)}] =
+    sum{allh$h_stress_t(allh,t),
+        FLOW.l(r,rr,allh,t,trtype) * hours(allh) / tran_cap_prm(r,rr,trtype,t) }
+    / sum{allh$h_stress_t(allh,t), hours(allh) }
+;
+
 import_h_rep(r,h,t)
     $[tmodel_new(t)] =
 * Imports with losses
