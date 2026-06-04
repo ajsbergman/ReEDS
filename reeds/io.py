@@ -1585,9 +1585,12 @@ def assemble_supplycurve(
             reeds_path, os.path.join(case, 'inputs_case')
         )
         counties = agglevel_variables['county_regions']
+        ## POI_validate keeps reinforcement embedded in the supply curve (it is coarsened in
+        ## writesupplycurves.coarsen_reinforcement, not relocated), so it must NOT be dropped here.
         use_poi_bins = (
             (int(sw.get('numpoibins', 1)) > 1)
             and (float(sw.get('GSw_TransIntraCost', 0) or 0) != 0)
+            and not int(sw.get('POI_validate', 0) or 0)
         )
     else:
         counties = []
@@ -1597,6 +1600,14 @@ def assemble_supplycurve(
         else dfout.region.isin(counties)
     )
     if drop_reinforcement.any():
+        ## Preserve the native (pre-drop) reinforcement cost. When the binned POI method is
+        ## active the reinforcement is relocated to the zonal INV_POI supply curve, and the
+        ## techspecific variant (transmission.py) rebuilds its wind/PV curves *from this
+        ## reinforcement signal*. It must read the original values, not the zeroed column,
+        ## otherwise the reinforcement is dropped from INV_RSC but never re-added to INV_POI
+        ## (under-counting). writesupplycurves drops this column before binning so it does not
+        ## leak into rsc_dat.
+        dfout['cost_reinforcement_usd_per_mw_native'] = dfout['cost_reinforcement_usd_per_mw']
         zerocols = ['cost_reinforcement_usd_per_mw', 'dist_reinforcement_km']
         dfout.loc[drop_reinforcement, zerocols] = 0
         dfout.loc[drop_reinforcement, 'cost_total_trans_usd_per_mw'] = dfout.loc[

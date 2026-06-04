@@ -330,12 +330,29 @@ hyd_add_pump('hydED_pumped-hydro-flex') = yes ;
 set rscbin "Resource supply curves bins" /bin1*bin%numbins%/,
     rscfeas(i,r,rscbin) "feasibility set for technologies that have resource supply curves" ;
 
-* Sets involved with the POI / network-reinforcement cost supply curve (increasing cost bins
-* for new capacity in each region; applies to all technologies via eq_POI_cap).
-* bin_upper is an unlimited backstop bin priced at GSw_POIUpperCost that catches reinforcement
-* above the binned supply-curve capacities (populated by transmission.py only when numpoibins>1).
-set rtscbin "POI / network-reinforcement supply curve bins" /bin1*bin%numpoibins%, bin_upper/,
-    poi_bin_feas(r,rtscbin) "feasibility set for POI bins that have a defined reinforcement cost" ;
+* Sets involved with the POI / network-reinforcement cost supply curve.
+* POI reinforcement is charged on increasing-cost bins. With POI_cost_type=regional a single zonal
+* curve (poigroup 'all') applies to every technology; with POI_cost_type=techspecific each tech
+* group (wind, pv, other) has its own per-zone curve (eq_POI_cap covers each group's own capacity).
+* bin_upper is an unlimited backstop bin priced at GSw_POIUpperCost. When numpoibins=0 (full-reV
+* resolution) the bins are loaded from data (rtscbin.csv written by transmission.py).
+set poigroup "POI technology groups for reinforcement cost curves" /all, wind, pv, other/ ;
+set poi_basegroup(poigroup) "POI group carrying existing capacity (poi_cap_init) and non-generator POI capacity (spur/converter/LCC)" ;
+set tg_poigroup(i,poigroup) "map from technology to its POI cost group" ;
+$ifThenE.poifr %numpoibins%==0
+* rtscbin.csv is a single column (one bin label per line, no header), so $ondelim is neither
+* needed nor allowed here (the set's dimension is the universe, which $ondelim cannot infer):
+* a plain $include pastes the labels straight into the set body.
+set rtscbin "POI / network-reinforcement supply curve bins (full-reV; loaded from data)"
+/
+$offlisting
+$include inputs_case%ds%rtscbin.csv
+$onlisting
+/ ;
+$else.poifr
+set rtscbin "POI / network-reinforcement supply curve bins" /bin1*bin%numpoibins%, bin_upper/ ;
+$endIf.poifr
+set poi_bin_feas(poigroup,r,rtscbin) "feasibility set for POI bins that have a defined reinforcement cost" ;
 
 parameter yeart(t) "numeric value for year",
           year(allt) "numeric year value for allt" ;
@@ -1285,21 +1302,38 @@ $offdelim
 $onlisting
 / ;
 
-* POI / network-reinforcement cost supply curve. Costs are provided in $/kW of new POI
-* capacity above the existing capacity (poi_cap_init), binned so that the marginal cost
-* increases with cumulative new capacity (cheapest bin fills first under cost minimization).
-* cost_poi_bin is stored internally in $/MW (input $/kW is converted with *1000, as for the
-* flat Sw_TransIntraCost), so it can be multiplied directly by INV_POI [MW] in the objective.
-parameter cost_poi_bin(r,rtscbin) "--$/MW-- POI / network-reinforcement cost in each bin (strictly increasing across bins)" ;
-parameter cap_poi_bin(r,rtscbin)  "--MW-- incremental capacity width available in each POI bin (0 = unlimited, e.g. the top bin)" ;
+* --- Map technologies to POI cost groups (built from the POI_cost_type switch) ---
+* regional: a single group 'all' applies one zonal curve to every technology (legacy behavior).
+* techspecific: wind-ons -> wind, upv/pvb -> pv, everything else -> other (wind-ofs falls in other).
+* poi_basegroup is the group that carries the free existing capacity (poi_cap_init) and the
+* non-generator POI capacity (spur lines, VSC converters, LCC): 'all' for regional, 'other' for
+* techspecific.
+tg_poigroup(i,poigroup) = no ;
+poi_basegroup(poigroup) = no ;
+$ifThen.poitech "%POI_cost_type%" == "techspecific"
+tg_poigroup(i,"wind")$onswind(i) = yes ;
+tg_poigroup(i,"pv")$[upv(i) or pvb(i)] = yes ;
+tg_poigroup(i,"other")$[(not ban(i))$(not onswind(i))$(not upv(i))$(not pvb(i))] = yes ;
+poi_basegroup("other") = yes ;
+$else.poitech
+tg_poigroup(i,"all")$(not ban(i)) = yes ;
+poi_basegroup("all") = yes ;
+$endIf.poitech
+
+* POI / network-reinforcement cost supply curve, indexed by POI group, region, and bin.
+* Costs are provided in $/kW of new POI capacity above the existing capacity (poi_cap_init),
+* binned so that the marginal cost increases with cumulative new capacity (cheapest bin fills
+* first under cost minimization). cost_poi_bin is stored internally in $/MW (input $/kW * 1000,
+* as for the flat Sw_TransIntraCost) so it multiplies INV_POI [MW] directly in the objective.
+parameter cost_poi_bin(poigroup,r,rtscbin) "--$/MW-- POI / network-reinforcement cost in each bin" ;
+parameter cap_poi_bin(poigroup,r,rtscbin)  "--MW-- incremental capacity width available in each POI bin (0 = unlimited)" ;
 
 * Binned POI supply curve loaded from inputs_case/poi_supply_curve.csv (long format:
-* r, rtscbin, sc_cat in {cost ($/kW), cap (MW)}, value). copy_files selects the file matching the
-* run's zone set, poi_supply_curve_{GSw_ZoneSet}.csv, so the regions match the resolution. The
-* region dimension is still read against the GAMS universe (*) rather than the model region set r
-* so that regions present in the zone-set file but filtered out of the model by GSw_Region do not
-* raise a domain error; those regions are simply ignored when transferred to cost/cap below.
-parameter poi_sc_dat(*,rtscbin,sc_cat) "--$/kW or MW-- POI / network-reinforcement supply curve data by region, bin, and category"
+* poigroup, r, rtscbin, sc_cat in {cost ($/kW), cap (MW)}, value). transmission.py writes this:
+* poigroup='all' for regional, or wind/pv/other for techspecific. The region dimension is read
+* against the GAMS universe (*) rather than the model region set r so that regions present in the
+* file but filtered out of the model by GSw_Region do not raise a domain error.
+parameter poi_sc_dat(poigroup,*,rtscbin,sc_cat) "--$/kW or MW-- POI / network-reinforcement supply curve data by group, region, bin, and category"
 /
 $onempty
 $offlisting
@@ -1310,22 +1344,18 @@ $onlisting
 $offempty
 / ;
 
-* Default (single-bin) supply curve reproduces the legacy flat Sw_TransIntraCost behavior:
-* all reinforcement capacity is available in bin1 at the flat cost, with no bin-width limit.
-* Sw_TransIntraCost is in $/kW, so multiply by 1000 to convert to $/MW. This also serves as the
+* Default (single flat bin) for the base group reproduces the legacy flat Sw_TransIntraCost:
+* the base group's bin1 is available at the flat cost with no bin-width limit. This is the
 * fallback for any region the poi_supply_curve.csv file does not cover.
-cost_poi_bin(r,"bin1")$Sw_TransIntraCost = Sw_TransIntraCost * 1000 ;
+cost_poi_bin(poigroup,r,"bin1")$[Sw_TransIntraCost$poi_basegroup(poigroup)] = Sw_TransIntraCost * 1000 ;
 
-* Overlay the supply-curve data for any (region,bin) it covers (only model regions r match).
+* Overlay the supply-curve data for any (group,region,bin) it covers (only model regions r match).
 * Costs are converted from input $/kW to $/MW with *1000; capacities (MW) are used as-is.
-* With the default per-zone-set files (bin1 cost = 65 $/kW = GSw_TransIntraCost, no cap), this
-* reproduces the flat cost exactly. To activate increasing bins, supply cost AND cap for each
-* bin in poi_supply_curve_{GSw_ZoneSet}.csv (a 0/absent cap means an unlimited, e.g. top, bin).
-cost_poi_bin(r,rtscbin)$poi_sc_dat(r,rtscbin,"cost") = poi_sc_dat(r,rtscbin,"cost") * 1000 ;
-cap_poi_bin(r,rtscbin)$poi_sc_dat(r,rtscbin,"cap")   = poi_sc_dat(r,rtscbin,"cap") ;
+cost_poi_bin(poigroup,r,rtscbin)$poi_sc_dat(poigroup,r,rtscbin,"cost") = poi_sc_dat(poigroup,r,rtscbin,"cost") * 1000 ;
+cap_poi_bin(poigroup,r,rtscbin)$poi_sc_dat(poigroup,r,rtscbin,"cap")   = poi_sc_dat(poigroup,r,rtscbin,"cap") ;
 
 * A POI bin is feasible (i.e. can be built into) if it has a defined cost.
-poi_bin_feas(r,rtscbin)$cost_poi_bin(r,rtscbin) = yes ;
+poi_bin_feas(poigroup,r,rtscbin)$cost_poi_bin(poigroup,r,rtscbin) = yes ;
 
 *created by reeds/input_processing/writecapdat.py
 table capnonrsc(i,r,*) "--MW-- raw power capacity data for non-RSC tech"

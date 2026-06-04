@@ -1582,8 +1582,11 @@ def plot_poi_supply_curve(
     staircase, with a vertical line at the cumulative POI capacity deployed in each modeled
     year (x = total capacity, including the free existing poi_cap_init; y = $/kW).
 
-    If the per-bin output poi_capacity_bin is available, a marker is placed on the staircase
-    at each year's marginal reinforcement cost (the most expensive bin with capacity that year).
+    Each bin's cumulative capacity edge is marked with its own dotted vertical line in the
+    curve's color, so the discrete bin capacities are visible. The x-axis is scaled to the
+    deployed POI capacity (plus the next bin edge beyond it) rather than the full extent of the
+    supply curves, which for tech-specific wind/PV can run to thousands of GW of never-built
+    capacity.
 
     Args:
         case: path to a ReEDS run folder
@@ -1596,20 +1599,14 @@ def plot_poi_supply_curve(
     """
     xscale = {'MW': 1, 'GW': 1e3, 'TW': 1e6}[x_units]
 
-    ### Supply curve: cost ($/kW) and incremental cap (MW) per bin
+    ### Per-group supply curves: cost ($/kW) and incremental cap (MW) per bin.
+    ### Format: poigroup, r, rtscbin, sc_cat in {cost, cap}, value. poigroup='all' for
+    ### POI_cost_type=regional, or wind/pv/other for techspecific.
     sc = pd.read_csv(os.path.join(case, 'inputs_case', 'poi_supply_curve.csv'))
-    sc = sc.rename(columns={sc.columns[0]: 'r'})
+    sc = sc.rename(columns={sc.columns[0]: 'poigroup'})
     sc = sc.loc[sc['r'] == region]
     if not len(sc):
         raise ValueError(f'No POI supply-curve data for region {region}')
-    curve = sc.pivot_table(index='rtscbin', columns='sc_cat', values='value', aggfunc='first')
-    if 'cap' not in curve.columns:
-        curve['cap'] = np.nan
-    ### Order by cost; among equal-cost bins put finite-cap bins before the unlimited backstop
-    curve = (
-        curve.assign(_capsort=curve['cap'].fillna(np.inf))
-        .sort_values(['cost', '_capsort']).drop(columns='_capsort')
-    )
 
     ### Free existing capacity (poi_cap_init)
     poi_init = reeds.io.read_input(case, 'poi_cap_init')
@@ -1617,7 +1614,7 @@ def plot_poi_supply_curve(
         columns={poi_init.columns[0]: 'r', poi_init.columns[1]: 'MW'}).set_index('r')['MW']
     poi_cap_init = float(poi_init.reindex([region]).fillna(0).iloc[0])
 
-    ### Cumulative deployed capacity by year
+    ### Cumulative deployed capacity by year (total, across groups)
     poi_cap = reeds.io.read_output(case, 'poi_capacity', valname='MW')
     poi_cap = (
         poi_cap.loc[poi_cap['r'] == region]
@@ -1628,59 +1625,137 @@ def plot_poi_supply_curve(
     if not len(poi_cap):
         raise ValueError(f'No poi_capacity output for region {region}')
 
-    ### Per-bin cumulative capacity by year (optional; used to mark each year's marginal bin)
-    try:
-        poi_bin = reeds.io.read_output(case, 'poi_capacity_bin', valname='MW')
-        poi_bin = poi_bin.loc[poi_bin['r'] == region].astype({'t': int})
-    except (KeyError, FileNotFoundError):
-        poi_bin = None
+    ### Build a staircase per POI group (each group's curve starts at x=0; the base group also
+    ### shows the free existing capacity)
+    def _staircase(gc):
+        curve = gc.pivot_table(index='rtscbin', columns='sc_cat', values='value', aggfunc='first')
+        if 'cap' not in curve.columns:
+            curve['cap'] = np.nan
+        curve = (curve.assign(_s=curve['cap'].fillna(np.inf))
+                 .sort_values(['cost', '_s']).drop(columns='_s'))
+        edges, costs = [0.0], []
+        for b in curve.index:
+            cap, cost = curve.loc[b, 'cap'], curve.loc[b, 'cost']
+            costs.append(cost)
+            edges.append(edges[-1] + cap if (np.isfinite(cap) and (cap > 0)) else np.inf)
+        return edges, costs
 
-    ### Build the staircase (x = total capacity, starting above poi_cap_init)
-    edges, costs, binnames = [poi_cap_init], [], []
-    for b in curve.index:
-        cap, cost = curve.loc[b, 'cap'], curve.loc[b, 'cost']
-        costs.append(cost)
-        binnames.append(b)
-        edges.append(edges[-1] + cap if (np.isfinite(cap) and (cap > 0)) else np.inf)
-    xmax = max([e for e in edges if np.isfinite(e)] + [poi_cap.max()]) * 1.1
-    edges_fin = [e if np.isfinite(e) else xmax for e in edges]
-    bincost = dict(zip(binnames, costs))
-
-    x, y = [], []
-    for k, cost in enumerate(costs):
-        x += [edges_fin[k] / xscale, edges_fin[k + 1] / xscale]
-        y += [cost, cost]
+    groups = sorted(sc['poigroup'].unique())
+    stairs = {grp: _staircase(sc.loc[sc['poigroup'] == grp]) for grp in groups}
+    ### Scale the x-axis to the capacities actually deployed (poi_capacity, which already includes
+    ### the free poi_cap_init) plus the first bin edge just beyond, rather than the full extent of
+    ### the supply curves: the tech-specific wind/PV curves can run to thousands of GW of
+    ### never-built capacity, which would otherwise squeeze the deployed region into a sliver.
+    deployed_max = float(poi_cap.max())
+    next_edges = [e for edges, _ in stairs.values() for e in edges
+                  if np.isfinite(e) and e > deployed_max]
+    xmax = max((min(next_edges) if next_edges else deployed_max) * 1.05, deployed_max * 1.12)
 
     ### Plot
     f, ax = plt.subplots(figsize=figsize)
-    ax.plot([0, poi_cap_init / xscale], [0, 0],
-            color='C7', lw=3, solid_capstyle='butt', label='existing (free)')
-    ax.plot(x, y, color='k', lw=2, label='reinforcement supply curve')
+    if poi_cap_init > 0:
+        ax.plot([0, poi_cap_init / xscale], [0, 0],
+                color='C7', lw=3, solid_capstyle='butt', label='existing (free)')
+    groupcolor = {'all': 'k', 'wind': 'C0', 'pv': 'C1', 'other': 'C7'}
+    for grp in groups:
+        edges, costs = stairs[grp]
+        edges_fin = [e if np.isfinite(e) else xmax for e in edges]
+        x, y = [], []
+        for k, cost in enumerate(costs):
+            x += [edges_fin[k] / xscale, edges_fin[k + 1] / xscale]
+            y += [cost, cost]
+        label = 'reinforcement supply curve' if grp == 'all' else grp
+        ax.plot(x, y, color=groupcolor.get(grp, None), lw=2, label=label)
+        ### A unique vertical line at each bin's cumulative capacity edge (in the group's color)
+        ### so each bin's capacity threshold is visible on the curve.
+        for e in edges[1:]:
+            if np.isfinite(e) and (0 < e <= xmax):
+                ax.axvline(e / xscale, color=groupcolor.get(grp, '0.5'),
+                           ls=':', lw=0.8, alpha=0.5, zorder=0)
 
+    ### Vertical line per year at the cumulative deployed (total) POI capacity
     norm = mpl.colors.Normalize(int(poi_cap.index.min()), int(poi_cap.index.max()))
     sm = mpl.cm.ScalarMappable(norm=norm, cmap=cmap)
     sm.set_array([])
     for t, mw in poi_cap.items():
-        c = sm.to_rgba(int(t))
-        ax.axvline(mw / xscale, color=c, lw=1.0, alpha=0.85, zorder=1)
-        ### Marginal reinforcement cost reached that year
-        if poi_bin is not None:
-            filled = poi_bin.loc[(poi_bin['t'] == int(t)) & (poi_bin['MW'] > 1e-3), 'rtscbin']
-            mcost = max([bincost.get(b, 0) for b in filled], default=0)
-        else:
-            ## Infer from the staircase: cost of the step the total capacity falls in
-            mcost = 0
-            for k in range(len(costs)):
-                if mw > edges_fin[k] + 1e-6:
-                    mcost = costs[k]
-        if mcost > 0:
-            ax.scatter([mw / xscale], [mcost], color=c, s=28, zorder=3, edgecolor='k', lw=0.4)
+        ax.axvline(mw / xscale, color=sm.to_rgba(int(t)), lw=1.0, alpha=0.85, zorder=1)
     f.colorbar(sm, ax=ax, label='year')
 
     ax.set_xlabel(f'cumulative POI capacity [{x_units}]')
     ax.set_ylabel('reinforcement cost [$/kW]')
     ax.set_title(f'POI supply curve — {region}')
     ax.set_xlim(0, xmax / xscale)
+    ax.set_ylim(bottom=0)
+    ax.legend(loc='upper left', frameon=False, fontsize='small')
+    plots.despine(ax)
+    return f, ax
+
+
+def plot_reinforcement_binning(
+        case, region, tech='wind-ons', figsize=(7, 5), x_units='GW',
+    ):
+    """
+    Plot the native vs. binned reinforcement supply curve for one region/tech (POI_validate runs).
+
+    Reads inputs_case/poi_reinf_binning_{tech}.csv (written by
+    writesupplycurves.coarsen_reinforcement), which holds, per (class, bin) cell, the native
+    reinforcement cost and its numpoibins-bin capacity-weighted approximation. The curve is drawn
+    as a cost-vs-cumulative-capacity staircase (cells sorted by native reinforcement cost): the
+    fine 'native' staircase and the coarse 'binned' staircase the model actually uses. The gap
+    between them is the binning approximation error for that numpoibins.
+
+    Args:
+        case: path to a ReEDS run folder (must be a POI_validate run with numpoibins>0)
+        region: model region (r) to plot
+        tech: 'wind-ons', 'wind-ofs', or 'upv'
+        x_units: 'MW', 'GW', or 'TW'
+
+    Returns:
+        (f, ax)
+    """
+    xscale = {'MW': 1, 'GW': 1e3, 'TW': 1e6}[x_units]
+
+    fpath = os.path.join(case, 'inputs_case', f'poi_reinf_binning_{tech}.csv')
+    if not os.path.exists(fpath):
+        raise FileNotFoundError(
+            f'{fpath} not found — plot_reinforcement_binning needs a POI_validate run '
+            'with numpoibins>0.')
+    df = pd.read_csv(fpath)
+    df = df.loc[(df['region'] == region) & (df['capacity'] > 0)].copy()
+    if not len(df):
+        raise ValueError(f'No reinforcement-binning data for region {region}, tech {tech}')
+
+    ### Order cells by native reinforcement cost and build cumulative-capacity edges
+    df = df.sort_values('reinf_native_usd_per_mw').reset_index(drop=True)
+    edges = np.concatenate([[0.0], df['capacity'].cumsum().to_numpy()]) / xscale
+    ## reV/embedded reinforcement is in USD/MW; show USD/kW to match the model's $/kW convention
+    native = df['reinf_native_usd_per_mw'].to_numpy() / 1e3
+    binned = df['reinf_binned_usd_per_mw'].to_numpy() / 1e3
+
+    def _staircase(y):
+        xs, ys = [], []
+        for k, val in enumerate(y):
+            xs += [edges[k], edges[k + 1]]
+            ys += [val, val]
+        return xs, ys
+
+    f, ax = plt.subplots(figsize=figsize)
+    xn, yn = _staircase(native)
+    xb, yb = _staircase(binned)
+    ax.plot(xn, yn, color='C7', lw=2.5, alpha=0.7, label='native (numpoibins=0)')
+    ax.plot(xb, yb, color='C3', lw=1.8,
+            label=f'binned ({df["reinf_binned_usd_per_mw"].round(2).nunique()} bins)')
+
+    ### Capacity-weighted RMSE of the approximation (the quantity the binning minimizes)
+    w = df['capacity'].to_numpy()
+    rmse = float(np.sqrt(np.average((binned - native) ** 2, weights=w)))
+    ax.annotate(f'cap-weighted RMSE = {rmse:,.3f} $/kW', xy=(0.97, 0.05),
+                xycoords='axes fraction', ha='right', va='bottom', fontsize='small')
+
+    ax.set_xlabel(f'cumulative {tech} capacity [{x_units}]')
+    ax.set_ylabel('reinforcement cost [$/kW]')
+    ax.set_title(f'Reinforcement binning — {region}, {tech}')
+    ax.set_xlim(0, edges[-1])
     ax.set_ylim(bottom=0)
     ax.legend(loc='upper left', frameon=False, fontsize='small')
     plots.despine(ax)

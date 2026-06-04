@@ -93,7 +93,7 @@ positive variables
   CONVERSION_PRM(r,ccseason,intype,outtype,t)    "--MW-- planning reserve margin capacity sent through VSC AC/DC converters"
   CAP_SPUR(x,t)                                  "--MW-- capacity of spur lines"
   INV_SPUR(x,t)                                  "--MW-- investment in spur line capacity"
-  INV_POI(r,rtscbin,t)                           "--MW-- investment in new POI capacity by reinforcement cost bin (for network reinforcement costs)"
+  INV_POI(poigroup,r,rtscbin,t)                  "--MW-- investment in new POI capacity by tech group and reinforcement cost bin"
   TRAN_CAPEX_BINS(r,rr,tscbin,t)                 "--$-- transmission capex cost bins (defined for r < rr)"
 
 * production-, CO2-, and hydrogen-specific variables
@@ -288,8 +288,8 @@ eq_interconnection_queues(tg,r,t)         "--MW-- capacity deployment limit base
  eq_CONVERSION_limit_energy(r,allh,t)        "--MW-- AC/DC energy conversion is limited to converter capacity"
  eq_CONVERSION_limit_prm(r,ccseason,t)       "--MW-- AC/DC PRM conversion is limited to converter capacity"
  eq_PRMTRADE_VSC(r,ccseason,t)               "--MW-- PRM capacity can flow through VSC lines but doesn't directly contribute to PRM"
- eq_POI_cap(r,t)                             "--MW-- POI capacity accounting (for network reinforcement costs)"
- eq_POI_binlim(r,rtscbin,t)                  "--MW-- cumulative POI investment in each bin cannot exceed the bin's available capacity"
+ eq_POI_cap(poigroup,r,t)                    "--MW-- POI capacity accounting by tech group (for network reinforcement costs)"
+ eq_POI_binlim(poigroup,r,rtscbin,t)         "--MW-- cumulative POI investment in each bin cannot exceed the bin's available capacity"
  eq_CAPTRAN_GRP(transgrp,transgrpp,t)        "--MW-- combined flow capacity between transmission groups"
  eq_transgrp_limit_energy(transgrp,transgrpp,allh,t) "--MW-- limit on combined interface energy flows"
  eq_transgrp_limit_prm(transgrp,transgrpp,ccseason,t) "--MW-- limit on combined interface PRM flows"
@@ -1999,52 +1999,58 @@ eq_prescribed_transmission(r,rr,trtype,t)
 
 * ---------------------------------------------------------------------------
 
-* New point-of-interconnection (POI) intra-zone transmission capacity must be
-* added for new generation capacity
-eq_POI_cap(r,t)
+* New point-of-interconnection (POI) intra-zone transmission capacity must be added for new
+* generation capacity. With POI_cost_type=regional there is a single group 'all' covering all
+* technologies (identical to the legacy formulation); with POI_cost_type=techspecific each tech
+* group (wind, pv, other) must cover its own capacity on its own per-group reinforcement curve.
+* The free existing capacity (poi_cap_init) and the non-generator POI terms (spur, converter,
+* LCC) attach to the base group only (poi_basegroup: 'all' regional, 'other' techspecific).
+eq_POI_cap(poigroup,r,t)
     $[tmodel(t)
     $Sw_TransIntraCost
+    $sum{rtscbin, poi_bin_feas(poigroup,r,rtscbin) }
     $(not Sw_PCM)]..
 
-* The sum of POI capacity...
-    poi_cap_init(r)
-    + sum{(rtscbin,tt)$[(yeart(tt)<=yeart(t))$(tmodel(tt) or tfix(tt))$poi_bin_feas(r,rtscbin)],
-          INV_POI(r,rtscbin,tt) }
+* The sum of POI capacity for this group...
+    poi_cap_init(r)$poi_basegroup(poigroup)
+    + sum{(rtscbin,tt)$[(yeart(tt)<=yeart(t))$(tmodel(tt) or tfix(tt))$poi_bin_feas(poigroup,r,rtscbin)],
+          INV_POI(poigroup,r,rtscbin,tt) }
 
     =g=
 
-* must be greater than the sum of all generation capacity [AC] without explicit spur lines...
-    sum{(i,v)$[valcap(i,v,r,t)$(not spur_techs(i))], CAP(i,v,r,t) / ilr(i) }
-* and spur-line capacity if explicitly tracked (use total capacity, not just new investments,
-* to make sure we account for the existing spur line capacity already included in poi_cap_init)...
-    + sum{x$[xfeas(x)$x_r(x,r)$Sw_SpurScen], CAP_SPUR(x,t) }
-* and AC/DC converter capacity for VSC...
-    + CAP_CONVERTER(r,t)
-* and LCC (INVTRAN(r,rr) == INVTRAN(rr,r) for DC so only need to add one direction)
-    + sum{(rr,tt)$[routes_inv(r,rr,"LCC",t)$(yeart(tt)<=yeart(t))$(tmodel(tt) or tfix(tt))],
+* must be greater than the generation capacity [AC] of techs in this group without explicit spur lines...
+    sum{(i,v)$[valcap(i,v,r,t)$tg_poigroup(i,poigroup)$(not spur_techs(i))], CAP(i,v,r,t) / ilr(i) }
+* and (base group only) spur-line capacity if explicitly tracked (total capacity, since existing
+* spur-line capacity is already included in poi_cap_init)...
+    + sum{x$[xfeas(x)$x_r(x,r)$Sw_SpurScen$poi_basegroup(poigroup)], CAP_SPUR(x,t) }
+* and (base group only) AC/DC converter capacity for VSC...
+    + CAP_CONVERTER(r,t)$poi_basegroup(poigroup)
+* and (base group only) LCC (INVTRAN(r,rr) == INVTRAN(rr,r) for DC so only need one direction)
+    + sum{(rr,tt)$[routes_inv(r,rr,"LCC",t)$(yeart(tt)<=yeart(t))$(tmodel(tt) or tfix(tt))$poi_basegroup(poigroup)],
           INVTRAN(r,rr,"LCC",tt)
     }
 ;
 
 * ---------------------------------------------------------------------------
 
-* Cumulative POI investment in each reinforcement cost bin cannot exceed the incremental
-* capacity available in that bin. Because cost_poi_bin increases across bins, the LP fills
-* the cheapest bins first, producing an increasing marginal reinforcement cost (same mechanism
-* as the VRE resource supply curve, eq_rsc_INVlim). Bins with cap_poi_bin = 0 are treated as
-* unlimited (no constraint generated), e.g. the legacy single-bin case or an unbounded top bin.
-eq_POI_binlim(r,rtscbin,t)
+* Cumulative POI investment in each reinforcement cost bin (per group) cannot exceed the
+* incremental capacity available in that bin. Because cost_poi_bin increases across bins, the LP
+* fills the cheapest bins first, producing an increasing marginal reinforcement cost (same
+* mechanism as the VRE resource supply curve, eq_rsc_INVlim). Bins with cap_poi_bin = 0 are
+* treated as unlimited (no constraint generated), e.g. the flat single-bin case or an unbounded
+* top bin.
+eq_POI_binlim(poigroup,r,rtscbin,t)
     $[tmodel(t)
     $Sw_TransIntraCost
-    $poi_bin_feas(r,rtscbin)
-    $cap_poi_bin(r,rtscbin)
+    $poi_bin_feas(poigroup,r,rtscbin)
+    $cap_poi_bin(poigroup,r,rtscbin)
     $(not Sw_PCM)]..
 
-    cap_poi_bin(r,rtscbin)
+    cap_poi_bin(poigroup,r,rtscbin)
 
     =g=
 
-    sum{tt$[(yeart(tt)<=yeart(t))$(tmodel(tt) or tfix(tt))], INV_POI(r,rtscbin,tt) }
+    sum{tt$[(yeart(tt)<=yeart(t))$(tmodel(tt) or tfix(tt))], INV_POI(poigroup,r,rtscbin,tt) }
 ;
 
 * ---------------------------------------------------------------------------
