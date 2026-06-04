@@ -2034,6 +2034,14 @@ $onlisting
 ;
 $offempty
 
+* --- ForceMandate: lift the interconnection-queue deployment limit from ForceStartYear onward (valcostfac) ---
+* eq_interconnection_queues only generates where cap_limit data exists, so zeroing
+* cap_limit in/after ForceStartYear disables the constraint for the experiment period
+* while leaving the equation (and baseline runs with ForceMandate=0) untouched.
+$ifthen %ForceMandate% == 1
+cap_limit(tg,r,allt)$(allt.val >= %ForceStartYear%) = 0 ;
+$endif
+
 
 parameter cap_penalty(tg) "--per MW-- cost penalty for capacity deployment above cap limit"
 /
