@@ -267,11 +267,6 @@ def COLNAMES_define(retscen):
 
 #########################
 ### STATIC DICTIONARY ###
-'''
-This dictionary must be placed at the module level of this script to be used with the 
-create_rsc_wsc() function in aggregate_regions
-'''
-
 TECH = {
     'capnonrsc': [
         'battery_li', 'biopower', 'coal-igcc', 'coal-new',
@@ -1035,7 +1030,7 @@ def main(reeds_path, inputs_case, agglevel, regions):
                 'exog_cap_geohydro':cap_exog['geohydro_allkm']
                 }
 
-    return files_out 
+    return files_out, comments
 
 #%% ===========================================================================
 ### --- PROCEDURE ---
@@ -1071,17 +1066,27 @@ if __name__ == '__main__':
 
     # For mixed resolution runs the main function of writecapdat needs to be executed separately for each desired resolution 
     # Then the data from each resolution are combined and written to the inputs_case folder 
+    comments = {}
     if agglevel_variables['lvl'] == 'mult':
         for resolution in agglevel_variables['agglevel']:
             if resolution == 'aggreg':
-                aggreg_data  = main(reeds_path, inputs_case, agglevel=resolution, 
-                                     regions=agglevel_variables['ba_regions'] )
+                aggreg_data, _comments = main(
+                    reeds_path, inputs_case, agglevel=resolution, 
+                    regions=agglevel_variables['ba_regions'],
+                )
+                comments = {**comments, **_comments}
             if resolution == 'ba':
-                ba_data = main(reeds_path, inputs_case, agglevel=resolution, 
-                                regions=agglevel_variables['ba_regions'])
+                ba_data, _comments = main(
+                    reeds_path, inputs_case, agglevel=resolution, 
+                    regions=agglevel_variables['ba_regions'],
+                )
+                comments = {**comments, **_comments}
             if resolution == 'county':
-                county_data = main(reeds_path, inputs_case, agglevel=resolution,
-                                     regions=agglevel_variables['county_regions'],)
+                county_data, _comments = main(
+                    reeds_path, inputs_case, agglevel=resolution,
+                    regions=agglevel_variables['county_regions'],
+                )
+                comments = {**comments, **_comments}
         
         # Combine and write mixed resolution data
         # ReEDS only supports county-BA, county-aggreg combinations 
@@ -1109,8 +1114,8 @@ if __name__ == '__main__':
     # Single Resolution Procedure
     else: 
         agglevel = agglevel_variables['agglevel']
-        regions = pd.read_csv(os.path.join(inputs_case,f'val_{agglevel}.csv'),header=None).squeeze(1).values
-        data = main(reeds_path, inputs_case,agglevel, regions)
+        regions = reeds.io.read_input(inputs_case, agglevel).squeeze(1).values
+        data, comments = main(reeds_path, inputs_case,agglevel, regions)
 
     # Write it
     print('Writing out capacity data')
@@ -1125,11 +1130,20 @@ if __name__ == '__main__':
         'cap_cspns': True,
         'can_imports_capacity': True,
     }
+    gamstype = {
+        'pcat': 'set',
+    }
     for key, df in data.items():
-        df.to_csv(
-            os.path.join(inputs_case, f'{outname.get(key, key)}.csv'),
-            index=keep_index.get(key, False),
-        )
+        if gamstype.get(key, False):
+            reeds.io.write_to_inputs_h5(
+                df=df, key=outname.get(key, key), case=inputs_case, gamstype=gamstype[key],
+                comment=comments.get(key, ''),
+            )
+        else:
+            df.to_csv(
+                os.path.join(inputs_case, f'{outname.get(key, key)}.csv'),
+                index=keep_index.get(key, False),
+            )
 
     reeds.log.toc(tic=tic, year=0, process='input_processing/writecapdat.py',
         path=os.path.join(inputs_case,'..'))

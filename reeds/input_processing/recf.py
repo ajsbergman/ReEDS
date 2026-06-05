@@ -222,16 +222,15 @@ def calculate_class_region_cf_hourly(
     # Concatenate all CF data
     class_region_cf_hourly = pd.concat(df_list)
 
-    # Shift timezone from UTC to tz_out
+    # Shift timezone from UTC to tz_out and trim to modeled years
+    timeindex = reeds.timeseries.get_timeindex(weather_years)
     utc_offset = -1 * int(tz_out.split('Etc/GMT')[1])
     class_region_cf_hourly = (
         class_region_cf_hourly.shift(utc_offset)
         .tz_localize(None)
         .tz_localize(tz_out)
+        .loc[timeindex]
     )
-    class_region_cf_hourly = class_region_cf_hourly.loc[(
-        class_region_cf_hourly.index.year.isin(weather_years)
-    )]
     class_region_cf_hourly.index.names = ['datetime']
 
     return class_region_cf_hourly
@@ -299,6 +298,11 @@ def check_missing_class_resource(existing_techs, resources):
 def main(reeds_path, inputs_case):
     print('Starting recf.py')
     
+    # #%% Settings for testing
+    # reeds_path = reeds.io.reeds_path
+    # inputs_case = os.path.join(
+    #     reeds_path,'runs','v20260601_repM0_USA_H20_ramp3_yr12_ys1623','inputs_case')
+
     #%% Inputs from switches
     sw = reeds.io.get_switches(inputs_case)
     resource_adequacy_years = sw['resource_adequacy_years_list']
@@ -555,9 +559,11 @@ def main(reeds_path, inputs_case):
     ### Overwrite the original hierarchy.csv based on capcredit_hierarchy_level
     hierarchy.rename_axis('*r').to_csv(
         os.path.join(inputs_case, 'hierarchy.csv'), index=True, header=True)
-    pd.Series(hierarchy.ccreg.unique()).to_csv(
-        os.path.join(inputs_case,'ccreg.csv'), index=False, header=False)
-    #missing_class_resource.to_csv(os.path.join(inputs_case,'missing_class_resource.csv'), index=False)
+    ccreg = pd.Series(hierarchy.ccreg.unique())
+    reeds.io.write_to_inputs_h5(
+        ccreg, 'ccreg', inputs_case, gamstype='set', comment='capacity credit region',
+    )
+
 
 
 #%% ===========================================================================

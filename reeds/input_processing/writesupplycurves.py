@@ -70,7 +70,6 @@ def agg_supplycurve(
     inputs_case,
     numbins_tech,
     agglevel,
-    AggregateRegions,
     bin_method='equal_cap_cut',
     bin_col='supply_curve_cost_per_mw',
     spur_cutoff=1e7, 
@@ -85,9 +84,6 @@ def agg_supplycurve(
     dfin = reeds.io.assemble_supplycurve(
         scfile=scpath,
         case=os.path.dirname(os.path.normpath(inputs_case)),
-        agg=AggregateRegions,
-        ## TEMPORARY 20260402
-        **({'GSw_ZoneSet': 'z134'} if not AggregateRegions else {}),
     ).reset_index().drop(columns=['FIPS','cf'], errors='ignore')
     ## Convert dollar year and recalculate total cost
     transcost_cols = [c for c in dfin if 'cost' in c]
@@ -131,14 +127,12 @@ def agg_supplycurve(
 
 
 def main(
-    reeds_path, inputs_case, AggregateRegions=1, rsc_wsc_dat=None, exog_rsc_dat=None, write=True, **kwargs
+    reeds_path, inputs_case, write=True, **kwargs
 ):
     # #%% Settings for testing
-    #reeds_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-    #inputs_case = os.path.join(reeds_path,'runs','test_Ref','inputs_case')
-    #AggregateRegions = 1
-    #rsc_wsc_dat = None
-    #write = True
+    # reeds_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    # inputs_case = os.path.join(reeds_path,'runs','v20251209_scM0_Pacific','inputs_case')
+    # write = True
     # kwargs = {}
 
     #%% Inputs from switches
@@ -250,7 +244,7 @@ def main(
         windin[s], wind[s] = agg_supplycurve(
             scpath=os.path.join(inputs_case,f'supplycurve_wind-{s}.csv'),
             inputs_case=inputs_case, 
-            agglevel=agglevel, AggregateRegions=AggregateRegions, 
+            agglevel=agglevel,
             numbins_tech=numbins[f'wind-{s}'], spur_cutoff=spur_cutoff,
             agglevel_variables=agglevel_variables, deflate=deflate,
             sw=sw, write=write
@@ -349,7 +343,7 @@ def main(
     upvin, upv = agg_supplycurve(
         scpath=os.path.join(inputs_case, 'supplycurve_upv.csv'),
         inputs_case=inputs_case,
-        agglevel=agglevel, AggregateRegions=AggregateRegions,
+        agglevel=agglevel,
         numbins_tech=numbins['upv'], spur_cutoff=spur_cutoff,
         agglevel_variables=agglevel_variables, deflate=deflate,
         sw=sw, write=write
@@ -430,7 +424,7 @@ def main(
         cspin, csp = agg_supplycurve(
             scpath=os.path.join(inputs_case, 'supplycurve_csp.csv'),
             inputs_case=inputs_case,
-            agglevel=agglevel, AggregateRegions=AggregateRegions, 
+            agglevel=agglevel,
             numbins_tech=numbins['csp'], spur_cutoff=spur_cutoff,
             agglevel_variables=agglevel_variables, deflate=deflate,
             sw=sw, write=False
@@ -511,7 +505,7 @@ def main(
                     inputs_case,
                     f'supplycurve_{s}.csv'),
                 numbins_tech=numbins[s], inputs_case=inputs_case,
-                agglevel=agglevel, AggregateRegions=AggregateRegions,
+                agglevel=agglevel,
                 spur_cutoff=spur_cutoff,agglevel_variables=agglevel_variables, deflate=deflate,
                 sw=sw, write=False
             )
@@ -1005,10 +999,7 @@ def main(
     sitemap = reeds.io.get_sitemap()
     county2zone = reeds.io.get_county2zone(os.path.dirname(os.path.normpath(inputs_case)))
     interconnection_cost['r'] = interconnection_cost.index.map(sitemap.FIPS).map(county2zone)
-    val_r = pd.read_csv(
-        os.path.join(inputs_case, 'val_r.csv'),
-        header=None,
-    ).squeeze(1).values
+    val_r = reeds.io.read_input(inputs_case, 'r').squeeze(1).values
     spursites = interconnection_cost.loc[interconnection_cost.r.isin(val_r)].copy()
     spursites['x'] = 'i' + spursites.index.astype(str)
     if write:
