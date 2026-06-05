@@ -133,7 +133,7 @@ def identify_required_remote_files(sw) -> list:
     ## If a filepath is provided to GSw_LoadProfiles, we don't pull it from the remote
     if not Path(sw.GSw_LoadProfiles).is_file():
         required_files.append(f"demand_{sw.GSw_LoadProfiles}.h5")
-    if sw.GSw_LoadProfiles.startswith('EER'):
+    if sw.GSw_LoadProfiles.startswith('EER') or Path(sw.GSw_LoadProfiles).is_file():
         # In hourly_load.py, EER load profiles are calibrated using
         # historical load profiles, so the latter are required for
         # EER load scenarios.
