@@ -90,6 +90,7 @@ EMIT.fx(etype,e,r,tfix)$emit_modeled(e,r,tfix) = EMIT.l(etype,e,r,tfix) ;
 CAPTRAN_ENERGY.fx(r,rr,trtype,tfix)$routes(r,rr,trtype,tfix) = CAPTRAN_ENERGY.l(r,rr,trtype,tfix) ;
 CAPTRAN_PRM.fx(r,rr,trtype,tfix)$[routes(r,rr,trtype,tfix)$routes_prm(r,rr)] = CAPTRAN_PRM.l(r,rr,trtype,tfix) ;
 CAPTRAN_GRP.fx(transgrp,transgrpp,tfix)$trancap_init_transgroup(transgrp,transgrpp,"AC") = CAPTRAN_GRP.l(transgrp,transgrpp,tfix) ;
+CAPTRAN_REG.fx(transreg,transregg,tfix)$sum{(r,rr), routes_transreg(transreg,transregg,r,rr)} = CAPTRAN_REG.l(transreg,transregg,tfix) ;
 INVTRAN.fx(r,rr,trtype,tfix)$routes_inv(r,rr,trtype,tfix) = INVTRAN.l(r,rr,trtype,tfix) ;
 INVTRAN_AC.fx(r,rr,tscbin,tfix)$routes_inv(r,rr,"AC",tfix) = INVTRAN_AC.l(r,rr,tscbin,tfix) ;
 INV_CONVERTER.fx(r,tfix)$Sw_VSC = INV_CONVERTER.l(r,tfix) ;

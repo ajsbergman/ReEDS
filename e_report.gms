@@ -1772,6 +1772,7 @@ tran_cap_energy(r,rr,trtype,t)$routes(r,rr,trtype,t) = CAPTRAN_ENERGY.l(r,rr,trt
 tran_cap_prm(r,rr,trtype,t)$routes(r,rr,trtype,t) = CAPTRAN_PRM.l(r,rr,trtype,t) ;
 tran_cap_grp(transgrp,transgrpp,t)$trancap_init_transgroup(transgrp,transgrpp,"AC")
     = CAPTRAN_GRP.l(transgrp,transgrpp,t) ;
+tran_cap_reg(transreg,transregg,t) = CAPTRAN_REG.l(transreg,transregg,t) ;
 
 tran_out(r,rr,trtype,t)$[(ord(r)<ord(rr))$routes(r,rr,trtype,t)] =
   (tran_cap_energy(r,rr,trtype,t) + tran_cap_energy(rr,r,trtype,t)) / 2 ;

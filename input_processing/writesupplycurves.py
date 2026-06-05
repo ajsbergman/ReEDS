@@ -95,9 +95,15 @@ def agg_supplycurve(
     dfin.loc[:, transcost_cols] *= deflate['interconnection']
     deflate_scen = os.path.splitext(os.path.basename(scpath))[0]
     dfin['capital_adder_per_mw'] *= deflate[deflate_scen]
+
+    ### Apply interconnection cost multiplier if applicable
+    if 'cost_total_trans_usd_per_mw' in dfin:
+        dfin.cost_total_trans_usd_per_mw *= float(sw.GSw_InterconnectionCostMult)
+
     dfin['supply_curve_cost_per_mw'] = dfin[
         ['capital_adder_per_mw', 'cost_total_trans_usd_per_mw']
     ].sum(axis=1)
+
     ### Define the aggregation settings
     ## Cost and distance are weighted averages, with capacity as the weighting factor
     aggs = {'capacity': 'sum', 'sc_point_gid': list}

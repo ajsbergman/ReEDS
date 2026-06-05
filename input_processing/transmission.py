@@ -446,7 +446,7 @@ trancap_fut = (
     )
     .astype({'t': int})
     .drop(['Notes', 'notes', 'Note', 'note'], axis=1, errors='ignore')
-    .replace({'t': {0: int(scalars['firstyear_trans_longterm'])}})
+    .replace({'t': {0: int(sw['GSw_TransFirstYear'])}})
 )
 
 ### Drop prospective AC lines from years <= trans_init_year
@@ -544,6 +544,68 @@ transmission_cost_nonac = (
 )
 transmission_cost_nonac.round(2).to_csv(
     os.path.join(inputs_case, 'transmission_cost_nonac.csv'),
+    index=False,
+)
+
+
+#%% Transmission constraints
+### This file is copied straight from outputs/tran_cap_energy.csv in the baseline run
+### Limits
+hierarchy = reeds.io.get_hierarchy(case)
+captran_interfacemax = pd.read_csv(
+    os.path.join(
+        reeds_path, 'inputs', 'transmission',
+        f'captran_interfacemax_{sw.GSw_TransCapMaxInterfaceCase}.csv')
+).round(3)
+captran_interfacemax.columns = (
+    ['*' + captran_interfacemax.columns[0].strip('*')]
+    + list(captran_interfacemax.columns[1:]))
+captran_interfacemax = captran_interfacemax.loc[
+    captran_interfacemax['*r'].isin(hierarchy.index) & captran_interfacemax['rr'].isin(hierarchy.index)
+].copy()
+captran_interfacemax.to_csv(
+    os.path.join(inputs_case, 'captran_interfacemax.csv'),
+    index=False,
+)
+
+### Interfaces to apply limit to
+if sw.GSw_TransCapMaxInterfaceOnly.lower() != 'none':
+    include_transgrp = sw.GSw_TransCapMaxInterfaceOnly.split('___')
+    include_regions = []
+    for interface in include_transgrp:
+        transgrp, transgrpp = interface.split('__')
+        include_r = hierarchy.loc[hierarchy.transgrp==transgrp].r
+        include_rr = hierarchy.loc[hierarchy.transgrp==transgrpp].r
+        include_regions.append([(r,rr) for r in include_r for rr in include_rr])
+    include_regions = [i for sublist in include_regions for i in sublist]
+
+    ### Leave out everything else
+    captran_interfacemax_exceptions = captran_interfacemax.loc[
+        ~(captran_interfacemax.apply(
+            lambda row: (row['*r'], row['rr']) in include_regions, axis=1)
+        | captran_interfacemax.apply(
+            lambda row: (row['rr'], row['*r']) in include_regions, axis=1)
+        ),
+        ['*r','rr']
+    ].drop_duplicates()
+### Interfaces to leave out of limit
+elif sw.GSw_TransCapMaxInterfaceExceptions.lower() == 'none':
+    captran_interfacemax_exceptions = pd.DataFrame(columns=['*r','rr'])
+else:
+    exceptions_transgrp = sw.GSw_TransCapMaxInterfaceExceptions.split('___')
+    captran_interfacemax_exceptions = []
+    for exception_transgrp in exceptions_transgrp:
+        transgrp, transgrpp = exception_transgrp.split('__')
+        exceptions_r = hierarchy.loc[hierarchy.transgrp==transgrp].r
+        exceptions_rr = hierarchy.loc[hierarchy.transgrp==transgrpp].r
+        captran_interfacemax_exceptions.append(
+            [(r,rr) for r in exceptions_r for rr in exceptions_rr])
+    captran_interfacemax_exceptions = pd.DataFrame(
+        [i for sublist in captran_interfacemax_exceptions for i in sublist],
+        columns=['*r','rr'])
+
+captran_interfacemax_exceptions.to_csv(
+    os.path.join(inputs_case, 'captran_interfacemax_exceptions.csv'),
     index=False,
 )
 

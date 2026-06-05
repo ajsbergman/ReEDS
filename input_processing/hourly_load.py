@@ -696,6 +696,16 @@ def main(reeds_path, inputs_case):
 
     peakload = calculate_peak_load(regional_load_hourly, hierarchy)
 
+    #%% Calculate interregional transfer capability to require
+    captran_interreg_req = (
+        peakload.loc['transreg'].T
+        .loc[int(sw.GSw_TransInterRegRatioStart):]
+        .stack().rename_axis(['t','*transreg']).reorder_levels(['*transreg','t']).sort_index()
+        .rename('MW')
+        .drop(sw.GSw_TransInterRegRatioExcept.split('_'), errors='ignore')
+        * float(sw.GSw_TransInterRegRatio) / (1 - scalars['distloss'])
+    ).round(0)
+
     #%%%#########################################
     #    -- DR Shed Load Modifications --    #
     #############################################
@@ -737,6 +747,7 @@ def main(reeds_path, inputs_case):
 
     reeds.io.write_profile_to_h5(regional_load_hourly, 'load.h5', inputs_case)
     peakload.to_csv(os.path.join(inputs_case,'peakload.csv'))
+    captran_interreg_req.to_csv(os.path.join(inputs_case,'captran_interreg_req.csv'))
     ### Write peak demand by NERC region to use in firm net import constraint
     (
         peakload.loc['nercr']

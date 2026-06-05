@@ -546,6 +546,7 @@ alias(cendiv,cendiv2) ;
 alias(rscbin,arscbin) ;
 alias(nercr,nercrr) ;
 alias(transgrp,transgrpp) ;
+alias(transreg,transregg) ;
 alias(itlgrp,itlgrpp) ;
 
 parameter yeart(t) "numeric value for year",
@@ -3440,14 +3441,59 @@ routes(r,rr,trtype,t)$[(not Sw_OffshoreBackbone)$offshore(r)$offshore(rr)] = no 
 scalar Sw_VSC "Activate VSC constraints and variables" ;
 Sw_VSC = sum{routes(r,rr,trtype,t)$sameas(trtype,'VSC'), 1} ;
 
+* Convenience sets giving transmission routes between region hierarchy levels
+set routes_transgroup(transgrp,transgrpp,r,rr) "collection of routes between transgroups" ;
+routes_transgroup(transgrp,transgrpp,r,rr)$[
+    sum{t, routes(r,rr,"AC",t) }
+    $r_transgrp(r,transgrp)
+    $r_transgrp(rr,transgrpp)
+    $(not sameas(transgrp,transgrpp))
+    $(not sameas(r,rr))
+] = yes ;
+
+set routes_transreg(transreg,transregg,r,rr) "collection of routes between transregs" ;
+routes_transreg(transreg,transregg,r,rr)$[
+    sum{(t,trtype), routes(r,rr,trtype,t) }
+    $r_transreg(r,transreg)
+    $r_transreg(rr,transregg)
+    $(not sameas(transreg,transregg))
+    $(not sameas(r,rr))
+] = yes ;
+
+set routes_nercr(nercr,nercrr,r,rr) "collection of routes between nercrs" ;
+routes_nercr(nercr,nercrr,r,rr)$[
+    sum{(t,trtype), routes(r,rr,trtype,t) }
+    $r_nercr(r,nercr)
+    $r_nercr(rr,nercrr)
+    $(not sameas(nercr,nercrr))
+    $(not sameas(r,rr))
+] = yes ;
+
+set connections_transreg(transreg,transregg) "transreg's with potential connections" ;
+connections_transreg(transreg,transregg)$[
+    sum{(r,rr), routes_transreg(transreg,transregg,r,rr)}
+    $(not sameas(transreg,transregg))
+] = yes ;
+
+set connections_nercr(nercr,nercrr) "nercr's with potential connections" ;
+connections_nercr(nercr,nercrr)$[
+    sum{(r,rr), routes_nercr(nercr,nercrr,r,rr)}
+    $(not sameas(nercr,nercrr))
+] = yes ;
+
 * initialize all investment routes to no
 routes_inv(r,rr,trtype,t) = no ;
 * allow new investment along existing routes
 routes_inv(r,rr,trtype,t)$[notvsc(trtype)$routes(r,rr,trtype,t)] = yes ;
 * Do not allow transmission expansion on most interfaces until firstyear_trans_nearterm
 routes_inv(r,rr,trtype,t)$[yeart(t)<firstyear_trans_nearterm] = no ;
-* If not allowing near-term transmission, turn those off until firstyear_trans_longterm
-routes_inv(r,rr,trtype,t)$[(not Sw_TransInvNearTerm)$(yeart(t)<firstyear_trans_longterm)] = no ;
+* If not allowing near-term transmission, turn those off until GSw_TransFirstYear
+routes_inv(r,rr,trtype,t)$[(not Sw_TransInvNearTerm)$(yeart(t)<Sw_TransFirstYear)] = no ;
+* Turn off interregional transmission expansion until Sw_TransFirstYearInterReg
+routes_inv(r,rr,trtype,t)
+    $[sum{(transreg,transregg), routes_transreg(transreg,transregg,r,rr)}
+    $(yeart(t)<Sw_TransFirstYearInterReg)]
+    = no ;
 * Do allow "possible" interfaces to be expanded
 routes_inv(r,rr,trtype,t)
     $[sum{tt$[(yeart(tt)<=yeart(t))],
@@ -3520,6 +3566,14 @@ $onlisting
 $offempty
 
 $onempty
+parameter captran_interfacemax(r,rr,trtype,allt) "--MW-- max transmission capacity of individual interfaces"
+/
+$offlisting
+$ondelim
+$include inputs_case%ds%captran_interfacemax.csv
+$offdelim
+$onlisting
+/ ;
 parameter trancap_init_itlgrp(itlgrp,itlgrpp,trtype) "--MW-- initial upper limit on interface flows between itlgrps"
 /
 *** TEMPORARY 20260402: Skip itlgrp functionality until we fix it
@@ -3531,23 +3585,24 @@ parameter trancap_init_itlgrp(itlgrp,itlgrpp,trtype) "--MW-- initial upper limit
 / ;
 $offempty
 
-parameter routes_transgroup(transgrp,transgrpp,r,rr) "collection of routes between transgroups" ;
-routes_transgroup(transgrp,transgrpp,r,rr)$[
-    sum{t, routes(r,rr,"AC",t) }
-    $r_transgrp(r,transgrp)
-    $r_transgrp(rr,transgrpp)
-    $(not sameas(transgrp,transgrpp))
-    $(not sameas(r,rr))
-] = yes ;
+set captran_interfacemax_exceptions(r,rr) "interfaces to ignore for GSw_TransCapMaxInterface"
+/
+$offlisting
+$ondelim
+$include inputs_case%ds%captran_interfacemax_exceptions.csv
+$offdelim
+$onlisting
+/ ;
 
-set routes_nercr(nercr,nercrr,r,rr) "collection of routes between nercrs" ;
-routes_nercr(nercr,nercrr,r,rr)$[
-    sum{(t,trtype), routes(r,rr,trtype,t) }
-    $r_nercr(r,nercr)
-    $r_nercr(rr,nercrr)
-    $(not sameas(nercr,nercrr))
-    $(not sameas(r,rr))
-] = yes ;
+parameter captran_interreg_req(transreg,allt) "--MW-- Interregional transmission capability requirement"
+/
+$offlisting
+$ondelim
+$include inputs_case%ds%captran_interreg_req.csv
+$offdelim
+$onlisting
+/ ;
+$offempty
 
 parameter routes_itlgrp(itlgrp,itlgrpp,r,rr) "collection of routes between itlgrps" ;
 routes_itlgrp(itlgrp,itlgrpp,r,rr)$[
@@ -3604,6 +3659,19 @@ tsc_binwidth(r,rr,tscbin) = tsc_binwidth(r,rr,tscbin) * Sw_TransCostMult ;
 tsc_forward(r,rr,tscbin) = tsc_forward(r,rr,tscbin) * Sw_TransCostMult ;
 tsc_reverse(r,rr,tscbin) = tsc_reverse(r,rr,tscbin) * Sw_TransCostMult ;
 transmission_cost_nonac(r,rr,trtype) = transmission_cost_nonac(r,rr,trtype) * Sw_TransCostMult ;
+* Further scale interregional transmission capex costs by Sw_TransCostMultInterReg
+tsc_binwidth(r,rr,tscbin)
+    $[sum{(transreg,transregg), routes_transreg(transreg,transregg,r,rr)}]
+    = tsc_binwidth(r,rr,tscbin) * Sw_TransCostMultInterReg ;
+tsc_forward(r,rr,tscbin)
+    $[sum{(transreg,transregg), routes_transreg(transreg,transregg,r,rr)}]
+    = tsc_forward(r,rr,tscbin) * Sw_TransCostMultInterReg ;
+tsc_reverse(r,rr,tscbin)
+    $[sum{(transreg,transregg), routes_transreg(transreg,transregg,r,rr)}]
+    = tsc_reverse(r,rr,tscbin) * Sw_TransCostMultInterReg ;
+transmission_cost_nonac(r,rr,trtype)
+    $[sum{(transreg,transregg), routes_transreg(transreg,transregg,r,rr)}]
+    = transmission_cost_nonac(r,rr,trtype) * Sw_TransCostMultInterReg ;
 
 * Transmission line FOM cost
 * Written by transmission.py
@@ -3760,12 +3828,12 @@ parameter trans_inv_max(allt) "--TWmile/year-- annual limit on transmission inve
 trans_inv_max(t)$[
     tmodel_new(t)
     $(yeart(t) >= firstyear_trans_nearterm)
-    $(yeart(t) < firstyear_trans_longterm)
+    $(yeart(t) < Sw_TransFirstYear)
 ] = Sw_TransInvMaxNearterm ;
 
 trans_inv_max(t)$[
     tmodel_new(t)
-    $(yeart(t) >= firstyear_trans_longterm)
+    $(yeart(t) >= Sw_TransFirstYear)
 ] = Sw_TransInvMaxLongterm ;
 
 *============================

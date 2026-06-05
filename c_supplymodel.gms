@@ -83,7 +83,8 @@ positive variables
 * transmission variables
   CAPTRAN_ENERGY(r,rr,trtype,t)                  "--MW-- capacity of transmission for energy trading"
   CAPTRAN_PRM(r,rr,trtype,t)                     "--MW-- capacity of transmission for PRM trading"
-  CAPTRAN_GRP(transgrp,transgrpp,t)              "--MW-- capacity of groups of transmission interfaces"
+  CAPTRAN_GRP(transgrp,transgrpp,t)              "--MW-- capacity of groups of transmission interfaces at transgrp level"
+  CAPTRAN_REG(transreg,transregg,t)              "--MW-- capacity of groups of transmission interfaces at transreg level"
   CAPTRAN_ITL(itlgrp,itlgrpp,t)                  "--MW-- capacity of groups of transmission interfaces for county and mixed"
   INVTRAN(r,rr,trtype,t)                         "--MW-- investment in transmission capacity (defined for both directions)"
   INVTRAN_AC(r,rr,tscbin,t)                      "--MW-- transmission capacity added to transmission supply curve bin (defined for both directions)"
@@ -290,6 +291,9 @@ eq_interconnection_queues(tg,r,t)         "--MW-- capacity deployment limit base
  eq_PRMTRADE_VSC(r,ccseason,t)               "--MW-- PRM capacity can flow through VSC lines but doesn't directly contribute to PRM"
  eq_POI_cap(r,t)                             "--MW-- POI capacity accounting (for network reinforcement costs)"
  eq_CAPTRAN_GRP(transgrp,transgrpp,t)        "--MW-- combined flow capacity between transmission groups"
+ eq_CAPTRAN_REG(transreg,transregg,t)        "--MW-- combined flow capacity between transmission regions"
+ eq_captran_interfacemax(r,rr,trtype,t)      "--MW-- capacity limit on individual transmission interfaces"
+ eq_captran_interreq_req(transreg,t)         "--MW-- interegional transmission capability requirement"
  eq_transgrp_limit_energy(transgrp,transgrpp,allh,t) "--MW-- limit on combined interface energy flows"
  eq_transgrp_limit_prm(transgrp,transgrpp,ccseason,t) "--MW-- limit on combined interface PRM flows"
  eq_CAPTRAN_ITL(itlgrp,itlgrpp,t)            "--MW-- combined flow capacity between ITL groups"
@@ -2074,6 +2078,58 @@ eq_CAPTRAN_GRP(transgrp,transgrpp,t)
           INVTRAN(r,rr,"AC",tt)
           * (1 - Sw_TransGroupDerate)
     }
+;
+
+* ---------------------------------------------------------------------------
+* interregional transmission capacity is sum of interzonal between transreg's
+* TODO: Better to treat it the same as CAPTRAN_GRP, with its own initial calculation
+eq_CAPTRAN_REG(transreg,transregg,t)
+    $[tmodel(t)
+    $sum{(r,rr), routes_transreg(transreg,transregg,r,rr) }]..
+
+    CAPTRAN_REG(transreg,transregg,t)
+
+    =e=
+
+    sum{(r,rr,trtype)$[routes(r,rr,trtype,t)
+                     $routes_transreg(transreg,transregg,r,rr)],
+* TODO: Check this part
+* (technically the BIG WIRES bill says to use the larger of import and export)
+        CAPTRAN_ENERGY(r,rr,trtype,t)
+    }
+;
+
+* ---------------------------------------------------------------------------
+
+* Interregional transfer capability requirement, modeled off BIG WIRES act
+eq_captran_interreq_req(transreg,t)
+    $[tmodel(t)
+    $(yeart(t)>=Sw_TransInterRegRatioStart)
+    $sum(tt, captran_interreg_req(transreg,tt))]..
+
+    sum{transregg$connections_transreg(transreg,transregg),
+        CAPTRAN_REG(transreg,transregg,t) }
+
+    =%GSw_TransInterRegRatioStyle%=
+
+    captran_interreg_req(transreg,t)
+;
+
+* ---------------------------------------------------------------------------
+
+* Limit the AC transmission capacity of each interface to captran_interfacemax [MW]
+eq_captran_interfacemax(r,rr,trtype,t)
+    $[tmodel(t)
+    $Sw_TransCapMaxInterface
+    $(not captran_interfacemax_exceptions(r,rr))
+    $(not captran_interfacemax_exceptions(rr,r))
+    $routes(r,rr,trtype,t)]..
+
+    captran_interfacemax(r,rr,trtype,t)
+
+    =g=
+
+    CAPTRAN_ENERGY(r,rr,trtype,t)
 ;
 
 * ---------------------------------------------------------------------------
