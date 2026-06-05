@@ -49,7 +49,7 @@ def read_inputs(case:str|Path) -> tuple:
             except KeyError:
                 df = pd.DataFrame(columns=columns)
             for col in df:
-                if df[col].dtype == 'O':
+                if df[col].dtype in ['str', 'O']:
                     df[col] = df[col].str.decode('utf-8')
             dictin[key] = df
     return dictin, gamstypes, comments
