@@ -47,9 +47,9 @@ export default function HpcPostProcessPanel({
   const [bashPrefix, setBashPrefix] = useState<string>("module load conda && conda activate reeds2");
   const [extraArgs, setExtraArgs] = useState<string>("");
   const [basecase, setBasecase] = useState<string>("");
-  const [skipBokeh, setSkipBokeh] = useState(true);
   const [includeDiff, setIncludeDiff] = useState(true);
   const [gdxDiff, setGdxDiff] = useState(false);
+  const [startYear, setStartYear] = useState<string>("2025");
 
   // Editable per-case scenarios (label + color) — used by both tools for rename.
   // Keyed by case name; auto-synced with `selected`.
@@ -124,11 +124,12 @@ export default function HpcPostProcessPanel({
             }))
           : undefined;
 
-      // Build extra args for compare_cases: --skipbp, --basecase, --casenames, --gdxdiff
+      // Build extra args for compare_cases: --skipbp (always), --startyear, --basecase, --casenames, --gdxdiff
       let finalExtraArgs = extraArgs;
       if (tool === "compare_cases") {
-        if (skipBokeh) {
-          finalExtraArgs = "--skipbp" + (finalExtraArgs ? " " + finalExtraArgs : "");
+        finalExtraArgs = "--skipbp" + (finalExtraArgs ? " " + finalExtraArgs : "");
+        if (startYear && parseInt(startYear, 10) > 0) {
+          finalExtraArgs += ` --startyear ${parseInt(startYear, 10)}`;
         }
         if (gdxDiff) {
           finalExtraArgs += " --gdxdiff";
@@ -218,7 +219,7 @@ export default function HpcPostProcessPanel({
         }}>
           <div style={{ display: "flex", gap: 12, alignItems: "center", marginBottom: 6, flexWrap: "wrap" }}>
             <strong style={{ color: result.exit_code === 0 ? "#4ade80" : "#f87171" }}>
-              {result.exit_code === 0 ? "✅ Success" : `❌ Exit ${result.exit_code}`}
+              {result.exit_code === 0 ? "🚀 Job launched in background" : `❌ Exit ${result.exit_code}`}
             </strong>
             {onOpenRemotePath && (
               <button onClick={() => onOpenRemotePath(result.output_dir)}
@@ -227,12 +228,18 @@ export default function HpcPostProcessPanel({
                 📁 Open output dir
               </button>
             )}
-            <code style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>
-              {result.output_dir}
-            </code>
+          </div>
+          <div style={{ fontSize: "0.82rem", color: "var(--text-muted)", marginBottom: 6 }}>
+            Running on HPC in background — results will appear in:
+          </div>
+          <code style={{ fontSize: "0.78rem", display: "block", marginBottom: 6 }}>
+            {result.output_dir}
+          </code>
+          <div style={{ fontSize: "0.78rem", color: "var(--text-muted)" }}>
+            Check <code>postprocess_log.txt</code> in that directory for progress/errors.
           </div>
           {result.stderr && (
-            <details open={result.exit_code !== 0} style={{ marginBottom: 4 }}>
+            <details open={result.exit_code !== 0} style={{ marginBottom: 4, marginTop: 6 }}>
               <summary style={{ cursor: "pointer", fontSize: "0.82rem", color: "#f87171" }}>
                 stderr ({result.stderr.length} chars)
               </summary>
@@ -299,20 +306,25 @@ export default function HpcPostProcessPanel({
       {/* Base case + compare_cases options */}
       {selected.size >= 1 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: "4px 0 8px", fontSize: "0.82rem" }}>
-          <label style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--text-muted)" }}>
-            Reference (base) case:
-            <select value={basecase || Array.from(selected)[0] || ""}
-              onChange={(e) => setBasecase(e.target.value)}
-              style={{ padding: "2px 6px", fontSize: "0.78rem" }}>
-              {Array.from(selected).map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </label>
-          {tool === "compare_cases" && (
-            <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", color: "var(--text-muted)" }}>
-              <input type="checkbox" checked={skipBokeh} onChange={() => setSkipBokeh((v) => !v)} />
-              Skip bokehpivot report (faster, PPTX only)
+          <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--text-muted)" }}>
+              Reference (base) case:
+              <select value={basecase || Array.from(selected)[0] || ""}
+                onChange={(e) => setBasecase(e.target.value)}
+                style={{ padding: "2px 6px", fontSize: "0.78rem" }}>
+                {Array.from(selected).map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
             </label>
-          )}
+            {tool === "compare_cases" && (
+              <label style={{ display: "flex", alignItems: "center", gap: 6, color: "var(--text-muted)" }}>
+                Start year:
+                <input type="number" value={startYear}
+                  onChange={(e) => setStartYear(e.target.value)}
+                  style={{ width: 70, padding: "2px 6px", fontSize: "0.78rem" }}
+                  min={2020} max={2060} step={1} />
+              </label>
+            )}
+          </div>
           {tool === "compare_cases" && (
             <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", color: "var(--text-muted)" }}>
               <input type="checkbox" checked={gdxDiff} onChange={() => setGdxDiff((v) => !v)} />

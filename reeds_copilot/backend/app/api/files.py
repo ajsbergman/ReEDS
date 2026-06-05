@@ -2076,6 +2076,10 @@ class HpcPostProcessRequest(BaseModel):
     )
     extra_args: str = Field(default="", description="Extra CLI args appended to the command")
     timeout_seconds: int = Field(default=900, ge=30, le=7200)
+    background: bool = Field(
+        default=True,
+        description="When true, launch in background (nohup) and return immediately",
+    )
     # Optional per-case scenarios CSV overrides for bokeh_report
     # (label and color per case; the run path is derived from the case name).
     scenarios: list[dict] | None = Field(
@@ -2176,6 +2180,32 @@ def run_hpc_postprocess(req: HpcPostProcessRequest):
     )
 
     client = _get_ssh_client(host, user, password)
+
+    # Background mode: launch with nohup and return immediately so the user
+    # doesn't wait 15+ minutes for compare_cases.py to finish.
+    if req.background:
+        log_file = f"{output_dir}/postprocess_log.txt"
+        bg_cmd = (
+            f"mkdir -p {shlex.quote(output_dir)} && "
+            f"nohup bash -c {shlex.quote(full_cmd)} "
+            f"> {shlex.quote(log_file)} 2>&1 &"
+        )
+        try:
+            _, stdout, _ = client.exec_command(bg_cmd, timeout=30)
+            stdout.channel.recv_exit_status()
+        except Exception as exc:
+            with _ssh_lock:
+                _ssh_pool.pop((host, user), None)
+            raise HTTPException(status_code=502, detail=f"SSH exec failed: {exc}")
+        return {
+            "exit_code": 0,
+            "stdout": f"Job launched in background. Output will be in:\n{output_dir}\n\nLog: {log_file}",
+            "stderr": "",
+            "output_dir": output_dir,
+            "command": full_cmd,
+        }
+
+    # Foreground (blocking) mode
     try:
         _, stdout, stderr = client.exec_command(full_cmd, timeout=req.timeout_seconds)
         out = stdout.read().decode("utf-8", errors="replace")

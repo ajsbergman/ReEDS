@@ -641,11 +641,13 @@ export function runHpcPostProcessAPI(args: {
   timeout_seconds?: number;
   scenarios?: HpcScenarioRow[];
   include_diff?: boolean;
+  background?: boolean;
 }): Promise<HpcPostProcessResult> {
   return post<HpcPostProcessResult>("/files/hpc/run-postprocess", {
     password: "",
     bash_prefix: "module load anaconda3",
-    timeout_seconds: 900,
+    timeout_seconds: 1800,
+    background: true,
     ...args,
   });
 }
