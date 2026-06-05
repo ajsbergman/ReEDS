@@ -1,0 +1,16 @@
+,Default Value,Restricted,Enhanced,Enhanced_Inter,Enhanced_Inter_ITC
+ignore,0,,,,
+GSw_LoadProfiles,EER2023_IRAmoderate,,,,
+GSw_GrowthPenalties,1,,,,
+financials_trans_suffix,11yr,,8yr,8yr,30ITC_0pen
+GSw_TransCostMult,1.13,,1,1,1
+GSw_TransCostMultInterReg,1,,1.3,1,1
+GSw_InterconnectionCostMult,1.3,,1,1,1
+GSw_TransFirstYear,2035,,2032,2032,2032
+GSw_TransFirstYearInterReg,2035,,2038,2032,2032
+GSw_TransRestrict,transreg,,interconnect,country,country
+GSw_PRMTRADE_level,interconnect,,,country,country
+GSw_TransInterRegRatio,0,,,0.3,0.3
+GSw_TransInterRegRatioStyle,g,,,,
+GSw_TransInterRegRatioExcept,ERCOT,,,,
+GSw_PRMTRADE_limit,2050,,2037,2031,2031
