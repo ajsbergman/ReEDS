@@ -205,7 +205,8 @@ def get_zone_nodes(case=None, crs='ESRI:102008', **kwargs):
 def get_zones(
     case=None,
     crs='ESRI:102008',
-    exclude_water_areas=True,
+    tolerance:float=100,
+    exclude_water_areas:bool=True,
     **kwargs,
 ) -> gpd.GeoDataFrame:
     """
@@ -213,6 +214,8 @@ def get_zones(
         case (str, Path, or None): Path to a ReEDS case.
             If None, uses the default GSw_ZoneSet from cases.csv.
         crs (str): Coordinate reference system
+        tolerance (float) [m]: Degree of simplification of aggregated geometries
+            (passed to gpd.GeoSeries.simplify_coverage())
         **kwargs: ReEDS switch:value pairs (overrides case argument)
     """
     dfcounty = reeds.spatial.get_map('county', source='tiger', crs=crs)
@@ -224,6 +227,9 @@ def get_zones(
         dfstates = reeds.spatial.get_map('states', source='census', crs=crs)
         country = dfstates.dissolve().geometry[0]
         dfzones.geometry = dfzones.intersection(country).buffer(0)
+
+    if tolerance:
+        dfzones.geometry = dfzones.geometry.simplify_coverage(tolerance=tolerance)
 
     return dfzones[['geometry']]
 
