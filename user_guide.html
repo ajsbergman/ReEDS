@@ -754,14 +754,19 @@ However, all analyses (both ours and from other research groups) indicate that h
 <li><p><code class="docutils literal notranslate"><span class="pre">GSw_TransInvMaxLongTerm</span></code>: Limit on annual transmission deployment nationwide <strong>IN/AFTER</strong> <code class="docutils literal notranslate"><span class="pre">firstyear_trans_longterm</span></code>, measured in TW-miles</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">GSw_TransInvMaxNearTerm</span></code>: Limit on annual transmission deployment nationwide <strong>BEFORE</strong> <code class="docutils literal notranslate"><span class="pre">firstyear_trans_longterm</span></code>, measured in TW-miles</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">GSw_TransInvPRMderate</span></code>: By default, adding 1 MW of transmission capacity between two zones increases the energy transfer capability by 1 MW but the PRM trading capability by only 0.85 MW; here you can adjust that derate</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">GSw_TransConductor</span></code>: Conductor type assumed for new interzonal AC transmission.
+<code class="docutils literal notranslate"><span class="pre">acss</span></code> applies the assumptions from the <a class="reference external" href="https://www.misoenergy.org/planning/transmission-planning/mtep">MISO Transmission Cost Estimation Guide</a>, using either ACSS or ACSR depending on voltage level;
+<code class="docutils literal notranslate"><span class="pre">acsr</span></code> uses ACSR for all voltage levels, reducing the power capacity of some representative lines and increasing the $/MW cost.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">GSw_TransCostMult</span></code>: Applies to interzonal transmission capacity (including AC/DC converters) but not FOM costs</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">GSw_TransSquiggliness</span></code>: Somewhat similar to <code class="docutils literal notranslate"><span class="pre">GSw_TransCostMult</span></code>, but scales the distance for each inter-zone interface. So turning it up to 1.3 will increase costs and losses by 1.3, and for the same amount of GW it will increase TWmiles by 1.3.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">GSw_TransSquigglinessMin</span></code>: Minimum squiggliness (straight-line length multiplier) to apply for interzonal transmission; the default value of 1.3 is from the <a class="reference external" href="https://www.misoenergy.org/planning/transmission-planning/mtep">MISO Transmission Cost Estimation Guide</a>.
+The cost and length of representative interzonal transmission routes that are straighter than <code class="docutils literal notranslate"><span class="pre">GSw_TransSquigglinessMin</span></code> are scaled up to match <code class="docutils literal notranslate"><span class="pre">GSw_TransSquigglinessMin</span></code>
+(i.e., if a representative route is 11 miles long and the straight-line distance between its endpoints is 10 miles, giving a squiggliness factor of 1.1, its cost and length are scaled up by 1.3 / 1.1 = 1.18).</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">GSw_TransHurdle</span></code>: Intra-US hurdle rate for interzonal flows, measured in $2004/MWh</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">GSw_TransHurdleLevel</span></code>: Indicate the level of hierarchy.csv between which to apply the hurdle rate specified by <code class="docutils literal notranslate"><span class="pre">GSw_TransHurdle</span></code>. i.e. if set to ‘st’, intra-state flows will have no hurdle rates but inter-state flows will have hurdle rates specified by <code class="docutils literal notranslate"><span class="pre">GSw_TransHurdle</span></code>.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">GSw_TransRestrict</span></code>: Indicate the level of hierarchy.csv within which to allow transmission expansion. i.e. if set to ‘st’, no inter-state expansion is allowed.</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">GSw_TransScen</span></code>: Indicate the inputs/transmission/transmission_capacity_future_{<code class="docutils literal notranslate"><span class="pre">GSw_TransScen</span></code>}.csv file to use, which includes the list of interfaces that can be expanded.
-Note that the full list of expandable interfaces is indicated by this file plus transmission_capacity_future_default.csv (currently planned additions) plus existing AC and DC interfaces (which can be expanded by default).
-Applies to AC, LCC, and VSC.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">GSw_TransRestrict</span></code>: Spatial hierarchy level within which to allow transmission expansion. For example, if set to <code class="docutils literal notranslate"><span class="pre">st</span></code>, no inter-state expansion is allowed.</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">GSw_TransScen</span></code>: Which <code class="docutils literal notranslate"><span class="pre">inputs/transmission/hvdc_planned-{GSw_TransScen}.csv</span></code> file to use.
+This file provides a list of additional transmission lines that can be built.
+The full list of candidate lines is indicated by this file plus <code class="docutils literal notranslate"><span class="pre">hvdc_planned-baseline.csv</span></code> (currently planned additions) plus existing AC and DC interfaces (which can be expanded by default).</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">GSw_PRM_hierarchy_level</span></code>: Level of hierarchy.csv within which to calculate net load, used for capacity credit. Larger levels indicate more planning coordination between regions.</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">GSw_PRMTRADE_level</span></code>: Level of hierarchy.csv within which to allow PRM trading. By default it’s set to ‘country’, indicating no limits. If set to ‘r’, no PRM trading is allowed.</p></li>
 </ol>
@@ -794,7 +799,7 @@ Otherwise, if set to 0, use characteristic capacities from <code class="docutils
 <ul>
 <li><p><code class="docutils literal notranslate"><span class="pre">pras_hydro_energylim</span></code> (default 1): Model hydro as energy-limited in PRAS (1) or like a thermal generator (0)</p></li>
 <li><p><code class="docutils literal notranslate"><span class="pre">pras_include_h2dac</span></code> (default 0): If set to 1, include demand associated with H2 production &amp; DAC in PRAS</p></li>
-<li><p><code class="docutils literal notranslate"><span class="pre">pras_trans_contingency</span></code> (default 0): Use n-0 (0) or n-1 (1) transmission capacities in PRAS</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">pras_trans_contingency</span></code> (default 0): Use energy (0) or PRM (1) transmission capacities in PRAS</p></li>
 </ul>
 </li>
 </ul>
@@ -973,7 +978,7 @@ for example, if you ran already 200 runs and now want to add 100 more, set the s
 new sampled runs.</p>
 <p>The second approach, Latin Hypercube sampling (LHS), utilizes a quasi-Monte Carlo sampling method that is
 designed to improve efficiency by reducing overlap of the sampled values. An overview of this method
-can be found in <span id="id2">[<a class="reference internal" href="model_documentation.html#id2285" title="Razi Sheikholeslami and Saman Razavi. Progressive Latin Hypercube Sampling: An efficient approach for robust sampling-based analysis of environmental models. Environmental Modelling &amp; Software, 93:109–126, July 2017. URL: https://www.sciencedirect.com/science/article/pii/S1364815216305096 (visited on 2025-10-13), doi:10.1016/j.envsoft.2017.03.010.">Sheikholeslami and Razavi, 2017</a>]</span>. For this method, an NxD matrix is generated upfront
+can be found in <span id="id2">[<a class="reference internal" href="model_documentation.html#id2292" title="Razi Sheikholeslami and Saman Razavi. Progressive Latin Hypercube Sampling: An efficient approach for robust sampling-based analysis of environmental models. Environmental Modelling &amp; Software, 93:109–126, July 2017. URL: https://www.sciencedirect.com/science/article/pii/S1364815216305096 (visited on 2025-10-13), doi:10.1016/j.envsoft.2017.03.010.">Sheikholeslami and Razavi, 2017</a>]</span>. For this method, an NxD matrix is generated upfront
 for all model runs based on the number of samples (N) and the independent dimensions being sampled (D).
 The values in this matrix represent sampling of the cumulative probability distribution functions,
 and are later used by the inverse CDF (percent point) functions to derive the actual sample values.
@@ -998,17 +1003,17 @@ Dirichlet sampling tends to favor combinations that lean toward central scenario
 “medium”, and “high” pathways.</p></li>
 </ul>
 <p>See below examples of weights for Dirichlet distributions using different concentration parameters and an arbitrary set of
-Low, Mod, and High values (<a class="reference internal" href="#figure-mcs-three-param-dirichlet"><span class="std std-numref">Fig. 72</span></a> and <a class="reference internal" href="#figure-mcs-two-param-dirichlet"><span class="std std-numref">Fig. 73</span></a>).</p>
+Low, Mod, and High values (<a class="reference internal" href="#figure-mcs-three-param-dirichlet"><span class="std std-numref">Fig. 71</span></a> and <a class="reference internal" href="#figure-mcs-two-param-dirichlet"><span class="std std-numref">Fig. 72</span></a>).</p>
 <figure class="align-default" id="figure-mcs-three-param-dirichlet">
 <a class="reference internal image-reference" href="_images/mcs-three-param-dirichlet.png"><img alt="_images/mcs-three-param-dirichlet.png" src="_images/mcs-three-param-dirichlet.png" style="width: 82.4%;" /></a>
 <figcaption>
-<p><span class="caption-number">Fig. 72 </span><span class="caption-text">Samples from a Dirichlet distribution with three concentration parameters applied to Low, Mod, High options</span><a class="headerlink" href="#figure-mcs-three-param-dirichlet" title="Link to this image"></a></p>
+<p><span class="caption-number">Fig. 71 </span><span class="caption-text">Samples from a Dirichlet distribution with three concentration parameters applied to Low, Mod, High options</span><a class="headerlink" href="#figure-mcs-three-param-dirichlet" title="Link to this image"></a></p>
 </figcaption>
 </figure>
 <figure class="align-default" id="figure-mcs-two-param-dirichlet">
 <a class="reference internal image-reference" href="_images/mcs-two-param-dirichlet.png"><img alt="_images/mcs-two-param-dirichlet.png" src="_images/mcs-two-param-dirichlet.png" style="width: 80%;" /></a>
 <figcaption>
-<p><span class="caption-number">Fig. 73 </span><span class="caption-text">Samples from a Dirichlet distribution with two concentration parameters applied to Low and High options</span><a class="headerlink" href="#figure-mcs-two-param-dirichlet" title="Link to this image"></a></p>
+<p><span class="caption-number">Fig. 72 </span><span class="caption-text">Samples from a Dirichlet distribution with two concentration parameters applied to Low and High options</span><a class="headerlink" href="#figure-mcs-two-param-dirichlet" title="Link to this image"></a></p>
 </figcaption>
 </figure>
 <p>Built-in plotting functionality for Monte Carlo runs is described under <a class="reference internal" href="#uncertainty-plots"><span class="xref myst">Uncertainty Plots</span></a>.</p>
@@ -1103,19 +1108,19 @@ presentation with key trends and uncertainty ranges, along with an Excel workboo
 <figure class="align-default" id="figure-mcs-load-sample">
 <a class="reference internal image-reference" href="_images/mcs-load-sample.png"><img alt="_images/mcs-load-sample.png" src="_images/mcs-load-sample.png" style="width: 80%;" /></a>
 <figcaption>
-<p><span class="caption-number">Fig. 74 </span><span class="caption-text">MCS Example: Total system load trajectories across regions.</span><a class="headerlink" href="#figure-mcs-load-sample" title="Link to this image"></a></p>
+<p><span class="caption-number">Fig. 73 </span><span class="caption-text">MCS Example: Total system load trajectories across regions.</span><a class="headerlink" href="#figure-mcs-load-sample" title="Link to this image"></a></p>
 </figcaption>
 </figure>
 <figure class="align-default" id="figure-mcs-fuel-prices-sample">
 <a class="reference internal image-reference" href="_images/mcs-fuel-prices-sample.png"><img alt="_images/mcs-fuel-prices-sample.png" src="_images/mcs-fuel-prices-sample.png" style="width: 80%;" /></a>
 <figcaption>
-<p><span class="caption-number">Fig. 75 </span><span class="caption-text">MCS Example: Natural gas price paths.</span><a class="headerlink" href="#figure-mcs-fuel-prices-sample" title="Link to this image"></a></p>
+<p><span class="caption-number">Fig. 74 </span><span class="caption-text">MCS Example: Natural gas price paths.</span><a class="headerlink" href="#figure-mcs-fuel-prices-sample" title="Link to this image"></a></p>
 </figcaption>
 </figure>
 <figure class="align-default" id="figure-mcs-tech-costs-sample">
 <a class="reference internal image-reference" href="_images/mcs-tech-costs-sample.png"><img alt="_images/mcs-tech-costs-sample.png" src="_images/mcs-tech-costs-sample.png" style="width: 50%;" /></a>
 <figcaption>
-<p><span class="caption-number">Fig. 76 </span><span class="caption-text">MCS Example: Technology cost trajectories.</span><a class="headerlink" href="#figure-mcs-tech-costs-sample" title="Link to this image"></a></p>
+<p><span class="caption-number">Fig. 75 </span><span class="caption-text">MCS Example: Technology cost trajectories.</span><a class="headerlink" href="#figure-mcs-tech-costs-sample" title="Link to this image"></a></p>
 </figcaption>
 </figure>
 </section>
@@ -1127,19 +1132,19 @@ as the goal is simply to demonstrate the plotting capabilities.</em></p>
 <figure class="align-default" id="figure-mcs-capacity-growth-sample">
 <a class="reference internal image-reference" href="_images/mcs-capacity-growth-sample.png"><img alt="_images/mcs-capacity-growth-sample.png" src="_images/mcs-capacity-growth-sample.png" style="width: 80%;" /></a>
 <figcaption>
-<p><span class="caption-number">Fig. 77 </span><span class="caption-text">MCS Example: Installed capacity by technology over time.</span><a class="headerlink" href="#figure-mcs-capacity-growth-sample" title="Link to this image"></a></p>
+<p><span class="caption-number">Fig. 76 </span><span class="caption-text">MCS Example: Installed capacity by technology over time.</span><a class="headerlink" href="#figure-mcs-capacity-growth-sample" title="Link to this image"></a></p>
 </figcaption>
 </figure>
 <figure class="align-default" id="figure-mcs-energy-penetration">
 <a class="reference internal image-reference" href="_images/mcs-energy-penetration.png"><img alt="_images/mcs-energy-penetration.png" src="_images/mcs-energy-penetration.png" style="width: 80%;" /></a>
 <figcaption>
-<p><span class="caption-number">Fig. 78 </span><span class="caption-text">MCS Example: Share of generation by technology.</span><a class="headerlink" href="#figure-mcs-energy-penetration" title="Link to this image"></a></p>
+<p><span class="caption-number">Fig. 77 </span><span class="caption-text">MCS Example: Share of generation by technology.</span><a class="headerlink" href="#figure-mcs-energy-penetration" title="Link to this image"></a></p>
 </figcaption>
 </figure>
 <figure class="align-default" id="figure-mcs-transmission-buildout">
 <a class="reference internal image-reference" href="_images/mcs-transmission.png"><img alt="_images/mcs-transmission.png" src="_images/mcs-transmission.png" style="width: 80%;" /></a>
 <figcaption>
-<p><span class="caption-number">Fig. 79 </span><span class="caption-text">MCS Example: Total transmission capacity by interface.</span><a class="headerlink" href="#figure-mcs-transmission-buildout" title="Link to this image"></a></p>
+<p><span class="caption-number">Fig. 78 </span><span class="caption-text">MCS Example: Total transmission capacity by interface.</span><a class="headerlink" href="#figure-mcs-transmission-buildout" title="Link to this image"></a></p>
 </figcaption>
 </figure>
 <!-- ## Hourlize -->
@@ -1775,7 +1780,7 @@ These characteristics include:</p>
 
   <div role="contentinfo">
     <p>&#169; Copyright 2024, NREL.
-      <span class="lastupdated">Last updated on June 04, 2026.
+      <span class="lastupdated">Last updated on June 05, 2026.
       </span></p>
   </div>
 
