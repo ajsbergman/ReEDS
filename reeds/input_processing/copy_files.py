@@ -181,7 +181,7 @@ def get_regions_and_agglevel(
     reeds_path,
     inputs_case,
     save_regions_and_agglevel=True,
-    overwrite=False,
+    overwrite=True,
 ):
     """
     Create a regional mapping to help filter for specific regions and aggregation levels.
@@ -1573,7 +1573,7 @@ if __name__ == '__main__' and not hasattr(sys, 'ps1'):
 
     # #%% Settings for testing ###
     # reeds_path = reeds.io.reeds_path
-    # inputs_case = os.path.join(reeds_path,'runs','v20260522_transcostM0_OR_water','inputs_case')
+    # inputs_case = os.path.join(reeds_path,'runs','v20260605_envM0_Pacific','inputs_case')
 
 
     # ---- Set up logger ----
