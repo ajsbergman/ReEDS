@@ -124,14 +124,6 @@ material_demand('transmission',mat,st,t)$tmodel_new(t) =
 
 * reporting parameters for material demand and production
 rep_mat(mat,t,'demand')$tmodel_new(t) = MAT_DEMAND.l(mat,t) / yearweight(t) ;
-rep_mat(mat,t,'usa_prod')$tmodel_new(t) = Sw_prod_multiplier_usa * sum{mat_ctry$[usa(mat_ctry)], mat_prod(mat,mat_ctry)} ;
-rep_mat(mat,t,'allies_prod')$tmodel_new(t) = (Sw_prod_multiplier_allies * sum{mat_ctry$[allies(mat_ctry)], mat_prod(mat,mat_ctry)})$Sw_mat_allies ;
-rep_mat(mat,t,'global_prod')$tmodel_new(t) = 
-    (Sw_prod_multiplier_glb * sum{mat_ctry$[not usa(mat_ctry)], mat_prod(mat,mat_ctry)})$Sw_mat_glb 
-    + (sum{mat_ctry$[glb_nochina(mat_ctry)], mat_prod(mat,mat_ctry)})$Sw_mat_glb_nochina
-    + (sum{mat_ctry$[(not usa(mat_ctry))$(not sameas(mat,'Lithium'))], mat_prod(mat,mat_ctry)})$Sw_mat_glb_nolith
-    + (sum{mat_ctry$[(not usa(mat_ctry))$(not sameas(mat,'Silicon'))], mat_prod(mat,mat_ctry)})$Sw_mat_glb_nosil
-;
 rep_mat(mat,t,'slack')$tmodel_new(t) =  MAT_SLACK.l(mat,t) / yearweight(t) ;
 
 execute_unload 'runs/cmm_custom_2026/cmm_report_%case%.gdx' rep_mat, steel_int_i, steel_int_tcat, steel_demand, material_demand ;
