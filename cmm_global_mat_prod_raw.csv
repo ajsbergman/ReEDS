@@ -1,0 +1,764 @@
+﻿Material ,Country ,Metric Tons,Production/Production Capacity/Reserves,Supply Chain Point
+Alumina ,United States ,720000,Production,Refinery
+Alumina ,Australia ,18000000,Production,Refinery
+Alumina ,Brazil,11000000,Production,Refinery
+Alumina ,Canada,1500000,Production,Refinery
+Alumina ,China ,84000000,Production,Refinery
+Alumina ,Germany,960000,Production,Refinery
+Alumina ,Greece,860000,Production,Refinery
+Alumina ,Guinea,300000,Production,Refinery
+Alumina ,India ,7600000,Production,Refinery
+Alumina ,Indonesia,1300000,Production,Refinery
+Alumina ,Ireland,1600000,Production,Refinery
+Alumina ,Jamaica,1500000,Production,Refinery
+Alumina ,Kazakhstan ,1400000,Production,Refinery
+Alumina ,Russia ,2900000,Production,Refinery
+Alumina ,Saudi Arabia,1800000,Production,Refinery
+Alumina ,Spain,820000,Production,Refinery
+Alumina ,Turkey,320000,Production,Refinery
+Alumina ,United Arab Emirates,2400000,Production,Refinery
+Alumina ,Vietnam,1500000,Production,Refinery
+Alumina ,Other countries ,1500000,Production,Refinery
+Aluminum,United States,1360000,Production Capacity,Smelter
+Aluminum,Australia ,1730000,Production Capacity,Smelter
+Aluminum,Bahrain ,1600000,Production Capacity,Smelter
+Aluminum,Brazil ,1280000,Production Capacity,Smelter
+Aluminum,Canada ,3270000,Production Capacity,Smelter
+Aluminum,China ,44700000,Production Capacity,Smelter
+Aluminum,Iceland ,880000,Production Capacity,Smelter
+Aluminum,India ,4200000,Production Capacity,Smelter
+Aluminum,Malaysia ,1080000,Production Capacity,Smelter
+Aluminum,Norway ,1460000,Production Capacity,Smelter
+Aluminum,Russia ,4080000,Production Capacity,Smelter
+Aluminum,United Arab Emirates ,2790000,Production Capacity,Smelter
+Aluminum,Other countries ,10000000,Production Capacity,Smelter
+Aluminum,United States,670000,Production ,Smelter
+Aluminum,Australia ,1500000,Production ,Smelter
+Aluminum,Bahrain ,1600000,Production ,Smelter
+Aluminum,Brazil ,1100000,Production ,Smelter
+Aluminum,Canada ,3300000,Production ,Smelter
+Aluminum,China ,43000000,Production ,Smelter
+Aluminum,Iceland ,780000,Production ,Smelter
+Aluminum,India ,4200000,Production ,Smelter
+Aluminum,Malaysia ,870000,Production ,Smelter
+Aluminum,Norway ,1300000,Production ,Smelter
+Aluminum,Russia ,3800000,Production ,Smelter
+Aluminum,United Arab Emirates ,2700000,Production ,Smelter
+Aluminum,Other countries ,6800000,Production ,Smelter
+Bauxite,United States ,20000000,Reserves,
+Bauxite,Australia ,3500000000,Reserves,
+Bauxite,Brazil,2700000000,Reserves,
+Bauxite,China ,680000000,Reserves,
+Bauxite,Guinea,7400000000,Reserves,
+Bauxite,India ,650000000,Reserves,
+Bauxite,Indonesia,2800000000,Reserves,
+Bauxite,Jamaica,2000000000,Reserves,
+Bauxite,Kazakhstan ,280000000,Reserves,
+Bauxite,Russia ,480000000,Reserves,
+Bauxite,Saudi Arabia,180000000,Reserves,
+Bauxite,Turkey,69000000,Reserves,
+Bauxite,Vietnam,3100000000,Reserves,
+Bauxite,Other countries ,5300000000,Reserves,
+Bauxite,United States ,1000,Production,Mine
+Bauxite,Australia ,100000000,Production,Mine
+Bauxite,Brazil,33000000,Production,Mine
+Bauxite,China ,93000000,Production,Mine
+Bauxite,Greece,1200000,Production,Mine
+Bauxite,Guinea,130000000,Production,Mine
+Bauxite,India ,25000000,Production,Mine
+Bauxite,Indonesia,32000000,Production,Mine
+Bauxite,Jamaica,6100000,Production,Mine
+Bauxite,Kazakhstan ,4900000,Production,Mine
+Bauxite,Russia ,6300000,Production,Mine
+Bauxite,Saudi Arabia,5800000,Production,Mine
+Bauxite,Turkey,3200000,Production,Mine
+Bauxite,Vietnam,4200000,Production,Mine
+Bauxite,Other countries ,5700000,Production,Mine
+Boron ,United States,48000000,Reserves,Deposits 
+Boron ,Chile ,35000000,Reserves,Deposits 
+Boron ,China ,9100000,Reserves,Deposits 
+Boron ,Peru ,4000000,Reserves,Deposits 
+Boron ,Russia ,40000000,Reserves,Deposits 
+Boron ,Turkey,950000000,Reserves,Deposits 
+Boron ,United States,90032413.2,Production,compounds 
+Boron ,Argentina ,160000,Production,crude ore 
+Boron ,Bolivia ,230000,Production,ulexite 
+Boron ,Chile ,420000,Production,ulexite 
+Boron ,China ,340000,Production,boric oxide equivalent 
+Boron ,Germany ,40000,Production,compounds 
+Boron ,Peru ,300000,Production,crude borates 
+Boron ,Russia ,80000,Production,datolite ore 
+Boron ,Turkey,3000000,Production,refined borates 
+Cadmium ,United States ,300,Production,Refinery 
+Cadmium ,Australia ,900,Production,Refinery 
+Cadmium ,Bulgaria ,300,Production,Refinery 
+Cadmium ,Canada ,1700,Production,Refinery 
+Cadmium ,China ,9300,Production,Refinery 
+Cadmium ,Germany ,170,Production,Refinery 
+Cadmium ,Japan ,1700,Production,Refinery 
+Cadmium ,Kazakhstan ,1000,Production,Refinery 
+Cadmium ,South Korea,4500,Production,Refinery 
+Cadmium ,Mexico ,1200,Production,Refinery 
+Cadmium ,Netherlands ,400,Production,Refinery 
+Cadmium ,Norway ,350,Production,Refinery 
+Cadmium ,Peru ,620,Production,Refinery 
+Cadmium ,Poland ,250,Production,Refinery 
+Cadmium ,Russia ,800,Production,Refinery 
+Cadmium ,Uzbekistan ,200,Production,Refinery 
+Chromium ,United States ,630000,Reserves,Shipping grade 
+Chromium ,Brazil ,6600000,Reserves,Shipping grade 
+Chromium ,Finland ,8300000,Reserves,Shipping grade 
+Chromium ,India ,79000000,Reserves,Shipping grade 
+Chromium ,Kazakhstan ,320000000,Reserves,Shipping grade 
+Chromium ,South Africa ,200000000,Reserves,Shipping grade 
+Chromium ,Turkey ,27000000,Reserves,Shipping grade 
+Chromium ,Zimbabwe ,540000000,Reserves,Shipping grade 
+Chromium ,United States ,0,Production,Mine
+Chromium ,Brazil ,1400000,Production,Mine
+Chromium ,Finland ,1900000,Production,Mine
+Chromium ,India ,4100000,Production,Mine
+Chromium ,Kazakhstan ,6500000,Production,Mine
+Chromium ,South Africa ,21000000,Production,Mine
+Chromium ,Turkey ,8000000,Production,Mine
+Chromium ,Zimbabwe ,1100000,Production,Mine
+Chromium ,Other countries ,2900000,Production,Mine
+Cobalt ,United States ,70000,Reserves,
+Cobalt ,Australia ,1700000,Reserves,
+Cobalt ,Canada ,220000,Reserves,
+Cobalt ,Congo(Kinshasa) ,6000000,Reserves,
+Cobalt ,Cuba ,500000,Reserves,
+Cobalt ,Indonesia ,640000,Reserves,
+Cobalt ,Madagascar ,100000,Reserves,
+Cobalt ,Papua New Guinea ,62000,Reserves,
+Cobalt ,Philippines ,260000,Reserves,
+Cobalt ,Russia ,250000,Reserves,
+Cobalt ,Turkey ,91000,Reserves,
+Cobalt ,Other countries ,800000,Reserves,
+Cobalt ,United States ,300,Production,Mine
+Cobalt ,Australia ,3600,Production,Mine
+Cobalt ,Canada ,4500,Production,Mine
+Cobalt ,Congo(Kinshasa) ,220000,Production,Mine
+Cobalt ,Cuba ,3500,Production,Mine
+Cobalt ,Indonesia ,28000,Production,Mine
+Cobalt ,Madagascar ,2600,Production,Mine
+Cobalt ,New Caledonia ,1500,Production,Mine
+Cobalt ,Papua New Guinea ,2800,Production,Mine
+Cobalt ,Philippines ,3800,Production,Mine
+Cobalt ,Russia ,8700,Production,Mine
+Cobalt ,Turkey ,2700,Production,Mine
+Cobalt ,Other countries ,6200,Production,Mine
+Copper ,United States ,47000000,Reserves,
+Copper ,Australia ,100000000,Reserves,
+Copper ,Canada ,8300000,Reserves,
+Copper ,Chile ,190000000,Reserves,
+Copper ,China ,41000000,Reserves,
+Copper ,Congo(Kinshasa) ,80000,Reserves,
+Copper ,India ,2200000,Reserves,
+Copper ,Indonesia ,21000000,Reserves,
+Copper ,Kazakhstan ,20000000,Reserves,
+Copper ,Mexico ,53000000,Reserves,
+Copper ,Peru ,100000000,Reserves,
+Copper ,Poland ,34000000,Reserves,
+Copper ,Russia ,80000000,Reserves,
+Copper ,Zambia ,21000000,Reserves,
+Copper ,Other countries ,180000000,Reserves,
+Copper ,United States ,1100000,Production,Mine
+Copper ,Australia ,800000,Production,Mine
+Copper ,Canada ,450000,Production,Mine
+Copper ,Chile ,5300000,Production,Mine
+Copper ,China ,1800000,Production,Mine
+Copper ,Congo(Kinshasa) ,3300000,Production,Mine
+Copper ,India ,30000,Production,Mine
+Copper ,Indonesia ,1100000,Production,Mine
+Copper ,Kazakhstan ,740000,Production,Mine
+Copper ,Mexico ,700000,Production,Mine
+Copper ,Peru ,2600000,Production,Mine
+Copper ,Poland ,410000,Production,Mine
+Copper ,Russia ,930000,Production,Mine
+Copper ,Zambia ,680000,Production,Mine
+Copper ,Other countries ,2700000,Production,Mine
+Copper ,United States ,890000,Production,Refinery
+Copper ,Australia ,460000,Production,Refinery
+Copper ,Canada ,320000,Production,Refinery
+Copper ,Chile ,1900000,Production,Refinery
+Copper ,China ,12000000,Production,Refinery
+Copper ,Congo(Kinshasa) ,2500000,Production,Refinery
+Copper ,Germany ,630000,Production,Refinery
+Copper ,India ,510000,Production,Refinery
+Copper ,Indonesia ,350000,Production,Refinery
+Copper ,Japan ,1600000,Production,Refinery
+Copper ,Kazakhstan ,470000,Production,Refinery
+Copper ,South Korea,620000,Production,Refinery
+Copper ,Mexico ,350000,Production,Refinery
+Copper ,Peru ,390000,Production,Refinery
+Copper ,Poland ,590000,Production,Refinery
+Copper ,Russia ,960000,Production,Refinery
+Copper ,Zambia ,170000,Production,Refinery
+Copper ,Other countries ,2500000,Production,Refinery
+Dysprosium,China,1263.2676,Production,Mine - estimated
+Dysprosium,Myanmar,975.5928,Production,Mine - estimated
+Dysprosium,Australia,612.8724,Production,Mine - estimated
+Dysprosium,United States ,103.1877,Production,Mine - estimated
+Dysprosium,Thailand,71.9187,Production,Mine - estimated
+Dysprosium,Madagascar,71.9187,Production,Mine - estimated
+Dysprosium,Russia,12.5076,Production,Mine - estimated
+Dysprosium,India,6.2538,Production,Mine - estimated
+Dysprosium,Vietnam,3.1269,Production,Mine - estimated
+Dysprosium,Malaysia ,3.1269,Production,Mine - estimated
+Dysprosium,Brazil,3.1269,Production,Mine - estimated
+Gallium ,United States ,0,Production Capacity ,Recovery - see note
+Gallium ,China ,1000,Production Capacity ,Recovery - see note
+Gallium ,Japan,10,Production Capacity ,Recovery - see note
+Gallium ,South Korea,16,Production Capacity ,Recovery - see note
+Gallium ,Russia ,10,Production Capacity ,Recovery - see note
+Gallium ,Other countries ,88,Production Capacity ,Recovery - see note
+Gallium ,United States ,0,Production,Recovery - see note
+Gallium ,China ,750,Production ,Recovery - see note
+Gallium ,Japan,3,Production ,Recovery - see note
+Gallium ,South Korea,3,Production ,Recovery - see note
+Gallium ,Russia ,6,Production ,Recovery - see note
+Hafnium,Australia,4000,Production,Mine
+Hafnium,South Africa,2700,Production,Mine
+Hafnium,China,1400,Production,Mine
+Hafnium,Mozambique,1100,Production,Mine
+Hafnium,Other countries ,1100,Production,Mine
+Hafnium,Senegal,700,Production,Mine
+Hafnium,Indonesia,550,Production,Mine
+Hafnium,United States ,300,Production,Mine
+Hafnium,Kenya,300,Production,Mine
+Hafnium,France,35,Production,Refinery
+Hafnium,United States,31.99,Production,Refinery
+Hafnium,China,2.03,Production,Refinery
+Hafnium,Russia ,0.98,Production,Refinery
+Indium,United States ,0,Production Capacity ,Refinery
+Indium,Belgium ,50,Production Capacity ,Refinery
+Indium,Canada ,70,Production Capacity ,Refinery
+Indium,China ,1100,Production Capacity ,Refinery
+Indium,France ,70,Production Capacity ,Refinery
+Indium,Japan ,70,Production Capacity ,Refinery
+Indium,South Korea,310,Production Capacity ,Refinery
+Indium,Peru ,50,Production Capacity ,Refinery
+Indium,Russia ,15,Production Capacity ,Refinery
+Indium,Uzbekistan ,1,Production Capacity ,Refinery
+Indium,United States ,0,Production,Refinery
+Indium,Belgium ,10,Production ,Refinery
+Indium,Canada ,35,Production ,Refinery
+Indium,China ,760,Production ,Refinery
+Indium,France ,21,Production ,Refinery
+Indium,Japan ,60,Production ,Refinery
+Indium,South Korea,180,Production ,Refinery
+Indium,Russia ,5,Production ,Refinery
+Indium,Uzbekistan ,1,Production ,Refinery
+Lead ,United States ,4600000,Reserves,
+Lead ,Australia ,35000000,Reserves,
+Lead ,Bolivia ,1600000,Reserves,
+Lead ,China ,22000000,Reserves,
+Lead ,India ,1900000,Reserves,
+Lead ,Iran ,2000000,Reserves,
+Lead ,Mexico ,5600000,Reserves,
+Lead ,Peru ,5000000,Reserves,
+Lead ,Russia ,8900000,Reserves,
+Lead ,Sweden ,1700000,Reserves,
+Lead ,Turkey ,1600000,Reserves,
+Lead ,Other countries ,5900000,Reserves,
+Lead ,United States ,300000,Production,Mine
+Lead ,Australia ,430000,Production,Mine
+Lead ,Bolivia ,60000,Production,Mine
+Lead ,China ,1900000,Production,Mine
+Lead ,India ,220000,Production,Mine
+Lead ,Iran ,60000,Production,Mine
+Lead ,Mexico ,180000,Production,Mine
+Lead ,Peru ,270000,Production,Mine
+Lead ,Russia ,220000,Production,Mine
+Lead ,Sweden ,70000,Production,Mine
+Lead ,Tajikistan ,40000,Production,Mine
+Lead ,Turkey ,70000,Production,Mine
+Lead ,Other countries ,520000,Production,Mine
+Lithium ,United States ,1800000,Reserves,
+Lithium ,Argentina ,4000000,Reserves,
+Lithium ,Australia ,7000000,Reserves,
+Lithium ,Brazil ,390000,Reserves,
+Lithium ,Canada ,1200000,Reserves,
+Lithium ,Chile ,9300000,Reserves,
+Lithium ,China ,3000000,Reserves,
+Lithium ,Namibia ,14000,Reserves,
+Lithium ,Portugal ,60000,Reserves,
+Lithium ,Zimbabwe ,480000,Reserves,
+Lithium ,Other countries ,2800000,Reserves,
+Lithium ,United States ,600,Production,Mine
+Lithium ,Argentina ,18000,Production,Mine
+Lithium ,Australia ,88000,Production,Mine
+Lithium ,Brazil ,10000,Production,Mine
+Lithium ,Canada ,4300,Production,Mine
+Lithium ,Chile ,49000,Production,Mine
+Lithium ,China ,41000,Production,Mine
+Lithium ,Namibia ,2700,Production,Mine
+Lithium ,Portugal ,380,Production,Mine
+Lithium ,Zimbabwe ,22000,Production,Mine
+Magnesium Compounds,United States ,300000,Production,Mine 
+Magnesium Compounds,Australia ,490000,Production,Mine 
+Magnesium Compounds,Austria,760000,Production,Mine 
+Magnesium Compounds,Brazil ,1800000,Production,Mine 
+Magnesium Compounds,Canada,150000,Production,Mine 
+Magnesium Compounds,China,13000000,Production,Mine 
+Magnesium Compounds,Greece,390000,Production,Mine 
+Magnesium Compounds,India ,160000,Production,Mine 
+Magnesium Compounds,Iran ,210000,Production,Mine 
+Magnesium Compounds,Russia ,2500000,Production,Mine 
+Magnesium Compounds,Slovakia ,380000,Production,Mine 
+Magnesium Compounds,Spain ,670000,Production,Mine 
+Magnesium Compounds,Turkey ,1300000,Production,Mine 
+Magnesium Compounds,Other countries ,370000,Production,Mine 
+Magnesium Compounds,United States ,35000000,Reserves ,
+Magnesium Compounds,Australia ,280000000,Reserves ,
+Magnesium Compounds,Austria,49000000,Reserves ,
+Magnesium Compounds,Brazil ,200000000,Reserves ,
+Magnesium Compounds,China,680000000,Reserves ,
+Magnesium Compounds,Greece,280000000,Reserves ,
+Magnesium Compounds,India ,66000000,Reserves ,
+Magnesium Compounds,Iran ,10000000,Reserves ,
+Magnesium Compounds,Russia ,2300000000,Reserves ,
+Magnesium Compounds,Slovakia ,1200000000,Reserves ,
+Magnesium Compounds,Spain ,35000000,Reserves ,
+Magnesium Compounds,Turkey ,110000000,Reserves ,
+Magnesium Compounds,Other countries ,2500000000,Reserves ,
+Magnesium Metal,United States ,0,Production,Smelter
+Magnesium Metal,Brazil ,20000,Production ,Smelter
+Magnesium Metal,China,950000,Production ,Smelter
+Magnesium Metal,Iran ,5000,Production ,Smelter
+Magnesium Metal,Israel ,20000,Production ,Smelter
+Magnesium Metal,Kazakhstan ,20000,Production ,Smelter
+Magnesium Metal,Russia ,15000,Production ,Smelter
+Magnesium Metal,Turkey ,15000,Production ,Smelter
+Magnesium Metal,United States ,64000,Production Capacity,Smelter
+Magnesium Metal,Brazil ,22000,Production Capacity,Smelter
+Magnesium Metal,China,1800000,Production Capacity,Smelter
+Magnesium Metal,Iran ,6000,Production Capacity,Smelter
+Magnesium Metal,Israel ,34000,Production Capacity,Smelter
+Magnesium Metal,Kazakhstan ,30000,Production Capacity,Smelter
+Magnesium Metal,Russia ,81000,Production Capacity,Smelter
+Magnesium Metal,Turkey ,15000,Production Capacity,Smelter
+Magnesium Metal,Other countries ,52000,Production Capacity,Smelter
+Manganese,United States ,0,Production,Mine 
+Manganese,Australia ,2800000,Production,Mine 
+Manganese,Brazil ,590000,Production,Mine 
+Manganese,China ,770000,Production,Mine 
+Manganese,Côte d’Ivoire,360000,Production,Mine 
+Manganese,Gabon ,4600000,Production,Mine 
+Manganese,Ghana ,820000,Production,Mine 
+Manganese,India ,800000,Production,Mine 
+Manganese,Malaysia ,410000,Production,Mine 
+Manganese,South Africa ,7400000,Production,Mine 
+Manganese,Other countries ,1300000,Production,Mine 
+Manganese,United States ,0,Reserves ,
+Manganese,Australia ,500000000,Reserves ,
+Manganese,Brazil ,270000000,Reserves ,
+Manganese,China ,280000000,Reserves ,
+Manganese,Gabon ,61000000,Reserves ,
+Manganese,Ghana ,13000000,Reserves ,
+Manganese,India ,34000000,Reserves ,
+Manganese,South Africa ,560000000,Reserves ,
+Manganese,Other countries ,"""Small""",Reserves ,
+Molybdenum,United States ,3500000,Reserves,
+Molybdenum,Argentina ,100000,Reserves,
+Molybdenum,Armenia ,150000,Reserves,
+Molybdenum,Australia ,690000,Reserves,
+Molybdenum,Canada ,64000,Reserves,
+Molybdenum,Chile ,1400000,Reserves,
+Molybdenum,China ,5900000,Reserves,
+Molybdenum,Iran,43000,Reserves,
+Molybdenum,Kazakhstan ,7000,Reserves,
+Molybdenum,South Korea,8000,Reserves,
+Molybdenum,Mexico ,130000,Reserves,
+Molybdenum,Mongolia ,10000,Reserves,
+Molybdenum,Peru ,1900000,Reserves,
+Molybdenum,Russia ,1100000,Reserves,
+Molybdenum,Uzbekistan ,21000,Reserves,
+Molybdenum,United States ,33000,Production,Mine
+Molybdenum,Armenia ,8000,Production,Mine
+Molybdenum,Australia ,1000,Production,Mine
+Molybdenum,Canada ,1200,Production,Mine
+Molybdenum,Chile ,38000,Production,Mine
+Molybdenum,China ,110000,Production,Mine
+Molybdenum,Iran,3000,Production,Mine
+Molybdenum,Kazakhstan ,3900,Production,Mine
+Molybdenum,North Korea ,700,Production,Mine
+Molybdenum,South Korea,300,Production,Mine
+Molybdenum,Mexico ,17000,Production,Mine
+Molybdenum,Mongolia ,3100,Production,Mine
+Molybdenum,Peru ,41000,Production,Mine
+Molybdenum,Russia ,1700,Production,Mine
+Molybdenum,Uzbekistan ,1700,Production,Mine
+Neodymium,China,29510.3546,Production,Mine - estimated
+Neodymium,Myanmar,6594.7577,Production,Mine - estimated
+Neodymium,United States ,5313.7616,Production,Mine - estimated
+Neodymium,Australia,3083.8795,Production,Mine - estimated
+Neodymium,Thailand,1280.9961,Production,Mine - estimated
+Neodymium,Madagascar,616.7759,Production,Mine - estimated
+Neodymium,India,521.8873,Production,Mine - estimated
+Neodymium,Russia,332.1101,Production,Mine - estimated
+Neodymium,Brazil,94.8886,Production,Mine - estimated
+Neodymium,Vietnam,47.4443,Production,Mine - estimated
+Nickel,United States ,310000,Reserves ,
+Nickel,Australia ,24000000,Reserves ,
+Nickel,Brazil ,16000000,Reserves ,
+Nickel,Canada ,2200000,Reserves ,
+Nickel,China ,4400000,Reserves ,
+Nickel,Indonesia ,55000000,Reserves ,
+Nickel,New Caledonia ,7100000,Reserves ,
+Nickel,Philippines ,4800000,Reserves ,
+Nickel,Russia ,8300000,Reserves ,
+Nickel,Other countries ,>910000,Reserves ,
+Nickel,United States ,8000,Production,Mine
+Nickel,Australia ,110000,Production,Mine
+Nickel,Brazil ,77000,Production,Mine
+Nickel,Canada ,190000,Production,Mine
+Nickel,China ,120000,Production,Mine
+Nickel,Indonesia ,2200000,Production,Mine
+Nickel,New Caledonia ,110000,Production,Mine
+Nickel,Philippines ,330000,Production,Mine
+Nickel,Russia ,210000,Production,Mine
+Nickel,Other countries ,300000,Production,Mine
+Niobium,United States ,210000,Reserves ,
+Niobium,Brazil ,16000000,Reserves ,
+Niobium,Canada ,1600000,Reserves ,
+Niobium,Brazil ,100000,Production ,Mine
+Niobium,Canada ,7100,Production ,Mine
+Niobium,Congo(Kinshasa) ,700,Production ,Mine
+Niobium,Russia ,350,Production ,Mine
+Niobium,Rwanda ,200,Production ,Mine
+Niobium,Other countries ,120,Production ,Mine
+Praseodymium,China,9675.1968,Production,Mine - estimated
+Praseodymium,United States ,1868.7296,Production,Mine - estimated
+Praseodymium,Myanmar,1793.3776,Production,Mine - estimated
+Praseodymium,Australia,843.9424,Production,Mine - estimated
+Praseodymium,Thailand,391.8304,Production,Mine - estimated
+Praseodymium,Madagascar,195.9152,Production,Mine - estimated
+Praseodymium,India,135.6336,Production,Mine - estimated
+Praseodymium,Russia,120.5632,Production,Mine - estimated
+Praseodymium,Brazil,30.1408,Production,Mine - estimated
+Praseodymium,Vietnam,15.0704,Production,Mine - estimated
+Praseodymium,Burundi,15.0704,Production,Mine - estimated
+Rare Earths ,United States ,1900000,Reserves,
+Rare Earths ,Australia ,5700000,Reserves,
+Rare Earths ,Brazil ,21000000,Reserves,
+Rare Earths ,Canada ,830000,Reserves,
+Rare Earths ,China ,44000000,Reserves,
+Rare Earths ,Greenland ,1500000,Reserves,
+Rare Earths ,India ,6900000,Reserves,
+Rare Earths ,Russia ,3800000,Reserves,
+Rare Earths ,South Africa ,860000,Reserves,
+Rare Earths ,Tanzania ,890000,Reserves,
+Rare Earths ,Thailand ,4500,Reserves,
+Rare Earths ,Vietnam ,3500000,Reserves,
+Rare Earths ,United States ,45000,Production ,Mine
+Rare Earths ,Australia ,13000,Production ,Mine
+Rare Earths ,Brazil ,20,Production ,Mine
+Rare Earths ,Burma ,31000,Production ,Mine
+Rare Earths ,China ,270000,Production ,Mine
+Rare Earths ,India ,2900,Production ,Mine
+Rare Earths ,Madagascar ,2000,Production ,Mine
+Rare Earths ,Malaysia ,130,Production ,Mine
+Rare Earths ,Nigeria ,13000,Production ,Mine
+Rare Earths ,Russia ,2500,Production ,Mine
+Rare Earths ,Thailand ,13000,Production ,Mine
+Rare Earths ,Vietnam ,300,Production ,Mine
+Rare Earths ,Other countries ,1100,Production ,Mine
+Selenium,United States ,380,Production ,Refinery 
+Selenium,Belgium ,200,Production ,Refinery 
+Selenium,Canada ,130,Production ,Refinery 
+Selenium,China ,1800,Production ,Refinery 
+Selenium,Finland ,170,Production ,Refinery 
+Selenium,Germany ,50,Production ,Refinery 
+Selenium,India ,14,Production ,Refinery 
+Selenium,Japan ,710,Production ,Refinery 
+Selenium,Peru ,50,Production ,Refinery 
+Selenium,Poland ,74,Production ,Refinery 
+Selenium,Russia ,340,Production ,Refinery 
+Selenium,Serbia ,60,Production ,Refinery 
+Selenium,South Africa ,9,Production ,Refinery 
+Selenium,Turkey ,50,Production ,Refinery 
+Selenium,Uzbekistan ,2,Production ,Refinery 
+Selenium,United States ,10000,Reserves ,
+Selenium,Canada ,6500,Reserves ,
+Selenium,China ,5000,Reserves ,
+Selenium,Finland ,300,Reserves ,
+Selenium,India ,500,Reserves ,
+Selenium,Peru ,16000,Reserves ,
+Selenium,Poland ,3000,Reserves ,
+Selenium,Russia ,26000,Reserves ,
+Selenium,Sweden ,500,Reserves ,
+Selenium,Other countries ,24000,Reserves ,
+Silicon,United States ,310000,Production ,Silicon  
+Silicon,Bhutan ,80000,Production ,Ferrosilicon
+Silicon,Brazil ,200000,Production ,Ferrosilicon
+Silicon,Canada ,20000,Production ,Ferrosilicon
+Silicon,China ,3500000,Production ,Ferrosilicon
+Silicon,France ,20000,Production ,Ferrosilicon
+Silicon,Iceland ,70000,Production ,Ferrosilicon
+Silicon,India ,60000,Production ,Ferrosilicon
+Silicon,Kazakhstan ,130000,Production ,Ferrosilicon
+Silicon,Malaysia ,130000,Production ,Ferrosilicon
+Silicon,Norway ,180000,Production ,Ferrosilicon
+Silicon,Poland ,30000,Production ,Ferrosilicon
+Silicon,Russia ,470000,Production ,Ferrosilicon
+Silicon,South Africa ,40000,Production ,Ferrosilicon
+Silicon,Spain ,40000,Production ,Ferrosilicon
+Silicon,Other countries ,130000,Production ,Ferrosilicon
+Silicon,Australia ,40000,Production ,Silicon metal
+Silicon,Brazil ,190000,Production ,Silicon metal
+Silicon,Canada ,30000,Production ,Silicon metal
+Silicon,China ,3900000,Production ,Silicon metal
+Silicon,France ,90000,Production ,Silicon metal
+Silicon,Germany ,60000,Production ,Silicon metal
+Silicon,Iceland ,20000,Production ,Silicon metal
+Silicon,Kazakhstan ,7000,Production ,Silicon metal
+Silicon,Norway ,120000,Production ,Silicon metal
+Silicon,Russia ,50000,Production ,Silicon metal
+Silicon,South Africa ,10000,Production ,Silicon metal
+Silicon,Spain ,5000,Production ,Silicon metal
+Silicon,Other countries ,78000,Production ,Silicon metal
+Silver ,United States ,1100,Production ,Mine 
+Silver ,Argentina ,800,Production ,Mine 
+Silver ,Australia ,1000,Production ,Mine 
+Silver ,Bolivia ,1300,Production ,Mine 
+Silver ,Canada ,300,Production ,Mine 
+Silver ,Chile ,1200,Production ,Mine 
+Silver ,China ,3300,Production ,Mine 
+Silver ,India ,800,Production ,Mine 
+Silver ,Kazakhstan ,1000,Production ,Mine 
+Silver ,Mexico ,6300,Production ,Mine 
+Silver ,Peru ,3100,Production ,Mine 
+Silver ,Poland ,1300,Production ,Mine 
+Silver ,Russia ,1200,Production ,Mine 
+Silver ,Sweden ,400,Production ,Mine 
+Silver ,Other countries ,2100,Production ,Mine 
+Silver ,United States ,23000,Reserves ,
+Silver ,Argentina ,6500,Reserves ,
+Silver ,Australia ,94000,Reserves ,
+Silver ,Bolivia ,22000,Reserves ,
+Silver ,Canada ,4900,Reserves ,
+Silver ,Chile ,26000,Reserves ,
+Silver ,China ,70000,Reserves ,
+Silver ,India ,8000,Reserves ,
+Silver ,Mexico ,37000,Reserves ,
+Silver ,Peru ,140000,Reserves ,
+Silver ,Poland ,61000,Reserves ,
+Silver ,Russia ,92000,Reserves ,
+Silver ,Other countries ,57000,Reserves ,
+Steel,United States,81000000,Production,raw steel
+Steel,Brazil,34000000,Production,raw steel
+Steel,Canada ,12000000,Production,raw steel
+Steel,China,990000000,Production,raw steel
+Steel,Germany,35000000,Production,raw steel
+Steel,India,150000000,Production,raw steel
+Steel,Iran,33000000,Production,raw steel
+Steel,Italy,21000000,Production ,raw steel
+Steel,Japan,85000000,Production,raw steel
+Steel,Mexico ,16000000,Production ,raw steel
+Steel,South Korea,64000000,Production,raw steel
+Steel,Russia,75000000,Production,raw steel
+Steel,Taiwan,19000000,Production ,raw steel
+Steel,Turkey,32000000,Production,raw steel
+Steel,Ukraine,6000000,Production ,raw steel
+Steel,Vietnam,19000000,Production,raw steel
+Steel,Other countries ,200000000,Production,raw steel
+Tantalum,Australia ,52,Production ,Mine 
+Tantalum,Bolivia ,2,Production ,Mine 
+Tantalum,Brazil ,210,Production ,Mine 
+Tantalum,Burundi ,2,Production ,Mine 
+Tantalum,China ,76,Production ,Mine 
+Tantalum,Congo(Kinshasa),880,Production ,Mine 
+Tantalum,Ethiopia ,40,Production ,Mine 
+Tantalum,Mozambique ,55,Production ,Mine 
+Tantalum,Nigeria ,390,Production ,Mine 
+Tantalum,Russia ,29,Production ,Mine 
+Tantalum,Rwanda,350,Production ,Mine 
+Tantalum,Australia ,110000,Reserves ,
+Tantalum,Brazil ,40000,Reserves ,
+Tantalum,China ,240000,Reserves ,
+Tellurium ,United States ,20,Production,Refinery (copper tellurides)
+Tellurium ,Bulgaria ,1,Production ,Refinery
+Tellurium ,Canada ,27,Production ,Refinery
+Tellurium ,China ,750,Production ,Refinery
+Tellurium ,Japan,70,Production ,Refinery
+Tellurium ,Russia ,70,Production ,Refinery
+Tellurium ,South Africa ,4,Production ,Refinery
+Tellurium ,Sweden ,46,Production ,Refinery concentrates
+Tellurium ,Uzbekistan ,13,Production ,Refinery
+Tellurium ,United States ,3800,Reserves ,
+Tellurium ,Canada ,900,Reserves ,
+Tellurium ,China ,3100,Reserves ,
+Tellurium ,Russia ,5800,Reserves ,
+Tellurium ,South Africa ,800,Reserves ,
+Tellurium ,Sweden ,740,Reserves ,
+Tellurium ,Other countries ,20000,Reserves ,
+Terbium,China,405.7224,Production,Mine - estimated
+Terbium,Myanmar,162.8604,Production,Mine - estimated
+Terbium,Australia ,98.5734,Production,Mine - estimated
+Terbium,United States,16.4289,Production,Mine - estimated
+Terbium,Thailand,14.286,Production,Mine - estimated
+Terbium,Madagascar,12.1431,Production,Mine - estimated
+Terbium,India ,1.4286,Production,Mine - estimated
+Terbium,Brazil ,0.7143,Production,Mine - estimated
+Tin ,Australia ,9900,Production ,Mine 
+Tin ,Bolivia ,21000,Production ,Mine 
+Tin ,Brazil ,29000,Production ,Mine 
+Tin ,Burma ,34000,Production ,Mine 
+Tin ,China ,69000,Production ,Mine 
+Tin ,Congo(Kinshasa),25000,Production ,Mine 
+Tin ,Indonesia ,50000,Production ,Mine 
+Tin ,Laos ,1500,Production ,Mine 
+Tin ,Malaysia,3000,Production ,Mine 
+Tin ,Nigeria ,7000,Production ,Mine 
+Tin ,Peru,31000,Production ,Mine 
+Tin ,Russia ,3000,Production ,Mine 
+Tin ,Rwanda,3600,Production ,Mine 
+Tin ,Vietnam ,6700,Production ,Mine 
+Tin ,Other countries ,1800,Production ,Mine 
+Tin ,Australia ,620000,Reserves ,
+Tin ,Bolivia ,400000,Reserves ,
+Tin ,Brazil ,420000,Reserves ,
+Tin ,Burma ,700000,Reserves ,
+Tin ,China ,1000000,Reserves ,
+Tin ,Congo(Kinshasa),120000,Reserves ,
+Tin ,Peru,130000,Reserves ,
+Tin ,Russia ,460000,Reserves ,
+Tin ,Vietnam ,23000,Reserves ,
+Tin ,Other countries ,310000,Reserves ,
+Titanium and Titanium Dioxide,United States ,243.6,Production,Sponge
+Titanium and Titanium Dioxide,China,220000,Production,Sponge
+Titanium and Titanium Dioxide,India ,300,Production,Sponge
+Titanium and Titanium Dioxide,Japan ,55000,Production,Sponge
+Titanium and Titanium Dioxide,Kazakhstan ,14000,Production,Sponge
+Titanium and Titanium Dioxide,Russia ,20000,Production,Sponge
+Titanium and Titanium Dioxide,Saudi Arabia ,15000,Production,Sponge
+Titanium and Titanium Dioxide,United States ,500,Production Capacity,Sponge
+Titanium and Titanium Dioxide,China,260000,Production Capacity,Sponge
+Titanium and Titanium Dioxide,India ,500,Production Capacity,Sponge
+Titanium and Titanium Dioxide,Japan ,65200,Production Capacity,Sponge
+Titanium and Titanium Dioxide,Kazakhstan ,26000,Production Capacity,Sponge
+Titanium and Titanium Dioxide,Russia ,46500,Production Capacity,Sponge
+Titanium and Titanium Dioxide,Saudi Arabia ,15600,Production Capacity,Sponge
+Titanium and Titanium Dioxide,United States ,1360000,Production Capacity,Pigment
+Titanium and Titanium Dioxide,Australia ,260000,Production Capacity,Pigment
+Titanium and Titanium Dioxide,Canada,108000,Production Capacity,Pigment
+Titanium and Titanium Dioxide,China,5500000,Production Capacity,Pigment
+Titanium and Titanium Dioxide,Germany ,339000,Production Capacity,Pigment
+Titanium and Titanium Dioxide,India ,91000,Production Capacity,Pigment
+Titanium and Titanium Dioxide,Japan ,322000,Production Capacity,Pigment
+Titanium and Titanium Dioxide,Mexico ,350000,Production Capacity,Pigment
+Titanium and Titanium Dioxide,Russia ,55000,Production Capacity,Pigment
+Titanium and Titanium Dioxide,Saudi Arabia ,200000,Production Capacity,Pigment
+Titanium and Titanium Dioxide,Ukraine,122000,Production Capacity,Pigment
+Titanium and Titanium Dioxide,United Kingdom,315000,Production Capacity,Pigment
+Titanium and Titanium Dioxide,Other countries ,820000,Production Capacity,Pigment
+Titanium Mineral Concentrates,United States,100000,Production,Mine
+Titanium Mineral Concentrates,Australia ,600000,Production,Mine
+Titanium Mineral Concentrates,Canada,350000,Production,Mine
+Titanium Mineral Concentrates,China,3300000,Production,Mine
+Titanium Mineral Concentrates,India ,222000,Production,Mine
+Titanium Mineral Concentrates,Madagascar,240000,Production,Mine
+Titanium Mineral Concentrates,Mozambique,1908000,Production,Mine
+Titanium Mineral Concentrates,Norway,360000,Production,Mine
+Titanium Mineral Concentrates,Senegal,300000,Production,Mine
+Titanium Mineral Concentrates,South Africa ,1400000,Production,Mine
+Titanium Mineral Concentrates,Ukraine,130000,Production,Mine
+Titanium Mineral Concentrates,Kenya,40000,Production,Mine
+Titanium Mineral Concentrates,Sierra Leone,60000,Production,Mine
+Titanium Mineral Concentrates,Other countries ,350000,Production,Mine
+Titanium Mineral Concentrates,United States,2000000,Reserves,
+Titanium Mineral Concentrates,Australia ,215000000,Reserves,
+Titanium Mineral Concentrates,Canada,51000000,Reserves,
+Titanium Mineral Concentrates,China,110000000,Reserves,
+Titanium Mineral Concentrates,India ,15670000,Reserves,
+Titanium Mineral Concentrates,Madagascar,30000000,Reserves,
+Titanium Mineral Concentrates,Mozambique,720000,Reserves,
+Titanium Mineral Concentrates,Norway,37000000,Reserves,
+Titanium Mineral Concentrates,South Africa ,34100000,Reserves,
+Titanium Mineral Concentrates,Ukraine,5900000,Reserves,
+Titanium Mineral Concentrates,Sierra Leone,2900000,Reserves,
+Titanium Mineral Concentrates,Other countries ,54540000,Reserves,
+Tungsten,Australia ,1000,Production ,Mine 
+Tungsten,Austria ,800,Production ,Mine 
+Tungsten,Bolivia ,1600,Production ,Mine 
+Tungsten,China ,67000,Production ,Mine 
+Tungsten,North Korea ,1700,Production ,Mine 
+Tungsten,Portugal ,500,Production ,Mine 
+Tungsten,Russia ,2000,Production ,Mine 
+Tungsten,Rwanda,1200,Production ,Mine 
+Tungsten,Spain ,700,Production ,Mine 
+Tungsten,Vietnam ,3400,Production ,Mine 
+Tungsten,Other countries ,1500,Production ,Mine 
+Tungsten,Australia ,570000,Reserves ,
+Tungsten,Austria ,10000,Reserves ,
+Tungsten,China ,2400000,Reserves ,
+Tungsten,North Korea ,29000,Reserves ,
+Tungsten,Portugal ,3400,Reserves ,
+Tungsten,Russia ,400000,Reserves ,
+Tungsten,Spain ,66000,Reserves ,
+Tungsten,Vietnam ,140000,Reserves ,
+Tungsten,Other countries ,950000,Reserves ,
+Vanadium,Brazil ,5000,Production ,Mine 
+Vanadium,China ,70000,Production ,Mine 
+Vanadium,Russia ,21000,Production ,Mine 
+Vanadium,South Africa ,8000,Production ,Mine 
+Vanadium,United States ,45000,Reserves ,
+Vanadium,Australia ,8500000,Reserves ,
+Vanadium,Brazil ,120000,Reserves ,
+Vanadium,China ,4100000,Reserves ,
+Vanadium,Russia ,5000000,Reserves ,
+Vanadium,South Africa ,430000,Reserves ,
+Yttrium,China,7842,Production ,Mines - estimated
+Yttrium,Myanmar,5427,Production,Mines - estimated
+Yttrium,Australia ,3874.21,Production,Mines - estimated
+Yttrium,United States ,692.49,Production,Mines - estimated
+Yttrium,Madagascar,430.47,Production,Mines - estimated
+Yttrium,Thailand,393.04,Production,Mines - estimated
+Yttrium,Russia ,37.43,Production,Mines - estimated
+Yttrium,Vietnam,18.72,Production,Mines - estimated
+Yttrium,Malaysia,18.72,Production,Mines - estimated
+Zinc,United States ,750000,Production,Mine
+Zinc,Australia ,1100000,Production,Mine
+Zinc,Bolivia,510000,Production,Mine
+Zinc,China ,4000000,Production,Mine
+Zinc,India ,860000,Production,Mine
+Zinc,Kazakhstan ,370000,Production,Mine
+Zinc,Mexico ,700000,Production,Mine
+Zinc,Peru,1300000,Production,Mine
+Zinc,Russia ,310000,Production,Mine
+Zinc,South Africa ,120000,Production,Mine
+Zinc,Sweden,240000,Production,Mine
+Zinc,Other countries ,1700000,Production,Mine
+Zinc,United States ,9200000,Reserves,
+Zinc,Australia ,64000000,Reserves,
+Zinc,China ,46000000,Reserves,
+Zinc,India ,9800000,Reserves,
+Zinc,Kazakhstan ,7600000,Reserves,
+Zinc,Mexico ,14000000,Reserves,
+Zinc,Peru,20000000,Reserves,
+Zinc,Russia ,29000000,Reserves,
+Zinc,South Africa ,5900000,Reserves,
+Zinc,Sweden,3900000,Reserves,
+Zinc,Other countries ,25000000,Reserves,
+Zirconium ,United States ,100000,Production,Mine
+Zirconium ,Australia ,500000,Production,Mine
+Zirconium ,China ,100000,Production,Mine
+Zirconium ,Indonesia,95000,Production,Mine
+Zirconium ,Kenya,20000,Production,Mine
+Zirconium ,Madagascar,30000,Production,Mine
+Zirconium ,Mozambique,160000,Production,Mine
+Zirconium ,Senegal,60000,Production,Mine
+Zirconium ,Sierra Leone,20000,Production,Mine
+Zirconium ,South Africa ,300000,Production,Mine
+Zirconium ,Other countries ,110000,Production,Mine
+Zirconium ,United States ,500000,Reserves,
+Zirconium ,Australia ,55000000,Reserves,
+Zirconium ,China ,72000,Reserves,
+Zirconium ,Kenya,5000,Reserves,
+Zirconium ,Madagascar,2100000,Reserves,
+Zirconium ,Mozambique,1500000,Reserves,
+Zirconium ,Senegal,2600000,Reserves,
+Zirconium ,Sierra Leone,290000,Reserves,
+Zirconium ,South Africa ,5300000,Reserves,
+Zirconium ,Other countries ,5700000,Reserves,

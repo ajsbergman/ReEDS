@@ -1,0 +1,66 @@
+﻿Material,Product,price_per_tonne,year_source,Type
+Alumina,chemical compound,570,2024,primary
+Aluminum,metal,2866.006,2024,primary
+Aluminum ,metal,1322.772,2026,secondary
+Bauxite,ore,30,2024,primary
+Boron,chemical compound,560,2024,primary
+Cadmium,metal,4100,2024,primary
+Chromium,ore,340,2024,primary
+Chromium,alloy,3968.316,2024,primary
+Chromium,metal,12345.872,2024,primary
+Cobalt,metal,37478.54,2024,primary
+Cobalt,metal,26455.44,2024,primary
+Copper,metal,9479.866,2024,primary
+Copper,metal,9259.404,2024,primary
+Copper,metal,9259.404,2024,primary
+Dysprosium,chemical compound,260000,2024,primary
+Gallium,metal,500000,2024,primary
+Gallium,metal,220000,2024,primary
+Hafnium,metal,4600000,2024,primary
+Indium,metal,340000,2024,primary
+Indium,metal,300000,2024,primary
+Iron ore,ore,115000,2024,primary
+Lead,metal,2425.082,2024,primary
+Lead,metal,1102.31,2025,secondary
+Lithium,salt / chemical compound,14000,2024,primary
+Magnesium,metal,7716.17,2024,primary
+Magnesium,metal,2900,2024,primary
+Magnesium,chemical compound,35.095,2024,primary
+Manganese,ore,5.8,2024,primary
+Manganese,alloy,1072.781851,2025,primary
+Manganese,alloy,1992.97648,2025,primary
+Manganese,alloy,1272.06574,2025,primary
+Manganese,metal,2821.9136,2025,primary
+Molybdenum,chemical compound,47000,2024,primary
+Neodymium,chemical compound,56000,2024,primary
+Nickel,metal,17000,2024,primary
+Niobium,alloy,26000,2024,primary
+Praseodymium,chemical compound,56000,2024,primary
+Selenium,metalloid,24000,2024,primary
+Selenium,metalloid,24000,2024,primary
+Silicon,alloy,2866.006,2024,primary
+Silicon,metal,3968.316,2024,primary
+Silver,metal,890574.39,2024,primary
+Steel,metal,600,2026,primary
+Steel,metal,410,2026,secondary
+Tantalum,ore,170000,2024,primary
+Tellurium,metalloid,75000,2024,primary
+Tellurium,metalloid,80000,2024,primary
+Terbium,chemical compound,810000,2024,primary
+Tin,metal,30864.68,2024,primary
+Tin,metal,30864.68,2024,primary
+Titanium,metal,13000,2024,primary
+Titanium,chemical compound,3200,2024,primary
+Titanium,mineral concentrate,1310,2024,primary
+Titanium,mineral concentrate,500,2024,primary
+Titanium,mineral concentrate,340,2024,primary
+Titanium,mineral concentrate,990,2024,primary
+Tungsten,chemical compound,250,2024,primary
+Vanadium,chemical compound,12015.179,2024,primary
+Yttrium,chemical compound,6000,2024,primary
+Yttrium,metal,33000,2024,primary
+Zinc,metal,3174.6528,2024,primary
+Zinc,metal,2777.8212,2024,primary
+Zirconium,ore,2000,2024,primary
+Zirconium,ore,2100,2024,primary
+Zirconium,metal,25000,2024,primary
