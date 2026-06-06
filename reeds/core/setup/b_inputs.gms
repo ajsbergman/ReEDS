@@ -893,26 +893,6 @@ $onlisting
  / ;
 
 
-set prescriptivelink0(pcat,ii) "initial set of prescribed categories and their technologies - used in assigning prescribed builds"
-/
-$offlisting
-$ondelim
-$include inputs_case%ds%prescriptivelink0.csv
-$offdelim
-$onlisting
-/ ;
-
-*include non-numeraire CSPs and then exclude numeraire CSPs in ii dimension of
-*prescriptivelink0(pcat,ii) set when Sw_WaterMain is ON
-prescriptivelink0("csp-ws",ii)$[(csp1(ii) or csp2(ii) or csp3(ii) or csp4(ii))$Sw_WaterMain] = yes ;
-prescriptivelink0("csp-ws",ii)$[csp(ii)$i_numeraire(ii)$Sw_WaterMain] = no ;
-
-set prescriptivelink(pcat,i) "final set of prescribed categories and their technologies - used in the model" ;
-
-prescriptivelink(pcat,i)$prescriptivelink0(pcat,i) = yes ;
-
-alias(pcat,ppcat) ;
-
 * active prescriptivelink for all techs not included in the table above
 * but restrict out csp techs in this calculation - since they
 * are indexed by a separate pcat (csp-ws) and have special considerations
