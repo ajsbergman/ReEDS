@@ -249,7 +249,7 @@ UnappWaterMultAnn.csv,inputs/climate/{climatescen}/UnappWaterMultAnn.csv,int(sw.
 UnappWaterSeaAnnDistr.csv,inputs/climate/{climatescen}/UnappWaterSeaAnnDistr.csv,int(sw.GSw_ClimateWater) != 0,mean,uniform,r,"wst,month,t",,0,0,,,,,,
 unbundled_limit_ces.csv,inputs/state_policies/unbundled_limit_ces.csv,int(sw.GSw_StateRPS) != 0,ignore,ignore,st,,,,0,,,,,,
 unbundled_limit_rps.csv,inputs/state_policies/unbundled_limit_rps.csv,int(sw.GSw_StateRPS) != 0,ignore,ignore,st,,,,0,,,,,,
-unitdata.csv,inputs/capacity_exogenous/ReEDS_generator_database_final_{unitdata}.csv,1,ignore,ignore,FIPS,,,,0,,,,,,
+unitdata_orig.csv,inputs/capacity_exogenous/ReEDS_generator_database_final_{unitdata}.csv,1,ignore,ignore,FIPS,,,,0,,,,,,
 unitspec_upgrades.csv,inputs/sets/unitspec_upgrades.csv,1,ignore,ignore,,,,,0,,,set,unitspec_upgrades,upgraded technologies that get unit-specific characteristics,
 upgrade_hintage_char.csv,inputs/sets/upgrade_hintage_char.csv,1,ignore,ignore,,,,,0,,,set,upgrade_hintage_char,sets to operate over in extension of hintage_data characteristics when sw_upgrades = 1,
 upgrade_link.csv,inputs/upgrades/upgrade_link.csv,1,ignore,ignore,,,,,0,,,,,,
