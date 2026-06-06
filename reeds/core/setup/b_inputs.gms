@@ -6026,40 +6026,6 @@ $else.upgrade_ef
 employment_factor_plant(i,"construction")$upgrade(i) = employment_factor_plant(i,"construction") * 0.5 ;
 $endif.upgrade_ef
 
-*====================================
-*     --- Employment Factors ---
-*====================================
-* Employment factors of construction and operation of power plants
-$onempty
-Table employment_factor_plant(i,jtype) "--job-years/MW or job-years/MWh-- employment factors of power plants by technology and job type (construction and o&m jobs)"
-$offlisting
-$ondelim
-$include inputs_case%ds%employment_factor_plant.csv
-$offdelim
-$onlisting
-;
-$offempty
-
-* Employment factors of transmission deployment and flow
-parameter employment_factor_inter_transmission(jtype)  "--job-years/MW or job-years/$M-- employment factors of transmission lines by job type (construction or o&m jobs)"
-/
-$offlisting
-$ondelim
-$include inputs_case%ds%employment_factor_inter_transmission.csv
-$offdelim
-$onlisting
-/ ;
-
-* If upgrade techs, construction employment factor is half
-* Only apply this to non CCS upgrades if using JEDI EFs since JEDI already specifies CCS upgrade EFs
-$ifthen.upgrade_ef %GSw_EmploymentFactor% == "JEDI"
-employment_factor_plant(i,"construction")$[upgrade(i)
-                                         $(not ccs(i))] = employment_factor_plant(i,"construction") * 0.5 ;
-$else.upgrade_ef
-employment_factor_plant(i,"construction")$upgrade(i) = employment_factor_plant(i,"construction") * 0.5 ;
-$endif.upgrade_ef
-
-
 *================================================================================================
 *== h- and szn-dependent sets and parameters (declared here, populated in 2_temporal_params) ===
 *================================================================================================
