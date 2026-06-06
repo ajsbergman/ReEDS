@@ -42,8 +42,8 @@ def calc_financial_inputs(inputs_case):
     print('Starting calculation of financial parameters')
 
     # #%% Settings for testing
-    # reeds_path = '/Users/pbrown/github/ReEDS/'
-    # inputs_case = os.path.join(reeds_path,'runs','v20220621_NTPm0_ercot_seq_test','inputs_case')
+    # reeds_path = reeds.io.reeds_path
+    # inputs_case = Path(reeds_path, 'runs', 'v20260605_envM0_Pacific', 'inputs_case')
 
     #%% Inputs from switches
     sw = reeds.io.get_switches(inputs_case)
@@ -93,8 +93,14 @@ def calc_financial_inputs(inputs_case):
 
     # Import system-wide real discount rates, calculate present-value-factors, merge onto df's
     financials_sys = reeds.financials.import_sys_financials(
-        sw['financials_sys_suffix'], inflation_df, modeled_years, 
-        years, year_map, sw['sys_eval_years'], scen_settings, scalars['co2_capture_incentive_length'],scalars['h2_ptc_length'])
+        sw,
+        scalars,
+        inflation_df,
+        modeled_years, 
+        years,
+        year_map,
+        scen_settings,
+    )
     financials_sys.to_csv(os.path.join(inputs_case,'financials_sys.csv'),index=False)
     df_ivt = df_ivt.merge(
         financials_sys[['t', 'pvf_capital', 'crf', 'crf_co2_incentive','crf_h2_incentive','d_real', 'd_nom', 'interest_rate_nom', 
