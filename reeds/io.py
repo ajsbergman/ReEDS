@@ -403,7 +403,7 @@ def read_h5(h5path:str|Path, key:str) -> pd.DataFrame:
         except KeyError:
             df = pd.DataFrame(columns=columns)
     for col in df:
-        if df[col].dtype in ['str', 'O']:
+        if pd.api.types.is_string_dtype(df[col].dtype):
             df[col] = df[col].str.decode('utf-8')
     return df
 
@@ -1702,7 +1702,7 @@ def write_to_h5(
                     data = dfwrite[col]
                     dtype = (
                         f"S{data.str.len().max()}"
-                        if dfwrite.dtypes[col] in ['str', 'O']
+                        if pd.api.types.is_string_dtype(dfwrite.dtypes[col])
                         else dfwrite.dtypes[col]
                     )
 
@@ -1910,7 +1910,7 @@ def write_profile_to_h5(df, filename, outfolder, compression_opts=4):
                     indexvals.to_series().apply(datetime.datetime.isoformat).reset_index(drop=True)
                 )
                 f.create_dataset(f'index_{i}', data=timeindex.str.encode('utf-8'), dtype='S30')
-            elif indexvals.dtype in ['str', 'O']:
+            elif pd.api.types.is_string_dtype(indexvals.dtype):
                 f.create_dataset(f'index_{i}', data=indexvals, dtype=f'S{indexvals.map(len).max()}')
             else:
                 # Other indices can be saved using their data type
