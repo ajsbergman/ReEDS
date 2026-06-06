@@ -1114,7 +1114,7 @@ def write_region_indexed_file(
             case 'bio_supplycurve.csv':
                 # Adjust for inflation
                 df['price'] = df['price'].astype(float) * source_deflator_map[filepath]
-            case 'unitdata.csv':
+            case 'unitdata_orig.csv':
                 fips_ba_map = regions_and_agglevel['ba_county'].dropna().set_index('county')['ba']
                 df['reeds_ba'] = df['FIPS'].map(fips_ba_map)
                 ## If using offshore zones, map offshore wind units from land to offshore zones
