@@ -893,17 +893,6 @@ $onlisting
  / ;
 
 
-* active prescriptivelink for all techs not included in the table above
-* but restrict out csp techs in this calculation - since they
-* are indexed by a separate pcat (csp-ws) and have special considerations
-prescriptivelink(pcat,i)$[sameas(pcat,i)$(not sum{ppcat, prescriptivelink(ppcat,i) })$(not csp1(i))] = yes ;
-*only geo_hydro techs are considered to meet geothermal prescriptions
-prescriptivelink(pcat,i)$[geo_extra(i)] = no ;
-
-
-*upgrades have no prescriptions
-prescriptivelink(pcat,i)$[upgrade(i)] = no ;
-
 set rsc_agg(i,ii)   "rsc technologies that belong to the same class" ;
 
 set tg_rsc_cspagg_tmp(i,ii) "expanded tg_rsc_cspagg(i,ii) to include new non-numeraire CSP techs" ;
