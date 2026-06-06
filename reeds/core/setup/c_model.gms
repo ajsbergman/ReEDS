@@ -292,7 +292,6 @@ eq_interconnection_queues(tg,r,t)         "--MW-- capacity deployment limit base
  eq_POI_cap(r,t)                             "--MW-- POI capacity accounting (for network reinforcement costs)"
  eq_CAPTRAN_GRP(transgrp,transgrpp,t)        "--MW-- combined flow capacity between transmission groups"
  eq_CAPTRAN_REG(transreg,transregg,t)        "--MW-- combined flow capacity between transmission regions"
- eq_captran_interfacemax(r,rr,trtype,t)      "--MW-- capacity limit on individual transmission interfaces"
  eq_captran_interreq_req(transreg,t)         "--MW-- interegional transmission capability requirement"
  eq_transgrp_limit_energy(transgrp,transgrpp,allh,t) "--MW-- limit on combined interface energy flows"
  eq_transgrp_limit_prm(transgrp,transgrpp,ccseason,t) "--MW-- limit on combined interface PRM flows"
@@ -2113,23 +2112,6 @@ eq_captran_interreq_req(transreg,t)
     =%GSw_TransInterRegRatioStyle%=
 
     captran_interreg_req(transreg,t)
-;
-
-* ---------------------------------------------------------------------------
-
-* Limit the AC transmission capacity of each interface to captran_interfacemax [MW]
-eq_captran_interfacemax(r,rr,trtype,t)
-    $[tmodel(t)
-    $Sw_TransCapMaxInterface
-    $(not captran_interfacemax_exceptions(r,rr))
-    $(not captran_interfacemax_exceptions(rr,r))
-    $routes(r,rr,trtype,t)]..
-
-    captran_interfacemax(r,rr,trtype,t)
-
-    =g=
-
-    CAPTRAN_ENERGY(r,rr,trtype,t)
 ;
 
 * ---------------------------------------------------------------------------

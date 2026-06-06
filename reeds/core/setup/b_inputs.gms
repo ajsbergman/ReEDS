@@ -3116,14 +3116,6 @@ $onlisting
 $offempty
 
 $onempty
-parameter captran_interfacemax(r,rr,trtype,allt) "--MW-- max transmission capacity of individual interfaces"
-/
-$offlisting
-$ondelim
-$include inputs_case%ds%captran_interfacemax.csv
-$offdelim
-$onlisting
-/ ;
 parameter trancap_init_itlgrp(itlgrp,itlgrpp,trtype) "--MW-- initial upper limit on interface flows between itlgrps"
 /
 *** TEMPORARY 20260402: Skip itlgrp functionality until we fix it
@@ -3134,15 +3126,6 @@ parameter trancap_init_itlgrp(itlgrp,itlgrpp,trtype) "--MW-- initial upper limit
 * $onlisting
 / ;
 $offempty
-
-set captran_interfacemax_exceptions(r,rr) "interfaces to ignore for GSw_TransCapMaxInterface"
-/
-$offlisting
-$ondelim
-$include inputs_case%ds%captran_interfacemax_exceptions.csv
-$offdelim
-$onlisting
-/ ;
 
 parameter captran_interreg_req(transreg,allt) "--MW-- Interregional transmission capability requirement"
 /
