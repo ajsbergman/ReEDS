@@ -127,7 +127,7 @@ def agg_supplycurve(
 
 
 def main(
-    reeds_path, inputs_case, write=True, **kwargs
+    reeds_path, inputs_case, exog_rsc_dat=None, write=True, **kwargs
 ):
     # #%% Settings for testing
     # reeds_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -182,13 +182,9 @@ def main(
     ).squeeze(1)
     deflate = dollaryear.map(deflator).rename('Deflator')
 
-    #%% Load the existing RSC capacity (PV plants, wind, and CSP) if not provided in main function call
-    if rsc_wsc_dat is None:
-        # writesupplycurves.py is being run as a main input processing script
-        rsc_wsc = pd.read_csv(os.path.join(inputs_case, "rsc_wsc.csv"))
-    else:
-        # writesupplycurves.py is being passed rsc_wsc data from an aggregate_regions.py call
-        rsc_wsc = rsc_wsc_dat.copy()
+    ##%% Load the existing RSC capacity (PV plants, wind, and CSP)
+    rsc_wsc = pd.read_csv(os.path.join(inputs_case, "rsc_wsc.csv"))
+
     #%% Load the existing RSC capacity (PV plants, wind, and CSP) if not provided in main function call
     if exog_rsc_dat is None:
         # writesupplycurves.py is being run as a main input processing script
