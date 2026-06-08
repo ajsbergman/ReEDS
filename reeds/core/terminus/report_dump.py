@@ -283,12 +283,13 @@ if __name__ == '__main__' and not hasattr(sys, 'ps1'):
     if int(sw.GSw_FINITO_Link):
         print("Loading FINITO outputs gdx")
         finito_gdx = os.path.join(outputs_path, f"finito_reeds_outputs_{os.path.basename(case)}.gdx")
-        if os.path.isfile(finito_gdx):
+        try:
             finito_outputs = gdxpds.to_dataframes(finito_gdx)
             dict_out.update(finito_outputs)
             print("Finished loading FINITO outputs gdx")
-        else:
-            print(f"FINITO outputs in {finito_gdx} could not be found, skipping.")
+        except Exception as err:
+            print(err)
+            print(f"Error loading FINITO outputs in {finito_gdx}, skipping.")
 
 
     write_dfdict(
