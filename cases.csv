@@ -374,8 +374,8 @@ pras_max_unitsize_prm,Cap the upper bound of disaggregated unit size by zone at 
 pras_samples,Indicate how many Monte Carlo samples to use in PRAS (if 0 then the .pras file is generated but PRAS is not run),int,100,
 pras_scheduled_outage,Include scheduled outages in PRAS (if 0 then a default outage rate of 0 is applied),0; 1,0,
 pras_seed,Seed to use for PRAS samples; can be any positive integer. If 0 the seed is set randomly,int,1,
-pras_singlethread,Force single-thread operation for PRAS (much slower but sometimes helps avoid Julia hangs and errors),^[0-1]$,0
-pras_trans_contingency,Indicate whether to use n-0 (0) or n-1 (1) transmission capacities in PRAS,0; 1,0,
+pras_singlethread,Force single-thread operation for PRAS (much slower but sometimes helps avoid Julia hangs and errors),^[0-1]$,0,
+pras_trans_contingency,Indicate whether to use energy (0) or PRM (1) transmission capacities in PRAS,0; 1,0,
 pras_unitsize_source,Data source for characteristic unit sizes in ReESD2PRAS,atb; r2x,atb,
 pras_vre_combine,Combine VRE into a single VRE tech in ReEDS2PRAS,0; 1,0,
 reeds_to_rev,switch to turn on/off ReV outputs,0; 1,1,
