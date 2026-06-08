@@ -32,7 +32,7 @@
 #   -h, --help            Print this help and exit
 #
 # Output (CSV to stdout):
-#   results_file,label,module,solver,size,status,total_s,solve_s,build_s,peak_mb,objective,time_limit,presolve,threads,highs_solver,highs_run_crossover,highs_load_path,xpress_lp_algorithm,allow_nonoptimal,num_variables,num_constraints,num_coefficients,highs_direct_load_path,highs_matrix_build_s,highs_run_s,xpress_matrix_build_s,xpress_run_s,solution_extract_s,fingerprint_s,arco_version,solver_runtime_available,error
+#   results_file,label,module,solver,size,status,total_s,solve_s,build_s,peak_mb,objective,time_limit,presolve,threads,highs_solver,highs_run_crossover,highs_load_path,xpress_lp_algorithm,allow_nonoptimal,num_variables,num_constraints,num_coefficients,highs_direct_load_path,highs_model_status,highs_primal_solution_status,highs_matrix_build_s,highs_run_s,xpress_matrix_build_s,xpress_run_s,solution_extract_s,fingerprint_s,arco_version,solver_runtime_available,error
 set -euo pipefail
 
 RUNS_BASE="${TORC_RUNS_BASE:-/scratch/${USER}/torc-runs}"
@@ -128,6 +128,8 @@ JQ_SCRIPT='
       s(.solve_metadata.num_constraints),
       s(.solve_metadata.num_coefficients),
       s(.solve_metadata.highs_direct_load_path),
+      s(.solve_metadata.highs_model_status),
+      s(.solve_metadata.highs_primal_solution_status),
       s(.solve_metadata.highs_matrix_build_s),
       s(.solve_metadata.highs_run_s),
       s(.solve_metadata.xpress_matrix_build_s),
@@ -141,7 +143,7 @@ JQ_SCRIPT='
   | @csv
 '
 
-CSV_HEADER='results_file,label,module,solver,size,status,total_s,solve_s,build_s,peak_mb,objective,time_limit,presolve,threads,highs_solver,highs_run_crossover,highs_load_path,xpress_lp_algorithm,allow_nonoptimal,num_variables,num_constraints,num_coefficients,highs_direct_load_path,highs_matrix_build_s,highs_run_s,xpress_matrix_build_s,xpress_run_s,solution_extract_s,fingerprint_s,arco_version,solver_runtime_available,error'
+CSV_HEADER='results_file,label,module,solver,size,status,total_s,solve_s,build_s,peak_mb,objective,time_limit,presolve,threads,highs_solver,highs_run_crossover,highs_load_path,xpress_lp_algorithm,allow_nonoptimal,num_variables,num_constraints,num_coefficients,highs_direct_load_path,highs_model_status,highs_primal_solution_status,highs_matrix_build_s,highs_run_s,xpress_matrix_build_s,xpress_run_s,solution_extract_s,fingerprint_s,arco_version,solver_runtime_available,error'
 
 emit_csv_row() {
   local file="$1"
@@ -210,6 +212,8 @@ row = [
     stringify(get("solve_metadata.num_constraints")),
     stringify(get("solve_metadata.num_coefficients")),
     stringify(get("solve_metadata.highs_direct_load_path")),
+    stringify(get("solve_metadata.highs_model_status")),
+    stringify(get("solve_metadata.highs_primal_solution_status")),
     stringify(get("solve_metadata.highs_matrix_build_s")),
     stringify(get("solve_metadata.highs_run_s")),
     stringify(get("solve_metadata.xpress_matrix_build_s")),
@@ -266,7 +270,8 @@ emit_csv_row() {
          s(.run_options.highs_run_crossover),s(.run_options.highs_load_path),
          s(.run_options.xpress_lp_algorithm),s(.run_options.allow_nonoptimal),
          s(.solve_metadata.num_variables),s(.solve_metadata.num_constraints),s(.solve_metadata.num_coefficients),
-         s(.solve_metadata.highs_direct_load_path),s(.solve_metadata.highs_matrix_build_s),s(.solve_metadata.highs_run_s),
+         s(.solve_metadata.highs_direct_load_path),s(.solve_metadata.highs_model_status),
+         s(.solve_metadata.highs_primal_solution_status),s(.solve_metadata.highs_matrix_build_s),s(.solve_metadata.highs_run_s),
          s(.solve_metadata.xpress_matrix_build_s),s(.solve_metadata.xpress_run_s),
          s(.solve_metadata.solution_extract_s),s(.solve_metadata.fingerprint_s),
          s(.framework_metadata.arco_version),s(.framework_metadata.solver_runtime_info.runtime_available),
@@ -335,6 +340,8 @@ row = [
     stringify(get("solve_metadata.num_constraints")),
     stringify(get("solve_metadata.num_coefficients")),
     stringify(get("solve_metadata.highs_direct_load_path")),
+    stringify(get("solve_metadata.highs_model_status")),
+    stringify(get("solve_metadata.highs_primal_solution_status")),
     stringify(get("solve_metadata.highs_matrix_build_s")),
     stringify(get("solve_metadata.highs_run_s")),
     stringify(get("solve_metadata.xpress_matrix_build_s")),
@@ -374,7 +381,7 @@ if (( ${#files[@]} == 0 )); then
   echo "No files matching '${JSON_GLOB}' under: ${results_dir}" >&2; exit 1
 fi
 
-printf '%s\n' 'results_file,label,module,solver,size,status,total_s,solve_s,build_s,peak_mb,objective,time_limit,presolve,threads,highs_solver,highs_run_crossover,highs_load_path,xpress_lp_algorithm,allow_nonoptimal,num_variables,num_constraints,num_coefficients,highs_direct_load_path,highs_matrix_build_s,highs_run_s,xpress_matrix_build_s,xpress_run_s,solution_extract_s,fingerprint_s,arco_version,solver_runtime_available,error'
+printf '%s\n' "${CSV_HEADER}"
 for file in "${files[@]}"; do
   emit_csv_row "${file}" "$(basename "${file}")"
 done

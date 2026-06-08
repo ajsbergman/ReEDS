@@ -17,10 +17,18 @@ NUMERIC_COLUMNS = (
     "num_variables",
     "num_constraints",
     "num_coefficients",
+    "highs_model_status",
+    "highs_primal_solution_status",
     "highs_matrix_build_s",
     "xpress_matrix_build_s",
 )
-INTEGER_COLUMNS = ("num_variables", "num_constraints", "num_coefficients")
+INTEGER_COLUMNS = (
+    "num_variables",
+    "num_constraints",
+    "num_coefficients",
+    "highs_model_status",
+    "highs_primal_solution_status",
+)
 OPTION_COLUMNS = (
     "presolve",
     "threads",
@@ -32,6 +40,8 @@ METADATA_COLUMNS = (
     "num_variables",
     "num_constraints",
     "num_coefficients",
+    "highs_model_status",
+    "highs_primal_solution_status",
     "highs_matrix_build_s",
     "xpress_matrix_build_s",
 )

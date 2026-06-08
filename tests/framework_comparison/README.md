@@ -320,11 +320,11 @@ python tests/framework_comparison/create_comparison_benchmark_table.py /tmp/resu
 standard-library Python JSON parser. The emitted CSV includes backend
 `run_options` and `solve_metadata` columns for requested solver settings, model
 dimensions, matrix-build/run timings, solution-extraction time, fingerprint
-time, and Arco's HiGHS direct-load flag; use those columns to compare
-memory/performance branches instead of relying only on job labels. The markdown
-table generator includes those option and metadata columns when they are present
-in the input CSV, while older compact CSVs still render with the original
-columns.
+time, Arco's HiGHS direct-load flag, and raw HiGHS model/primal-solution status
+codes; use those columns to compare memory/performance branches instead of
+relying only on job labels or time-limit objective values. The markdown table
+generator includes those option and metadata columns when they are present in
+the input CSV, while older compact CSVs still render with the original columns.
 
 `run_framework.py --threads <n>` forwards an explicit solver thread count to
 framework adapters that support it. When omitted under Slurm,

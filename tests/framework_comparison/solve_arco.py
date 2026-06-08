@@ -32,6 +32,23 @@ from data_generator import ProblemData
 LAST_SOLVE_METADATA: dict[str, float] = {}
 LAST_SOLVE_STATUS: str | None = None
 LAST_FRAMEWORK_METADATA: dict[str, object] = {}
+HIGHS_PRIMAL_SOLUTION_FEASIBLE = 2.0
+
+
+def _objective_value_for_reporting(
+    objective_value: float, solve_metadata: dict[str, float]
+) -> float:
+    """Return NaN when HiGHS has not reported a feasible primal solution."""
+    primal_status = solve_metadata.get("highs_primal_solution_status")
+    if primal_status is not None and primal_status != HIGHS_PRIMAL_SOLUTION_FEASIBLE:
+        return float("nan")
+    return objective_value
+
+
+def _format_objective_value(objective_value: float) -> str:
+    if objective_value != objective_value:
+        return "n/a"
+    return f"{objective_value:>18,.0f}"
 
 
 def _constraint_reserve_count(data: ProblemData) -> int:
@@ -366,11 +383,14 @@ def solve(
             f"{solver} did not find an optimal solution: {result.status}"
         )
 
-    return float(result.objective_value), build_s, solve_s
+    objective_value = _objective_value_for_reporting(
+        float(result.objective_value), LAST_SOLVE_METADATA
+    )
+    return objective_value, build_s, solve_s
 
 
 class ArcoProbePayload(TypedDict):
-    objective: float
+    objective: float | None
     build_s: float
     solve_s: float
     status: NotRequired[str]
@@ -401,7 +421,7 @@ def solve_probe(
         require_optimal=False,
     )
     payload: ArcoProbePayload = {
-        "objective": objective,
+        "objective": None if objective != objective else objective,
         "build_s": build_s,
         "solve_s": solve_s,
     }
@@ -421,4 +441,7 @@ if __name__ == "__main__":
     for size in ("small", "medium", "large", "xlarge"):
         data = make_problem(size)
         obj, b, s = solve(data)
-        print(f"{size:6s}  obj={obj:>18,.0f}  build={b:.3f}s  solve={s:.3f}s")
+        print(
+            f"{size:6s}  obj={_format_objective_value(obj)}  "
+            f"build={b:.3f}s  solve={s:.3f}s"
+        )
