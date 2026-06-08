@@ -324,7 +324,13 @@ def calculate_daily_gasprice_multipliers(
     gasreg-level price multipliers. To derive r-level multipliers, the
     gasreg-level multipliers are copied to their constituent zones. To
     derive cendiv-level multipliers, gasreg-level multipliers are
-    aggregated via population-weighted average. 
+    aggregated via population-weighted average.
+    
+    Note that this function just gives an intermediate result, which is
+    passed to hourly_writetimeseries.py for further processing. In
+    hourly_writetimeseries.py, the multipliers are renormalized so that the
+    year-round average multiplier for the set of representative periods
+    is 1 for each region.
 
     Args:
         inputs_case: Path to the inputs case directory.
@@ -386,12 +392,6 @@ def calculate_daily_gasprice_multipliers(
             + month_effects.values
         )
         gasreg_price_multipliers = np.exp(gasreg_price_log_mult_diffs)
-        # Divide each multiplier by the annual average of the multipliers
-        # to ensure a mean of 1 (so that the year-round average gas price
-        # doesn't change). 
-        gasreg_price_multipliers = gasreg_price_multipliers.div(
-            gasreg_price_multipliers.groupby(level=0).mean()
-        )
         df_out[gasreg] = gasreg_price_multipliers
 
     # Get hierarchy

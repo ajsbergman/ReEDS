@@ -1384,7 +1384,13 @@ def main(sw, reeds_path, inputs_case, periodtype='rep', make_plots=1, logging=Tr
             df.loc[df.index.get_level_values('h').isin(chunkmap.values())]
             .stack('t')
             .rename('multiplier')
+        )
+        # Renormalize so the average for each region and year is 1,
+        # ensuring the year-round average gas price doesn't change.
+        df = (
+            df.div(df.groupby(level=[region_level, 't']).mean())
             .reset_index()
+            [[region_level, 'h', 't', 'multiplier']]
         )
         daily_gasprice_multipliers_dict[region_level] = df
 
