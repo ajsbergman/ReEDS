@@ -282,13 +282,13 @@ if __name__ == '__main__' and not hasattr(sys, 'ps1'):
     ### FINITO outputs when running linked model
     if int(sw.GSw_FINITO_Link):
         print("Loading FINITO outputs gdx")
-        # TODO: this is much slower than loading the ReEDS outputs, 
-        # need to figure out why and address
-        finito_outputs = gdxpds.to_dataframes(
-            os.path.join(outputs_path, f"finito_reeds_outputs_{os.path.basename(case)}.gdx")
-        )
-        print("Finished loading FINITO outputs gdx")
-        dict_out.update(finito_outputs)
+        finito_gdx = os.path.join(outputs_path, f"finito_reeds_outputs_{os.path.basename(case)}.gdx")
+        if os.path.isfile(finito_gdx):
+            finito_outputs = gdxpds.to_dataframes(finito_gdx)
+            dict_out.update(finito_outputs)
+            print("Finished loading FINITO outputs gdx")
+        else:
+            print(f"FINITO outputs in {finito_gdx} could not be found, skipping.")
 
 
     write_dfdict(
