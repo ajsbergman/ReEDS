@@ -162,38 +162,6 @@ def aggregate_regional_degree_days_to_aggregion(
     )
     return aggregional_degree_days
 
-# def aggregate_state_degree_days_to_gasreg(
-#     state_degree_days: pd.DataFrame,
-#     state_weights: pd.Series
-# ) -> pd.DataFrame:
-#     """
-#     Aggregate state-level degree days to the gasreg level via
-#     population-weighted average.
-
-#     Args:
-#         historical_daily_state_degree_days: Daily historical
-#             state-level degree days.
-#         state_weights: The percentage of each state's share of
-#             gasreg population.
-
-#     Returns:
-#         pd.DataFrame
-#     """
-#     # Get state-to-gasreg mapping
-#     state_groups = reeds.inputs.get_state_groups()
-#     st2gasreg = state_groups.set_index('st')['gasreg']
-
-#     # Calculate weighted average
-#     gasreg_degree_days = (
-#         (state_degree_days * state_weights)
-#         .transpose()
-#         .rename(st2gasreg)
-#         .groupby(level=0)
-#         .sum()
-#         .transpose()
-#     )
-#     return gasreg_degree_days
-
 def rescale_historical_daily_degree_days_to_projected_annuals(
     historical_daily_degree_days: pd.DataFrame,
     projected_annual_degree_days: pd.DataFrame
