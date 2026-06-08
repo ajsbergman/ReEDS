@@ -342,6 +342,8 @@ plantcharout.txt,.txt,0,None,1,"0,2",0,None,constant,None,None,"done. consider f
 plexos_inputs.gdx,.gdx,1,None,9999,None,9999,0,constant,None,None,done (wouldn't exist yet in normal run),constant
 poi_cap_init.csv,.csv,1,None,9999,None,9999,0,constant,None,None,new,
 prepost.csv,.csv,1,None,9999,None,9999,0,constant,None,None,new,
+prescribed_builds_wind-ofs.csv,.csv,1,None,9999,None,9999,0,constant,None,None,done,constant
+prescribed_builds_wind-ons.csv,.csv,1,None,9999,None,9999,0,constant,None,None,done,constant
 prescribed_nonRSC_energy.csv,.csv,1,None,9999,None,9999,0,constant,None,None,new,
 prescribed_nonRSC.csv,.csv,1,None,9999,None,9999,0,constant,None,None,done,constant
 prescribed_rsc.csv,.csv,1,None,9999,None,9999,0,constant,None,None,done,constant
