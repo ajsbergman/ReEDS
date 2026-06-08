@@ -234,7 +234,7 @@ itc_frac_monetized.csv,,1,ignore,ignore,,,,,0,,,,,,
 itc_fractions.csv,,1,ignore,ignore,,"i,country,t",,0,0,,,,,,
 ivt.csv,,1,ignore,ignore,,,,,0,,,,,,created in runreeds.py
 ivt_step.csv,,1,ignore,ignore,,,,,0,,,,,,
-jtype.csv,inputs/sets/jtype.csv,1,ignore,ignore,,,,,,,,,jtype,,
+jtype.csv,inputs/sets/jtype.csv,1,ignore,ignore,,,,,0,,,set,jtype,job type for employment factors,
 lcclike.csv,inputs/sets/lcclike.csv,1,ignore,ignore,,,,,0,,,set,lcclike,transmission capacity types where lines are bundled with AC/DC converters,
 load_2010.csv,,1,sum,ignore,r,wide,,1,0,,1,,,,disaggfunc set to ignore because load will already be in correct spatial resolution
 load_allyear.csv,,1,sum,ignore,*r,"h,t",,0,0,,1,,,,disaggfunc set to ignore because load will already be in correct spatial resolution

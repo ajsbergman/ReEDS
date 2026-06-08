@@ -93,13 +93,6 @@ $gdxin
 set land(r) "land-based (not offshore) zones" ;
 land(r)$[not offshore(r)] = yes ;
 
-* TODO: is this needed?
-* set jtype "job types used in model (construction and o&m jobs)"
-* /
-* $offlisting
-* $include inputs_case%ds%jtype.csv
-* $onlisting
-* / ;
 
 
 sets
