@@ -1964,6 +1964,8 @@ def main_mga_rv(
 
     runs_folder_name = os.path.basename(os.path.dirname(inputs_case.rstrip(os.path.sep)))
     mga_run_number = int((runs_folder_name.split('_')[-1]).replace('R', ''))
+    region_labels = np.repeat(val_r, len(subsets))
+    subset_labels = np.tile(subsets, len(val_r))
     
     # sample using LHS or random approach
     if lhs_sampling:
@@ -1974,10 +1976,12 @@ def main_mga_rv(
         lhs_samples = lhs_sampler.random(n=n_samples)
         # record the lhs sampling matrix in each run folder
         lhs_samples_out = pd.DataFrame({'run': [f"R{i:0>4}" for i in range(1, n_samples + 1)]})
-        lhs_samples_out = pd.concat(
-            [lhs_samples_out, pd.DataFrame(lhs_samples.round(6))], axis=1
-        )
-        lhs_samples_out.to_csv(os.path.join(inputs_case, "mga_rv_latin_hypercube_samples.csv"), index=False)
+
+        lhs_samples_out = pd.DataFrame(lhs_samples.round(6)).T
+        lhs_samples_out.columns = [f"R{i:0>4}" for i in range(1, n_samples + 1)]
+        lhs_samples_out.index = [f"{region_labels[i]}_{subset_labels[i]}" for i in range(len(region_labels))]
+        lhs_samples_out.index.name = 'dimension'
+        lhs_samples_out.to_csv(os.path.join(inputs_case, "mga_rv_latin_hypercube_samples.csv"))
 
         # get the weights for this specific run (-1 to adjust for zero indexing)
         mga_weights_raw = lhs_samples[mga_run_number - 1]
@@ -1988,8 +1992,6 @@ def main_mga_rv(
         mga_weights_raw = np.random.uniform(0, 1, dimensions)
 
     # save vector of weights for this run (rounded to 6 decimal places) 
-    region_labels = np.repeat(val_r, len(subsets))
-    subset_labels = np.tile(subsets, len(val_r))
     mga_weights = pd.DataFrame({'*r': region_labels, 'i_subtech': subset_labels, 'weight': mga_weights_raw.round(6)})
     mga_weights.to_csv(os.path.join(inputs_case, "mga_weights.csv"), index=False)
     
