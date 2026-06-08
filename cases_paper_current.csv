@@ -1,6 +1,7 @@
 ,Default Value,Restricted,Enhanced,Enhanced_Inter,Enhanced_Inter_ITC
 ignore,0,,,,
 GSw_LoadProfiles,EER2023_IRAmoderate,,,,
+resource_adequacy_years,2007_2008_2009_2010_2011_2012_2013,,,,
 GSw_GrowthPenalties,1,,,,
 financials_trans_suffix,11yr,,8yr,8yr,30ITC_0pen
 GSw_TransCostMult,1.13,,1,1,1
