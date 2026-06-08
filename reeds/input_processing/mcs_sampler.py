@@ -1973,10 +1973,11 @@ def main_mga_rv(
         # a run-specific seed we draw for all runs at once using the global seed value 
         lhs_sampler = scipy.stats.qmc.LatinHypercube(d=dimensions, seed=seed)
         # lhs_samples are arranged n x d (n = samples, d = dimensions)
-        lhs_samples = lhs_sampler.random(n=n_samples)
+        lhs_samples_cdf = lhs_sampler.random(n=n_samples)
+        # translate CDF samples into weights using uniform distribution (-1 to 1 to allow for simultaneous min/max)
+        lhs_samples = scipy.stats.uniform.ppf(lhs_samples_cdf, loc=-1, scale=2)
+        
         # record the lhs sampling matrix in each run folder
-        lhs_samples_out = pd.DataFrame({'run': [f"R{i:0>4}" for i in range(1, n_samples + 1)]})
-
         lhs_samples_out = pd.DataFrame(lhs_samples.round(6)).T
         lhs_samples_out.columns = [f"R{i:0>4}" for i in range(1, n_samples + 1)]
         lhs_samples_out.index = [f"{region_labels[i]}_{subset_labels[i]}" for i in range(len(region_labels))]
@@ -1988,8 +1989,8 @@ def main_mga_rv(
     else:
         # set random seed using the global seed + MGA run number to allow reproducibility
         np.random.seed(seed + mga_run_number)
-        # get the weights for this specific run
-        mga_weights_raw = np.random.uniform(0, 1, dimensions)
+        # get the weights for this specific run (-1 to 1 to allow for simultaneous min/max)
+        mga_weights_raw = np.random.uniform(-1, 1, dimensions)
 
     # save vector of weights for this run (rounded to 6 decimal places) 
     mga_weights = pd.DataFrame({'*r': region_labels, 'i_subtech': subset_labels, 'weight': mga_weights_raw.round(6)})
