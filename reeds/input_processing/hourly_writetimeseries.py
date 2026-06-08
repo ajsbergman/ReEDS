@@ -1581,7 +1581,7 @@ def main(sw, reeds_path, inputs_case, periodtype='rep', make_plots=1, logging=Tr
             False,
             False,
         ],
-        ## Annual timeslice gas price multipliers
+        ## Gas price multipliers
         'daily_gasprice_multipliers_r': [
             daily_gasprice_multipliers_dict['r'].round(decimals),
             False,

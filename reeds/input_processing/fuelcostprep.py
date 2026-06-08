@@ -33,7 +33,6 @@ def calculate_region_aggregion_population_weights(
     level, calculate each region's share of its corresponding
     aggregion's total population.
     
-    
     Args:
         inputs_case: Path to the inputs case directory.
         region_level: Region level (example: 'state')
@@ -44,7 +43,7 @@ def calculate_region_aggregion_population_weights(
         pd.Series
     """
     # Get county populations
-    county_populations = reeds.io.get_county_populations()
+    county_populations = reeds.inputs.get_county_populations()
     county_populations = county_populations.rename(
         columns={'value': 'population'}
     )
@@ -57,7 +56,7 @@ def calculate_region_aggregion_population_weights(
     county2zone['FIPS'] = (
         'p' + county2zone['FIPS'].astype(str).str.zfill(5)
     )
-    state_groups = reeds.io.get_state_groups()
+    state_groups = reeds.inputs.get_state_groups()
     county2zone = county2zone.merge(
         state_groups,
         left_on='state',
@@ -134,38 +133,66 @@ def calculate_historical_daily_state_degree_days(
 
     return hdd_daily, cdd_daily
 
-def aggregate_state_degree_days_to_gasreg(
-    state_degree_days: pd.DataFrame,
-    state_weights: pd.Series
+def aggregate_regional_degree_days_to_aggregion(
+    regional_degree_days: pd.DataFrame,
+    region_aggregion_weights: pd.Series,
+    region2aggregion: dict[str, str]
 ) -> pd.DataFrame:
     """
-    Aggregate state-level degree days to the gasreg level via
-    population-weighted average.
+    Aggregate region-level degree days to the aggregated region
+    ("aggregion") level via weighted average.
 
     Args:
-        historical_daily_state_degree_days: Daily historical
-            state-level degree days.
-        state_weights: The percentage of each state's share of
-            gasreg population.
-        st2gasreg: State-to-gasreg mapping.
+        regional_degree_days: Region-level degree days.
+        region_aggregion_weights: The "weight" of each region
+            corresponding to its aggregion to use in weighted
+            average calculation.
+        region2aggregion: Mapping between regions and aggregions.
 
     Returns:
         pd.DataFrame
     """
-    # Get state-to-gasreg mapping
-    state_groups = reeds.io.get_state_groups()
-    st2gasreg = state_groups.set_index('st')['gasreg']
-
-    # Calculate weighted average
-    gasreg_degree_days = (
-        (state_degree_days * state_weights)
+    aggregional_degree_days = (
+        regional_degree_days.mul(region_aggregion_weights)
         .transpose()
-        .rename(st2gasreg)
+        .rename(region2aggregion)
         .groupby(level=0)
         .sum()
         .transpose()
     )
-    return gasreg_degree_days
+    return aggregional_degree_days
+
+# def aggregate_state_degree_days_to_gasreg(
+#     state_degree_days: pd.DataFrame,
+#     state_weights: pd.Series
+# ) -> pd.DataFrame:
+#     """
+#     Aggregate state-level degree days to the gasreg level via
+#     population-weighted average.
+
+#     Args:
+#         historical_daily_state_degree_days: Daily historical
+#             state-level degree days.
+#         state_weights: The percentage of each state's share of
+#             gasreg population.
+
+#     Returns:
+#         pd.DataFrame
+#     """
+#     # Get state-to-gasreg mapping
+#     state_groups = reeds.inputs.get_state_groups()
+#     st2gasreg = state_groups.set_index('st')['gasreg']
+
+#     # Calculate weighted average
+#     gasreg_degree_days = (
+#         (state_degree_days * state_weights)
+#         .transpose()
+#         .rename(st2gasreg)
+#         .groupby(level=0)
+#         .sum()
+#         .transpose()
+#     )
+#     return gasreg_degree_days
 
 def rescale_historical_daily_degree_days_to_projected_annuals(
     historical_daily_degree_days: pd.DataFrame,
@@ -249,8 +276,7 @@ def calculate_daily_gasreg_degree_days(
     Returns:
         (pd.DataFrame, pd.DataFrame)
     """
-    # Calculate population-based state-gasreg weights for
-    # calculating population-weighted gasreg-level degree days
+    # Calculate population-based state-gasreg weights
     state_gasreg_weights = calculate_region_aggregion_population_weights(
         inputs_case,
         region_level='state',
@@ -264,13 +290,17 @@ def calculate_daily_gasreg_degree_days(
 
     # Aggregate historical daily state-level degree days to
     # the gasreg level via population-weighted average
-    historical_hdd_daily_gasreg = aggregate_state_degree_days_to_gasreg(
+    state_groups = reeds.inputs.get_state_groups()
+    st2gasreg = state_groups.set_index('st')['gasreg']
+    historical_hdd_daily_gasreg = aggregate_regional_degree_days_to_aggregion(
         historical_hdd_daily_st,
-        state_gasreg_weights
+        state_gasreg_weights,
+        st2gasreg
     )
-    historical_cdd_daily_gasreg = aggregate_state_degree_days_to_gasreg(
+    historical_cdd_daily_gasreg = aggregate_regional_degree_days_to_aggregion(
         historical_cdd_daily_st,
-        state_gasreg_weights
+        state_gasreg_weights,
+        st2gasreg
     )
 
     # Get gasreg-level annual HDD/CDD projections
@@ -411,13 +441,10 @@ def calculate_daily_gasprice_multipliers(
         aggregion_level='cendiv'
     )
     gasreg_cendiv_map = dict(zip(hierarchy['gasreg'], hierarchy['cendiv']))
-    df_out_cendiv = (
-        df_out.mul(gasreg_cendiv_weights)
-        .transpose()
-        .rename(gasreg_cendiv_map)
-        .groupby(level=0)
-        .sum()
-        .transpose()
+    df_out_cendiv = aggregate_regional_degree_days_to_aggregion(
+        df_out,
+        gasreg_cendiv_weights,
+        gasreg_cendiv_map
     )
 
     return df_out_r, df_out_cendiv

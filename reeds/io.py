@@ -1323,26 +1323,6 @@ def get_distpv_cf_hourly():
     )
     return read_file(h5path, parse_timestamps=True)
 
-def get_county_populations():
-    return pd.read_csv(
-        os.path.join(
-            reeds_path,
-            'inputs',
-            'disaggregation',
-            'county_population.csv'
-        )
-    )
-
-def get_state_groups():
-    return pd.read_csv(
-        os.path.join(
-            reeds_path,
-            'inputs',
-            'zones',
-            'state_groups.csv'
-        )
-    )
-
 def get_years(case):
     return pd.read_csv(
         os.path.join(case, 'inputs_case', 'modeledyears.csv')

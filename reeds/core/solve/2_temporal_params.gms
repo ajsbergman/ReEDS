@@ -892,7 +892,7 @@ $onlisting
 $offempty
 
 $onempty
-parameter gasprice_adj_cendiv(cendiv,allh,allt) "--unitless-- daily gas price multipliers by region, timeslice, and year"
+parameter gasprice_adj_cendiv(cendiv,allh,allt) "--unitless-- daily gas price multipliers by cendiv, timeslice, and year"
 / 
 $offlisting
 $ondelim
@@ -912,7 +912,7 @@ scalar szn_adj_gas_avg "--unitless-- hour-weighted average of natural gas season
 szn_adj_gas_avg = sum{h, szn_adj_gas(h) * hours(h) } / sum{h, hours(h) } ;
 szn_adj_gas(h) = szn_adj_gas(h) / szn_adj_gas_avg ;
 
-* If GSw_GasPriceAdjMethod = 0, apply the national winter gas markup instead of daily regional adjustments
+* If GSw_GasPriceAdjMethod = 0, replace daily regional adjustments with the national wintertime markup
 gasprice_adj_r(r,h,t)$(Sw_GasPriceAdjMethod = 0) = szn_adj_gas(h) ;
 gasprice_adj_cendiv(cendiv,h,t)$(Sw_GasPriceAdjMethod = 0) = szn_adj_gas(h) ;
 

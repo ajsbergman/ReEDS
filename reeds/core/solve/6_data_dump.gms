@@ -205,7 +205,7 @@ repgasprice_r(r,t)$[(Sw_GasCurve = 0 or Sw_GasCurve = 2)$tcur(t)] = sum{cendiv$r
 
 repgasprice_r(r,t)$[(Sw_GasCurve = 1)$tcur(t)] =
               ( sum{(h,cendiv),
-                   gasmultterm(cendiv,t) * cendiv_weights(r,cendiv) * hours(h) * gasprice_adj_cendiv(cendiv,h,t)} / sum{h, hours(h) }
+                   gasmultterm(cendiv,t) * cendiv_weights(r,cendiv) * hours(h) * gasprice_adj_r(r,h,t)} / sum{h, hours(h) }
 
               + smax((fuelbin,cendiv)$[VGASBINQ_REGIONAL.l(fuelbin,cendiv,t)$r_cendiv(r,cendiv)], gasbinp_regional(fuelbin,cendiv,t) )
 

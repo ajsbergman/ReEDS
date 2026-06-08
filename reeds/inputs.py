@@ -838,3 +838,23 @@ def validate_zoneset(GSw_ZoneSet):
                 "to ensure each aggreg is only assigned to a single hierarchy level."
             )
             raise ValueError(err)
+
+def get_county_populations():
+    return pd.read_csv(
+        os.path.join(
+            reeds.io.reeds_path,
+            'inputs',
+            'disaggregation',
+            'county_population.csv'
+        )
+    )
+
+def get_state_groups():
+    return pd.read_csv(
+        os.path.join(
+            reeds.io.reeds_path,
+            'inputs',
+            'zones',
+            'state_groups.csv'
+        )
+    )
