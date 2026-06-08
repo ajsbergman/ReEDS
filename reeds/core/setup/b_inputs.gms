@@ -1373,13 +1373,6 @@ forced_retire(i,r,t)$[sum{st$r_st(r,st), (yeart(t)>=forced_retirements(i,st))$fo
 * upgrade tech in forced_retire
 forced_retire(i,r,t)$[upgrade(i)$(sum{ii$upgrade_to(i,ii), forced_retire(ii,r,t) })] = yes ;
 
-set hintage_char "characteristics available in hintage_data"
-/
-$offlisting
-$include inputs_case%ds%hintage_char.csv
-$onlisting
-/ ;
-
 *created by reeds/input_processing/writehintage.py
 table hintage_data(i,v,r,allt,hintage_char) "table of existing unit characteristics"
 $offlisting
