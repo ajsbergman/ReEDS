@@ -6033,6 +6033,34 @@ $else.upgrade_ef
 employment_factor_plant(i,"construction")$upgrade(i) = employment_factor_plant(i,"construction") * 0.5 ;
 $endif.upgrade_ef
 
+*====================================
+* --- MGA Random Vector Weights ---
+*====================================
+
+$ifthene.mgaobj ((sameas(%GSw_MGA_Objective%,capacity))or(sameas(%GSw_MGA_Objective%,generation)))
+
+parameter mga_weights(r,i_subtech) "--unitless-- weight to assign to given MGA subobjective by region" ;
+      
+$ifthene.mga_rv (%MGA_RV_runs%>=1)
+parameter mga_weights_in(r,i_subtech)
+/
+$offlisting
+$ondelim
+$include inputs_case%ds%mga_weights.csv
+$offdelim
+$onlisting
+/ ;
+mga_weights(r,i_subtech) = mga_weights_in(r,i_subtech) ;
+$else.mga_rv
+mga_weights(r,i_subtech) = 1 ;
+$endif.mga_rv
+
+$endif.mgaobj
+
+
+*TODO: add different handling for other subobjectives with different dimensions
+* should we also include error checking?
+
 
 *================================================================================================
 *== h- and szn-dependent sets and parameters (declared here, populated in 2_temporal_params) ===

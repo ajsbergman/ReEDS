@@ -21,7 +21,8 @@ eq_MGA_Objective$Sw_MGA..
         $[tmodel(t)
         $valcap(i,v,r,t)
         $%GSw_MGA_SubObjective%(i)],
-        CAP(i,v,r,t)
+        CAP(i,v,r,t) 
+        * sum{i_subtech$i_subsets(i,i_subtech), mga_weights(r,i_subtech)}
     }
 ;
 
@@ -37,7 +38,8 @@ eq_MGA_Objective$Sw_MGA..
         $[tmodel(t)
         $valgen(i,v,r,t)
         $%GSw_MGA_SubObjective%(i)],
-        GEN(i,v,r,h,t) * hours(h)
+        GEN(i,v,r,h,t) * hours(h) 
+        * sum{i_subtech$i_subsets(i,i_subtech), mga_weights(r,i_subtech)}
     }
 ;
 
