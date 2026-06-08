@@ -273,6 +273,4 @@ wst_climate.csv,inputs/sets/wst_climate.csv,1,ignore,ignore,,,,,0,,,set,wst_clim
 yearafter.csv,inputs/sets/yearafter.csv,1,ignore,ignore,,,,,,,,set,yearafter,set to loop over for the final year calculation,
 Project.toml,Project.toml,1,ignore,ignore,,,,,,,,,,,
 gamslice.txt,gamslice.txt,0,ignore,ignore,,,,,,,,,,,
-mcs_latin_hypercube_samples.csv,,0,ignore,ignore,,,,,,,,,,,
-mga_weights.csv,,0,ignore,ignore,,,,,,,,,,,
 runreeds.py,runreeds.py,1,ignore,ignore,,,,,,,,,,,
