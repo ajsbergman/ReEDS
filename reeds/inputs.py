@@ -301,7 +301,7 @@ def parse_cases(
                 if int(dfcases[c].MCS_runs) > 0:
                     mcs_sampler.general_mcs_dist_validation(reeds.io.reeds_path, mcs_dist_path, sw)
                     numruns = int(dfcases[c].MCS_runs)
-                    run_type = 'MCS'
+                    run_type = 'MC'
                 else:                    
                     numruns = int(dfcases[c].GSw_MGA_RV_runs)
                     run_type = 'R'
