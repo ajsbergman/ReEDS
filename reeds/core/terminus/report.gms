@@ -529,7 +529,7 @@ repgasquant_nat(t)$tmodel_new(t) = sum{cendiv, repgasquant(cendiv,t) } ;
 *for reported gasprice (not that used to compute system costs)
 *scale back to $ / mmbtu
 repgasprice(cendiv,t)$[(Sw_GasCurve = 0)$tmodel_new(t)$repgasquant(cendiv,t)] =
-    smax{gb$[sum{h, GASUSED.l(cendiv,gb,h,t) * gasprice_adj_cendiv(cendiv,h,t)}], gasprice(cendiv,gb,t) } / gas_scale ;
+    smax{gb$[sum{h, GASUSED.l(cendiv,gb,h,t) * gasprice_adj_cendiv(cendiv,h,t) }], gasprice(cendiv,gb,t) } / gas_scale ;
 
 repgasprice(cendiv,t)$[(Sw_GasCurve = 2)$tmodel_new(t)$repgasquant(cendiv,t)] =
     sum{(i,v,r,h)$[r_cendiv(r,cendiv)$valgen(i,v,r,t)$gas(i)$heat_rate(i,v,r,t)],
@@ -541,7 +541,7 @@ repgasprice_r(r,t)$[(Sw_GasCurve = 0 or Sw_GasCurve = 2)$tmodel_new(t)] = sum{ce
 repgasprice_r(r,t)$[(Sw_GasCurve = 1)$tmodel_new(t)] =
               ( sum{(h,cendiv),
                    gasmultterm(cendiv,t) * cendiv_weights(r,cendiv) *
-                   hours(h) * gasprice_adj_cendiv(cendiv,h,t) } / sum{h, hours(h) }
+                   hours(h) * gasprice_adj_r(r,h,t) } / sum{h, hours(h) }
 
               + smax((fuelbin,cendiv)$[VGASBINQ_REGIONAL.l(fuelbin,cendiv,t)$r_cendiv(r,cendiv)], gasbinp_regional(fuelbin,cendiv,t) )
 

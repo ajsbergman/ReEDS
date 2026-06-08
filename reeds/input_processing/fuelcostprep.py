@@ -113,7 +113,7 @@ def calculate_historical_daily_state_degree_days(
     # Get hourly state-level temperatures for the given weather year(s)
     sw = reeds.io.get_switches(inputs_case)
     weather_years = [int(y) for y in sw.GSw_HourlyWeatherYears.split('_')]
-    temp_hourly = reeds.io.get_temperatures(inputs_case, subset_years=False)
+    temp_hourly = reeds.io.get_temperatures(inputs_case)
     temp_hourly = temp_hourly.loc[temp_hourly.index.year.isin(weather_years)]
 
     # Get baseline temperature for calculating degree days
