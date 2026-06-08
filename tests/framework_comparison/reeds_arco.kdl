@@ -1,0 +1,233 @@
+data tech_data source="data/tech.csv" {
+  map i from="i"
+  set i
+  param cost_inv { index i }
+  param cost_op { index i }
+  param startcost { index i }
+  param emit_rate { index i }
+  param minloadfrac { index i }
+  param min_cf { index i }
+  param is_storage { index i }
+  param is_dispatchable { index i }
+}
+
+data region_data source="data/region.csv" {
+  map r from="r"
+  set r
+}
+
+data hour_data source="data/hour.csv" {
+  set h
+  param is_last { index h }
+}
+
+data year_data source="data/year.csv" {
+  set t
+  param pvf { index t }
+  param emit_cap { index t }
+}
+
+data ir_data source="data/ir.csv" {
+  param cap_init { index i index r }
+}
+
+data irt_data source="data/irt.csv" {
+  param valcap { index i index r index t }
+}
+
+data irh_data source="data/irh.csv" {
+  param cf { index i index r index h }
+}
+
+data rht_data source="data/rht.csv" {
+  param load { index r index h index t }
+}
+
+data rt_data source="data/rt.csv" {
+  param peak_load { index r index t }
+}
+
+data hw_data source="data/hw.csv" {
+  param hours_weight { index h }
+}
+
+data route_data source="data/route.csv" {
+  map route from="route"
+  set route
+  param transcap { index route }
+}
+
+data route_region_data source="data/route_region.csv" {
+  param flow_coef { index route index r }
+}
+
+model reeds_arco_kdl {
+  param prm 0.15
+  param charge_eff 0.92
+  param duration_h 4
+  param total_hours 8760
+  param big_m 1000000000000
+  param last_h 24
+
+  control gen lower=0 { index i index r index h index t }
+  control capacity lower=0 { index i index r index t }
+  control investment lower=0 { index i index r index t }
+  control flow lower=0 { index route index h index t }
+  control rampup lower=0 { index i index r index h index t }
+  control charge lower=0 { index i index r index h index t }
+  control soc lower=0 { index i index r index h index t }
+
+  constraint inactive_capacity_zero {
+    index ii { in i }
+    index rr { in r }
+    index tt { in t }
+    expression { capacity[ii,rr,tt] + investment[ii,rr,tt] <= big_m * valcap[ii,rr,tt] }
+  }
+
+  constraint cap_accum_first {
+    index ii { in i }
+    index rr { in r }
+    index tt { in t }
+    if { tt == 1 }
+    expression { capacity[ii,rr,tt] = cap_init[ii,rr] + investment[ii,rr,tt] }
+  }
+
+  constraint cap_accum_next {
+    index ii { in i }
+    index rr { in r }
+    index tt { in t }
+    if { tt > 1 }
+    expression { capacity[ii,rr,tt] = capacity[ii,rr,tt-1] + investment[ii,rr,tt] }
+  }
+
+  constraint cap_limit {
+    index ii { in i }
+    index rr { in r }
+    index hh { in h }
+    index tt { in t }
+    expression { gen[ii,rr,hh,tt] <= cf[ii,rr,hh] * capacity[ii,rr,tt] }
+  }
+
+  constraint mingen {
+    index ii { in i }
+    index rr { in r }
+    index hh { in h }
+    index tt { in t }
+    expression { gen[ii,rr,hh,tt] >= minloadfrac[ii] * capacity[ii,rr,tt] }
+  }
+
+  constraint supply_demand_balance {
+    index rr { in r }
+    index hh { in h }
+    index tt { in t }
+    expression {
+      sum(gen[ii,rr,hh,tt] for ii in i)
+      - sum(charge[ii,rr,hh,tt] for ii in i)
+      + sum(flow_coef[route,rr] * flow[route,hh,tt] for route in route)
+      = load[rr,hh,tt]
+    }
+  }
+
+  constraint reserve_margin {
+    index rr { in r }
+    index tt { in t }
+    expression { sum(capacity[ii,rr,tt] for ii in i) >= (1 + prm) * peak_load[rr,tt] }
+  }
+
+  constraint transmission_limit {
+    index route { in route }
+    index hh { in h }
+    index tt { in t }
+    expression { flow[route,hh,tt] <= transcap[route] }
+  }
+
+  constraint emit_cap_limit {
+    index tt { in t }
+    expression { sum(emit_rate[ii] * hours_weight[hh] * gen[ii,rr,hh,tt] for ii in i for rr in r for hh in h) <= emit_cap[tt] }
+  }
+
+  constraint rampup_bound {
+    index ii { in i }
+    index rr { in r }
+    index hh { in h }
+    index tt { in t }
+    expression { rampup[ii,rr,hh,tt] <= big_m * is_dispatchable[ii] * valcap[ii,rr,tt] * (1 - is_last[hh]) }
+  }
+
+  constraint ramping {
+    index ii { in i }
+    index rr { in r }
+    index hh { in h }
+    index tt { in t }
+    if { hh < 24 }
+    expression { rampup[ii,rr,hh,tt] >= gen[ii,rr,hh+1,tt] - gen[ii,rr,hh,tt] }
+  }
+
+  constraint min_cf_dispatchable {
+    index ii { in i }
+    index rr { in r }
+    index tt { in t }
+    expression { sum(hours_weight[hh] * gen[ii,rr,hh,tt] for hh in h) >= min_cf[ii] * capacity[ii,rr,tt] * total_hours }
+  }
+
+  constraint inactive_storage_zero {
+    index ii { in i }
+    index rr { in r }
+    index hh { in h }
+    index tt { in t }
+    expression { charge[ii,rr,hh,tt] + soc[ii,rr,hh,tt] <= big_m * is_storage[ii] * valcap[ii,rr,tt] }
+  }
+
+  constraint soc_cap {
+    index ii { in i }
+    index rr { in r }
+    index hh { in h }
+    index tt { in t }
+    expression { soc[ii,rr,hh,tt] <= duration_h * capacity[ii,rr,tt] }
+  }
+
+  constraint charge_cap {
+    index ii { in i }
+    index rr { in r }
+    index hh { in h }
+    index tt { in t }
+    expression { charge[ii,rr,hh,tt] <= capacity[ii,rr,tt] }
+  }
+
+  constraint soc_balance_next {
+    index ii { in i }
+    index rr { in r }
+    index hh { in h }
+    index tt { in t }
+    if { hh < 24 }
+    expression { is_storage[ii] * valcap[ii,rr,tt] * (soc[ii,rr,hh+1,tt] - soc[ii,rr,hh,tt] - charge_eff * charge[ii,rr,hh,tt] + gen[ii,rr,hh,tt]) = 0 }
+  }
+
+  constraint soc_balance_wrap {
+    index ii { in i }
+    index rr { in r }
+    index hh { in h }
+    index tt { in t }
+    if { hh == 24 }
+    expression { is_storage[ii] * valcap[ii,rr,tt] * (soc[ii,rr,1,tt] - soc[ii,rr,hh,tt] - charge_eff * charge[ii,rr,hh,tt] + gen[ii,rr,hh,tt]) = 0 }
+  }
+
+  expression investment_cost {
+    sum(pvf[tt] * cost_inv[ii] * investment[ii,rr,tt] for ii in i for rr in r for tt in t)
+  }
+
+  expression operating_cost {
+    sum(pvf[tt] * cost_op[ii] * hours_weight[hh] * gen[ii,rr,hh,tt] for ii in i for rr in r for hh in h for tt in t)
+  }
+
+  expression ramping_cost {
+    sum(pvf[tt] * startcost[ii] * rampup[ii,rr,hh,tt] for ii in i for rr in r for hh in h for tt in t)
+  }
+
+  minimize total_cost { investment_cost + operating_cost + ramping_cost }
+}
+
+scenario reeds_arco_kdl_case {
+  use reeds_arco_kdl
+  report total_cost
+}

@@ -8,7 +8,33 @@ import csv
 from pathlib import Path
 
 
-NUMERIC_COLUMNS = ("build_s", "solve_s", "total_s", "peak_mb", "objective")
+NUMERIC_COLUMNS = (
+    "build_s",
+    "solve_s",
+    "total_s",
+    "peak_mb",
+    "objective",
+    "num_variables",
+    "num_constraints",
+    "num_coefficients",
+    "highs_matrix_build_s",
+    "xpress_matrix_build_s",
+)
+INTEGER_COLUMNS = ("num_variables", "num_constraints", "num_coefficients")
+OPTION_COLUMNS = (
+    "presolve",
+    "threads",
+    "highs_solver",
+    "highs_load_path",
+    "xpress_lp_algorithm",
+)
+METADATA_COLUMNS = (
+    "num_variables",
+    "num_constraints",
+    "num_coefficients",
+    "highs_matrix_build_s",
+    "xpress_matrix_build_s",
+)
 SIZE_ORDER = {"small": 0, "medium": 1, "large": 2, "xlarge": 3}
 
 
@@ -45,6 +71,41 @@ def fmt_float(value: str) -> str:
     except ValueError:
         return stripped
     return f"{number:.3f}"
+
+
+def fmt_int(value: str) -> str:
+    """Format a string value as an integer, or return the original if not numeric.
+
+    Parameters
+    ----------
+    value : str
+        Raw cell value from a CSV row.
+
+    Returns
+    -------
+    str
+        Integer representation, empty string for blank/None, or the original
+        string when conversion fails.
+
+    Examples
+    --------
+    >>> fmt_int("51036.0")
+    '51036'
+    >>> fmt_int("")
+    ''
+    >>> fmt_int("n/a")
+    'n/a'
+    """
+    if value is None:
+        return ""
+    stripped = value.strip()
+    if not stripped:
+        return ""
+    try:
+        number = float(stripped)
+    except ValueError:
+        return stripped
+    return str(int(number))
 
 
 def pick_input(path: Path) -> Path:
@@ -99,6 +160,8 @@ def framework_name(row: dict[str, str]) -> str:
     'linopy-highs'
     >>> framework_name({"label": "linopy_highs_small", "size": "small"})
     'linopy-highs'
+    >>> framework_name({"label": "arco_xpress_dual_large", "module": "solve_arco", "solver": "xpress", "size": "large"})
+    'arco-xpress-dual'
     """
     framework = (row.get("framework") or "").strip()
     if framework:
@@ -106,10 +169,18 @@ def framework_name(row: dict[str, str]) -> str:
 
     module = (row.get("module") or "").strip()
     solver = (row.get("solver") or "").strip()
+    label = (row.get("label") or "").strip()
     if module and solver:
+        size = (row.get("size") or "").strip()
+        default_label = f"{module}_{solver}_{size}" if size else ""
+        if label and label != default_label:
+            suffix = f"_{size}"
+            display_label = label
+            if size and display_label.endswith(suffix):
+                display_label = display_label[: -len(suffix)]
+            return display_label.replace("_", "-")
         return f"{module.removeprefix('solve_').replace('_', '-')}-{solver}"
 
-    label = (row.get("label") or "").strip()
     size = (row.get("size") or "").strip()
     suffix = f"_{size}"
     if size and label.endswith(suffix):
@@ -191,9 +262,13 @@ def build_table(input_csv: Path) -> str:
     with input_csv.open(newline="", encoding="utf-8") as f:
         rows = list(csv.DictReader(f))
 
-    rows.sort(
-        key=lambda r: (SIZE_ORDER.get(r.get("size", ""), 99), framework_name(r))
-    )
+    rows.sort(key=lambda r: (SIZE_ORDER.get(r.get("size", ""), 99), framework_name(r)))
+
+    optional_columns = [
+        col
+        for col in (*OPTION_COLUMNS, *METADATA_COLUMNS)
+        if any((row.get(col) or "").strip() for row in rows)
+    ]
 
     header = [
         "framework",
@@ -204,11 +279,12 @@ def build_table(input_csv: Path) -> str:
         "total_s",
         "peak_mb",
         "objective",
+        *optional_columns,
         "error",
     ]
 
     markdown = [
-        f"# Benchmark comparison table\n",
+        "# Benchmark comparison table\n",
         f"Source: `{input_csv}`\n",
         "| " + " | ".join(header) + " |",
         "| " + " | ".join(["---"] * len(header)) + " |",
@@ -222,13 +298,15 @@ def build_table(input_csv: Path) -> str:
             "error": truncate(row.get("error", "")),
         }
         for col in NUMERIC_COLUMNS:
-            out[col] = fmt_float(row.get(col, ""))
+            out[col] = (
+                fmt_int(row.get(col, ""))
+                if col in INTEGER_COLUMNS
+                else fmt_float(row.get(col, ""))
+            )
+        for col in OPTION_COLUMNS:
+            out[col] = row.get(col, "")
 
-        markdown.append(
-            "| "
-            + " | ".join(out.get(col, "") for col in header)
-            + " |"
-        )
+        markdown.append("| " + " | ".join(out.get(col, "") for col in header) + " |")
 
     return "\n".join(markdown) + "\n"
 

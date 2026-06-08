@@ -1,0 +1,171 @@
+name: framework-comparison-arco-xpress-algorithms
+description: Focused Arco/Xpress LP algorithm sweep against GAMS/CPLEX on Kestrel
+env:
+  TORC_API_URL: http://torc.hpc.nrel.gov:8080/torc-service/v1
+  MKL_NUM_THREADS: '4'
+  OMP_NUM_THREADS: '4'
+  GAMS_LICENSE_FILE: /home/psanchez/gamslice.txt
+  FRAMEWORK_UV_PROJECT: .
+  NUMEXPR_MAX_THREADS: '4'
+  FRAMEWORK_COMPARISON_ARCO_PREFIX: /scratch/psanchez/arco/latest
+  OPENBLAS_NUM_THREADS: '4'
+  FRAMEWORK_MODULES: gams/51.3.0 conda/2024.06.1
+  FRAMEWORK_UV_GROUPS: framework-comparison
+
+jobs:
+- name: gams_cplex_medium
+  command: python tests/framework_comparison/run_framework.py --module solve_gams --solver cplex --size medium --label gams_cplex_medium --output tests/framework_comparison/torc_output_xpress_algorithms/framework_results/gams_cplex_medium.json
+  invocation_script: bash tests/framework_comparison/setup_env_hpc.sh
+  resource_requirements: medium_job
+  scheduler: medium_job_scheduler
+- name: gams_cplex_large
+  command: python tests/framework_comparison/run_framework.py --module solve_gams --solver cplex --size large --label gams_cplex_large --output tests/framework_comparison/torc_output_xpress_algorithms/framework_results/gams_cplex_large.json
+  invocation_script: bash tests/framework_comparison/setup_env_hpc.sh
+  resource_requirements: large_job
+  scheduler: large_job_scheduler
+- name: gams_cplex_xlarge
+  command: python tests/framework_comparison/run_framework.py --module solve_gams --solver cplex --size xlarge --label gams_cplex_xlarge --output tests/framework_comparison/torc_output_xpress_algorithms/framework_results/gams_cplex_xlarge.json
+  invocation_script: bash tests/framework_comparison/setup_env_hpc.sh
+  resource_requirements: xlarge_job
+  scheduler: xlarge_job_scheduler
+- name: arco_xpress_auto_medium
+  command: python tests/framework_comparison/run_framework.py --module solve_arco --solver xpress --size medium --label arco_xpress_auto_medium --xpress-lp-algorithm auto --output tests/framework_comparison/torc_output_xpress_algorithms/framework_results/arco_xpress_auto_medium.json
+  invocation_script: bash tests/framework_comparison/setup_env_hpc.sh
+  env:
+    FRAMEWORK_MODULES: gams/51.3.0 xpressmp conda/2024.06.1
+  resource_requirements: medium_job
+  scheduler: medium_job_scheduler
+- name: arco_xpress_auto_large
+  command: python tests/framework_comparison/run_framework.py --module solve_arco --solver xpress --size large --label arco_xpress_auto_large --xpress-lp-algorithm auto --output tests/framework_comparison/torc_output_xpress_algorithms/framework_results/arco_xpress_auto_large.json
+  invocation_script: bash tests/framework_comparison/setup_env_hpc.sh
+  env:
+    FRAMEWORK_MODULES: gams/51.3.0 xpressmp conda/2024.06.1
+  resource_requirements: large_job
+  scheduler: large_job_scheduler
+- name: arco_xpress_auto_xlarge
+  command: python tests/framework_comparison/run_framework.py --module solve_arco --solver xpress --size xlarge --label arco_xpress_auto_xlarge --xpress-lp-algorithm auto --output tests/framework_comparison/torc_output_xpress_algorithms/framework_results/arco_xpress_auto_xlarge.json
+  invocation_script: bash tests/framework_comparison/setup_env_hpc.sh
+  env:
+    FRAMEWORK_MODULES: gams/51.3.0 xpressmp conda/2024.06.1
+  resource_requirements: xlarge_job
+  scheduler: xlarge_job_scheduler
+- name: arco_xpress_dual_medium
+  command: python tests/framework_comparison/run_framework.py --module solve_arco --solver xpress --size medium --label arco_xpress_dual_medium --xpress-lp-algorithm dual --output tests/framework_comparison/torc_output_xpress_algorithms/framework_results/arco_xpress_dual_medium.json
+  invocation_script: bash tests/framework_comparison/setup_env_hpc.sh
+  env:
+    FRAMEWORK_MODULES: gams/51.3.0 xpressmp conda/2024.06.1
+  resource_requirements: medium_job
+  scheduler: medium_job_scheduler
+- name: arco_xpress_dual_large
+  command: python tests/framework_comparison/run_framework.py --module solve_arco --solver xpress --size large --label arco_xpress_dual_large --xpress-lp-algorithm dual --output tests/framework_comparison/torc_output_xpress_algorithms/framework_results/arco_xpress_dual_large.json
+  invocation_script: bash tests/framework_comparison/setup_env_hpc.sh
+  env:
+    FRAMEWORK_MODULES: gams/51.3.0 xpressmp conda/2024.06.1
+  resource_requirements: large_job
+  scheduler: large_job_scheduler
+- name: arco_xpress_dual_xlarge
+  command: python tests/framework_comparison/run_framework.py --module solve_arco --solver xpress --size xlarge --label arco_xpress_dual_xlarge --xpress-lp-algorithm dual --output tests/framework_comparison/torc_output_xpress_algorithms/framework_results/arco_xpress_dual_xlarge.json
+  invocation_script: bash tests/framework_comparison/setup_env_hpc.sh
+  env:
+    FRAMEWORK_MODULES: gams/51.3.0 xpressmp conda/2024.06.1
+  resource_requirements: xlarge_job
+  scheduler: xlarge_job_scheduler
+- name: arco_xpress_barrier_medium
+  command: python tests/framework_comparison/run_framework.py --module solve_arco --solver xpress --size medium --label arco_xpress_barrier_medium --xpress-lp-algorithm barrier --output tests/framework_comparison/torc_output_xpress_algorithms/framework_results/arco_xpress_barrier_medium.json
+  invocation_script: bash tests/framework_comparison/setup_env_hpc.sh
+  env:
+    FRAMEWORK_MODULES: gams/51.3.0 xpressmp conda/2024.06.1
+  resource_requirements: medium_job
+  scheduler: medium_job_scheduler
+- name: arco_xpress_barrier_large
+  command: python tests/framework_comparison/run_framework.py --module solve_arco --solver xpress --size large --label arco_xpress_barrier_large --xpress-lp-algorithm barrier --output tests/framework_comparison/torc_output_xpress_algorithms/framework_results/arco_xpress_barrier_large.json
+  invocation_script: bash tests/framework_comparison/setup_env_hpc.sh
+  env:
+    FRAMEWORK_MODULES: gams/51.3.0 xpressmp conda/2024.06.1
+  resource_requirements: large_job
+  scheduler: large_job_scheduler
+- name: arco_xpress_barrier_xlarge
+  command: python tests/framework_comparison/run_framework.py --module solve_arco --solver xpress --size xlarge --label arco_xpress_barrier_xlarge --xpress-lp-algorithm barrier --output tests/framework_comparison/torc_output_xpress_algorithms/framework_results/arco_xpress_barrier_xlarge.json
+  invocation_script: bash tests/framework_comparison/setup_env_hpc.sh
+  env:
+    FRAMEWORK_MODULES: gams/51.3.0 xpressmp conda/2024.06.1
+  resource_requirements: xlarge_job
+  scheduler: xlarge_job_scheduler
+- name: arco_xpress_dual_barrier_medium
+  command: python tests/framework_comparison/run_framework.py --module solve_arco --solver xpress --size medium --label arco_xpress_dual_barrier_medium --xpress-lp-algorithm dual_barrier --output tests/framework_comparison/torc_output_xpress_algorithms/framework_results/arco_xpress_dual_barrier_medium.json
+  invocation_script: bash tests/framework_comparison/setup_env_hpc.sh
+  env:
+    FRAMEWORK_MODULES: gams/51.3.0 xpressmp conda/2024.06.1
+  resource_requirements: medium_job
+  scheduler: medium_job_scheduler
+- name: arco_xpress_dual_barrier_large
+  command: python tests/framework_comparison/run_framework.py --module solve_arco --solver xpress --size large --label arco_xpress_dual_barrier_large --xpress-lp-algorithm dual_barrier --output tests/framework_comparison/torc_output_xpress_algorithms/framework_results/arco_xpress_dual_barrier_large.json
+  invocation_script: bash tests/framework_comparison/setup_env_hpc.sh
+  env:
+    FRAMEWORK_MODULES: gams/51.3.0 xpressmp conda/2024.06.1
+  resource_requirements: large_job
+  scheduler: large_job_scheduler
+- name: arco_xpress_dual_barrier_xlarge
+  command: python tests/framework_comparison/run_framework.py --module solve_arco --solver xpress --size xlarge --label arco_xpress_dual_barrier_xlarge --xpress-lp-algorithm dual_barrier --output tests/framework_comparison/torc_output_xpress_algorithms/framework_results/arco_xpress_dual_barrier_xlarge.json
+  invocation_script: bash tests/framework_comparison/setup_env_hpc.sh
+  env:
+    FRAMEWORK_MODULES: gams/51.3.0 xpressmp conda/2024.06.1
+  resource_requirements: xlarge_job
+  scheduler: xlarge_job_scheduler
+
+resource_requirements:
+- name: medium_job
+  num_cpus: 4
+  num_gpus: 0
+  num_nodes: 1
+  memory: 32G
+  runtime: PT1H
+- name: large_job
+  num_cpus: 8
+  num_gpus: 0
+  num_nodes: 1
+  memory: 96G
+  runtime: PT6H
+- name: xlarge_job
+  num_cpus: 16
+  num_gpus: 0
+  num_nodes: 1
+  memory: 240G
+  runtime: PT12H
+
+slurm_schedulers:
+- name: medium_job_scheduler
+  account: reedseda
+  mem: 240g
+  nodes: 1
+  walltime: 01:30:00
+- name: large_job_scheduler
+  account: reedseda
+  mem: 240g
+  nodes: 1
+  walltime: 09:00:00
+- name: xlarge_job_scheduler
+  account: reedseda
+  mem: 240g
+  nodes: 1
+  walltime: 18:00:00
+
+slurm_defaults:
+  account: ${SLURM_ACCOUNT:-ntps}
+
+actions:
+- trigger_type: on_workflow_start
+  action_type: schedule_nodes
+  scheduler: medium_job_scheduler
+  scheduler_type: slurm
+  num_allocations: 1
+- trigger_type: on_workflow_start
+  action_type: schedule_nodes
+  scheduler: large_job_scheduler
+  scheduler_type: slurm
+  num_allocations: 3
+- trigger_type: on_workflow_start
+  action_type: schedule_nodes
+  scheduler: xlarge_job_scheduler
+  scheduler_type: slurm
+  num_allocations: 5

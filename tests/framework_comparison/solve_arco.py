@@ -18,7 +18,10 @@ reeds/core/setup/c_model.gms and reeds/core/setup/d_objective.gms.
 
 from __future__ import annotations
 
+import gc
+import importlib.metadata
 import time
+from typing import NotRequired, TypedDict
 
 import arco
 import numpy as np
@@ -26,38 +29,82 @@ import numpy as np
 from data_generator import ProblemData
 
 
+LAST_SOLVE_METADATA: dict[str, float] = {}
+LAST_SOLVE_STATUS: str | None = None
+LAST_FRAMEWORK_METADATA: dict[str, object] = {}
+
+
+def _constraint_reserve_count(data: ProblemData) -> int:
+    transmission_bound_rows = len(data.routes) * len(data.hours) * len(data.years)
+    return max(0, data.n_constraints - transmission_bound_rows + 1024)
+
+
+def _runtime_metadata(solver: str) -> dict[str, object]:
+    try:
+        arco_version = importlib.metadata.version("arco")
+    except importlib.metadata.PackageNotFoundError:
+        arco_version = ""
+    return {
+        "arco_version": arco_version,
+        "solver_runtime_info": dict(arco.solver_runtime_info(family=solver)),
+    }
+
+
 def solve(
     data: ProblemData,
     solver: str = "highs",
     build_only: bool = False,
+    time_limit: float | None = None,
+    presolve: bool | None = None,
+    threads: int | None = None,
+    highs_solver: str = "ipm",
+    highs_run_crossover: str | None = None,
+    highs_load_path: str | None = None,
+    xpress_lp_algorithm: str | None = None,
+    require_optimal: bool = True,
 ) -> tuple[float, float, float]:
     if solver not in {"highs", "scip", "xpress"}:
-        raise ValueError("solve_arco only supports solver='highs', solver='scip', or solver='xpress'")
+        raise ValueError(
+            "solve_arco only supports solver='highs', solver='scip', or solver='xpress'"
+        )
+
+    global LAST_SOLVE_METADATA
+    global LAST_SOLVE_STATUS
+    global LAST_FRAMEWORK_METADATA
+    LAST_SOLVE_METADATA = {}
+    LAST_SOLVE_STATUS = None
+    LAST_FRAMEWORK_METADATA = _runtime_metadata(solver)
 
     regions, techs, hours, years = data.regions, data.techs, data.hours, data.years
     region_index = data.r_idx
     total_hours_weight = float(np.sum(data.hours_weight))
+    tranloss_factor = 1.0 - float(data.tranloss)
+    reserve_margin_factor = 1.0 + float(data.prm)
+    duration_h = float(data.duration_h)
+    charge_eff = float(data.charge_eff)
 
-    n_regions = len(regions)
-    route_names = [f"{r_from}->{r_to}" for r_from, r_to in data.routes]
-    transcap_vector = np.zeros(len(data.routes), dtype=float)
-    net_flow_incidence = np.zeros((n_regions, len(data.routes)), dtype=float)
-    for route_idx, (r_from, r_to) in enumerate(data.routes):
-        from_idx = region_index[r_from]
-        to_idx = region_index[r_to]
-        transcap_vector[route_idx] = float(data.transcap[(r_from, r_to)])
-        net_flow_incidence[to_idx, route_idx] += 1.0 - float(data.tranloss)
-        net_flow_incidence[from_idx, route_idx] -= 1.0
+    route_active_matrix = np.zeros((len(regions), len(regions)), dtype=bool)
+    transcap_matrix = np.zeros((len(regions), len(regions)), dtype=float)
+    for r_from, r_to in data.routes:
+        row = region_index[r_from]
+        col = region_index[r_to]
+        route_active_matrix[row, col] = True
+        transcap_matrix[row, col] = float(data.transcap[(r_from, r_to)])
 
     t0 = time.perf_counter()
     model = arco.Model()
+    model.reserve(
+        num_variables=data.n_vars,
+        num_constraints=_constraint_reserve_count(data),
+    )
 
-    I = arco.IndexSet("i", members=techs)
+    I = arco.IndexSet("i", members=techs)  # noqa: E741
     R = arco.IndexSet("r", members=regions)
     H = arco.IndexSet("h", members=hours)
     T = arco.IndexSet("t", members=years)
     H_ramp = H[:-1]
-    L = arco.IndexSet("route", members=route_names)
+    R_from = R.alias("from")
+    R_to = R.alias("to")
 
     valcap = arco.param(data.valcap, I, R, T)
     is_vre = arco.param(data.is_vre, I)
@@ -80,8 +127,9 @@ def solve(
     cost_op = arco.param(data.cost_op, I)
     startcost = arco.param(data.startcost, I)
 
-    transcap = arco.param(transcap_vector, L)
-    net_flow_coeff = arco.param(net_flow_incidence, R, L)
+    route_active = arco.param(route_active_matrix, R_from, R_to)
+    transcap = arco.param(transcap_matrix, R_from, R_to)
+    del route_active_matrix, transcap_matrix
 
     cap = model.add_variables(
         I,
@@ -109,12 +157,15 @@ def solve(
         name="GEN",
     )
     flow = model.add_variables(
-        L,
+        R_from,
+        R_to,
         H,
         T,
         bounds=arco.Bounds(0, transcap),
+        active=route_active,
         name="FLOW",
     )
+    del route_active, transcap
     rampup = model.add_variables(
         I,
         R,
@@ -147,41 +198,63 @@ def solve(
         cap == cap_init + np.cumsum(inv, axis=T),
         name="eq_cap_accum",
     )
+    del cap_init
     model.add_constraints(
         gen <= cf * cap,
         name="eq_cap_limit",
     )
+    del cf
     model.add_constraints(
         gen >= minloadfrac * cap,
         active=valcap & (minloadfrac > 0) & ~is_storage,
         name="eq_mingen",
     )
+    del minloadfrac, is_vre
 
-    net_flow = (net_flow_coeff * flow) @ L
+    gen_by_region = gen @ I
+    charge_by_region = charge @ I
+    imports_by_region = (flow @ R_from).relabel_axis(R_to, R)
+    exports_by_region = (flow @ R_to).relabel_axis(R_from, R)
     model.add_constraints(
-        (gen @ I) + net_flow - (charge @ I) == load,
+        gen_by_region
+        + tranloss_factor * imports_by_region
+        - exports_by_region
+        - charge_by_region
+        == load,
         name="eq_supply_demand_balance",
     )
+    del (
+        gen_by_region,
+        charge_by_region,
+        imports_by_region,
+        exports_by_region,
+        flow,
+        load,
+    )
     model.add_constraints(
-        (cap @ I) >= (1.0 + float(data.prm)) * peak_load,
+        (cap @ I) >= reserve_margin_factor * peak_load,
         name="eq_reserve_margin",
     )
+    del peak_load
     model.add_constraints(
         (emit_rate * hours_weight * gen) @ (I, R, H) <= emit_cap,
         name="eq_emit_cap",
     )
+    del emit_rate, emit_cap
     model.add_constraints(
         rampup >= np.diff(gen, axis=H),
         active=dispatch_active,
         name="eq_ramping",
     )
+    del dispatch_active, is_dispatch
     model.add_constraints(
         (hours_weight * gen) @ H >= min_cf * total_hours_weight * cap,
         active=valcap & (min_cf > 0),
         name="eq_min_cf",
     )
+    del min_cf, total_hours_weight
     model.add_constraints(
-        soc <= float(data.duration_h) * cap,
+        soc <= duration_h * cap,
         active=storage_active,
         name="eq_soc_cap",
     )
@@ -190,38 +263,153 @@ def solve(
         active=storage_active,
         name="eq_charge_cap",
     )
+    del cap
     model.add_constraints(
-        np.roll(soc, -1, axis=H) == soc + float(data.charge_eff) * charge - gen,
+        np.roll(soc, -1, axis=H) == soc + charge_eff * charge - gen,
         active=storage_active,
         name="eq_soc",
     )
+    del charge, soc, storage_active, is_storage
 
     objective = (pvf * cost_inv * inv).sum()
-    objective += (pvf * cost_op * hours_weight * gen).sum()
-    objective += (pvf * startcost * rampup).sum()
     model.minimize(objective)
+    del objective, cost_inv, inv
+    objective = (pvf * cost_op * hours_weight * gen).sum()
+    model.add_objective_terms(objective)
+    del objective, cost_op, gen, hours_weight
+    objective = (pvf * startcost * rampup).sum()
+    model.add_objective_terms(objective)
+    del objective, rampup, startcost, pvf
 
     build_s = time.perf_counter() - t0
     if build_only:
         return float("nan"), build_s, 0.0
 
-    solver_options = {
-        "highs": arco.HiGHS(
-            log_to_console=False,
-            parameters={"solver": "ipm", "arco.fingerprint": "false"},
-        ),
-        "scip": arco.Scip(log_to_console=False),
-        "xpress": arco.Xpress(log_to_console=False),
+    del (
+        data,
+        valcap,
+        I,
+        R,
+        H,
+        T,
+        H_ramp,
+        R_from,
+        R_to,
+        regions,
+        techs,
+        hours,
+        years,
+        region_index,
+    )
+    gc.collect()
+    build_s = time.perf_counter() - t0
+
+    highs_kwargs = {
+        "log_to_console": False,
+        "parameters": {
+            "solver": highs_solver,
+            "arco.consume_model": "true",
+            "arco.fingerprint": "false",
+            "arco.extract_solution": "false",
+        },
     }
+    if time_limit is not None:
+        highs_kwargs["time_limit"] = time_limit
+    if presolve is not None:
+        highs_kwargs["presolve"] = presolve
+    if threads is not None:
+        highs_kwargs["threads"] = threads
+    if highs_run_crossover is not None:
+        highs_kwargs["parameters"]["run_crossover"] = highs_run_crossover
+    if highs_load_path is not None:
+        highs_kwargs["parameters"]["arco.highs_load_path"] = highs_load_path
+
+    objective_only_parameters = {
+        "arco.consume_model": "true",
+        "arco.fingerprint": "false",
+        "arco.extract_solution": "false",
+    }
+    scip_kwargs = {"log_to_console": False}
+    xpress_kwargs = {
+        "log_to_console": False,
+        "parameters": objective_only_parameters,
+    }
+    if xpress_lp_algorithm is not None:
+        xpress_kwargs["parameters"] = {
+            **objective_only_parameters,
+            "xpress.lp_algorithm": xpress_lp_algorithm,
+        }
+    for kwargs in (scip_kwargs, xpress_kwargs):
+        if time_limit is not None:
+            kwargs["time_limit"] = time_limit
+        if presolve is not None:
+            kwargs["presolve"] = presolve
+        if threads is not None:
+            kwargs["threads"] = threads
+
+    if solver == "highs":
+        selected_solver = arco.HiGHS(**highs_kwargs)
+    elif solver == "scip":
+        selected_solver = arco.Scip(**scip_kwargs)
+    else:
+        selected_solver = arco.Xpress(**xpress_kwargs)
 
     t1 = time.perf_counter()
-    result = model.solve(solver=solver_options[solver])
+    result = model.solve(solver=selected_solver)
     solve_s = time.perf_counter() - t1
 
-    if not result.is_optimal():
-        raise RuntimeError(f"{solver} did not find an optimal solution: {result.status}")
+    LAST_SOLVE_METADATA = dict(result.metadata)
+    LAST_SOLVE_STATUS = str(result.status)
+
+    if require_optimal and not result.is_optimal():
+        raise RuntimeError(
+            f"{solver} did not find an optimal solution: {result.status}"
+        )
 
     return float(result.objective_value), build_s, solve_s
+
+
+class ArcoProbePayload(TypedDict):
+    objective: float
+    build_s: float
+    solve_s: float
+    status: NotRequired[str]
+    solve_metadata: NotRequired[dict[str, float]]
+
+
+def solve_probe(
+    data: ProblemData,
+    solver: str = "highs",
+    *,
+    time_limit: float | None = None,
+    presolve: bool | None = None,
+    threads: int | None = None,
+    highs_solver: str = "ipm",
+    xpress_lp_algorithm: str | None = None,
+    highs_load_path: str | None = None,
+) -> ArcoProbePayload:
+    objective, build_s, solve_s = solve(
+        data,
+        solver=solver,
+        build_only=False,
+        time_limit=time_limit,
+        presolve=presolve,
+        threads=threads,
+        highs_solver=highs_solver,
+        highs_load_path=highs_load_path,
+        xpress_lp_algorithm=xpress_lp_algorithm,
+        require_optimal=False,
+    )
+    payload: ArcoProbePayload = {
+        "objective": objective,
+        "build_s": build_s,
+        "solve_s": solve_s,
+    }
+    if LAST_SOLVE_STATUS is not None:
+        payload["status"] = LAST_SOLVE_STATUS
+    if LAST_SOLVE_METADATA:
+        payload["solve_metadata"] = LAST_SOLVE_METADATA
+    return payload
 
 
 if __name__ == "__main__":

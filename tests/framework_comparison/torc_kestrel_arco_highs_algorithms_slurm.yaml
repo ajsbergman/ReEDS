@@ -1,0 +1,176 @@
+name: framework-comparison-arco-highs-algorithms
+description: Focused Arco/HiGHS algorithm sweep on Kestrel
+env:
+  FRAMEWORK_UV_GROUPS: framework-comparison
+  OPENBLAS_NUM_THREADS: '4'
+  FRAMEWORK_UV_PROJECT: .
+  FRAMEWORK_MODULES: gams/51.3.0 conda/2024.06.1
+  MKL_NUM_THREADS: '4'
+  OMP_NUM_THREADS: '4'
+  TORC_API_URL: http://torc.hpc.nrel.gov:8080/torc-service/v1
+  NUMEXPR_MAX_THREADS: '4'
+  FRAMEWORK_COMPARISON_ARCO_PREFIX: /scratch/psanchez/arco/latest
+
+jobs:
+- name: arco_highs_ipm_medium
+  command: python tests/framework_comparison/run_framework.py --module solve_arco --solver highs --size medium --label arco_highs_ipm_medium --highs-solver ipm --output tests/framework_comparison/torc_output_highs_algorithms/framework_results/arco_highs_ipm_medium.json
+  invocation_script: bash tests/framework_comparison/setup_env_hpc.sh
+  resource_requirements: medium_job
+  scheduler: medium_job_scheduler
+- name: arco_highs_ipm_large
+  command: python tests/framework_comparison/run_framework.py --module solve_arco --solver highs --size large --label arco_highs_ipm_large --highs-solver ipm --output tests/framework_comparison/torc_output_highs_algorithms/framework_results/arco_highs_ipm_large.json
+  invocation_script: bash tests/framework_comparison/setup_env_hpc.sh
+  resource_requirements: large_job
+  scheduler: large_job_scheduler
+- name: arco_highs_ipm_xlarge
+  command: python tests/framework_comparison/run_framework.py --module solve_arco --solver highs --size xlarge --label arco_highs_ipm_xlarge --highs-solver ipm --output tests/framework_comparison/torc_output_highs_algorithms/framework_results/arco_highs_ipm_xlarge.json
+  invocation_script: bash tests/framework_comparison/setup_env_hpc.sh
+  resource_requirements: xlarge_job
+  scheduler: xlarge_job_scheduler
+- name: arco_highs_ipm_direct_load_medium
+  command: python tests/framework_comparison/run_framework.py --module solve_arco --solver highs --size medium --label arco_highs_ipm_direct_load_medium --highs-solver ipm --highs-load-path direct --output tests/framework_comparison/torc_output_highs_algorithms/framework_results/arco_highs_ipm_direct_load_medium.json
+  invocation_script: bash tests/framework_comparison/setup_env_hpc.sh
+  resource_requirements: medium_job
+  scheduler: medium_job_scheduler
+- name: arco_highs_ipm_direct_load_large
+  command: python tests/framework_comparison/run_framework.py --module solve_arco --solver highs --size large --label arco_highs_ipm_direct_load_large --highs-solver ipm --highs-load-path direct --output tests/framework_comparison/torc_output_highs_algorithms/framework_results/arco_highs_ipm_direct_load_large.json
+  invocation_script: bash tests/framework_comparison/setup_env_hpc.sh
+  resource_requirements: large_job
+  scheduler: large_job_scheduler
+- name: arco_highs_ipm_direct_load_xlarge
+  command: python tests/framework_comparison/run_framework.py --module solve_arco --solver highs --size xlarge --label arco_highs_ipm_direct_load_xlarge --highs-solver ipm --highs-load-path direct --output tests/framework_comparison/torc_output_highs_algorithms/framework_results/arco_highs_ipm_direct_load_xlarge.json
+  invocation_script: bash tests/framework_comparison/setup_env_hpc.sh
+  resource_requirements: xlarge_job
+  scheduler: xlarge_job_scheduler
+- name: arco_highs_ipm_direct_load_presolve_off_medium
+  command: python tests/framework_comparison/run_framework.py --module solve_arco --solver highs --size medium --label arco_highs_ipm_direct_load_presolve_off_medium --highs-solver ipm --highs-load-path direct --presolve off --output tests/framework_comparison/torc_output_highs_algorithms/framework_results/arco_highs_ipm_direct_load_presolve_off_medium.json
+  invocation_script: bash tests/framework_comparison/setup_env_hpc.sh
+  resource_requirements: medium_job
+  scheduler: medium_job_scheduler
+- name: arco_highs_ipm_direct_load_presolve_off_large
+  command: python tests/framework_comparison/run_framework.py --module solve_arco --solver highs --size large --label arco_highs_ipm_direct_load_presolve_off_large --highs-solver ipm --highs-load-path direct --presolve off --output tests/framework_comparison/torc_output_highs_algorithms/framework_results/arco_highs_ipm_direct_load_presolve_off_large.json
+  invocation_script: bash tests/framework_comparison/setup_env_hpc.sh
+  resource_requirements: large_job
+  scheduler: large_job_scheduler
+- name: arco_highs_ipm_direct_load_presolve_off_xlarge
+  command: python tests/framework_comparison/run_framework.py --module solve_arco --solver highs --size xlarge --label arco_highs_ipm_direct_load_presolve_off_xlarge --highs-solver ipm --highs-load-path direct --presolve off --output tests/framework_comparison/torc_output_highs_algorithms/framework_results/arco_highs_ipm_direct_load_presolve_off_xlarge.json
+  invocation_script: bash tests/framework_comparison/setup_env_hpc.sh
+  resource_requirements: xlarge_job
+  scheduler: xlarge_job_scheduler
+- name: arco_highs_ipm_presolve_off_medium
+  command: python tests/framework_comparison/run_framework.py --module solve_arco --solver highs --size medium --label arco_highs_ipm_presolve_off_medium --highs-solver ipm --presolve off --output tests/framework_comparison/torc_output_highs_algorithms/framework_results/arco_highs_ipm_presolve_off_medium.json
+  invocation_script: bash tests/framework_comparison/setup_env_hpc.sh
+  resource_requirements: medium_job
+  scheduler: medium_job_scheduler
+- name: arco_highs_ipm_presolve_off_large
+  command: python tests/framework_comparison/run_framework.py --module solve_arco --solver highs --size large --label arco_highs_ipm_presolve_off_large --highs-solver ipm --presolve off --output tests/framework_comparison/torc_output_highs_algorithms/framework_results/arco_highs_ipm_presolve_off_large.json
+  invocation_script: bash tests/framework_comparison/setup_env_hpc.sh
+  resource_requirements: large_job
+  scheduler: large_job_scheduler
+- name: arco_highs_ipm_presolve_off_xlarge
+  command: python tests/framework_comparison/run_framework.py --module solve_arco --solver highs --size xlarge --label arco_highs_ipm_presolve_off_xlarge --highs-solver ipm --presolve off --output tests/framework_comparison/torc_output_highs_algorithms/framework_results/arco_highs_ipm_presolve_off_xlarge.json
+  invocation_script: bash tests/framework_comparison/setup_env_hpc.sh
+  resource_requirements: xlarge_job
+  scheduler: xlarge_job_scheduler
+- name: arco_highs_ipm_crossover_off_medium
+  command: python tests/framework_comparison/run_framework.py --module solve_arco --solver highs --size medium --label arco_highs_ipm_crossover_off_medium --highs-solver ipm --highs-run-crossover off --output tests/framework_comparison/torc_output_highs_algorithms/framework_results/arco_highs_ipm_crossover_off_medium.json
+  invocation_script: bash tests/framework_comparison/setup_env_hpc.sh
+  resource_requirements: medium_job
+  scheduler: medium_job_scheduler
+- name: arco_highs_ipm_crossover_off_large
+  command: python tests/framework_comparison/run_framework.py --module solve_arco --solver highs --size large --label arco_highs_ipm_crossover_off_large --highs-solver ipm --highs-run-crossover off --output tests/framework_comparison/torc_output_highs_algorithms/framework_results/arco_highs_ipm_crossover_off_large.json
+  invocation_script: bash tests/framework_comparison/setup_env_hpc.sh
+  resource_requirements: large_job
+  scheduler: large_job_scheduler
+- name: arco_highs_ipm_crossover_off_xlarge
+  command: python tests/framework_comparison/run_framework.py --module solve_arco --solver highs --size xlarge --label arco_highs_ipm_crossover_off_xlarge --highs-solver ipm --highs-run-crossover off --output tests/framework_comparison/torc_output_highs_algorithms/framework_results/arco_highs_ipm_crossover_off_xlarge.json
+  invocation_script: bash tests/framework_comparison/setup_env_hpc.sh
+  resource_requirements: xlarge_job
+  scheduler: xlarge_job_scheduler
+- name: arco_highs_simplex_medium
+  command: python tests/framework_comparison/run_framework.py --module solve_arco --solver highs --size medium --label arco_highs_simplex_medium --highs-solver simplex --output tests/framework_comparison/torc_output_highs_algorithms/framework_results/arco_highs_simplex_medium.json
+  invocation_script: bash tests/framework_comparison/setup_env_hpc.sh
+  resource_requirements: medium_job
+  scheduler: medium_job_scheduler
+- name: arco_highs_simplex_large
+  command: python tests/framework_comparison/run_framework.py --module solve_arco --solver highs --size large --label arco_highs_simplex_large --highs-solver simplex --output tests/framework_comparison/torc_output_highs_algorithms/framework_results/arco_highs_simplex_large.json
+  invocation_script: bash tests/framework_comparison/setup_env_hpc.sh
+  resource_requirements: large_job
+  scheduler: large_job_scheduler
+- name: arco_highs_simplex_xlarge
+  command: python tests/framework_comparison/run_framework.py --module solve_arco --solver highs --size xlarge --label arco_highs_simplex_xlarge --highs-solver simplex --output tests/framework_comparison/torc_output_highs_algorithms/framework_results/arco_highs_simplex_xlarge.json
+  invocation_script: bash tests/framework_comparison/setup_env_hpc.sh
+  resource_requirements: xlarge_job
+  scheduler: xlarge_job_scheduler
+- name: arco_highs_choose_medium
+  command: python tests/framework_comparison/run_framework.py --module solve_arco --solver highs --size medium --label arco_highs_choose_medium --highs-solver choose --output tests/framework_comparison/torc_output_highs_algorithms/framework_results/arco_highs_choose_medium.json
+  invocation_script: bash tests/framework_comparison/setup_env_hpc.sh
+  resource_requirements: medium_job
+  scheduler: medium_job_scheduler
+- name: arco_highs_choose_large
+  command: python tests/framework_comparison/run_framework.py --module solve_arco --solver highs --size large --label arco_highs_choose_large --highs-solver choose --output tests/framework_comparison/torc_output_highs_algorithms/framework_results/arco_highs_choose_large.json
+  invocation_script: bash tests/framework_comparison/setup_env_hpc.sh
+  resource_requirements: large_job
+  scheduler: large_job_scheduler
+- name: arco_highs_choose_xlarge
+  command: python tests/framework_comparison/run_framework.py --module solve_arco --solver highs --size xlarge --label arco_highs_choose_xlarge --highs-solver choose --output tests/framework_comparison/torc_output_highs_algorithms/framework_results/arco_highs_choose_xlarge.json
+  invocation_script: bash tests/framework_comparison/setup_env_hpc.sh
+  resource_requirements: xlarge_job
+  scheduler: xlarge_job_scheduler
+
+resource_requirements:
+- name: medium_job
+  num_cpus: 4
+  num_gpus: 0
+  num_nodes: 1
+  memory: 32G
+  runtime: PT1H
+- name: large_job
+  num_cpus: 8
+  num_gpus: 0
+  num_nodes: 1
+  memory: 96G
+  runtime: PT8H
+- name: xlarge_job
+  num_cpus: 16
+  num_gpus: 0
+  num_nodes: 1
+  memory: 240G
+  runtime: PT12H
+
+slurm_schedulers:
+- name: large_job_scheduler
+  account: reedseda
+  mem: 240g
+  nodes: 1
+  walltime: 12:00:00
+- name: xlarge_job_scheduler
+  account: reedseda
+  mem: 240g
+  nodes: 1
+  walltime: 18:00:00
+- name: medium_job_scheduler
+  account: reedseda
+  mem: 240g
+  nodes: 1
+  walltime: 01:30:00
+
+slurm_defaults:
+  account: ${SLURM_ACCOUNT:-ntps}
+
+actions:
+- trigger_type: on_workflow_start
+  action_type: schedule_nodes
+  scheduler: large_job_scheduler
+  scheduler_type: slurm
+  num_allocations: 4
+- trigger_type: on_workflow_start
+  action_type: schedule_nodes
+  scheduler: xlarge_job_scheduler
+  scheduler_type: slurm
+  num_allocations: 7
+- trigger_type: on_workflow_start
+  action_type: schedule_nodes
+  scheduler: medium_job_scheduler
+  scheduler_type: slurm
+  num_allocations: 1

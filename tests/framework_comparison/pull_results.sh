@@ -32,7 +32,7 @@
 #   -h, --help            Print this help and exit
 #
 # Output (CSV to stdout):
-#   results_file,label,module,solver,size,status,total_s,solve_s,build_s,objective,error
+#   results_file,label,module,solver,size,status,total_s,solve_s,build_s,peak_mb,objective,time_limit,presolve,threads,highs_solver,highs_run_crossover,highs_load_path,xpress_lp_algorithm,allow_nonoptimal,num_variables,num_constraints,num_coefficients,highs_direct_load_path,highs_matrix_build_s,highs_run_s,xpress_matrix_build_s,xpress_run_s,solution_extract_s,fingerprint_s,arco_version,solver_runtime_available,error
 set -euo pipefail
 
 RUNS_BASE="${TORC_RUNS_BASE:-/scratch/${USER}/torc-runs}"
@@ -81,10 +81,20 @@ while (($#)); do
   esac
 done
 
-# --- JQ check -----------------------------------------------------------------
-check_jq() {
-  if ! command -v jq >/dev/null 2>&1; then
-    echo "jq is required to parse JSON results" >&2
+# --- JSON parser check --------------------------------------------------------
+json_python() {
+  if command -v python3 >/dev/null 2>&1; then
+    printf '%s\n' python3
+  elif command -v python >/dev/null 2>&1; then
+    printf '%s\n' python
+  else
+    return 1
+  fi
+}
+
+check_json_parser() {
+  if ! command -v jq >/dev/null 2>&1 && ! json_python >/dev/null; then
+    echo "jq or python3 is required to parse JSON results" >&2
     exit 1
   fi
 }
@@ -104,13 +114,115 @@ JQ_SCRIPT='
       s(.total_s),
       s(.solve_s),
       s(.build_s),
+      s(.peak_mb // .peak_rss_mb),
       s(.objective),
+      s(.run_options.time_limit),
+      s(.run_options.presolve),
+      s(.run_options.threads),
+      s(.run_options.highs_solver),
+      s(.run_options.highs_run_crossover),
+      s(.run_options.highs_load_path),
+      s(.run_options.xpress_lp_algorithm),
+      s(.run_options.allow_nonoptimal),
+      s(.solve_metadata.num_variables),
+      s(.solve_metadata.num_constraints),
+      s(.solve_metadata.num_coefficients),
+      s(.solve_metadata.highs_direct_load_path),
+      s(.solve_metadata.highs_matrix_build_s),
+      s(.solve_metadata.highs_run_s),
+      s(.solve_metadata.xpress_matrix_build_s),
+      s(.solve_metadata.xpress_run_s),
+      s(.solve_metadata.solution_extract_s),
+      s(.solve_metadata.fingerprint_s),
+      s(.framework_metadata.arco_version),
+      s(.framework_metadata.solver_runtime_info.runtime_available),
       ($error | clean_error)
     ]
   | @csv
 '
 
-CSV_HEADER='results_file,label,module,solver,size,status,total_s,solve_s,build_s,objective,error'
+CSV_HEADER='results_file,label,module,solver,size,status,total_s,solve_s,build_s,peak_mb,objective,time_limit,presolve,threads,highs_solver,highs_run_crossover,highs_load_path,xpress_lp_algorithm,allow_nonoptimal,num_variables,num_constraints,num_coefficients,highs_direct_load_path,highs_matrix_build_s,highs_run_s,xpress_matrix_build_s,xpress_run_s,solution_extract_s,fingerprint_s,arco_version,solver_runtime_available,error'
+
+emit_csv_row() {
+  local file="$1"
+  local results_file="$2"
+  if command -v jq >/dev/null 2>&1; then
+    jq -r --arg results_file "${results_file}" "${JQ_SCRIPT}" "${file}"
+    return
+  fi
+  local py
+  py="$(json_python)"
+  "${py}" - "${file}" "${results_file}" <<'PY'
+import csv
+import json
+import sys
+
+path = sys.argv[1]
+results_file = sys.argv[2]
+with open(path, encoding="utf-8") as handle:
+    payload = json.load(handle)
+
+
+def get(path: str):
+    value = payload
+    for part in path.split("."):
+        if not isinstance(value, dict):
+            return None
+        value = value.get(part)
+    return value
+
+
+def stringify(value) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, bool):
+        return str(value).lower()
+    return str(value)
+
+
+error = stringify(get("error"))
+clean_error = " ".join(error.split())[:160].replace(",", ";")
+peak_mb = get("peak_mb")
+if peak_mb is None:
+    peak_mb = get("peak_rss_mb")
+
+row = [
+    results_file,
+    stringify(get("label")),
+    stringify(get("module")),
+    stringify(get("solver")),
+    stringify(get("size")),
+    "failed" if error else "ok",
+    stringify(get("total_s")),
+    stringify(get("solve_s")),
+    stringify(get("build_s")),
+    stringify(peak_mb),
+    stringify(get("objective")),
+    stringify(get("run_options.time_limit")),
+    stringify(get("run_options.presolve")),
+    stringify(get("run_options.threads")),
+    stringify(get("run_options.highs_solver")),
+    stringify(get("run_options.highs_run_crossover")),
+    stringify(get("run_options.highs_load_path")),
+    stringify(get("run_options.xpress_lp_algorithm")),
+    stringify(get("run_options.allow_nonoptimal")),
+    stringify(get("solve_metadata.num_variables")),
+    stringify(get("solve_metadata.num_constraints")),
+    stringify(get("solve_metadata.num_coefficients")),
+    stringify(get("solve_metadata.highs_direct_load_path")),
+    stringify(get("solve_metadata.highs_matrix_build_s")),
+    stringify(get("solve_metadata.highs_run_s")),
+    stringify(get("solve_metadata.xpress_matrix_build_s")),
+    stringify(get("solve_metadata.xpress_run_s")),
+    stringify(get("solve_metadata.solution_extract_s")),
+    stringify(get("solve_metadata.fingerprint_s")),
+    stringify(get("framework_metadata.arco_version")),
+    stringify(get("framework_metadata.solver_runtime_info.runtime_available")),
+    clean_error,
+]
+csv.writer(sys.stdout, lineterminator="\n").writerow(row)
+PY
+}
 
 # =============================================================================
 # REMOTE MODE
@@ -124,8 +236,119 @@ if [[ -n "${SSH_HOST}" ]]; then
     JSON_GLOB="${JSON_GLOB}" \
     bash -s <<'REMOTE'
 set -euo pipefail
-check_jq() { command -v jq >/dev/null 2>&1 || { echo "jq required on remote" >&2; exit 1; }; }
-check_jq
+json_python() {
+  if command -v python3 >/dev/null 2>&1; then
+    printf '%s\n' python3
+  elif command -v python >/dev/null 2>&1; then
+    printf '%s\n' python
+  else
+    return 1
+  fi
+}
+check_json_parser() {
+  if ! command -v jq >/dev/null 2>&1 && ! json_python >/dev/null; then
+    echo "jq or python3 required on remote" >&2
+    exit 1
+  fi
+}
+emit_csv_row() {
+  local file="$1"
+  local results_file="$2"
+  if command -v jq >/dev/null 2>&1; then
+    jq -r --arg results_file "${results_file}" '
+      def s(v): if v == null then "" else (v | tostring) end;
+      def clean_error: gsub("\\s+"; " ") | .[0:160] | gsub(","; ";");
+      (.error // "" | tostring) as $error
+      | [$results_file,s(.label),s(.module),s(.solver),s(.size),
+         (if ($error|length)>0 then "failed" else "ok" end),
+         s(.total_s),s(.solve_s),s(.build_s),s(.peak_mb // .peak_rss_mb),s(.objective),
+         s(.run_options.time_limit),s(.run_options.presolve),s(.run_options.threads),s(.run_options.highs_solver),
+         s(.run_options.highs_run_crossover),s(.run_options.highs_load_path),
+         s(.run_options.xpress_lp_algorithm),s(.run_options.allow_nonoptimal),
+         s(.solve_metadata.num_variables),s(.solve_metadata.num_constraints),s(.solve_metadata.num_coefficients),
+         s(.solve_metadata.highs_direct_load_path),s(.solve_metadata.highs_matrix_build_s),s(.solve_metadata.highs_run_s),
+         s(.solve_metadata.xpress_matrix_build_s),s(.solve_metadata.xpress_run_s),
+         s(.solve_metadata.solution_extract_s),s(.solve_metadata.fingerprint_s),
+         s(.framework_metadata.arco_version),s(.framework_metadata.solver_runtime_info.runtime_available),
+         ($error|clean_error)]
+      | @csv
+    ' "${file}"
+    return
+  fi
+  local py
+  py="$(json_python)"
+  "${py}" - "${file}" "${results_file}" <<'PY'
+import csv
+import json
+import sys
+
+path = sys.argv[1]
+results_file = sys.argv[2]
+with open(path, encoding="utf-8") as handle:
+    payload = json.load(handle)
+
+
+def get(path: str):
+    value = payload
+    for part in path.split("."):
+        if not isinstance(value, dict):
+            return None
+        value = value.get(part)
+    return value
+
+
+def stringify(value) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, bool):
+        return str(value).lower()
+    return str(value)
+
+
+error = stringify(get("error"))
+clean_error = " ".join(error.split())[:160].replace(",", ";")
+peak_mb = get("peak_mb")
+if peak_mb is None:
+    peak_mb = get("peak_rss_mb")
+
+row = [
+    results_file,
+    stringify(get("label")),
+    stringify(get("module")),
+    stringify(get("solver")),
+    stringify(get("size")),
+    "failed" if error else "ok",
+    stringify(get("total_s")),
+    stringify(get("solve_s")),
+    stringify(get("build_s")),
+    stringify(peak_mb),
+    stringify(get("objective")),
+    stringify(get("run_options.time_limit")),
+    stringify(get("run_options.presolve")),
+    stringify(get("run_options.threads")),
+    stringify(get("run_options.highs_solver")),
+    stringify(get("run_options.highs_run_crossover")),
+    stringify(get("run_options.highs_load_path")),
+    stringify(get("run_options.xpress_lp_algorithm")),
+    stringify(get("run_options.allow_nonoptimal")),
+    stringify(get("solve_metadata.num_variables")),
+    stringify(get("solve_metadata.num_constraints")),
+    stringify(get("solve_metadata.num_coefficients")),
+    stringify(get("solve_metadata.highs_direct_load_path")),
+    stringify(get("solve_metadata.highs_matrix_build_s")),
+    stringify(get("solve_metadata.highs_run_s")),
+    stringify(get("solve_metadata.xpress_matrix_build_s")),
+    stringify(get("solve_metadata.xpress_run_s")),
+    stringify(get("solve_metadata.solution_extract_s")),
+    stringify(get("solve_metadata.fingerprint_s")),
+    stringify(get("framework_metadata.arco_version")),
+    stringify(get("framework_metadata.solver_runtime_info.runtime_available")),
+    clean_error,
+]
+csv.writer(sys.stdout, lineterminator="\n").writerow(row)
+PY
+}
+check_json_parser
 
 latest_run=""
 while IFS= read -r run_dir; do
@@ -151,17 +374,9 @@ if (( ${#files[@]} == 0 )); then
   echo "No files matching '${JSON_GLOB}' under: ${results_dir}" >&2; exit 1
 fi
 
-printf '%s\n' 'results_file,label,module,solver,size,status,total_s,solve_s,build_s,objective,error'
+printf '%s\n' 'results_file,label,module,solver,size,status,total_s,solve_s,build_s,peak_mb,objective,time_limit,presolve,threads,highs_solver,highs_run_crossover,highs_load_path,xpress_lp_algorithm,allow_nonoptimal,num_variables,num_constraints,num_coefficients,highs_direct_load_path,highs_matrix_build_s,highs_run_s,xpress_matrix_build_s,xpress_run_s,solution_extract_s,fingerprint_s,arco_version,solver_runtime_available,error'
 for file in "${files[@]}"; do
-  jq -r --arg results_file "$(basename "${file}")" '
-    def s(v): if v == null then "" else (v | tostring) end;
-    def clean_error: gsub("\\s+"; " ") | .[0:160] | gsub(","; ";");
-    (.error // "" | tostring) as $error
-    | [$results_file,s(.label),s(.module),s(.solver),s(.size),
-       (if ($error|length)>0 then "failed" else "ok" end),
-       s(.total_s),s(.solve_s),s(.build_s),s(.objective),($error|clean_error)]
-    | @csv
-  ' "${file}"
+  emit_csv_row "${file}" "$(basename "${file}")"
 done
 REMOTE
   exit 0
@@ -170,7 +385,7 @@ fi
 # =============================================================================
 # LOCAL MODE
 # =============================================================================
-check_jq
+check_json_parser
 
 # Determine results directory
 if [[ -n "${RUN_DIR}" ]]; then
@@ -211,5 +426,5 @@ fi
 
 printf '%s\n' "${CSV_HEADER}"
 for file in "${files[@]}"; do
-  jq -r --arg results_file "$(basename "${file}")" "${JQ_SCRIPT}" "${file}"
+  emit_csv_row "${file}" "$(basename "${file}")"
 done

@@ -49,8 +49,15 @@ constraint patterns as `reeds/core/setup/c_model.gms`.
 | `setup_env_hpc.sh` | Kestrel HPC pre-job setup (modules + venv + Arco wheel + env exports) |
 | `torc_local.yaml` | Torc workflow for local development runs (no Slurm) |
 | `torc_kestrel.yaml` | Torc/Slurm workflow for canonical Kestrel benchmarks |
+| `torc_kestrel_arco_highs_algorithms.yaml` | Focused Kestrel sweep for Arco/HiGHS algorithms on dense-CAP cases |
+| `torc_kestrel_arco_xpress_algorithms.yaml` | Focused Kestrel sweep for Arco/Xpress LP algorithms against GAMS/CPLEX |
 | `pull_results.sh` | Pull JSON results from a Torc run and emit CSV (local or remote SSH) |
 | `create_comparison_benchmark_table.py` | Convert CSV results to a markdown table |
+
+`pull_results.sh` includes Arco provenance columns when present in JSON:
+`arco_version` and `solver_runtime_available`. Use these to confirm that
+`solve_arco` rows ran the intended wheel and that Xpress was loadable on the
+compute node.
 
 ## Default benchmark matrix
 
@@ -213,7 +220,7 @@ python tests/framework_comparison/create_comparison_benchmark_table.py /tmp/resu
 
 ### Prerequisites
 
-- Torc client: `/scratch/psanchez/torc/0.30.3/torc`
+- Torc client: Torc `v0.36.0` or newer
 - Torc API: `http://torc.hpc.nrel.gov:8080/torc-service/v1`
 - Kestrel modules: `gams/51.3.0 conda/2024.06.1`
 - Optional Arco prefix: `/scratch/psanchez/arco/latest`
@@ -232,7 +239,64 @@ RUN_ID=framework-matrix-$(date +%Y%m%d-%H%M%S)
   --workflow tests/framework_comparison/torc_kestrel.yaml \
   --torc-api-url http://torc.hpc.nrel.gov:8080/torc-service/v1 \
   --modules 'gams/51.3.0 conda/2024.06.1' \
-  --remote-torc-bin /scratch/psanchez/torc/0.30.3/torc
+  --remote-torc-bin /scratch/psanchez/torc/0.36.0/torc
+```
+
+### Focused Arco/Xpress algorithm sweep
+
+Use this when investigating dense-column solve behavior against the CPLEX
+baseline without rerunning the full framework matrix. It runs GAMS/CPLEX and
+Arco/Xpress `auto`, `dual`, `barrier`, and `dual_barrier` variants for medium,
+large, and xlarge.
+
+```bash
+torc slurm generate --account reedseda --profile kestrel \
+  --group-by resource-requirements --overwrite \
+  -o tests/framework_comparison/torc_kestrel_arco_xpress_algorithms_slurm.yaml \
+  tests/framework_comparison/torc_kestrel_arco_xpress_algorithms.yaml
+
+torc submit --max-parallel-jobs 1 \
+  -o <torc-output-dir> \
+  tests/framework_comparison/torc_kestrel_arco_xpress_algorithms_slurm.yaml
+```
+
+Pull its results with the workflow-specific relative path:
+
+```bash
+TORC_RESULTS_RELPATH=src/tests/framework_comparison/torc_output_xpress_algorithms/framework_results \
+  ./tests/framework_comparison/pull_results.sh --host psanchez@kestrel.hpc.nrel.gov \
+  > tests/framework_comparison/results/benchmark_xpress_algorithms.csv
+```
+
+### Focused Arco/HiGHS algorithm sweep
+
+Use this open-solver sweep to compare HiGHS `ipm`, `simplex`, `choose`, `ipm`
+with `--presolve off`, `ipm` with `--highs-run-crossover off`, and `ipm` with
+Arco's direct C-API load path (`--highs-load-path direct`), including the
+direct-load + `--presolve off` interaction, on the dense-CAP cases with
+consistent build, peak RSS, and solve metadata. The presolve-off, crossover-off,
+and direct-load branches are memory/performance probes: local bounded xlarge
+runs currently show the lowest peak RSS for wrapper + `--presolve off`, while
+direct load improves matrix handoff timing in some branches. Full-solve Kestrel
+results should decide whether any branch is acceptable as a default.
+
+```bash
+torc slurm generate --account reedseda --profile kestrel \
+  --group-by resource-requirements --overwrite \
+  -o tests/framework_comparison/torc_kestrel_arco_highs_algorithms_slurm.yaml \
+  tests/framework_comparison/torc_kestrel_arco_highs_algorithms.yaml
+
+torc submit --max-parallel-jobs 1 \
+  -o <torc-output-dir> \
+  tests/framework_comparison/torc_kestrel_arco_highs_algorithms_slurm.yaml
+```
+
+Pull its results with:
+
+```bash
+TORC_RESULTS_RELPATH=src/tests/framework_comparison/torc_output_highs_algorithms/framework_results \
+  ./tests/framework_comparison/pull_results.sh --host psanchez@kestrel.hpc.nrel.gov \
+  > tests/framework_comparison/results/benchmark_highs_algorithms.csv
 ```
 
 ### Monitor
@@ -252,6 +316,21 @@ torc results list <workflow-id>
 python tests/framework_comparison/create_comparison_benchmark_table.py /tmp/results.csv
 ```
 
+`pull_results.sh` uses `jq` when available and otherwise falls back to the
+standard-library Python JSON parser. The emitted CSV includes backend
+`run_options` and `solve_metadata` columns for requested solver settings, model
+dimensions, matrix-build/run timings, solution-extraction time, fingerprint
+time, and Arco's HiGHS direct-load flag; use those columns to compare
+memory/performance branches instead of relying only on job labels. The markdown
+table generator includes those option and metadata columns when they are present
+in the input CSV, while older compact CSVs still render with the original
+columns.
+
+`run_framework.py --threads <n>` forwards an explicit solver thread count to
+framework adapters that support it. When omitted under Slurm,
+`SLURM_CPUS_PER_TASK` is used and recorded in `run_options.threads`, so Kestrel
+results show whether medium/large/xlarge runs used their allocated CPU counts.
+
 ### Inspect individual JSON results on Kestrel
 
 ```bash
@@ -269,6 +348,7 @@ ssh psanchez@kestrel.hpc.nrel.gov \
 | `BENCHMARK_SOLVER` | Solver used by all jobs in a workflow | `highs` |
 | `FRAMEWORK_MODULES` | Space- or comma-separated Lmod modules (HPC) | `gams/51.3.0 conda/2024.06.1` |
 | `FRAMEWORK_COMPARISON_ARCO_PREFIX` | Prefix with `wheels/` and `scip/lib/` | `/scratch/$USER/arco/latest` |
+| `FRAMEWORK_ARCO_VERSION` | Arco wheel version required by `solve_arco` jobs | `0.7.0` |
 | `GAMS_EXE` | Explicit GAMS executable path | discovered from `PATH` |
 | `TORC_API_URL` | Torc API endpoint | Kestrel Torc URL |
 | `GAMS_LICENSE_FILE` | Path to GAMS/CPLEX license file used by `gams ... license=...` | unset |
@@ -287,7 +367,13 @@ ssh psanchez@kestrel.hpc.nrel.gov \
 
 - Keep `invocation_script` env-only and finish with `exec "$@"` in `setup_env_hpc.sh`.
 - Use single-line `command:` entries in Torc YAML to avoid shell split issues.
-- For Arco on Kestrel, install from `/scratch/$USER/arco/latest/wheels` with `--no-deps`.
+- For Arco on Kestrel, `solve_arco` jobs require `/scratch/$USER/arco/latest/wheels`,
+  reinstall `arco==$FRAMEWORK_ARCO_VERSION` with `--no-deps` on every run, and
+  verify the installed package metadata version before solving. This avoids
+  stale same-version wheels when iterating on memory changes.
+- For Arco/Xpress on Kestrel, `setup_env_hpc.sh` prepends `$XPRESSDIR/lib`
+  to `LD_LIBRARY_PATH` after loading `xpressmp`; this keeps the Rust-backed
+  Python extension able to load `libxprs.so` even when wheel rpaths are absent.
 - Pin `xpress==9.7.*` to match site license and use `pyoptinterface[highs]` so HiGHS is bundled.
 - GAMS CPLEX requires passing a license path explicitly: runner now uses
   `gams ... license=<GAMS_LICENSE_FILE|GAMS_LICENSE>`.

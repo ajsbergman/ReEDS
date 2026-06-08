@@ -5,16 +5,26 @@ set -euo pipefail
 readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 readonly REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 readonly DEFAULT_MODULES="gams/51.3.0 conda/2024.06.1"
+readonly DEFAULT_XPRESS_MODULES="gams/51.3.0 xpressmp conda/2024.06.1"
 readonly TORC_API_URL_DEFAULT="http://torc.hpc.nrel.gov:8080/torc-service/v1"
 
 log() { printf '[setup-hpc] %s\n' "$*" >&2; }
 warn() { printf '[setup-hpc] WARN: %s\n' "$*" >&2; }
 die() { printf '[setup-hpc] ERROR: %s\n' "$*" >&2; exit 1; }
 
-FRAMEWORK_MODULES="${FRAMEWORK_MODULES:-${DEFAULT_MODULES}}"
+if [[ -z "${FRAMEWORK_MODULES:-}" ]] && [[ " $* " == *" --solver xpress "* ]]; then
+  FRAMEWORK_MODULES="${DEFAULT_XPRESS_MODULES}"
+else
+  FRAMEWORK_MODULES="${FRAMEWORK_MODULES:-${DEFAULT_MODULES}}"
+fi
 FRAMEWORK_MODULES="${FRAMEWORK_MODULES//,/ }"
 readonly FRAMEWORK_MODULES
 readonly ARCO_PREFIX="${FRAMEWORK_COMPARISON_ARCO_PREFIX:-/scratch/${USER}/arco/latest}"
+
+export OPENBLAS_NUM_THREADS="${OPENBLAS_NUM_THREADS:-4}"
+export OMP_NUM_THREADS="${OMP_NUM_THREADS:-4}"
+export MKL_NUM_THREADS="${MKL_NUM_THREADS:-4}"
+export NUMEXPR_MAX_THREADS="${NUMEXPR_MAX_THREADS:-4}"
 
 if [[ -f /etc/profile.d/modules.sh ]]; then
   # shellcheck disable=SC1091
@@ -38,12 +48,20 @@ if [[ -d "${SCIP_LIB}" ]]; then
   log "LD_LIBRARY_PATH prepended: ${SCIP_LIB}"
 fi
 
+if [[ -n "${XPRESSDIR:-}" ]] && [[ -d "${XPRESSDIR%/}/lib" ]]; then
+  export LD_LIBRARY_PATH="${XPRESSDIR%/}/lib:${LD_LIBRARY_PATH:-}"
+  log "LD_LIBRARY_PATH prepended: ${XPRESSDIR%/}/lib"
+fi
+
 if [[ -z "${GAMS_EXE:-}" ]] && command -v gams >/dev/null 2>&1; then
   GAMS_EXE="$(command -v gams)"
   export GAMS_EXE
 fi
 if [[ -n "${GAMS_LICENSE:-}" ]] && [[ -z "${GAMS_LICENSE_FILE:-}" ]]; then
   export GAMS_LICENSE_FILE="${GAMS_LICENSE}"
+fi
+if [[ -z "${GAMS_LICENSE_FILE:-}" ]] && [[ -f "/home/${USER}/gamslice.txt" ]]; then
+  export GAMS_LICENSE_FILE="/home/${USER}/gamslice.txt"
 fi
 if [[ -n "${GAMS_LICENSE_FILE:-}" ]]; then
   log "Using GAMS license file: ${GAMS_LICENSE_FILE}"
@@ -71,7 +89,7 @@ readonly UV_VENV_PYTHON="${UV_PROJECT_DIR}/.venv/bin/python"
 [[ -x "${UV_VENV_PYTHON}" ]] || die "Missing uv environment python: ${UV_VENV_PYTHON}"
 
 readonly ARCO_WHEEL_DIR="${ARCO_PREFIX%/}/wheels"
-readonly ARCO_VERSION="${FRAMEWORK_ARCO_VERSION:-0.6.1}"
+readonly ARCO_VERSION="${FRAMEWORK_ARCO_VERSION:-0.7.0}"
 readonly ARCO_SYNC_MARKER="${UV_PROJECT_DIR}/.uv-sync.arco-${ARCO_VERSION}.done"
 
 REQUIRES_ARCO=0
@@ -79,7 +97,11 @@ if [[ " $* " == *" --module solve_arco "* ]]; then
   REQUIRES_ARCO=1
 fi
 
-if [[ -d "${ARCO_WHEEL_DIR}" ]] && [[ ! -f "${ARCO_SYNC_MARKER}" ]]; then
+if (( REQUIRES_ARCO == 1 )) && [[ ! -d "${ARCO_WHEEL_DIR}" ]]; then
+  die "Missing Arco wheel directory for solve_arco run: ${ARCO_WHEEL_DIR}"
+fi
+
+if [[ -d "${ARCO_WHEEL_DIR}" ]] && { (( REQUIRES_ARCO == 1 )) || [[ ! -f "${ARCO_SYNC_MARKER}" ]]; }; then
   log "Installing arco==${ARCO_VERSION} from local wheels: ${ARCO_WHEEL_DIR}"
   if uv pip install \
     --python "${UV_VENV_PYTHON}" \
@@ -97,7 +119,16 @@ if [[ -d "${ARCO_WHEEL_DIR}" ]] && [[ ! -f "${ARCO_SYNC_MARKER}" ]]; then
 fi
 
 if (( REQUIRES_ARCO == 1 )); then
-  "${UV_VENV_PYTHON}" -c 'import arco' >/dev/null 2>&1 || die "arco import failed after setup"
+  "${UV_VENV_PYTHON}" - "${ARCO_VERSION}" <<'PY' || die "arco import/version check failed after setup"
+import importlib.metadata
+import sys
+
+expected = sys.argv[1]
+actual = importlib.metadata.version("arco")
+if actual != expected:
+    raise SystemExit(f"expected arco=={expected}, found arco=={actual}")
+import arco  # noqa: F401
+PY
 fi
 
 export PATH="${UV_PROJECT_DIR}/.venv/bin:${PATH}"
