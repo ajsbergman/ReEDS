@@ -14,6 +14,7 @@ import os
 import pandas as pd
 import scipy.stats
 import sys
+import re
 import yaml
 from typing import Tuple, List
 from collections import defaultdict
@@ -1861,7 +1862,7 @@ def write_samples(
 #%% ===========================================================================
 ### --- MAIN PROCEDURE ---
 ### ===========================================================================
-def main(
+def main_mcs(
     reeds_path: str,
     inputs_case: str,
     n_samples: int = 1,
@@ -1926,6 +1927,73 @@ def main(
         # Write Samples
         write_samples(sample_group, samples_dict, aux_files)
 
+def main_mga_rv(
+    reeds_path: str,
+    inputs_case: str,
+    sw: dict,
+    n_samples: int = 1,
+    lhs_sampling: int = 1,
+    seed: int = 0,
+):
+
+    # get dimensions based on number of regions and subojectives
+
+    ## regions
+    # val_r generated in copy_files.py
+    val_r = list(reeds.io.read_input(inputs_case, 'r')['*'])
+
+    ## objective 
+    if sw.GSw_MGA_Objective in ['capacity', 'generation']:
+        ## if the subojective is an aggregated category, break it up into smaller groups
+        ## otherwise just use the subobjective as the group
+        mapped_categories ={
+            'gentech': ['coal', 'gas', 'nuclear', 'h2_combustion', 'geo', 'hydro', 'ofswind', 'onswind', 'storage', 'upv'],
+            'fossil' : ['coal', 'gas'],
+            're': ['geo', 'hydro', 'ofswind', 'onswind', 'pv', 'vre', 'wind'],
+            'vre': ['ofswind', 'onswind', 'upv'],
+        }
+        if sw.GSw_MGA_SubObjective in mapped_categories:
+            subsets = mapped_categories[sw.GSw_MGA_SubObjective]
+        else:
+            subsets = [sw.GSw_MGA_SubObjective]
+        
+        ## sample weights for each subojective group and region
+        dimensions = len(subsets) * len(val_r)
+
+    else:
+        raise NotImplementedError(f"Objective '{sw.GSw_MGA_Objective}' is not yet supported for MGA random vector sampling.")
+
+    runs_folder_name = os.path.basename(os.path.dirname(inputs_case.rstrip(os.path.sep)))
+    mga_run_number = int((runs_folder_name.split('_')[-1]).replace('R', ''))
+    
+    # sample using LHS or random approach
+    if lhs_sampling:
+        # lhs requires drawing all samples simultaneously, so rather than using
+        # a run-specific seed we draw for all runs at once using the global seed value 
+        lhs_sampler = scipy.stats.qmc.LatinHypercube(d=dimensions, seed=seed)
+        # lhs_samples are arranged n x d (n = samples, d = dimensions)
+        lhs_samples = lhs_sampler.random(n=n_samples)
+        # record the lhs sampling matrix in each run folder
+        lhs_samples_out = pd.DataFrame({'run': [f"R{i:0>4}" for i in range(1, n_samples + 1)]})
+        lhs_samples_out = pd.concat(
+            [lhs_samples_out, pd.DataFrame(lhs_samples.round(6))], axis=1
+        )
+        lhs_samples_out.to_csv(os.path.join(inputs_case, "mga_rv_latin_hypercube_samples.csv"), index=False)
+
+        # get the weights for this specific run (-1 to adjust for zero indexing)
+        mga_weights_raw = lhs_samples[mga_run_number - 1]
+    else:
+        # set random seed using the global seed + MGA run number to allow reproducibility
+        np.random.seed(seed + mga_run_number)
+        # get the weights for this specific run
+        mga_weights_raw = np.random.uniform(0, 1, dimensions)
+
+    # save vector of weights for this run (rounded to 6 decimal places) 
+    region_labels = np.repeat(val_r, len(subsets))
+    subset_labels = np.tile(subsets, len(val_r))
+    mga_weights = pd.DataFrame({'*r': region_labels, 'i_subtech': subset_labels, 'weight': mga_weights_raw.round(6)})
+    mga_weights.to_csv(os.path.join(inputs_case, "mga_weights.csv"), index=False)
+    
 
 if __name__ == '__main__' and not hasattr(sys, 'ps1'):
     parser = argparse.ArgumentParser(description='Copy files needed for this run')
@@ -1956,16 +2024,23 @@ if __name__ == '__main__' and not hasattr(sys, 'ps1'):
     sw = reeds.io.get_switches(inputs_case)
     MCS_runs = int(sw.get('MCS_runs', 0))
     MCS_lhs = int(sw.get('MCS_lhs', 0))
+    MGA_rv_runs = int(sw.get('MGA_RV_runs', 0))
 
     # get global seed from scalars (used to set the seed for a batch of runs)
     scalars = reeds.io.get_scalars()
     seed = int(scalars['MCS_seed'])
 
     if MCS_runs >= 1:
-        print('Starting mcs_sampler.py')
-        main(reeds_path, inputs_case, n_samples=MCS_runs, lhs_sampling=MCS_lhs, seed=seed)
+        print('Starting Monte Carlo sampling with mcs_sampler.py')
+        main_mcs(reeds_path, inputs_case, n_samples=MCS_runs, lhs_sampling=MCS_lhs, seed=seed)
     else:
         print('MCS_runs switch is set to 0 or not found. No Monte Carlo sampling will be performed')
+
+    if MGA_rv_runs >= 1:
+        print('Starting random vector sampling for MGA with mcs_sampler.py')
+        main_mga_rv(reeds_path, inputs_case, sw, n_samples=MGA_rv_runs, lhs_sampling=MCS_lhs, seed=seed)
+    else:
+        print('MGA_RV_runs switch is set to 0 or not found. No MGA random vector sampling will be performed')
 
     # Final log/timing update.
     reeds.log.toc(

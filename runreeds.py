@@ -998,7 +998,7 @@ def setupEnvironment(
     print('Syncing remote files')
     # If using Monte Carlo sampling, download everything (since combinations of switches
     ## not listed in cases{}.csv may be used)
-    if df_cases.loc['MCS_runs'].astype(int).sum():
+    if df_cases.loc['MCS_runs'].astype(int).sum() or df_cases.loc['MGA_RV_runs'].astype(int).sum():
         reeds.remote.download_remote_files()
     ## Otherwise, only download the files needed for the present set of runs
     else:
