@@ -6041,7 +6041,7 @@ $ifthene.mgaobj ((sameas(%GSw_MGA_Objective%,capacity))or(sameas(%GSw_MGA_Object
 
 parameter mga_weights(r,i_subtech) "--unitless-- weight to assign to given MGA subobjective by region" ;
       
-$ifthene.mga_rv (%MGA_RV_runs%>=1)
+$ifthene.mga_rv (%GSw_MGA_RV_runs%>=1)
 parameter mga_weights_in(r,i_subtech)
 /
 $offlisting

@@ -275,11 +275,11 @@ def parse_cases(
     # If doing a Monte Carlo or MGA Random Vector run, modify dfcases by adding new columns
     # for each scenario run. For Monte Carlo we also validate the distribution file.
     warned_about_cluster_alg = False
-    if 'MCS_runs' in dfcases.index or 'MGA_RV_runs' in dfcases.index:
+    if 'MCS_runs' in dfcases.index or 'GSw_MGA_RV_runs' in dfcases.index:
         for c in dfcases.columns:
             if (
                 c not in ['Description','Default Value','Choices']
-                and ((int(dfcases.loc['MCS_runs',c]) > 0) or (int(dfcases.loc['MGA_RV_runs',c]) > 0))
+                and ((int(dfcases.loc['MCS_runs',c]) > 0) or (int(dfcases.loc['GSw_MGA_RV_runs',c]) > 0))
                 and (not int(dfcases.loc['ignore',c]))
             ):
                 # Warn user if the hourly clustering algorithm is not fixed for Monte Carlo runs
@@ -314,7 +314,7 @@ def parse_cases(
                     numruns = int(dfcases[c].MCS_runs)
                     run_type = 'MCS'
                 else:                    
-                    numruns = int(dfcases[c].MGA_RV_runs)
+                    numruns = int(dfcases[c].GSw_MGA_RV_runs)
                     run_type = 'R'
 
                 # c (column) is a case with monte carlo or MGA random vector runs.
@@ -378,13 +378,13 @@ def solvestring_sequential(
             'GSw_ClimateWater',
             'GSw_gopt',
             'GSw_gopt_mga',
-            'MGA_RV_runs',
             'GSw_HourlyChunkLengthRep',
             'GSw_HourlyChunkLengthStress',
             'GSw_HourlyType',
             'GSw_HourlyWrapLevel',
             'GSw_MGA_CostDelta',
             'GSw_MGA_Direction',
+            'GSw_MGA_RV_runs',
             'GSw_PVB_Dur',
             'GSw_SkipRAyear',
             'GSw_StateCO2ImportLevel',

@@ -2024,7 +2024,7 @@ if __name__ == '__main__' and not hasattr(sys, 'ps1'):
     sw = reeds.io.get_switches(inputs_case)
     MCS_runs = int(sw.get('MCS_runs', 0))
     MCS_lhs = int(sw.get('MCS_lhs', 0))
-    MGA_rv_runs = int(sw.get('MGA_RV_runs', 0))
+    GSw_MGA_RV_runs = int(sw.get('GSw_MGA_RV_runs', 0))
 
     # get global seed from scalars (used to set the seed for a batch of runs)
     scalars = reeds.io.get_scalars()
@@ -2036,11 +2036,11 @@ if __name__ == '__main__' and not hasattr(sys, 'ps1'):
     else:
         print('MCS_runs switch is set to 0 or not found. No Monte Carlo sampling will be performed')
 
-    if MGA_rv_runs >= 1:
+    if GSw_MGA_RV_runs >= 1:
         print('Starting random vector sampling for MGA with mcs_sampler.py')
-        main_mga_rv(reeds_path, inputs_case, sw, n_samples=MGA_rv_runs, lhs_sampling=MCS_lhs, seed=seed)
+        main_mga_rv(reeds_path, inputs_case, sw, n_samples=GSw_MGA_RV_runs, lhs_sampling=MCS_lhs, seed=seed)
     else:
-        print('MGA_RV_runs switch is set to 0 or not found. No MGA random vector sampling will be performed')
+        print('GSw_MGA_RV_runs switch is set to 0 or not found. No MGA random vector sampling will be performed')
 
     # Final log/timing update.
     reeds.log.toc(
