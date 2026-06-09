@@ -1257,7 +1257,7 @@ $onlisting
 
 *created by /input_processing/writecapdat.py
 $onempty
-parameter capnonrsc(i,r) "--MW-- raw power capacity data for non-RSC tech created by .\input_processing\writecapdat.py"
+parameter capnonrsc(i,r) "--MW-- existing (pre startyear) power capacity data for non resource supply curve (RSC) technologies"
 /
 $offlisting
 $ondelim
