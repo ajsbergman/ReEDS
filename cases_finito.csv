@@ -8,7 +8,7 @@ coalscen,AEO_2025_reference,,,,,,,,,,,,,,,,,,,,,
 ngscen,AEO_2025_reference,,,,,AEO_2025_HOG,,,AEO_2025_HOG,,,,,,,,,,,,,
 uraniumscen,AEO_2025_reference,,,,,,,,,,,,,,,,,,,,,
 GSw_Region,country/USA,,st/CO,,,,,,,,,,,,,,,,,,,
-GSw_ZoneSet,z132,,,,,,,,,,,,,,,,,,,,,z54
+GSw_ZoneSet,z54,,,,,,,,,,,,,,,,,,,,,z54
 GSw_GasCurve,1,,2,,,,,,,,,,,,,,,,,,,
 GSw_gopt,2,,,,,,,,,,,,,,,,,,,,,
 GSw_NewValCapShrink,1,,,,,,,,,,,,,,,,,,,,,
