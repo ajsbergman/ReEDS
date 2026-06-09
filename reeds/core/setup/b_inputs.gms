@@ -1317,7 +1317,7 @@ $offempty
 
 *Created using reeds/input_processing/writecapdat.py
 $onempty
-parameter prescribedrsc(i,v,r,allt) "--MW-- raw prescribed capacity data for RSC tech created by .\input_processing\writecapdat.py"
+parameter prescribedrsc(i,v,r,allt) "--MW-- prescribed capacity data for resource supply curve (RSC) technologies"
 /
 $offlisting
 $ondelim
