@@ -1305,7 +1305,7 @@ $onlisting
 $offempty
 
 $onempty
-parameter prescribednonrsc_energy(i,v,r,allt) "--MWh-- raw prescribed energy capacity data for non-RSC tech created by writecapdat.py"
+parameter prescribednonrsc_energy(i,v,r,allt) "--MWh-- prescribed energy data for non resource supply curves (RSC) technologies"
 /
 $offlisting
 $ondelim
