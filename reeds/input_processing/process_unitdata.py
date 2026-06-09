@@ -16,14 +16,14 @@ import reeds
 #%% ===========================================================================
 ### --- General Read Functions---
 ### ===========================================================================
-# Function to merge NEMS unitdata with interconnection_land/offshore data by 
-# mapping each unit in NEMS by lon/lat to its closest sc_point_gid
 def assign_gids_to_unitdata(df, offland_gdf, land_gdf):
-    offland_gdf['sc_point_gid'] = offland_gdf.index
-    #offland_gdf = offland_gdf[['sc_point_gid','latitude','longitude']]
+    '''
+    Function to merge NEMS unitdata with interconnection_land/offshore data by 
+    mapping each unit in NEMS by lon/lat to its closest sc_point_gid
+    '''
 
+    offland_gdf['sc_point_gid'] = offland_gdf.index
     land_gdf['sc_point_gid'] = land_gdf.index
-    #land_gdf = land_gdf[['sc_point_gid','latitude','longitude']]
 
     # Technologies to map - pv, wind, and geothermal
     tech_match = {'upv': ['upv','dupv','pvb_pv','csp-wp','csp-ns'],
