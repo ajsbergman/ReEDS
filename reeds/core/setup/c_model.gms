@@ -971,7 +971,7 @@ eq_forceprescription_energy(i,newv,r,t)
 
 * plus any extra energy buildouts (no penalty here - used as free slack)
 * only on or after the first year the techs are available
-    +   EXTRA_PRESCRIP_ENERGY(i,newv,r,t)$[yeart(t)>=firstyear(i)]
+    + EXTRA_PRESCRIP_ENERGY(i,newv,r,t)$[yeart(t)>=firstyear(i)]
 ;
 
 * ---------------------------------------------------------------------------
