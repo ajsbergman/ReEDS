@@ -1,7 +1,7 @@
 ,Default Value,USA_defaults,USA_defaults_fc_mid,USA_defaults_fc_low,USA_defaults_fc_high,USA_defaults_fc_mid_w_ng_fc
 ignore,1,0,0,0,0,0
 GSw_Region,cendiv/Pacific,country/USA,country/USA,country/USA,country/USA,country/USA
-endyear,2050,,,,,
+endyear,2032,2050,2050,2050,2050,2050
 yearset,2010_2015_2020..2050..5,,,,,
 GSw_ZoneSet,,,,,,
 GSw_GasCurve,2,1,1,1,1,1
@@ -22,6 +22,7 @@ GSw_PRM_scenario,,,,,,
 GSw_HourlyType,,,,,,
 GSw_InterDayLinkage,,,,,,
 GSw_HourlyWeatherYears,,,,,,
+GSw_HourlyClusterMapMethod,,,,,,
 GSw_WaterCapacity,,,,,,
 GSw_WaterMain,,,,,,
 GSw_WaterUse,,,,,,
