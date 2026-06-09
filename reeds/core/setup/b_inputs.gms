@@ -1294,7 +1294,7 @@ $offempty
 *created by reeds/input_processing/writecapdat.py
 * declared over allt to allow for external data files that extend beyond end_year
 $onempty
-parameter prescribednonrsc(i,v,r,allt) "--MW-- raw prescribed capacity data for non-RSC tech created by writecapdat.py"
+parameter prescribednonrsc(i,v,r,allt) "--MW-- prescribed capacity data for non resource supply curves (RSC) technologies"
 /
 $offlisting
 $ondelim
