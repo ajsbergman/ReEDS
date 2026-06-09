@@ -1331,7 +1331,7 @@ $offempty
 *following does not include wind
 *Retirements for techs binned by heatrates are handled in hintage_data.csv
 $onempty
-parameter prescribedretirements(i,v,r,allt,alltt,captype) "--MW-- raw prescribed power capacity retirement data for non-RSC, non-heatrate binned tech created by /input_processing/writecapdat.py"
+parameter prescribedretirements(i,v,r,allt,alltt,captype) "--MW-- prescribed power capacity retirement data for non-RSC, non-heatrate binned technologies"
 /
 $offlisting
 $ondelim
