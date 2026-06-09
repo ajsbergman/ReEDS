@@ -3008,10 +3008,10 @@ routes_inv(r,rr,trtype,t)$[notvsc(trtype)$routes(r,rr,trtype,t)] = yes ;
 routes_inv(r,rr,trtype,t)$[yeart(t)<firstyear_trans_nearterm] = no ;
 * If not allowing near-term transmission, turn those off until firstyear_trans_longterm
 routes_inv(r,rr,trtype,t)$[(not Sw_TransInvNearTerm)$(yeart(t)<firstyear_trans_longterm)] = no ;
-* Do allow "possible" interfaces to be expanded
+* Allow interfaces with planned expansions to be expanded
 routes_inv(r,rr,trtype,t)
-    $[sum{tt$[(yeart(tt)<=yeart(t))],
-          trancap_fut(r,rr,"possible",trtype,tt) + trancap_fut(rr,r,"possible",trtype,tt) }
+    $[sum{(tt,trancap_fut_cat)$[yeart(tt)<=yeart(t)],
+          trancap_fut(r,rr,trancap_fut_cat,trtype,tt) + trancap_fut(rr,r,trancap_fut_cat,trtype,tt) }
     $routes(r,rr,trtype,t)] = yes ;
 routes_inv(rr,r,trtype,t)$[not routes_inv(r,rr,trtype,t)] = no ;
 
@@ -3457,7 +3457,7 @@ parameter cost_prod(i,v,r,t)                  "--$/metric ton/hr-- cost or benef
 scalar    h2_combustion_intensity              "--metric tons/MMBtu-- amount of hydrogen consumed per MMBtu of H2-Combustion fuel consumption" ;
 
 parameter pipeline_distance(r,rr) "--miles-- distance between all adjacent BA centroids for pipeline investments" ;
-pipeline_distance(r,rr) = distance(r,rr,"AC") ;
+pipeline_distance(r,rr) = distance(r,rr,"VSC") ;
 
 * For smr consume_char0 has capital costs in $/(kg/day) and "ele_efficiency" of kWh/kg
 * convert to $/MW by [$/(kg/day)] / [kwh/kg] * [1000 kWh/MWh] * [24 hr/day]
@@ -5952,25 +5952,18 @@ $offdelim
 $ondigit
 $onlisting
 / ,
-          min_co2_spurline_distance     "--mi-- minimum distance for a spur line (used to provide a floor for pipeline distances in r_cs_distance)",
-          min_r_cs_distance(r)          "--mi-- mininum euclidean distance between BA transmission endpoints and storage formations"
+          min_r_cs_distance(r)          "--mi-- minimum euclidean distance between BA transmission endpoints and storage formations"
 ;
 $offempty
 
-* Wherever BA centroids fall within formation boundaries, r_cs_distance will be equal to 0, to ensure these are not dropped from the set, set these elements to a small number
-r_cs_distance(r,cs)$[r_cs(r,cs)$(r_cs_distance(r,cs) = 0)] = 1e-3 ;
-* find the closest site to each region
+* find the closest storage site to each region
 min_r_cs_distance(r) = smin(cs$[r_cs(r,cs)], r_cs_distance(r,cs));
 
 $ifthene.rcslimit %GSw_CO2_LimitStorageSites% == 1
-* remove the region site combinations that are not the closest 
+* remove the region-site combinations that are not the closest
 r_cs_distance(r,cs)$[r_cs(r,cs)$(r_cs_distance(r,cs) <= min_r_cs_distance(r))] = min_r_cs_distance(r) ;
 r_cs_distance(r,cs)$[r_cs(r,cs)$(r_cs_distance(r,cs) > min_r_cs_distance(r))] = 0 ;
 $endif.rcslimit
-
-* Wherever BA centroids fall within formation boundaries, assume some average spur line distance to connect a CCS or DAC plant with an injection site 
-min_co2_spurline_distance = 20 ;
-r_cs_distance(r,cs)$[r_cs_distance(r,cs)$(r_cs_distance(r,cs) <= min_co2_spurline_distance )] = min_co2_spurline_distance ;
 
 $onempty
 table co2_char(cs,*) "co2 site characteristics including injection rate limit, total storage limit, and break even cost"
@@ -5999,7 +5992,7 @@ cost_co2_spurline_fom(r,cs,t)$[r_cs(r,cs)$tmodel_new(t)] = Sw_CO2_spurline_fom *
 cost_co2_pipeline_cap(r,rr,t)$[routes_adjacent(r,rr)$tmodel_new(t)] = Sw_CO2_pipeline_cost * pipeline_distance(r,rr) ;
 cost_co2_pipeline_fom(r,rr,t)$[routes_adjacent(r,rr)$tmodel_new(t)] = Sw_CO2_pipeline_fom * pipeline_distance(r,rr) ;
 
-co2_routes(r,rr)$routes_adjacent(r,rr) = yes ;
+co2_routes(r,rr)$[routes_adjacent(r,rr)$pipeline_distance(r,rr)] = yes ;
 
 cost_co2_pipeline_cap(r,rr,t) =  %GSw_CO2_CostAdj% * cost_co2_pipeline_cap(r,rr,t);
 cost_co2_pipeline_fom(r,rr,t) =  %GSw_CO2_CostAdj% * cost_co2_pipeline_fom(r,rr,t);
@@ -6051,7 +6044,7 @@ Set
     starting_hour_nowrap(allh)             "Flag for whether allh is the first chronological hour by day type"
     final_hour(allh)                       "Flag for whether allh is the last chronological hour in a day type" 
     final_hour_nowrap(allh)                "Flag for whether allh is the last chronological hour in a day type"
-    nextszn(allszn,allszn)                 "Mapping between one actual period (allszn) and the next"
+    nextszn(actualszn,actualszn)           "Mapping between one actual period (actualszn) and the next"
     nextpartition(allszn,allszn)           "Mapping between one partition (allszn) and the next"
 * Peak demand
     maxload_szn(r,allh,t,allszn)           "hour with highest load within each szn"
