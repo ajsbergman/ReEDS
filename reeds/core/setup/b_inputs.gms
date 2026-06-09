@@ -1269,7 +1269,7 @@ $offempty
 
 *created by reeds/input_processing/writecapdat.py
 $onempty
-parameter capnonrsc_energy(i,r) "--MWh-- raw energy capacity data for battery tech created by .\input_processing\writecapdat.py"
+parameter capnonrsc_energy(i,r) "--MWh-- existing (pre startyear) energy capacity data for storage technologies"
 /
 $offlisting
 $ondelim
