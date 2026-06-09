@@ -1344,7 +1344,7 @@ $offempty
 *created by reeds/input_processing/writecapdat.py
 *Retirements for techs binned by heatrates are handled in hintage_data.csv
 $onempty
-parameter prescribedretirements_energy(v,r,i,allt,alltt,captype) "--MWh-- raw prescribed energy capacity retirement data for battery tech created by /input_processing/writecapdat.py"
+parameter prescribedretirements_energy(v,r,i,allt,alltt,captype) "--MWh-- prescribed energy capacity retirement data for storage technologies"
 /
 $offlisting
 $ondelim
