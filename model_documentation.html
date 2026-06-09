@@ -3147,10 +3147,11 @@ Adapted from <span id="id192">[<a class="reference internal" href="#id1746" titl
 </figcaption>
 </figure>
 <p>The calculation of capacity credit for VRE is described in the <a class="reference internal" href="#vre-capacity-credit"><span class="xref myst">VRE capacity credit</span></a> section;
-the method for storage is described in the <a class="reference internal" href="#storage-capacity-credit"><span class="xref myst">storage capacity credit</span></a> section.
-Thermal generators are given a capacity credit of 100% in ReEDS;
-technology-specific <a class="reference internal" href="#outage-rates"><span class="xref myst">outage rates</span></a> for thermal generators are not considered in this method
-and are instead assumed to be factored into the <a class="reference internal" href="#planning-reserve-margins"><span class="xref myst">planning reserve margin</span></a>.</p>
+the method for storage is described in the <a class="reference internal" href="#storage-capacity-credit"><span class="xref myst">storage capacity credit</span></a> section.</p>
+<section id="thermal-generation-capacity-credit">
+<h4>Thermal generation capacity credit<a class="headerlink" href="#thermal-generation-capacity-credit" title="Link to this heading"></a></h4>
+<p>For thermal generators (i.e. combined cycle, combustion turbine, nuclear (conventional and SMR), and steam (coal)), ReEDS estimates a seasonal capacity credit for each region/technology combination based on temperature-dependent forced outage rates (described in detail in <a class="reference internal" href="#outage-rates"><span class="xref myst">outage rates</span></a>). To calculate each technology’s contribution to the seasonal reserve margin, its nameplate capacity is multiplied by <span class="math notranslate nohighlight">\((1 - \bar{FOR})\)</span>, where <span class="math notranslate nohighlight">\(\bar{FOR}\)</span> is the mean forced outage rate during the top 20 net load hours cross all modeled <a class="reference internal" href="#weather-years"><span class="xref myst">weather years</span></a> for each season.</p>
+</section>
 <section id="vre-capacity-credit">
 <h4>VRE capacity credit<a class="headerlink" href="#vre-capacity-credit" title="Link to this heading"></a></h4>
 <p>For VRE technologies (i.e., wind and solar), ReEDS estimates a seasonal capacity credit for each region/class combination via an hourly LDC approximation of effective load carrying capability (ELCC)<a class="footnote-reference brackets" href="#ref40" id="id193" role="doc-noteref"><span class="fn-bracket">[</span>23<span class="fn-bracket">]</span></a> performed between solve years.
@@ -6466,7 +6467,7 @@ Prescribed retirements are power plant retirements that are forced into the mode
 
   <div role="contentinfo">
     <p>&#169; Copyright 2024, NREL.
-      <span class="lastupdated">Last updated on June 05, 2026.
+      <span class="lastupdated">Last updated on June 09, 2026.
       </span></p>
   </div>
 
