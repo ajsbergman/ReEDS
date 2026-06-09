@@ -27,8 +27,8 @@ def assign_gids_to_unitdata(df, offland_gdf, land_gdf):
 
     # Technologies to map - pv, wind, and geothermal
     tech_match = {'upv': ['upv','dupv','pvb_pv','csp-wp','csp-ns'],
-                  'wind-ons': ["wind-ons"], 
-                  'wind-ofs': ["wind-ofs"],
+                  'wind-ons': ['wind-ons'], 
+                  'wind-ofs': ['wind-ofs'],
                   'geohydro': ['geohydro_allkm', 'geothermal'],
                   'egs':['egs']}
     

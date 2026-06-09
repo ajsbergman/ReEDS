@@ -172,7 +172,8 @@ def assign_class(cf, tech, df_class):
     if not row.empty:
         return row.iloc[0]['class']
     else:
-        # If a unit's capacity factor/mean temp does not fall between any two max and min values specified in the classificalion file, it is unclassified and gives an error
+        # If a unit's capacity factor/mean temp does not fall between any two max and min values
+        # specified in the classificalion file, it is unclassified and gives an error
         raise ValueError('Unclassified ' + tech + ' technology with cf= ' + str(cf) + 
                          ', check capacity factor/mean temperature values in unitdata.csv and classification files.')
 

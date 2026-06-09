@@ -287,7 +287,9 @@ def check_missing_class_resource(existing_techs, resources):
             missing_class_resource['_merge'] == 'left_only'][['i','r']].copy()
         
         if len(missing_class_resource) > 0:
-            raise ValueError("There are mismatched tech class capacities and resources. Exiting program.")
+            # Print out missing classes
+            missing_class_resource.to_csv(os.path.join(inputs_case,'missing_class_resource.csv'), index=False)
+            raise ValueError('There are mismatched tech class capacities and resources. Exiting program.')
         else:
             print('All capacities and resources are matched.')
             
