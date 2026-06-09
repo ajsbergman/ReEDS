@@ -1281,7 +1281,7 @@ $offempty
 
 *created by reeds/input_processing/writecapdat.py
 $onempty
-parameter caprsc(i,v,r) "--MW-- raw RSC capacity data, created by .\writecapdat.py"
+parameter caprsc(i,v,r) "--MW-- existing (pre startyear) capacity data for resource supply curve (RSC) technologies"
 /
 $offlisting
 $ondelim
