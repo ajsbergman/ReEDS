@@ -293,8 +293,6 @@ def check_compatibility(sw):
 
     if sw['GSw_RegionResolution'] in ['county','mixed']:
         err_switch_configs = []
-        if int(sw['GSw_OffshoreZones']):
-            err_switch_configs.append('GSw_OffshoreZones=1')
         if sw['GSw_LoadAllocationMethod'] == 'state_lpf':
             err_switch_configs.append('GSw_LoadAllocationMethod=state_lpf')
 
@@ -385,6 +383,16 @@ def check_compatibility(sw):
                 float(limit)
             except ValueError:
                 raise ValueError(err)
+
+    if int(sw['GSw_PRM_UpdateMethod']) == 0 and int(sw['GSw_PRM_CapCredit']) == 1 and int(sw['GSw_PRM_StressIterateMax']) > 0:
+        raise ValueError(
+            "The combination of GSw_PRM_UpdateMethod=0, GSw_PRM_CapCredit=1, "
+            "and GSw_PRM_StressIterateMax>0 is not supported.\n"
+            "To iteratively update the PRM, set GSw_PRM_UpdateMethod to an integer between 1-3:"
+            "\n1: static update set by GSw_PRM_UpdateFraction; "
+            "\n2: dynamic update informed by PRAS; "
+            "\n3: dynamic update but only after all new stress periods have been added"
+        )
 
     for bir in sw['GSw_PVB_BIR'].split('_'):
         if not (float(bir) >= 0):
@@ -531,6 +539,14 @@ def check_compatibility(sw):
             )
             raise ModuleNotFoundError(err)
 
+# function to stop the model after input processing
+def stop_after_input_processing(OPATH, reeds_path, casedir, caseSwitches):
+    comment('Exit after input_processing', OPATH)
+    OPATH.writelines(
+        f"python {os.path.join(reeds_path, 'postprocessing', 'cleanup_files.py')} "
+        f"{casedir} --force --quiet --level {caseSwitches['cleanup_level']}\n"
+    )
+    OPATH.writelines('\n' + ('exit' if LINUXORMAC else 'goto:eof') + '\n\n')
 
 def setup_sequential_year(
         cur_year, prev_year, next_year,
@@ -888,7 +904,7 @@ def setupEnvironment(
                     f'Specified single={single} but available cases are:\n'
                     + '\n> '.join([c for c in df_cases.columns])
                 )
-                raise ValueError(err)
+                raise KeyError(err)
         df_cases = df_cases[single.split(',')].copy()
         casenames = single.split(',')
 
@@ -1277,7 +1293,6 @@ def write_batch_script(
         for s in [
             'copy_files',
             'mcs_sampler',
-            'aggregate_regions',
             'hydcf',
             'h2_storage',
             'calc_financial_inputs',
@@ -1294,6 +1309,7 @@ def write_batch_script(
             'transmission',
             'outage_rates',
             'hourly_repperiods',
+            'h5_to_gdx',
         ]:
             OPATH.writelines(f"echo {'-'*12+'-'*len(s)}\n")
             OPATH.writelines(f"echo 'starting {s}.py'\n")
@@ -1302,17 +1318,17 @@ def write_batch_script(
                 f"python {os.path.join(casedir,'reeds','input_processing',s)}.py {reeds_path} {inputs_case}\n")
             OPATH.writelines(writescripterrorcheck(s)+'\n')
 
+            # option to stop input processing after Monte Carlo sampler
+            if s == 'mcs_sampler' and int(caseSwitches['input_processing_only']) == 2:
+                stop_after_input_processing(OPATH, reeds_path, casedir, caseSwitches)
+
         OPATH.writelines(
             f"python {os.path.join(reeds_path, 'postprocessing', 'cleanup_files.py')} "
             f"{casedir} --force --quiet\n"
         )
 
-        if int(caseSwitches['input_processing_only']):
-            OPATH.writelines(
-                f"python {os.path.join(reeds_path, 'postprocessing', 'cleanup_files.py')} "
-                f"{casedir} --force --quiet --level {caseSwitches['cleanup_level']}\n"
-            )
-            OPATH.writelines('\n' + ('exit' if LINUXORMAC else 'goto:eof') + '\n\n')
+        if int(caseSwitches['input_processing_only']) == 1:
+            stop_after_input_processing(OPATH, reeds_path, casedir, caseSwitches)
 
         big_comment('Compile model', OPATH)
 
@@ -1324,6 +1340,7 @@ def write_batch_script(
         OPATH.writelines(f'python {logger}\n')
         restartfile = batch_case
         OPATH.writelines(writeerrorcheck(os.path.join('g00files', restartfile + '.g*')))
+        OPATH.writelines(writescripterrorcheck(s)+'\n')
 
         ################################
         #    -- CORE MODEL SETUP --    #
