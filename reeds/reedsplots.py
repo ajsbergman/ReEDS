@@ -3273,7 +3273,7 @@ def map_zone_capacity(
             .unstack('i') / 1e3
         )
         dfco2.columns = simplify_techs(dfco2.columns)
-        dfco2 = dfco2.groupby(axis=1, level='i').sum()
+        dfco2 = dfco2.T.groupby(level='i').sum().T
         dfco2 = (
             dfco2[[c for c in bokehcolors.index if c in dfco2]]
             .round(3).replace(0,np.nan)
@@ -3828,7 +3828,7 @@ def plot_interday_soc(
         data.rename(columns={'Level_x': 'interday_level', 'Level_y': 'net_day_change', 'Value': 'partition'}, inplace=True)
 
         # Fill missing values
-        data['interday_level'] = data['interday_level'].fillna(method='ffill').fillna(0)
+        data['interday_level'] = data['interday_level'].ffill().fillna(0)
         data['net_day_change'] = data['net_day_change'].fillna(0)
 
         # Sort by time to ensure proper ordering
@@ -4612,9 +4612,9 @@ def plot_h2_timeseries(
         fontsize=12,
     )
     ### Scales
-    ymax = (dfchunk.groupby(axis=1, level='datum').sum()
+    ymax = (dfchunk.T.groupby(level='datum').sum().T
             [['production','stor_discharge']].sum(axis=1).max()) * 24
-    ymin = (dfchunk.groupby(axis=1, level='datum').sum()
+    ymin = (dfchunk.T.groupby(level='datum').sum().T
             [['usage','stor_charge']].sum(axis=1).min()) * 24
     scalerows = [v for k,v in rows.items() if 'level' not in k]
     for row in scalerows:
@@ -4842,7 +4842,7 @@ def map_period_dispatch(
             if regions_sorted.index(r2) < regions_sorted.index(r1):
                 dftrans[interface] *= -1
                 dftrans = dftrans.rename(columns={interface:f'{r2}|{r1}'})
-        dftrans = dftrans.groupby(axis=1, level='interface').sum()
+        dftrans = dftrans.T.groupby(level='interface').sum().T
     else:
         dftrans = pd.DataFrame()
 

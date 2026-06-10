@@ -195,8 +195,7 @@ def calculate_class_region_cf_hourly(
         weather_year_class_region_cf_hourly = (
             weather_year_site_cf_hourly.mul(df_sc['capacity'])
             .rename(columns=df_sc['class_region'])
-            .groupby(axis=1, level=0)
-            .sum()
+            .T.groupby(level=0).sum().T
             .div(class_region_cap)
         )
         # For timezone conversion, we need a few hours of CF data for the next
@@ -266,8 +265,7 @@ def calculate_regional_distpv_cf(inputs_case, cap_min=0.0001):
     regional_distpv_cf = (
         county_distpv_cf.mul(county_distpv_cap)
         .rename(columns=county2zone)
-        .groupby(axis=1, level=0)
-        .sum()
+        .T.groupby(level=0).sum().T
         .div(regional_distpv_cap)
     )
 

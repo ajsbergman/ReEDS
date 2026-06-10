@@ -76,7 +76,8 @@ def get_eue_periods(
     dfeue = (
         dfeue
         .rename_axis('r', axis=1).rename_axis('h', axis=0)
-        .rename(columns=rmap).groupby(axis=1, level=0).sum()
+        .rename(columns=rmap)
+        .T.groupby(level=0).sum().T
     )
 
     ###### Calculate the stress metric by period
@@ -221,13 +222,13 @@ def get_annual_neue(case, t, iteration=0):
         rmap = reeds.io.get_rmap(case=case, hierarchy_level=hierarchy_level)
         ### Get NEUE summed over year
         _neue[hierarchy_level,'sum'] = (
-            dfeue.rename(columns=rmap).groupby(axis=1, level=0).sum().sum()
-            / dfload.rename(columns=rmap).groupby(axis=1, level=0).sum().sum()
+            dfeue.rename(columns=rmap).T.groupby(level=0).sum().sum()
+            / dfload.rename(columns=rmap).T.groupby(level=0).sum().sum()
         ) * 1e6
         ### Get max NEUE hour
         _neue[hierarchy_level,'max'] = (
-            dfeue.rename(columns=rmap).groupby(axis=1, level=0).sum()
-            / dfload.rename(columns=rmap).groupby(axis=1, level=0).sum()
+            dfeue.rename(columns=rmap).T.groupby(level=0).sum().T
+            / dfload.rename(columns=rmap).T.groupby(level=0).sum().T
         ).max() * 1e6
 
     ### Combine it
@@ -261,7 +262,7 @@ def get_shoulder_periods(sw, criterion, dfenergy_r, high_eue_periods):
     ## Aggregate storage energy to hierarchy_level
     dfenergy_agg = (
         dfenergy_r.rename(columns=hierarchy[hierarchy_level])
-        .groupby(axis=1, level=0).sum()
+        .T.groupby(level=0).sum().T
     )
     dfheadspace_MWh = dfenergy_agg.max() - dfenergy_agg
     dfheadspace_frac = dfheadspace_MWh / dfenergy_agg.max()
@@ -323,7 +324,7 @@ def get_eue_sorted_periods(sw, t, iteration):
     dfenergy_r = (
         dfenergy
         .rename(columns={c: c.split('|')[1] for c in dfenergy.columns})
-        .groupby(axis=1, level=0).sum()
+        .T.groupby(level=0).sum().T
     )
 
     ### Get NEUE

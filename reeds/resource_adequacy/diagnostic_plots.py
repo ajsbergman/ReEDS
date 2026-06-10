@@ -99,7 +99,7 @@ def get_inputs(sw):
     vre_gen_usa = (
         vre_gen
         .rename(columns=dict(zip(vre_gen.columns, vre_gen.columns.map(lambda x: x.split('|')[0]))))
-        .groupby(axis=1, level=0).sum()
+        .T.groupby(level=0).sum().T
         .set_index(fulltimeindex)
     )
     vre_gen_usa.columns = reeds.reedsplots.simplify_techs(vre_gen_usa.columns, display_level = 'diagnostics')
@@ -111,7 +111,7 @@ def get_inputs(sw):
     vre_gen_r = (
         vre_gen
         .rename(columns=dict(zip(vre_gen.columns, vre_gen.columns.map(lambda x: x.split('|')[1]))))
-        .groupby(axis=1, level=0).sum()
+        .T.groupby(level=0).sum().T
     )
 
     ### Load hourly demand
@@ -185,7 +185,7 @@ def get_inputs(sw):
     ### Get net load by BA
     net_load_r = load_r - vre_gen_r
     ### Get net load by ccreg
-    net_load_ccreg = net_load_r.rename(columns=hierarchy.ccreg).groupby(axis=1, level=0).sum()
+    net_load_ccreg = net_load_r.rename(columns=hierarchy.ccreg).T.groupby(level=0).sum().T
     ### Get net load for the USA
     net_load_usa = net_load_r.set_index(fulltimeindex).sum(axis=1)
 
@@ -454,16 +454,16 @@ def plot_pras_ICAP(sw, dfs):
         return
     ### Collect the PRAS system capacities
     cap = pd.concat([
-        dfs['pras_system']['gencap'].groupby(axis=1, level=0).sum(),
-        dfs['pras_system']['storcap'].groupby(axis=1, level=0).sum(),
-        dfs['pras_system']['genstorcap'].groupby(axis=1, level=0).sum(),
+        dfs['pras_system']['gencap'].T.groupby(level=0).sum().T,
+        dfs['pras_system']['storcap'].T.groupby(level=0).sum().T,
+        dfs['pras_system']['genstorcap'].T.groupby(level=0).sum().T,
     ], axis=1)
     ## Drop any empties
     cap = cap.replace(0,np.nan).dropna(axis=1, how='all').fillna(0).astype(int)
     ## Get the colors
     tech_style = dfs['tech_style']['color'].squeeze()
     ## Aggregate by type
-    cap = cap.groupby(axis=1, level=0).sum()
+    cap = cap.T.groupby(level=0).sum().T
     order = [c for c in tech_style.index if c in cap]
     cap = cap[order]
     if cap.shape[1] != len(order):
@@ -520,7 +520,7 @@ def plot_reeds_pras_capacity(sw, dfs):
     cap['pras'] = cap['pras'].replace(0,np.nan).dropna(axis=1, how='all').fillna(0)
     ## Aggregate by type
     cap['pras'] = (cap['pras']
-        .groupby(axis=1, level=[1,0]).sum().max().rename('MW')
+        .T.groupby(level=[1,0]).sum().T.max().rename('MW')
     )
 
     ### Collect the ReEDS capacities
@@ -616,7 +616,7 @@ def plot_pras_ICAP_regional(sw, dfs, numdays=5):
     ## Get the colors
     tech_style = dfs['tech_style']['color'].squeeze()
     ## Aggregate by type
-    cap = cap.groupby(axis=1, level=[1,0]).sum()
+    cap = cap.T.groupby(level=[1,0]).sum().T
 
     ### Get coordinates
     zones = dfs['hierarchy'].index

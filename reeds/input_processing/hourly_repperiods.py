@@ -81,7 +81,7 @@ def identify_peak_containing_periods(df, hierarchy, level):
         rmap = hierarchy[level]
     dfmod = df.copy()
     dfmod.columns = dfmod.columns.map(lambda x: x.split('|')[-1]).map(rmap)
-    dfmod = dfmod.groupby(axis=1, level=0).sum()
+    dfmod = dfmod.T.groupby(level=0).sum().T
     ### Get the max value by (year,yperiod)
     dfmax = dfmod.groupby(['year','yperiod']).max()
     ### Get the max (year,yperiod) for each column
@@ -102,7 +102,7 @@ def identify_min_periods(df, hierarchy, level, prefix=''):
         rmap = hierarchy[level]
     dfmod = df[[c for c in df if c.startswith(prefix)]].copy()
     dfmod.columns = dfmod.columns.map(lambda x: x.split('|')[-1]).map(rmap)
-    dfmod = dfmod.groupby(axis=1, level=0).sum()
+    dfmod = dfmod.T.groupby(level=0).sum().T
     ### Get the mean value by (year,yperiod)
     dfmean = dfmod.groupby(['year','yperiod']).mean()
     ### Get the min (year,yperiod) for each column
@@ -330,7 +330,7 @@ def main(
     recf_agg = recf_agg[tmp.index]
     columns['region'] = columns.region.map(rmap)
     recf_agg.columns = pd.MultiIndex.from_frame(columns[['tech','region']])
-    recf_agg = recf_agg.groupby(axis=1, level=['tech','region']).sum()
+    recf_agg = recf_agg.T.groupby(level=['tech','region']).sum().T
 
     ### Divide by aggregated capacity to get back to CF
     recf_agg /= sc.groupby(['tech','aggreg']).capacity.sum().rename_axis(['tech','region'])
@@ -359,7 +359,7 @@ def main(
     ### Aggregate to GSw_HourlyClusterRegionLevel
     load_agg = load.copy()
     load_agg.columns = load_agg.columns.map(rmap)
-    load_agg = load_agg.groupby(axis=1, level=0).sum()
+    load_agg = load_agg.T.groupby(level=0).sum().T
     match sw.GSw_HourlyClusterLoadNorm:
         case 'none':
             ## Don't normalize load
@@ -425,7 +425,7 @@ def main(
     ### Aggregate from hours to periods if necessary
     if sw.GSw_HourlyClusterTimestep in ['period','day','wek','week']:
         profiles_fitperiods = (
-            profiles_fitperiods_hourly.groupby(axis=1, level=['property','region']).mean())
+            profiles_fitperiods_hourly.T.groupby(level=['property','region']).mean().T)
     else:
         profiles_fitperiods = profiles_fitperiods_hourly.copy()
 

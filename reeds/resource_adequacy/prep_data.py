@@ -270,7 +270,7 @@ def main(t, casedir, iteration=0):
         )
     ### Aggregate by model zone
     gen_vre_r = gen_vre_ir.copy()
-    gen_vre_r = gen_vre_r.groupby(axis=1, level='r').sum()
+    gen_vre_r = gen_vre_r.T.groupby(level='r').sum().T
 
     ### Store generation by (i,r) for capacity_credit.py
     gen_vre_resources = gen_vre_ir.reindex(resources[['i','r']], axis=1).fillna(0).clip(lower=0)

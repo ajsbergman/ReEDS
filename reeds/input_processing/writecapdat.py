@@ -272,7 +272,7 @@ def main(reeds_path, inputs_case, agglevel, regions):
                 ) for (i,row) in csp_units.iterrows()},
                 axis=1)
             .rename(columns=csp_units['r']).fillna(0)
-            .groupby(axis=1, level=0).sum()
+            .T.groupby(level=0).sum().T
             .stack().replace(0,np.nan).dropna()
             .rename_axis(['t','*r']).reorder_levels(['*r','t']).rename('MWac')
         )
@@ -510,7 +510,7 @@ def main(reeds_path, inputs_case, agglevel, regions):
     ## If a region has no data for 2021, it's zero (GAMS convention)
     h2_ba_share.loc[2021] = h2_ba_share.loc[2021].fillna(0)
     ## Backfill before 2021
-    h2_ba_share.loc[:2021] = h2_ba_share.loc[:2021].fillna(method='bfill')
+    h2_ba_share.loc[:2021] = h2_ba_share.loc[:2021].bfill()
     ## Interpolate between 2021-2050
     h2_ba_share.loc[2021:] = h2_ba_share.loc[2021:].interpolate('index')
     ## Only keep the modeled years

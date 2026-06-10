@@ -51,7 +51,7 @@ def plot_interface_flows(
     ### Group by hierarchy level
     df = dfflow.rename(columns=renamer)
     aggcols = {c: '→'.join([hierarchy[level][i] for i in c.split('→')]) for c in df}
-    df = df.rename(columns=aggcols).groupby(axis=1, level=0).sum()
+    df = df.rename(columns=aggcols).T.groupby(level=0).sum().T
     df = df[[c for c in df if c.split('→')[0] != c.split('→')[1]]].copy()
     if df.shape[1] == 0:
         raise NotImplementedError(
@@ -178,11 +178,11 @@ def plot_storage_soc(
     dfenergy_r = (
         dfenergy
         .rename(columns={c: c.split('|')[1] for c in dfenergy.columns})
-        .groupby(axis=1, level=0).sum()
+        .T.groupby(level=0).sum().T
     )
     dfenergy_agg = (
         dfenergy_r.rename(columns=hierarchy[level])
-        .groupby(axis=1, level=0).sum()
+        .T.groupby(level=0).sum().T
     )
     # dfheadspace_MWh = dfenergy_agg.max() - dfenergy_agg
     # dfheadspace_frac = dfheadspace_MWh / dfenergy_agg.max()
@@ -268,7 +268,7 @@ def plot_pras_eue_timeseries_full(
         dfpras
         .rename(columns={c: c[:-len('_EUE')] for c in dfpras})
         .rename(columns=hierarchy[level])
-        .groupby(axis=1, level=0).sum()
+        .T.groupby(level=0).sum().T
         / 1e3
     )
 

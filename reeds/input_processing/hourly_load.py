@@ -525,7 +525,7 @@ def calculate_peak_load(
         _peakload[_level] = (
             ## Aggregate to level
             load_hourly.rename(columns=hierarchy[_level])
-            .groupby(axis=1, level=0).sum()
+            .T.groupby(level=0).sum().T
             ## Calculate peak
             .groupby(axis=0, level='year').max()
             .T
