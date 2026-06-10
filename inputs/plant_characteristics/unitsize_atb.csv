@@ -7,10 +7,19 @@ gas-cc,247,https://atb.nlr.gov/electricity/2024/fossil_energy_technologies gives
 gas-cc_h_1x1,330,https://atb.nlr.gov/electricity/2024/fossil_energy_technologies mentions 649MWe for a 1x1 H-frame CC and cites https://www.osti.gov/biblio/2376908. Page 6 indicates this comes from 1 CT + 1 ST - auxiliary power. We average the gross power capacity to get 330 MW.
 gas-cc_h_2x1,336,https://atb.nlr.gov/electricity/2024/fossil_energy_technologies mentions 992MWe for a 2x1 H-frame CC and cites https://www.osti.gov/servlets/purl/1961845/. Page 17 of the NETL reference indicates that this comes from 2x343 GTs + 1x324 ST - auxiliary power. We average the constituent turbine capacities to get 336MW
 h2-cc,247,gas-cc assumption
+h2-cc-peaking,247,gas-cc assumption
+h2-cc_h2-cc-peaking,247,gas-cc assumption
+h2-cc-peaking_h2-cc,247,gas-cc assumption
 ng-fuel-cell,650,https://atb.nlr.gov/electricity/2024/fossil_energy_technologies mentions 650MWnet for NG-fueled atmospheric SOFC and cites https://www.osti.gov/biblio/1880823.
 gas-cc-ccs,247,gas-cc assumption
 gas-cc-ccs_mod,247,gas-cc assumption
 gas-cc-ccs_max,247,gas-cc assumption
+gas-cc-ccs_mod-peaking,247,gas-cc assumption
+gas-cc-ccs_max-peaking,247,gas-cc assumption
+gas-cc-ccs_mod_gas-cc-ccs_mod-peaking,247,gas-cc assumption
+gas-cc-ccs_mod-peaking_gas-cc-ccs_mod,247,gas-cc assumption
+gas-cc-ccs_max_gas-cc-ccs_max-peaking,247,gas-cc assumption
+gas-cc-ccs_max-peaking_gas-cc-ccs_max,247,gas-cc assumption
 gas-cc-peaking,247,gas-cc assumption
 gas-cc_h_1x1-ccs_mod,330,gas-cc_h_1x1 assumption
 gas-cc_h_1x1-ccs_max,330,gas-cc_h_1x1 assumption

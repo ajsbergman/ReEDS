@@ -1341,9 +1341,10 @@ eq_min_cf(i,r,t)$[minCF(i,t)$tmodel(t)$valgen_irt(i,r,t)$Sw_MinCF]..
     sum{v$valgen(i,v,r,t), CAP(i,v,r,t) } * sum{h$h_rep(h), hours(h) } * minCF(i,t)
 ;
 
-* When Gas-CC-peaking upgrade is active, enforce a minimum CF on base Gas-CC (non-peaking, non-CCS)
-* so low-CF operation is diverted to the Gas-CC-peaking upgrade technology
-eq_min_cf_cc_peaking(i,v,r,t)$[gas_cc(i)$(not gas_cc_peaking(i))$(not gas_cc_ccs(i))
+* When a Gas-CC-peaking upgrade is active, enforce a minimum CF on the corresponding base tech
+* (base Gas-CC and base Gas-CC-CCS_mod/max) so low-CF operation is diverted to the peaking variant.
+* cc_peaking_minCF_base is defined in b_inputs.gms and covers only bases that have a peaking upgrade.
+eq_min_cf_cc_peaking(i,v,r,t)$[cc_peaking_minCF_base(i)
                                $Sw_CombinedCyclePeaker$tmodel(t)$valgen(i,v,r,t)]..
 
     sum{h$h_rep(h), hours(h) * GEN(i,v,r,h,t) }
@@ -1352,6 +1353,7 @@ eq_min_cf_cc_peaking(i,v,r,t)$[gas_cc(i)$(not gas_cc_peaking(i))$(not gas_cc_ccs
 
     CAP(i,v,r,t) * sum{h$h_rep(h), hours(h) } * Sw_CP_CC_minCF
 ;
+
 
 * Maximum allowed daily capacity factor
 eq_max_daily_cf(i,r,szn,t)$[maxdailycf(i,t)

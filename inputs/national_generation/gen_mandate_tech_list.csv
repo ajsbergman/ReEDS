@@ -60,3 +60,7 @@ egs_allkm_1*egs_allkm_10,1,1,1,1
 geohydro_allkm_1*geohydro_allkm_10,1,1,1,1
 egs_nearfield_1*egs_nearfield_10,1,1,1,1
 dr_shed_1*dr_shed_2,1,1,1,1
+Gas-CC-peaking,0,0,0,0
+Gas-CC-CCS_mod-peaking,0,0,1,0
+Gas-CC-CCS_max-peaking,0,0,1,0
+H2-CC-peaking,1,1,1,0

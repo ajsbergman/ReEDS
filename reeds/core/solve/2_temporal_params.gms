@@ -396,6 +396,18 @@ $offempty
 avail(i,r,h)$[dr_shed(i)$h_rep(h)] = 0 ;
 avail(i,r,h)$[dr_shed(i)$h_stress(h)] = dr_shed_out(i,r,h) ;
 
+* Standalone peaking variants (e.g. Gas-CC-peaking, Gas-CC-CCS_mod/max-peaking, H2-CC-peaking)
+* are upgrade-only destinations: they have no new-build ATB data so they're not in valcap_ir,
+* and therefore line 375 leaves their avail at 0 (the default from line 372). The upgrade-tech
+* avail inheritance below then propagates 0 to the forward peaker upgrade links, making the
+* eq_capacity_limit / eq_min_cf combination infeasible whenever the upgrade has capacity.
+* Set their avail directly from outage rates, so the upgrade-tech inheritance picks up a
+* nonzero value. Only applies when the peaking switch is on (otherwise the standalones are banned).
+avail(i,r,h)$[Sw_CombinedCyclePeaker
+              $(gas_cc_peaking(i) or gas_cc_ccs_peaking(i) or h2_cc_peaking(i))
+              $(not upgrade(i))$(not valcap_ir(i,r))] =
+    (1 - outage_forced_h(i,r,h)) * (1 - outage_scheduled_h(i,h)) ;
+
 *upgrade plants assume the same availability of what they are upgraded to
 avail(i,r,h)$[upgrade(i)$valcap_i(i)] = sum{ii$upgrade_to(i,ii), avail(ii,r,h) } ;
 
@@ -920,6 +932,11 @@ cost_vom(i,v,r,t)$[tmodel(t)$vom_cf_adj_in(i,v,r)] = cost_vom_init(i,v,r,t) * vo
 cost_vom(i,v,r,t)$[tmodel(t)$(not vom_cf_adj_in(i,v,r))] = cost_vom_init(i,v,r,t) ;
 cost_fom(i,v,r,t)$[tmodel(t)$fom_cf_adj_in(i,v,r)] = cost_fom_init(i,v,r,t) * fom_cf_adj_in(i,v,r) ;
 cost_fom(i,v,r,t)$[tmodel(t)$(not fom_cf_adj_in(i,v,r))] = cost_fom_init(i,v,r,t) ;
+$else.hr_adj
+* For the start year (no prior solve), set heat_rate directly from heat_rate_init
+heat_rate(i,v,r,t)$tmodel(t) = heat_rate_init(i,v,r,t) ;
+cost_vom(i,v,r,t)$tmodel(t) = cost_vom_init(i,v,r,t) ;
+cost_fom(i,v,r,t)$tmodel(t) = cost_fom_init(i,v,r,t) ;
 $endif.hr_adj
 
 

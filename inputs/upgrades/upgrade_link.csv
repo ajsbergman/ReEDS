@@ -22,8 +22,14 @@ CofireNew_coal-CCS_max,CofireNew,coal-CCS_max
 CofireOld_coal-CCS_max,CofireOld,coal-CCS_max
 Gas-CC_Gas-CC-peaking,Gas-CC,Gas-CC-peaking
 Gas-CC-peaking_Gas-CC,Gas-CC-peaking,Gas-CC
+Gas-CC-CCS_mod_Gas-CC-CCS_mod-peaking,Gas-CC-CCS_mod,Gas-CC-CCS_mod-peaking
+Gas-CC-CCS_mod-peaking_Gas-CC-CCS_mod,Gas-CC-CCS_mod-peaking,Gas-CC-CCS_mod
+Gas-CC-CCS_max_Gas-CC-CCS_max-peaking,Gas-CC-CCS_max,Gas-CC-CCS_max-peaking
+Gas-CC-CCS_max-peaking_Gas-CC-CCS_max,Gas-CC-CCS_max-peaking,Gas-CC-CCS_max
 Gas-CT_H2-CT,Gas-CT,H2-CT
 Gas-CC_H2-CC,Gas-CC,H2-CC
+H2-CC_H2-CC-peaking,H2-CC,H2-CC-peaking
+H2-CC-peaking_H2-CC,H2-CC-peaking,H2-CC
 hydEND_hydED,hydEND,hydED
 hydED_pumped-hydro,hydED,pumped-hydro
 hydED_pumped-hydro-flex,hydED,pumped-hydro-flex

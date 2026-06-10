@@ -446,6 +446,9 @@ set
   gas_cc_ccs(i)        "techs that are gas combined cycle and have CCS",
   gas_cc(i)            "techs that are gas combined cycle",
   gas_cc_peaking(i)    "techs that are gas combined cycle peaking variant",
+  gas_cc_ccs_peaking(i) "techs that are gas combined cycle with CCS peaking variant",
+  h2_cc_peaking(i)     "techs that are H2 combined cycle peaking variant",
+  peaking_from(i,ii)   "mapping from peaking standalone variant (i) to its base tech (ii) for greenfield ATB inheritance",
   gas_ct(i)            "techs that are gas combustion turbine",
   gas(i)               "techs that use gas (but not o-g-s)",
   geo(i)               "geothermal technologies",
@@ -623,6 +626,7 @@ unitspec_upgrades(i)$[sum{ii$ctt_i_ii(i,ii), unitspec_upgrades(ii) }$Sw_WaterMai
 ban(i)$[upgrade(i)$(not Sw_Upgrades)] = yes ;
 bannew(i)$[upgrade(i)$(not Sw_Upgrades)] = yes ;
 
+
 * --- Read technology subset lookup table ---
 Table i_subsets(i,i_subtech) "technology subset lookup table"
 $offlisting
@@ -728,9 +732,20 @@ if(Sw_GasCC_H_2x1 = 0,
 * Ban Gas-CC-peaking technology and its upgrade links if GSw_CombinedCyclePeaker is off
 if(Sw_CombinedCyclePeaker = 0,
   ban(i)$i_subsets(i,'gas_cc_peaking') = yes ;
+  ban(i)$i_subsets(i,'gas_cc_ccs_peaking') = yes ;
+  ban(i)$i_subsets(i,'h2_cc_peaking') = yes ;
   ban('Gas-CC-peaking') = yes ;
   ban('Gas-CC_Gas-CC-peaking') = yes ;
   ban('Gas-CC-peaking_Gas-CC') = yes ;
+  ban('Gas-CC-CCS_mod-peaking') = yes ;
+  ban('Gas-CC-CCS_max-peaking') = yes ;
+  ban('Gas-CC-CCS_mod_Gas-CC-CCS_mod-peaking') = yes ;
+  ban('Gas-CC-CCS_mod-peaking_Gas-CC-CCS_mod') = yes ;
+  ban('Gas-CC-CCS_max_Gas-CC-CCS_max-peaking') = yes ;
+  ban('Gas-CC-CCS_max-peaking_Gas-CC-CCS_max') = yes ;
+  ban('H2-CC-peaking') = yes ;
+  ban('H2-CC_H2-CC-peaking') = yes ;
+  ban('H2-CC-peaking_H2-CC') = yes ;
 ) ;
 
 if(Sw_Geothermal = 0,
@@ -988,7 +1003,28 @@ fuel_cell(i)$(not ban(i))           = yes$i_subsets(i,'fuel_cell') ;
 gas_cc_ccs(i)$(not ban(i))          = yes$i_subsets(i,'gas_cc_ccs') ;
 gas_cc(i)$(not ban(i))              = yes$i_subsets(i,'gas_cc') ;
 gas_cc_peaking(i)$(not ban(i))      = yes$i_subsets(i,'gas_cc_peaking') ;
+gas_cc_ccs_peaking(i)$(not ban(i))  = yes$i_subsets(i,'gas_cc_ccs_peaking') ;
+h2_cc_peaking(i)$(not ban(i))       = yes$i_subsets(i,'h2_cc_peaking') ;
+
+* Mapping from each standalone peaking variant to its base tech for greenfield ATB inheritance.
+* Hardcoded because the peaking-tech name does not always uniquely identify the base via
+* string-strip (e.g. Gas-CC_H_1x1-CCS_mod-peaking would map to Gas-CC_H_1x1-CCS_mod, but only
+* the listed pairs are actually defined as peaking variants).
+peaking_from('Gas-CC-peaking','Gas-CC') = yes ;
+peaking_from('Gas-CC-CCS_mod-peaking','Gas-CC-CCS_mod') = yes ;
+peaking_from('Gas-CC-CCS_max-peaking','Gas-CC-CCS_max') = yes ;
+peaking_from('H2-CC-peaking','H2-CC') = yes ;
 gas_ct(i)$(not ban(i))              = yes$i_subsets(i,'gas_ct') ;
+
+* Base gas-cc techs subject to the Gas-CC-peaking min-CF diversion (see eq_min_cf_cc_peaking).
+* Forcing a min CF on the base tech diverts its low-CF operation onto the peaking upgrade variant.
+set cc_peaking_minCF_base(i) "base gas-cc techs that have a peaking upgrade and get the diversion min-CF" ;
+* non-CCS base Gas-CC (original behavior)
+cc_peaking_minCF_base(i)$[gas_cc(i)$(not gas_cc_peaking(i))$(not gas_cc_ccs(i))] = yes ;
+* CCS base techs (e.g. Gas-CC-CCS_mod/max) that have a peaking upgrade variant
+cc_peaking_minCF_base(i)$[gas_cc_ccs(i)$(not gas_cc_ccs_peaking(i))
+                          $sum{ii$[upgrade_from(ii,i)$gas_cc_ccs_peaking(ii)], 1}] = yes ;
+
 gas(i)$(not ban(i))                 = yes$i_subsets(i,'gas') ;
 geo(i)$(not ban(i))                 = yes$i_subsets(i,'geo') ;
 geo_base(i)$(not ban(i))            = yes$i_subsets(i,'geo_base') ;
@@ -999,6 +1035,14 @@ geo_egs_allkm(i)$(not ban(i))       = yes$i_subsets(i,'geo_egs_allkm') ;
 geo_egs_nf(i)$(not ban(i))          = yes$i_subsets(i,'geo_egs_nf') ;
 h2_combustion(i)$(not ban(i))       = yes$i_subsets(i,'h2_combustion') ;
 h2_cc(i)$(not ban(i))               = yes$i_subsets(i,'h2_cc') ;
+* H2-CC base techs that have a peaking upgrade variant (extends cc_peaking_minCF_base from earlier).
+* Placed here because h2_cc was assigned after the cc_peaking_minCF_base block above.
+cc_peaking_minCF_base(i)$[h2_cc(i)$(not gas_cc_peaking(i))
+                          $sum{ii$[upgrade_from(ii,i)$gas_cc_peaking(ii)], 1}] = yes ;
+* Close the escape valve: existing upgrade techs whose destination is H2-CC or Gas-CC-CCS get
+* the same min-CF floor, so the model can't dodge the diversion by upgrading instead of peaking.
+cc_peaking_minCF_base(i)$[upgrade(i)$h2_cc(i)$(not gas_cc_peaking(i))] = yes ;
+cc_peaking_minCF_base(i)$[upgrade(i)$gas_cc_ccs(i)$(not gas_cc_peaking(i))$(not gas_cc_ccs_peaking(i))] = yes ;
 h2_ct(i)$(not ban(i))               = yes$i_subsets(i,'h2_ct') ;
 h2(i)$(not ban(i))                  = yes$i_subsets(i,'h2') ;
 hydro_d(i)$(not ban(i))             = yes$i_subsets(i,'hydro_d') ;
@@ -4015,6 +4059,26 @@ dac_gas_cons_rate(i,newv,t)$[sameas(i,"dac_gas")$tmodel_new(t)$countnc(i,newv)] 
 parameter plant_char(i,v,t,plantcat) "--various units-- plant characteristics such as cap, vom, fom costs and heat rates";
 plant_char(i,v,t,plantcat) = plant_char0(i,t,plantcat) ;
 
+* Greenfield buildability for standalone peaking variants (Gas-CC-peaking, Gas-CC-CCS_mod/max-peaking, H2-CC-peaking).
+* These techs have no native ATB data, so without this they would have plant_char = 0 and be effectively unbuildable
+* as new capacity. Inherit ATB from the corresponding base tech (via peaking_from), then apply the Sw_CP_* multipliers
+* so that FOM, VOM, and heat rate reflect the operational penalty of peaker-mode operation.
+* Note: cost_cap (capex) is inherited 1:1 with no peaker multiplier (the operational mode change does not change capex).
+plant_char(i,v,t,plantcat)$[sum{ii$peaking_from(i,ii), 1}
+                            $(not plant_char(i,v,t,plantcat))] =
+    sum{ii$peaking_from(i,ii), plant_char(ii,v,t,plantcat) } ;
+
+* Apply Sw_CP_* multipliers to standalone peaking variants (only after the inheritance above)
+plant_char(i,v,t,"fom")$[sum{ii$peaking_from(i,ii), 1}]      = plant_char(i,v,t,"fom")      * Sw_CP_fom ;
+plant_char(i,v,t,"vom")$[sum{ii$peaking_from(i,ii), 1}]      = plant_char(i,v,t,"vom")      * Sw_CP_vom ;
+plant_char(i,v,t,"heatrate")$[sum{ii$peaking_from(i,ii), 1}] = plant_char(i,v,t,"heatrate") * Sw_CP_hr ;
+
+* Also populate plant_char0 for downstream uses that read directly from it (e.g. cost_cap at line ~4331).
+plant_char0(i,t,plantcat)$[sum{ii$peaking_from(i,ii), 1}
+                           $(not plant_char0(i,t,plantcat))] =
+    sum{ii$peaking_from(i,ii), plant_char0(ii,t,plantcat) } ;
+
+
 * -- Consuming Technologies costs and demands --
 
 set i_p(i,p) "mapping from technologies to the products they produce"
@@ -4584,18 +4648,19 @@ cost_fom(i,newv,r,t)$[upgrade(i)$Sw_Upgrades$(not gas_cc_peaking(i))
 * --- Heat Rates ---
 *====================
 
-parameter heat_rate(i,v,r,t) "--MMBtu/MWh-- heat rate" ;
+parameter heat_rate(i,v,r,t) "--MMBtu/MWh-- heat rate",
+          heat_rate_init(i,v,r,t) "--MMBtu/MWh-- heat rate base from imported datafiles" ;
 
-heat_rate(i,v,r,t)$valcap(i,v,r,t) = plant_char(i,v,t,'heatrate') ;
+heat_rate_init(i,v,r,t)$valcap(i,v,r,t) = plant_char(i,v,t,'heatrate') ;
 
-heat_rate(i,newv,r,t)$[valcap(i,newv,r,t)$countnc(i,newv)] =
+heat_rate_init(i,newv,r,t)$[valcap(i,newv,r,t)$countnc(i,newv)] =
       sum{tt$ivt(i,newv,tt), plant_char(i,newv,tt,'heatrate') } / countnc(i,newv) ;
 
 * fill in heat rate for initial capacity that does not have a binned heatrate
-heat_rate(i,initv,r,t)$[valcap(i,initv,r,t)$(not heat_rate(i,initv,r,t))] =  plant_char(i,initv,"%startyear%",'heatrate') ;
+heat_rate_init(i,initv,r,t)$[valcap(i,initv,r,t)$(not heat_rate_init(i,initv,r,t))] =  plant_char(i,initv,"%startyear%",'heatrate') ;
 
 *note here conversion from btu/kwh to MMBtu/MWh
-heat_rate(i,v,r,t)$[valcap(i,v,r,t)$sum{allt$att(allt,t), binned_heatrates(i,v,r,allt) }] =
+heat_rate_init(i,v,r,t)$[valcap(i,v,r,t)$sum{allt$att(allt,t), binned_heatrates(i,v,r,allt) }] =
                     sum{allt$att(allt,t), binned_heatrates(i,v,r,allt) } / 1000 ;
 
 
@@ -4625,13 +4690,13 @@ heat_rate_adj(i,prepost)$upgrade(i) = sum{ii$upgrade_to(i,ii), heat_rate_adj(ii,
 
 *upgrade heat rates for initial classes are the heat rates for that tech
 *plus the delta between upgrade_to and upgrade_from for the initial year
-heat_rate(i,initv,r,t)$[upgrade(i)$Sw_Upgrades$valcap(i,initv,r,t)] =
+heat_rate_init(i,initv,r,t)$[upgrade(i)$Sw_Upgrades$valcap(i,initv,r,t)] =
       sum{(v,ii,tt)$[newv(v)$ivt(ii,v,tt)$upgrade_to(i,ii)$(tt.val=Sw_UpgradeChar_Year)],
             plant_char(ii,v,tt,"heatrate") }
 ;
 
-*if available, set heat_rate for upgrades of CCS plants to those specified in hintage_data
-heat_rate(i,initv,r,t)$[upgrade(i)$Sw_Upgrades$ccs(i)
+*if available, set heat_rate_init for upgrades of CCS plants to those specified in hintage_data
+heat_rate_init(i,initv,r,t)$[upgrade(i)$Sw_Upgrades$ccs(i)
                       $sum{ii$upgrade_from(i,ii), valcap(ii,initv,r,t) }
                       $sum{ii$upgrade_from(i,ii), hintage_data(ii,initv,r,t,"wCCS_Retro_HR") }] =
             sum{ii$upgrade_from(i,ii), hintage_data(ii,initv,r,t,"wCCS_Retro_HR") / 1000 }
@@ -4639,41 +4704,34 @@ heat_rate(i,initv,r,t)$[upgrade(i)$Sw_Upgrades$ccs(i)
 
 *upgrade heat rates for new classes are the heat rates for
 *the bintage and technology for what it is being upgraded to
-heat_rate(i,newv,r,t)$[upgrade(i)$Sw_Upgrades$valcap(i,newv,r,t)] =
-        sum{ii$upgrade_to(i,ii), heat_rate(ii,newv,r,t) } ;
+heat_rate_init(i,newv,r,t)$[upgrade(i)$Sw_Upgrades$valcap(i,newv,r,t)] =
+        sum{ii$upgrade_to(i,ii), heat_rate_init(ii,newv,r,t) } ;
 
-heat_rate(i,v,r,t)$[heat_rate_adj(i,'pre2010')$initv(v)] = heat_rate_adj(i,'pre2010') * heat_rate(i,v,r,t) ;
-heat_rate(i,v,r,t)$[heat_rate_adj(i,'post2010')$newv(v)] = heat_rate_adj(i,'post2010') * heat_rate(i,v,r,t) ;
+heat_rate_init(i,v,r,t)$[heat_rate_adj(i,'pre2010')$initv(v)] = heat_rate_adj(i,'pre2010') * heat_rate_init(i,v,r,t) ;
+heat_rate_init(i,v,r,t)$[heat_rate_adj(i,'post2010')$newv(v)] = heat_rate_adj(i,'post2010') * heat_rate_init(i,v,r,t) ;
 
 * Gas-CC-peaking heat rate: apply Sw_CP_hr multiplier
-heat_rate(i,v,r,t)$[upgrade(i)$Sw_Upgrades$gas_cc_peaking(i)$valcap(i,v,r,t)] =
-       (smax{ii$upgrade_from(i,ii), heat_rate(ii,v,r,t)}) * Sw_CP_hr
+heat_rate_init(i,v,r,t)$[upgrade(i)$Sw_Upgrades$gas_cc_peaking(i)
+                      $sum{ii$upgrade_from(i,ii), valcap(ii,v,r,t)}] =
+       (smax{ii$upgrade_from(i,ii), heat_rate_init(ii,v,r,t)}) * Sw_CP_hr
 ;
 * Reverse upgrade (Gas-CC-peaking -> Gas-CC)
-heat_rate(i,v,r,t)$[upgrade(i)$Sw_Upgrades$(not gas_cc_peaking(i))
-                   $sum{ii$[upgrade_from(i,ii)$gas_cc_peaking(ii)], 1}$valcap(i,v,r,t)] =
-       (smax{ii$[upgrade_from(i,ii)$gas_cc_peaking(ii)], heat_rate(ii,v,r,t)}) / Sw_CP_hr
+heat_rate_init(i,v,r,t)$[upgrade(i)$Sw_Upgrades
+                      $sum{ii$upgrade_from(i,ii), valcap(ii,v,r,t)}
+                      $sum{ii$upgrade_from(i,ii), gas_cc_peaking(ii)} ] =
+       (smax{ii$upgrade_from(i,ii), heat_rate_init(ii,v,r,t)}) / Sw_CP_hr
 ;
 
 *=========================================
 * --- Init parameters for CF-based HR adjustment ---
 *=========================================
-* Snapshot cost/HR values before CF-based adjustments for use in iteration
-parameter heat_rate_init(i,v,r,t) "--MMBtu/MWh-- base heat rate before CF adjustment" ;
-heat_rate_init(i,v,r,t) = heat_rate(i,v,r,t) ;
 
-parameter cost_vom_init(i,v,r,t) "--2004$/MWh-- base VOM before CF adjustment" ;
-cost_vom_init(i,v,r,t) = cost_vom(i,v,r,t) ;
-
-parameter cost_fom_init(i,v,r,t) "--2004$/MW-yr-- base FOM before CF adjustment" ;
-cost_fom_init(i,v,r,t) = cost_fom(i,v,r,t) ;
 
 *=========================================
 * --- Fuel Prices ---
 *=========================================
 
 parameter fuel_price(i,r,t) "$/MMBtu - fuel prices by technology" ;
-
 
 * Written by reeds/input_processing/fuelcostprep.py
 * declared over allt to allow for external data files that extend beyond end_year
@@ -4908,8 +4966,8 @@ parameter heat_rate_avg(i,t) ;
 * calculate average fuel price and heat rates
 fuel_price_avg(i,t)$[sum{r, fuel_price(i,r,t) }] = sum{r, fuel_price(i,r,t) } / sum{r, 1$[fuel_price(i,r,t)] } ;
 
-heat_rate_avg(i,t)$[sum{(v,r), heat_rate(i,v,r,t) }] =
-  sum{(v,r), heat_rate(i,v,r,t) } / sum{(v,r), 1$[heat_rate(i,v,r,t)] } ;
+heat_rate_avg(i,t)$[sum{(v,r), heat_rate_init(i,v,r,t) }] =
+  sum{(v,r), heat_rate_init(i,v,r,t) } / sum{(v,r), 1$[heat_rate_init(i,v,r,t)] } ;
 
 * calculate penalty value, assign to cost_opres
 * only assign penalty in instances where spin costs are not already defined
@@ -5330,11 +5388,11 @@ parameter
 ;
 
 emit_rate(etype,e,i,v,r,t)$[emit_rate_fuel(i,etype,e)$valcap(i,v,r,t)]
-  = round(heat_rate(i,v,r,t) * emit_rate_fuel(i,etype,e),10) ;
+  = round(heat_rate_init(i,v,r,t) * emit_rate_fuel(i,etype,e),10) ;
 
 *only emissions from the coal portion of cofire plants are considered
 emit_rate(etype,e,i,v,r,t)$[sameas(i,"cofire")$emit_rate_fuel("coal-new",etype,e)$valcap(i,v,r,t)]
-  = round((1-bio_cofire_perc) * heat_rate(i,v,r,t) * emit_rate_fuel("coal-new",etype,e),10) ;
+  = round((1-bio_cofire_perc) * heat_rate_init(i,v,r,t) * emit_rate_fuel("coal-new",etype,e),10) ;
 
 * Fill in CH4 upstream emission rate
 *** [MMBtu/MWh] * [ton methane used / MMBtu] * [ton methane leaked / ton methane produced]
@@ -5343,7 +5401,7 @@ emit_rate("upstream",e,i,v,r,t)
     $[methane_leakage_rate(t)
     $gas(i)
     $sameas(e,"CH4")]
-    = heat_rate(i,v,r,t) * methane_tonperMMBtu * methane_leakage_rate(t) / (1 - methane_leakage_rate(t))
+    = heat_rate_init(i,v,r,t) * methane_tonperMMBtu * methane_leakage_rate(t) / (1 - methane_leakage_rate(t))
 ;
 
 * Fill in H2 process emission rates for H2 combustion techs (h2-ct and h2-cc) (and fuel cell later)
@@ -5352,7 +5410,7 @@ emit_rate("upstream",e,i,v,r,t)
 emit_rate("process",e,i,v,r,t)
     $[h2_leakage_rate(i)
     $sameas(e,"H2")]
-    = heat_rate(i,v,r,t) * h2_combustion_intensity * h2_leakage_rate(i) / (1 - h2_leakage_rate(i))
+    = heat_rate_init(i,v,r,t) * h2_combustion_intensity * h2_leakage_rate(i) / (1 - h2_leakage_rate(i))
 ;
 
 * set upgraded H2 tech emissions
@@ -5375,9 +5433,9 @@ emit_rate(etype,"CO2e",i,v,r,t)$[Sw_AnnualCap<>2]
 
 * calculate emissions capture rates (same logic as emissions calc above)
 capture_rate(e,i,v,r,t)$[capture_rate_fuel(i,e)$valcap(i,v,r,t)]
-  = round(heat_rate(i,v,r,t) * capture_rate_fuel(i,e),10) ;
+  = round(heat_rate_init(i,v,r,t) * capture_rate_fuel(i,e),10) ;
 
-capture_rate(e,i,v,r,t)$[upgrade(i)$capture_rate_fuel(i,e)] = round(heat_rate(i,v,r,t) * capture_rate_fuel(i,e),10) ;
+capture_rate(e,i,v,r,t)$[upgrade(i)$capture_rate_fuel(i,e)] = round(heat_rate_init(i,v,r,t) * capture_rate_fuel(i,e),10) ;
 
 * Regional emissions rate
 parameter
@@ -5971,6 +6029,16 @@ cost_vom(i,v,r,t)$[psh(i)$valcap(i,v,r,t)] = cost_vom_psh ;
 * Only apply the value to storage that does not have a VOM value
 cost_vom(i,v,r,t)$[storage(i)$valgen(i,v,r,t)$(not cost_vom(i,v,r,t))] = storage_vom_min ;
 
+*=========================================
+* --- Snapshot cost values for CF-based HR adjustment ---
+*=========================================
+parameter cost_vom_init(i,v,r,t) "--2004$/MWh-- base VOM before CF adjustment" ;
+cost_vom_init(i,v,r,t) = cost_vom(i,v,r,t) ;
+
+parameter cost_fom_init(i,v,r,t) "--2004$/MW-yr-- base FOM before CF adjustment" ;
+cost_fom_init(i,v,r,t) = cost_fom(i,v,r,t) ;
+
+
 * --- minimum capacity factor ----
 parameter minCF(i,t)      "--fraction-- minimum annual capacity factor for each tech fleet, applied to (i,r)"
           maxdailycf(i,t) "--fraction-- maximum daily capacity factor" ;
@@ -5994,6 +6062,8 @@ minCF(i,t)$[nuclear(i)$Sw_NukeFlex] = minCF_nuclear_flex ;
 * Override minCF for Gas-CC and Gas-CC-peaking if GSw_minCF_peaking > 0
 minCF(i,t)$[gas_cc(i)$Sw_minCF_peaking] = Sw_minCF_peaking ;
 minCF(i,t)$[gas_cc_peaking(i)$Sw_minCF_peaking] = Sw_minCF_peaking ;
+minCF(i,t)$[gas_cc_ccs(i)$Sw_minCF_peaking] = Sw_minCF_peaking ;
+minCF(i,t)$[gas_cc_ccs_peaking(i)$Sw_minCF_peaking] = Sw_minCF_peaking ;
 
 parameter maxdailycf_input(i) "--fraction-- maximum daily capacity factor for a technology"
 /
@@ -6082,6 +6152,19 @@ cost_upgrade(i,v,r,t)$[initv(v)$hintage_data(i,v,r,t,"wCCS_Retro_OvernightCost")
 
 * set floor on the cost of an upgrade to prevent negative upgrade costs
 cost_upgrade(i,v,r,t)$[valcap(i,v,r,t)$upgrade(i)] = max{0, cost_upgrade(i,v,r,t) } ;
+
+* Gas-CC-peaking upgrade cost: near-zero (operational mode change, not physical retrofit)
+* Use 1 $/MW to keep nonzero in sparse GAMS storage
+cost_upgrade('Gas-CC_Gas-CC-peaking',v,r,t)$[valcap('Gas-CC_Gas-CC-peaking',v,r,t)] = 1 ;
+cost_upgrade('Gas-CC-peaking_Gas-CC',v,r,t)$[valcap('Gas-CC-peaking_Gas-CC',v,r,t)] = 1 ;
+* Same for the Gas-CC-CCS peaking upgrades (overrides the gas_cc_ccs retrofit cost set above)
+cost_upgrade('Gas-CC-CCS_mod_Gas-CC-CCS_mod-peaking',v,r,t)$[valcap('Gas-CC-CCS_mod_Gas-CC-CCS_mod-peaking',v,r,t)] = 1 ;
+cost_upgrade('Gas-CC-CCS_mod-peaking_Gas-CC-CCS_mod',v,r,t)$[valcap('Gas-CC-CCS_mod-peaking_Gas-CC-CCS_mod',v,r,t)] = 1 ;
+cost_upgrade('Gas-CC-CCS_max_Gas-CC-CCS_max-peaking',v,r,t)$[valcap('Gas-CC-CCS_max_Gas-CC-CCS_max-peaking',v,r,t)] = 1 ;
+cost_upgrade('Gas-CC-CCS_max-peaking_Gas-CC-CCS_max',v,r,t)$[valcap('Gas-CC-CCS_max-peaking_Gas-CC-CCS_max',v,r,t)] = 1 ;
+* Same for the H2-CC peaking upgrades (overrides the h2_combustion gas-cc->h2-cc cost line above)
+cost_upgrade('H2-CC_H2-CC-peaking',v,r,t)$[valcap('H2-CC_H2-CC-peaking',v,r,t)] = 1 ;
+cost_upgrade('H2-CC-peaking_H2-CC',v,r,t)$[valcap('H2-CC-peaking_H2-CC',v,r,t)] = 1 ;
 
 
 *=============================================================
@@ -6832,10 +6915,18 @@ cc_old(i,r,ccseason,t) = 0 ;
 m_cc_mar(i,r,ccseason,t) = 0 ;
 hybrid_cc_derate(i,r,ccseason,sdbin,t)$[pvb(i)$valcap_irt(i,r,t)] = 1 ;
 
+* Align the initial values of heat_rate, cost_vom, and cost_fom with the initial values of valgen and valcap
+cost_vom(i,v,r,t) = cost_vom_init(i,v,r,t) ;
+cost_fom(i,v,r,t) = cost_fom_init(i,v,r,t) ;
+heat_rate(i,v,r,t) = heat_rate_init(i,v,r,t) ;
+
 * Trim some of the largest matrices to reduce file sizes
 cost_vom(i,v,r,t)$[not valgen(i,v,r,t)] = 0 ;
+cost_vom_init(i,v,r,t)$[not valgen(i,v,r,t)] = 0 ;
 cost_fom(i,v,r,t)$[not valcap(i,v,r,t)] = 0 ;
+cost_fom_init(i,v,r,t)$[not valcap(i,v,r,t)] = 0 ;
 heat_rate(i,v,r,t)$[not valgen(i,v,r,t)] = 0 ;
+heat_rate_init(i,v,r,t)$[not valgen(i,v,r,t)] = 0 ;
 m_capacity_exog(i,v,r,t)$[not valcap(i,v,r,t)] = 0 ;
 emit_rate(etype,e,i,v,r,t)$[not valgen(i,v,r,t)] = 0 ;
 

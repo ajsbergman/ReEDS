@@ -24,6 +24,8 @@ naturalgas,gas-cc-ccs-f1
 naturalgas,gas-cc-ccs-f2
 naturalgas,gas-cc-ccs-f3
 naturalgas,gas-cc-peaking
+naturalgas,gas-cc-ccs_mod-peaking
+naturalgas,gas-cc-ccs_max-peaking
 naturalgas,ng-fuel-cell
 uranium,nuclear
 uranium,nuclear-smr
@@ -34,3 +36,4 @@ biomass,cofirenew
 biomass,cofireold
 h2fuel,H2-CT
 h2fuel,H2-CC
+h2fuel,H2-CC-peaking

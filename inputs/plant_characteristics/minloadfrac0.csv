@@ -18,6 +18,8 @@ Gas-CC_H_1x1,0.5
 Gas-CC_H_2x1,0.5
 Gas-CC-CCS_mod,0.5
 Gas-CC-CCS_max,0.5
+Gas-CC-CCS_mod-peaking,0.5
+Gas-CC-CCS_max-peaking,0.5
 Gas-CC_H_1x1-CCS_mod,0.5
 Gas-CC_H_1x1-CCS_max,0.5
 Gas-CC_H_2x1-CCS_mod,0.5
@@ -36,4 +38,5 @@ nuclear ,0.7
 nuclear-SMR ,0.2
 o-g-s ,0.5
 H2-CC,0.38
+H2-CC-peaking,0.38
 H2-CT,0.42

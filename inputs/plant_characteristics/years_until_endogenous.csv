@@ -27,6 +27,8 @@ Gas-CC_H_1x1,0
 Gas-CC_H_2x1,0
 Gas-CC-CCS_mod,4
 Gas-CC-CCS_max,4
+Gas-CC-CCS_mod-peaking,4
+Gas-CC-CCS_max-peaking,4
 Gas-CC_H_1x1-CCS_mod,4
 Gas-CC_H_1x1-CCS_max,4
 Gas-CC_H_2x1-CCS_mod,4
@@ -37,6 +39,7 @@ Gas-CT,0
 Gas-CT_aero,0
 H2-CT,3
 H2-CC,3
+H2-CC-peaking,3
 ng-fuel-cell,10
 geohydro_allkm_1*geohydro_allkm_10,2
 geothermal,2

@@ -23,6 +23,18 @@ beccs_mod,BECCS,Biopower,Thermal,BECCS
 beccs_max,BECCS,Biopower,Thermal,BECCS
 distpv,DPV,Solar,VRE,DPV
 gas-cc,Gas-CC,Gas,Thermal,Gas-CC
+gas-cc-peaking,Gas-CC-Peaker,Gas,Thermal,Gas-CC-Peaker
+gas-cc_gas-cc-peaking,Gas-CC-Peaker,Gas,Thermal,Gas-CC-Peaker
+gas-cc-peaking_gas-cc,Gas-CC,Gas,Thermal,Gas-CC
+gas-cc-ccs_mod-peaking,Gas-CC-CCS-Peaker,Gas-CCS,Thermal,Gas-CC-CCS-Peaker
+gas-cc-ccs_max-peaking,Gas-CC-CCS-Peaker,Gas-CCS,Thermal,Gas-CC-CCS-Peaker
+gas-cc-ccs_mod_gas-cc-ccs_mod-peaking,Gas-CC-CCS-Peaker,Gas-CCS,Thermal,Gas-CC-CCS-Peaker
+gas-cc-ccs_max_gas-cc-ccs_max-peaking,Gas-CC-CCS-Peaker,Gas-CCS,Thermal,Gas-CC-CCS-Peaker
+gas-cc-ccs_mod-peaking_gas-cc-ccs_mod,Gas-CC-CCS,Gas-CCS,Thermal,Gas-CC-CCS
+gas-cc-ccs_max-peaking_gas-cc-ccs_max,Gas-CC-CCS,Gas-CCS,Thermal,Gas-CC-CCS
+h2-cc-peaking,H2-CC-Peaker,Hydrogen Combustion,Thermal,H2-CC-Peaker
+h2-cc_h2-cc-peaking,H2-CC-Peaker,Hydrogen Combustion,Thermal,H2-CC-Peaker
+h2-cc-peaking_h2-cc,H2-CC,Hydrogen Combustion,Thermal,H2-CC
 gas-cc-ccs_mod,Gas-CC-CCS,Gas-CCS,Thermal,Gas-CC-CCS
 gas-cc-ccs_max,Gas-CC-CCS,Gas-CCS,Thermal,Gas-CC-CCS
 gas-ct,Gas-CT,Gas,Thermal,Gas-CT

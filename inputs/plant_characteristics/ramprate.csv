@@ -10,6 +10,8 @@ gas-CC_h_1x1,0.05
 gas-CC_h_2x1,0.05
 Gas-CC-CCS_mod,0.05
 Gas-CC-CCS_max,0.05
+Gas-CC-CCS_mod-peaking,0.05
+Gas-CC-CCS_max-peaking,0.05
 Gas-CC_H_1x1-CCS_mod,0.05
 Gas-CC_H_1x1-CCS_max,0.05
 Gas-CC_H_2x1-CCS_mod,0.05
@@ -35,6 +37,7 @@ nuclear-SMR,0.02
 lfill-gas,0.04
 H2-CT,0.08
 H2-CC,0.08
+H2-CC-peaking,0.08
 ng-fuel-cell,0.05
 csp1_1*csp1_12,0.1
 csp2_1*csp2_12,0.1

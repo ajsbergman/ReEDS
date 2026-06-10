@@ -19,6 +19,9 @@ Gas-CC_H_1x1,p
 Gas-CC_H_2x1,p
 Gas-CC-CCS_mod,p
 Gas-CC-CCS_max,p
+Gas-CC-peaking,p
+Gas-CC-CCS_mod-peaking,p
+Gas-CC-CCS_max-peaking,p
 Gas-CC_H_1x1-CCS_mod,p
 Gas-CC_H_1x1-CCS_max,p
 Gas-CC_H_2x1-CCS_mod,p
@@ -28,6 +31,7 @@ Gas-CT,p
 Gas-CT_aero,p
 H2-CT,p
 H2-CC,p
+H2-CC-peaking,p
 ng-fuel-cell,p
 geothermal,p
 Hydro,p

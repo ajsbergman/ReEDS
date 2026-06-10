@@ -1,10 +1,10 @@
 ,Default Value,Pac_baseline,Pac_peaker_on,Pac_peaker_minCF,Pac_peaker_HRadj,Pac_peaker_full
-ignore,1,0,,,,
+ignore,1,,0,,,
 GSw_Region,cendiv/Pacific,,,,,
 endyear,2032,,,,,
 GSw_GasCurve,2,,,,,
 GSw_StartCost,0,,,,,5
-GSw_CombinedCyclePeaker,1,0,,,,
+GSw_CombinedCyclePeaker,0,,1,,,
 GSw_minCF_peaking,0,,,0.15,,0.15
 GSw_CP_fom,1.05,,,,,
 GSw_CP_vom,1.5,,,,,

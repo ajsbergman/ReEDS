@@ -1304,6 +1304,8 @@ def main(sw, reeds_path, inputs_case, periodtype='rep', make_plots=1, logging=Tr
         .sort_index()
         .reset_index()
     )
+    print(load_long.loc[load_long.t == 2026].head())
+
     load_allyear = (
         load_long
         .assign(h=load_long.h.map(chunkmap))
@@ -1312,7 +1314,7 @@ def main(sw, reeds_path, inputs_case, periodtype='rep', make_plots=1, logging=Tr
         .set_index(['r','h','t'])
         .reset_index()
     )
-
+    print(load_allyear.loc[load_allyear.t == 2026].head())
 
     # %%###################################################################################
     #    -- Write outputs, aggregating hours to GSw_HourlyChunkLength if necessary --    #

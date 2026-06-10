@@ -18,6 +18,8 @@ Gas-CC_H_1x1,4.86,0,0
 Gas-CC_H_2x1,4.86,0,0
 Gas-CC-CCS_mod,4.86,0,0
 Gas-CC-CCS_max,4.86,0,0
+Gas-CC-CCS_mod-peaking,4.86,0,0
+Gas-CC-CCS_max-peaking,4.86,0,0
 Gas-CC_H_1x1-CCS_mod,4.86,0,0
 Gas-CC_H_1x1-CCS_max,4.86,0,0
 Gas-CC_H_2x1-CCS_mod,4.86,0,0

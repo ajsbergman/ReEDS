@@ -3,6 +3,8 @@ Gas-CC_H_1x1,55
 Gas-CC_H_2x1,55
 Gas-CC-CCS_mod,55
 Gas-CC-CCS_max,55
+Gas-CC-CCS_mod-peaking,55
+Gas-CC-CCS_max-peaking,55
 Gas-CC_H_1x1-CCS_mod,55
 Gas-CC_H_1x1-CCS_max,55
 Gas-CC_H_2x1-CCS_mod,55
@@ -34,6 +36,7 @@ pvb1_1*pvb1_10,30
 pvb2_1*pvb2_10,30
 pvb3_1*pvb3_10,30
 H2-CC,55
+H2-CC-peaking,55
 biopower,45
 beccs_mod,45
 beccs_max,45

@@ -31,10 +31,13 @@ Gas-CC-CCS-F1
 Gas-CC-CCS-F2
 Gas-CC-CCS-F3
 Gas-CC-peaking
+Gas-CC-CCS_mod-peaking
+Gas-CC-CCS_max-peaking
 Gas-CT
 Gas-CT_aero
 H2-CT
 H2-CC
+H2-CC-peaking
 ng-fuel-cell
 geothermal
 Hydro
@@ -229,6 +232,8 @@ dac_gas
 * upgrade technologies
 Gas-CT_H2-CT
 Gas-CC_H2-CC
+H2-CC_H2-CC-peaking
+H2-CC-peaking_H2-CC
 CoalOldUns_CoalOldScr
 CoalOldUns_CofireOld
 CoalOldScr_CofireOld
@@ -236,6 +241,10 @@ coal-new_CofireNew
 Gas-CC_Gas-CC-CCS_mod
 Gas-CC_Gas-CC-peaking
 Gas-CC-peaking_Gas-CC
+Gas-CC-CCS_mod_Gas-CC-CCS_mod-peaking
+Gas-CC-CCS_mod-peaking_Gas-CC-CCS_mod
+Gas-CC-CCS_max_Gas-CC-CCS_max-peaking
+Gas-CC-CCS_max-peaking_Gas-CC-CCS_max
 Gas-CC_H_1x1_Gas-CC_H_1x1-CCS_mod
 Gas-CC_H_2x1_Gas-CC_H_2x1-CCS_mod
 Gas-CC_H_1x1_Gas-CC_H_1x1-CCS_max

@@ -8,8 +8,10 @@ Coal-CCS,#666666,P
 Coal-CCS_Upgrade,#666666,P
 Cofire,#66C238,X
 Gas-CC,#5E1688,<
+Gas-CC-Peaker,#8B5FBF,<
 Gas-CCS,#9467BD,D
 Gas-CC-CCS,#9467BD,D
+Gas-CC-CCS-Peaker,#B07FD6,D
 Gas-CC-CCS-Flex,#9824DB,D
 Gas-CC-CCS_Upgrade,#9467BD,D
 Gas-CT,#C2A1DB,>
@@ -17,6 +19,7 @@ Oil/Gas Steam,#3D3376,d
 Gas,#5E1688,<
 H2-CC_Upgrade,#4B5320,<
 H2-CC,#708238,<
+H2-CC-Peaker,#9ABF50,<
 H2-CT_Upgrade,#66C238,>
 H2-CT,#A8C839,>
 NG-Fuel-Cell,#AD50E2,<

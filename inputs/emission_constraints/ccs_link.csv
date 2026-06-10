@@ -6,6 +6,12 @@ coal-CCS-F2,coal-new
 coal-CCS-F3,coal-new
 Gas-CC-CCS_mod,Gas-CC
 Gas-CC-CCS_max,Gas-CC
+Gas-CC-CCS_mod-peaking,Gas-CC
+Gas-CC-CCS_max-peaking,Gas-CC
+Gas-CC-CCS_mod_Gas-CC-CCS_mod-peaking,Gas-CC
+Gas-CC-CCS_mod-peaking_Gas-CC-CCS_mod,Gas-CC
+Gas-CC-CCS_max_Gas-CC-CCS_max-peaking,Gas-CC
+Gas-CC-CCS_max-peaking_Gas-CC-CCS_max,Gas-CC
 Gas-CC_H_1x1-CCS_mod,Gas-CC_H_1x1
 Gas-CC_H_1x1-CCS_max,Gas-CC_H_1x1
 Gas-CC_H_2x1-CCS_mod,Gas-CC_H_2x1

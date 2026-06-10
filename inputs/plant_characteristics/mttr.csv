@@ -70,6 +70,12 @@ gas-cc_h2-ct,48
 gas-cc_re-cc,48
 gas-cc-ccs_max,48
 gas-cc-ccs_mod,48
+gas-cc-ccs_mod-peaking,48
+gas-cc-ccs_max-peaking,48
+gas-cc-ccs_mod_gas-cc-ccs_mod-peaking,48
+gas-cc-ccs_mod-peaking_gas-cc-ccs_mod,48
+gas-cc-ccs_max_gas-cc-ccs_max-peaking,48
+gas-cc-ccs_max-peaking_gas-cc-ccs_max,48
 gas-cc_h_1x1-ccs_max,48
 gas-cc_h_1x1-ccs_mod,48
 gas-cc_h_2x1-ccs_max,48
@@ -96,6 +102,9 @@ geohydro_allkm_8,24
 geohydro_allkm_9,24
 geothermal,24
 h2-cc,48
+h2-cc-peaking,48
+h2-cc_h2-cc-peaking,48
+h2-cc-peaking_h2-cc,48
 h2-ct,48
 hydd,24
 hyded,24

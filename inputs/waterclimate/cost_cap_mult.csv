@@ -35,3 +35,5 @@ CofireNew,0.981,1,1.045,0.981,0
 lfill-gas,0,0,0,0,1
 distpv,0,0,0,0,1
 csp1_1,0.9048,0.9524,1,0,0
+Gas-CC-CCS_mod-peaking,0.981,1,1.075,0,0
+Gas-CC-CCS_max-peaking,0.981,1,1.075,0,0
