@@ -1653,7 +1653,7 @@ The other option is a daily price adjustor, which adjusts prices in accordance w
 For details, see the [Daily Natural Gas Price Adjustments section](#daily-natural-gas-price-adjustments) of the appendix.
 
 ```{admonition} Natural gas price adjustments
-The switch `GSw_GasPriceAdjMethods` controls the choice of natural gas price adjustments.
+The switch `GSw_GasPriceAdjMethod` controls the choice of natural gas price adjustments.
 0 = national wintertime markup, 1 = daily adjustments based on regional temperatures
 ```
 
@@ -3622,11 +3622,13 @@ Daily gas price adjustments use degree day coefficients derived from an ordinary
 The regions used in the regression mostly correspond to census divisions, except in two cases where census divisions are broken up into two smaller regions.
 The Pacific census division is broken up into the subregions "Northwest" (Oregon and Washington) and "California" (California).
 The Mountain census division is broken up into the subregions "Southwest" (Arizona and New Mexico) and "Mountain" (all remaining states in the Mountain census division).
+
 To derive daily gas price adjustments, the regression parameters are applied to projections of daily heating and cooling degree days.
 These projections are derived by rescaling historical daily heating and cooling degree days (calculated using hourly average temperatures observed during the weather years corresponding to representative periods) to match projections of annual degree days.
 In cases where the regression regions correspond to census divisions, annual degree day projections are taken from AEO.
-Otherwise, annual degree day projections are calculated by taking historical (1995-2025) annual state-level degree days from {cite}`noaaDailyDegreeDays`, projecting them out to 2050 using a 30-year linear trend, and then aggregating them to the scope of the regression regions via population-weighted average.
+Otherwise, annual degree day projections are calculated by taking historical (1995-2025) state-level degree days from {cite}`noaaDailyDegreeDays`, projecting them out to 2050 using a 30-year linear trend, and then aggregating them to the scope of the regression regions via population-weighted average.
 For purposes of calculating this population-weighted average, state-level population projections for 2030, 2040, and 2050 are taken from {cite}`uvaWeldonCooperCenterPopulationProjections` and in-between years are linearly interpolated.
+
 Depending on the spatial resolution of the gas prices being used in the model, the daily gas price adjustments are either downscaled to the zone level by copying each regression region's adjustments to their constituent zones or upscaled to the census division level via population-weighted average.
 Once representative periods are selected in the model, the daily adjustments are filtered to include only the representative periods and then renormalized so that the average price multiplier for each zone or census division and each model year is one, thus ensuring the year-round average gas price remains unchanged.
 
