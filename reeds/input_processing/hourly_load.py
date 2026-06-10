@@ -527,12 +527,12 @@ def calculate_peak_load(
             load_hourly.rename(columns=hierarchy[_level])
             .T.groupby(level=0).sum().T
             ## Calculate peak
-            .groupby(axis=0, level='year').max()
+            .groupby(level='year').max()
             .T
         )
 
     ## Also calculate it at r level
-    _peakload['r'] = load_hourly.groupby(axis=0, level='year').max().T
+    _peakload['r'] = load_hourly.groupby(level='year').max().T
     peakload = pd.concat(_peakload, names=['level','region']).round(3)
 
     return peakload

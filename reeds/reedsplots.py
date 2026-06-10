@@ -3049,7 +3049,7 @@ def get_gen_capacity(case, year=2050, level='r', units='GW'):
     ## Aggregate if necessary
     if level != 'r':
         dfcap.index = dfcap.index.map(hierarchy[level])
-        dfcap = dfcap.groupby(axis=0, level='r').sum()
+        dfcap = dfcap.groupby(level='r').sum()
 
     return dfcap
 

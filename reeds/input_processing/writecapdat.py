@@ -753,7 +753,7 @@ def main(reeds_path, inputs_case, agglevel, regions):
         ## Divide by hours per season to get average MW by season
         .divide(quarterhours, axis=0, level='szn')
         ## Keep the max value across seasons
-        .groupby('r', axis=0).max()
+        .groupby('r').max()
         ## Reshape for GAMS
         .stack().rename_axis(['*r','t']).rename('MW').round(3)
     )
