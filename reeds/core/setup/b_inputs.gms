@@ -5788,7 +5788,7 @@ cap_prescribed(i,r)$rsc_i(i) = sum{(pcat,t)$[(sameas(pcat,i) or prescriptivelink
 
 *Loop over all regions
 loop(r,
-*Loop over non-geothermal rsc technologies (exclude geo_hydro since it needs discovery-aware adjustment)
+*Loop over non-geothermal rsc technologies
   loop(i$[rsc_i(i)$sum{(v,t)$newv(v), valcap(i,v,r,t) }$(not prescriptivelink("geothermal",i))$(not geo_hydro(i))],
 
 *Get total available supply for all ii associated with pcat of i.
@@ -5818,8 +5818,6 @@ rsc_cap_diff(r,i,rscbin) = m_rsc_dat(r,i,rscbin,"cap") - m_rsc_dat_original(r,i,
 m_rsc_dat(r,i,rscbin,"cap")$m_rsc_dat(r,i,rscbin,"cap") = ceil(m_rsc_dat(r,i,rscbin,"cap") * 1000) / 1000 ;
 
 *Geothermal is not a tech with sameas(i,pcat), so handle it separately here.
-*Need to handle both "geothermal" pcat AND "geohydro_allkm" pcat because prescribed
-*builds from the generator database use pcat "geohydro_allkm" (not "geothermal").
 *Loop over regions that have geothermal prescribed builds (either pcat)
 set geo_pcat(pcat) "geothermal pcats that need discovery-aware feasibility adjustment" ;
 geo_pcat("geothermal") = yes ;
