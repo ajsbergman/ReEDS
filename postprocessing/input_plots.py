@@ -150,7 +150,7 @@ def plot_profile(
 
     dfprofile = dfprofile.loc[str(min(weatheryears)):str(max(weatheryears))].copy()
     ## Use a continuous set of datetimes to avoid interpolating over missing years
-    full_timeseries = pd.date_range(dfprofile.index[0], dfprofile.index[-1], freq='H')
+    full_timeseries = pd.date_range(dfprofile.index[0], dfprofile.index[-1], freq='h')
     dfprofile = dfprofile.reindex(full_timeseries)
 
     dayindex = pd.date_range(

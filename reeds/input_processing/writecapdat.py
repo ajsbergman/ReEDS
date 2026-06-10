@@ -732,7 +732,7 @@ def main(reeds_path, inputs_case, agglevel, regions):
 
     ## Get hours per quarter
     year = sw['GSw_HourlyWeatherYears'].split('_')[0]
-    timestamps = pd.Series(index=pd.date_range(f'{year}-01-01', periods=8760, freq='H'))
+    timestamps = pd.Series(index=pd.date_range(f'{year}-01-01', periods=8760, freq='h'))
 
     month2quarter = pd.read_csv(
         os.path.join(inputs_case, 'month2quarter.csv'),

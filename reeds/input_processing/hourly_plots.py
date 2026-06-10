@@ -551,7 +551,7 @@ def plot_maps(sw, inputs_case, reeds_path, figpath, periodtype='rep', crs='EPSG:
 def plot_8760(profiles, period_szn, sw, reeds_path, figpath):
     def get_profiles(regions, year):
         """Assemble 8760 profiles from original and representative days"""
-        timeindex = pd.date_range(f'{year}-01-01',f'{year+1}-01-01',freq='H',inclusive='left')[:8760]
+        timeindex = pd.date_range(f'{year}-01-01',f'{year+1}-01-01',freq='h',inclusive='left')[:8760]
         props = profiles.columns.get_level_values('property').unique()
         ### Original profiles
         dforig = {}

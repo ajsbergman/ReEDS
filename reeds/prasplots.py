@@ -282,7 +282,7 @@ def plot_pras_eue_timeseries_full(
     f,ax = plt.subplots(len(wys), 1, sharex=False, sharey=True, figsize=figsize)
     for row, y in enumerate(wys):
         timeindex_y = pd.date_range(
-            f"{y}-01-01", f"{y+1}-01-01", inclusive='left', freq='H',
+            f"{y}-01-01", f"{y+1}-01-01", inclusive='left', freq='h',
             tz='Etc/GMT+6')[:8760]
         for region, color in colors.items():
             ax[row].fill_between(

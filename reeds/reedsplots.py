@@ -4026,14 +4026,14 @@ def plot_stressperiod_days(case, repcolor='k', sharey=False, figsize=(10,5)):
     period_days = 5 if sw['GSw_HourlyType'] == 'wek' else 1
     yplot = 2012
     timeindex = pd.date_range(
-        f'{yplot}-01-01', f'{yplot+1}-01-01', freq='H', tz='Etc/GMT+6')[:8760]
+        f'{yplot}-01-01', f'{yplot+1}-01-01', freq='h', tz='Etc/GMT+6')[:8760]
     ### Get rep periods
     szn_rep = pd.read_csv(
         os.path.join(case, 'inputs_case', 'rep', 'period_szn.csv')
     ).rep_period.sort_values()
     rep_starts = [reeds.timeseries.h2timestamp(d+'h01') for d in szn_rep]
     rep_hours = np.ravel([
-        pd.date_range(h, h+pd.Timedelta(f'{period_days}D'), freq='H', inclusive='left')
+        pd.date_range(h, h+pd.Timedelta(f'{period_days}D'), freq='h', inclusive='left')
         for h in rep_starts
     ])
     dfrep = pd.Series(
@@ -4073,7 +4073,7 @@ def plot_stressperiod_days(case, repcolor='k', sharey=False, figsize=(10,5)):
             ]
             yearhours = np.ravel([
                 pd.date_range(
-                    h, h+pd.Timedelta(f'{period_days}D'), freq='H', inclusive='left')
+                    h, h+pd.Timedelta(f'{period_days}D'), freq='h', inclusive='left')
                 for h in yearstarts_aligned
             ])
             dictout[y] = pd.Series(

@@ -277,7 +277,7 @@ def plot_dropped_load_timeseries_full(sw, dfs):
     """
     dropped = dfs['pras']['USA_EUE'].copy()
     timeindex_y = pd.date_range(
-        f"{sw['t']}-01-01", f"{sw['t']+1}-01-01", inclusive='left', freq='H',
+        f"{sw['t']}-01-01", f"{sw['t']+1}-01-01", inclusive='left', freq='h',
         tz='Etc/GMT+6')[:8760]
     savename = f"dropped_load-timeseries-wfull-{sw['t']}.png"
     weatheryears = sw.resource_adequacy_years_list
