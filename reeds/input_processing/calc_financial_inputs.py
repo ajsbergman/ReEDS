@@ -122,7 +122,7 @@ def calc_financial_inputs(inputs_case):
     ### Import financial assumptions
     financials_tech = reeds.financials.import_data(
         file_root='financials_tech', file_suffix=sw['financials_tech_suffix'], 
-        indices=['i','country','t'], scen_settings=scen_settings)
+        indices=['i','t'], scen_settings=scen_settings)
     # Apply the values for standalone batteries to PV+B batteries
     financials_tech = reeds.financials.append_pvb_parameters(
         dfin=financials_tech, 
@@ -130,7 +130,7 @@ def calc_financial_inputs(inputs_case):
     # If the battery in PV+B gets the ITC, it gets 5-year MACRS depreciation as well
     if float(scen_settings.sw['GSw_PVB_BatteryITC']) >= 0.75:
         financials_tech.loc[
-            financials_tech.i.str.startswith('pvb') & (financials_tech.country == 'usa'),
+            financials_tech.i.str.startswith('pvb'),
             'depreciation_sch'
         ] = 5
 
@@ -144,7 +144,7 @@ def calc_financial_inputs(inputs_case):
     # Overwrite with projected values
     financials_tech = financials_tech_projected.stack().rename('finance_diff_real').reset_index()
     # Merge with df_ivt
-    df_ivt = df_ivt.merge(financials_tech, on=['i', 't', 'country'], how='left')
+    df_ivt = df_ivt.merge(financials_tech, on=['i', 't'], how='left')
     
     # Calculate multipliers to account for evaluation periods. If a tech's eval period is
     # the system-wide default, this will be 1. If not, the capital costs are adjusted accordingly. 
