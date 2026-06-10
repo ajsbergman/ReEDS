@@ -848,6 +848,15 @@ def prepare_data(run_folder, sc_file, tech, priority_cols, check_results=True):
 
     # Load and prepare supply curve data and pre-existing capacity
     input_sc_df = get_reeds_formatted_rev_supply_curve(sc_file, tech, run_folder)
+
+    ## Check for any missing priority_cols, if present fetch them from the processed supply curve file in inputs_case
+    missing_cols = [c for c in priority_cols if c not in input_sc_df.columns]
+    if missing_cols:
+        sc_processed = os.path.join(run_folder, "inputs_case", f"supplycurve_{tech}.csv")
+        if os.path.exists(sc_processed):
+            df_sc_cost = pd.read_csv(sc_processed, usecols=["sc_point_gid"] + missing_cols)
+            input_sc_df = input_sc_df.merge(df_sc_cost, on="sc_point_gid", how="left")
+
     input_sc_df = reaggregate_supply_curve_regions(input_sc_df, run_folder)
 
     df_sc_in = subset_supply_curve_columns(input_sc_df, tech, priority_cols)
