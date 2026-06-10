@@ -614,7 +614,7 @@ def plot_regional_cost_difference(
         dfplot = dfcounty.merge(dfin, left_index=True, right_index=True)
     else:
         ## Model zone resolution
-        fpath = os.path.join(case, 'inputs_case', 'regional_cap_cost_diff.csv')
+        fpath = os.path.join(case, 'inputs_case', 'reg_cap_cost_diff.csv')
         dfin = pd.read_csv(fpath, index_col='r') * 100
         dfplot = dfmap['r'].merge(dfin, left_index=True, right_index=True)
     ### Set up plot

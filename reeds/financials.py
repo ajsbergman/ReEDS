@@ -3,8 +3,8 @@ import numpy as np
 import os
 import sys
 import itertools
-
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+from pathlib import Path
+sys.path.append(str(Path(__file__).parent.parent))
 import reeds
 
 
@@ -183,12 +183,12 @@ def import_sys_financials(
     return sys_financials
 
 
-def read_regional_cap_cost_diff(inputs_case):
+def read_regional_cap_cost_diff(fpath):
     """
     Read file and reshape to long format.
     Column names are |-delimited tech groups, so broadcast to individual tech groups.
     """
-    dfin = pd.read_csv(os.path.join(inputs_case, 'regional_cap_cost_diff.csv'), index_col='r')
+    dfin = pd.read_csv(fpath, index_col='r')
     dictout = {}
     for tech_groups in dfin:
         for tech_group in tech_groups.split('|'):
@@ -221,10 +221,11 @@ def import_data(
 
 
     '''
-    if file_root == 'regional_cap_cost_diff':
-        df = read_regional_cap_cost_diff(os.path.join(scen_settings.inputs_case))
+    fpath = Path(reeds.io.reeds_path, 'inputs', 'financials', f'{file_root}_{file_suffix}.csv')
+    if file_root == 'reg_cap_cost_diff':
+        df = read_regional_cap_cost_diff(fpath)
     else:
-        df = pd.read_csv(os.path.join(scen_settings.inputs_case, f'{file_root}.csv'))
+        df = pd.read_csv(fpath)
 
     # Expand tech groups, if there is an 'i' column and the argument is True
     if 'i' in df.columns and expand_tech_groups is True:

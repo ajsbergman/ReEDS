@@ -43,7 +43,7 @@ def calc_financial_inputs(inputs_case):
 
     # #%% Settings for testing
     # reeds_path = reeds.io.reeds_path
-    # inputs_case = Path(reeds_path, 'runs', 'v20260605_envM0_Pacific', 'inputs_case')
+    # inputs_case = Path(reeds_path, 'runs', 'v20260606_envM0_Pacific', 'inputs_case')
 
     #%% Inputs from switches
     sw = reeds.io.get_switches(inputs_case)
@@ -135,14 +135,17 @@ def calc_financial_inputs(inputs_case):
         ] = 5
 
     ### Project financials_tech forward
-    financials_tech_projected = financials_tech.pivot(
-        index=['i','country','depreciation_sch','eval_period','construction_sch'], 
-        columns=['t'])['finance_diff_real']
-    lastdatayear = max(financials_tech_projected.columns)
-    for addyear in range(lastdatayear+1, sw['endyear']+1):
-        financials_tech_projected[addyear] = financials_tech_projected[lastdatayear]
+    financials_tech_projected = (
+        financials_tech.pivot(
+            index=['t'],
+            columns=['i'],
+            values=['depreciation_sch','eval_period','construction_sch','finance_diff_real']
+        )
+        .reindex(range(int(sw.startyear), max(financials_tech.t.max(), int(sw.endyear))+1))
+        .ffill()
+    )
     # Overwrite with projected values
-    financials_tech = financials_tech_projected.stack().rename('finance_diff_real').reset_index()
+    financials_tech = financials_tech_projected.stack().reset_index()
     # Merge with df_ivt
     df_ivt = df_ivt.merge(financials_tech, on=['i', 't'], how='left')
     
@@ -337,7 +340,7 @@ def calc_financial_inputs(inputs_case):
 
     #%% Import regional capital cost differences
     reg_cap_cost_diff = reeds.financials.import_data(
-        file_root='regional_cap_cost_diff', file_suffix=sw['reg_cap_cost_diff_suffix'], 
+        file_root='reg_cap_cost_diff', file_suffix=sw['reg_cap_cost_diff_suffix'], 
         indices=['i','r'], scen_settings=scen_settings)
 
     # Trim down to just the techs in this run
@@ -486,10 +489,10 @@ def calc_financial_inputs(inputs_case):
     retail_eval_period = df_ivt[['i', 't', 'eval_period']].drop_duplicates(['i', 't'])
     retail_depreciation_sch = df_ivt[
         ['i', 't', 'depreciation_sch']].drop_duplicates(['i', 't'])
-    retail_eval_period.astype({'i':'category'}).to_hdf(
+    retail_eval_period.astype({'i':'category', 'eval_period':int}).to_hdf(
         os.path.join(inputs_case, 'retail_eval_period.h5'),
         key='data', complevel=4, index=False, format='table')
-    retail_depreciation_sch.astype({'i':'category'}).to_hdf(
+    retail_depreciation_sch.astype({'i':'category', 'depreciation_sch':int}).to_hdf(
         os.path.join(inputs_case, 'retail_depreciation_sch.h5'),
         key='data', complevel=4, index=False, format='table')
 
