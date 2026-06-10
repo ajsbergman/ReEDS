@@ -1436,6 +1436,18 @@ def get_sitemap(offshore=False, geo=True):
     return sitemap
 
 
+def floatify(df:pd.DataFrame, col_label:str='cost') -> pd.DataFrame:
+    """
+    Convert all columns with col_label in the name to floats.
+    Used for cost data (which may be integers) so they can be
+    adjusted for dollar year without changing type.
+    """
+    costcols = [c for c in df if col_label in c]
+    dtypes = dict(zip(costcols, [np.float32]*len(costcols)))
+    dfout = df.astype(dtypes)
+    return dfout
+
+
 def assemble_supplycurve(
     scfile=None,
     case=None,
@@ -1476,12 +1488,12 @@ def assemble_supplycurve(
         reeds_path, 'inputs', 'supply_curve',
         ('interconnection_offshore.h5' if offshore else 'interconnection_land.h5')
     )
-    interconnection_cost = reeds.io.read_h5_groups(fpath_interconnection)
+    interconnection_cost = floatify(reeds.io.read_h5_groups(fpath_interconnection))
     if scfile is None:
         return interconnection_cost
 
     ### Get supply curve
-    dfin = pd.read_csv(scfile, index_col='sc_point_gid')
+    dfin = floatify(pd.read_csv(scfile, index_col='sc_point_gid'))
     ## If derived columns are already in file, it's already been assembled, so stop here
     if 'supply_curve_cost_per_mw' in dfin:
         ## Rebuild it if not aggregating
