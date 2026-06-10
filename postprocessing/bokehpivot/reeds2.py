@@ -210,7 +210,7 @@ def pre_systemcost(dfs, **kw):
             crf = dfs['crf']
             crf = crf.set_index('year').reindex(full_yrs)
             crf = crf.interpolate(method='linear')
-            crf['crf'] = crf['crf'].fillna(method='bfill')
+            crf['crf'] = crf['crf'].bfill()
 
         if 'shift_capital' in kw and kw['shift_capital'] is True:
             #This means we start capital payments in the year of the investment, even though loan payments
@@ -253,9 +253,9 @@ def pre_systemcost(dfs, **kw):
         df.loc[df['year'].isin(sim_years), op_type_ls] = df.loc[df['year'].isin(sim_years), op_type_ls].fillna(0)
 
         if 'r' in df.columns:
-            df.loc[:,op_type_ls] = df.groupby('r')[op_type_ls].fillna(method='ffill', limit=sys_eval_years-1)
+            df.loc[:,op_type_ls] = df.groupby('r')[op_type_ls].ffill(limit=sys_eval_years-1)
         else:
-            df.loc[:,op_type_ls] = df[op_type_ls].fillna(method='ffill', limit=sys_eval_years-1)
+            df.loc[:,op_type_ls] = df[op_type_ls].ffill(limit=sys_eval_years-1)
         df = df.fillna(0)
         df = pd.melt(df.reset_index(), id_vars=id_cols, value_vars=cap_type_ls + op_type_ls, var_name='cost_cat', value_name= 'Cost (Bil $)')
         
@@ -310,7 +310,7 @@ def pre_avgprice(dfs, **kw):
         crf = dfs['crf']
         crf = crf.set_index('year').reindex(full_yrs)
         crf = crf.interpolate(method ='linear')
-        crf['crf'] = crf['crf'].fillna(method='bfill')
+        crf['crf'] = crf['crf'].bfill()
         df = pd.merge(left=df, right=crf, how='left',on=['year'], sort=False)
         colname_ls = pd.MultiIndex.from_product([region_ls, cap_type_ls],names=['rb', 'cost_cat'])
         colname_ls = [c for c in colname_ls if c in df.columns.tolist()]
@@ -325,7 +325,7 @@ def pre_avgprice(dfs, **kw):
         #For operation costs, simply fill missing years with model year values.
         colname_ls = pd.MultiIndex.from_product([region_ls, op_type_ls],names=['rb', 'cost_cat'])
         colname_ls = [c for c in colname_ls if c in df.columns.tolist()]
-        df[colname_ls] = df[colname_ls].fillna(method='ffill')
+        df[colname_ls] = df[colname_ls].ffill()
         #The final year should only include capital payments because operation payments last for 20 yrs starting
         #in the model year, whereas capital payments last for 20 yrs starting in the year after the model year.
         df.loc[df.index.max(), colname_ls] = 0
@@ -457,7 +457,7 @@ def pre_abatement_cost(dfs, **kw):
         df_co2['val'] = df_co2['val'] * 1e-3 #converting to billion metric tons
         full_yrs = list(range(df_sc['year'].min(), df_sc['year'].max() + 1))
         df_co2 = df_co2.set_index('year').reindex(full_yrs).reset_index()
-        df_co2['val'] = df_co2['val'].fillna(method='ffill')
+        df_co2['val'] = df_co2['val'].ffill()
         df_co2['type'] = 'CO2 (Bil metric tons)'
         df_co2['cost_cat'] = 'CO2 (Bil metric tons)'
         #Concatenate costs and emissions
