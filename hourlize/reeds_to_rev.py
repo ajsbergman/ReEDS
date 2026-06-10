@@ -1992,7 +1992,7 @@ def get_cost_col(tech, sc_file):
 
 
 def get_supply_curve_info(
-    reeds_run_path, filter_tech=None, rev_case=None, sc_path=None, bins=None
+    reeds_run_path, filter_tech=None, rev_case=None, sc_path=None, bins=None, sc_base_path=None
 ):
     """
     Get information about supply curves to use in the analysis. Supply curve information
@@ -2020,6 +2020,9 @@ def get_supply_curve_info(
     bins : int, optional
         Number of bins used in the supply curve bins. This has no effect, but is
         maintained for compatibility with legacy ReEDS to reV options.
+    sc_base_path : str, optional
+        Optional base path to the Supply_Curve_Data folder. If not specified, the
+        default remote path will be used.
 
     Returns
     -------
@@ -2033,6 +2036,21 @@ def get_supply_curve_info(
     sc_info_df = pd.read_csv(source_path)
 
     sc_info_df["tech"] = sc_info_df["tech"].replace(TECH_ALIASES)
+
+    if sc_base_path is not None:
+        #Ensure sc_base_path ends with Supply_Curve_Data for replacement logic
+        if os.path.basename(os.path.normpath(sc_base_path)) != 'Supply_Curve_Data':
+            sc_base_path = os.path.join(sc_base_path, "Supply_Curve_Data")
+
+        def replace_base_path(path):
+            if isinstance(path, str) and "Supply_Curve_Data" in path:
+                parts = path.split("Supply_Curve_Data")
+                return os.path.join(sc_base_path, parts[-1].lstrip(os.sep + '/'))
+            return path
+        
+        for col in ["sc_path", "sc_file", "hpc_sc_file", "rev_path"]:
+            if col in sc_info_df.columns:
+                sc_info_df[col] = sc_info_df[col].apply(replace_base_path)
 
     if bins is not None:
         print("Warning: bins option is deprecated and has no effect.")
@@ -2099,6 +2117,7 @@ def run(
     bins=None,
     rev_case=None,
     sc_path=None,
+    sc_base_path=None,
     **kwargs,  # pylint: disable=unused-argument
 ):
     """
@@ -2145,6 +2164,8 @@ def run(
         Optional path to supply curve files where the specified version resides. If not
         specified (i.e., None), the sc_path will in the supply curve metadata will
         be used. Will have no effect if specified but tech is None.
+    sc_base_path : str, optional
+        Optional base path to a local Supply_Curve_Data folder to override remote path
 
     Raises
     ------
@@ -2168,6 +2189,7 @@ def run(
         rev_case=rev_case,
         bins=bins,
         sc_path=sc_path,
+        sc_base_path=sc_base_path,
     )
 
     print("Creating output directory")
@@ -2316,6 +2338,11 @@ def build_parser():
         help="Path to supply curve files where the specified version"
         + " resides. Does not need to be specified if the path is the same"
         + " as the current default.",
+    )
+    parser.add_argument(
+        "--sc_base_path",
+        default=None,
+        help="Local base path to Supply_Curve_Data folder to override remote path",
     )
 
     return parser
