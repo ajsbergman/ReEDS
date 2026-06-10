@@ -1,9 +1,9 @@
 tech,scenario
-wind-ons,onswind
-wind-ofs,offwind
-upv,upv
-gas-cc,gas
-gas-cc-ccs_mod,gas_ccs
-nuclear,nuclear
-coal,coal
-geothermal,geo
+Onshore Wind,onswind
+Offshore Wind,offwind
+UPV,upv
+Gas-CC,gas
+Gas-CC-CCS,gas_ccs
+Nuclear,nuclear
+Coal,coal
+Geothermal,geo

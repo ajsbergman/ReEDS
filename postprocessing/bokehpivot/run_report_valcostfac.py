@@ -161,9 +161,9 @@ os.makedirs(f'{output_dir}/plots')
 print('Restrict to just those scenarios with "frc" == 1 or other specified scenario-tech combinations')
 plot_cond = (
     (df['frc']==1) |
-    ((df['tech'].isin(['upv','wind-ons'])) & (df['scenario'].isin(['ref','ref_IRA','tax']))) |
-    ((df['tech']=='gas-cc') & (df['scenario'].isin(['upv','onswind','ref','ref_IRA','tax']))) |
-    ((df['tech']=='gas-cc-ccs_mod') & (df['scenario'].isin(['tax'])))
+    ((df['tech'].isin(['UPV','Onshore Wind'])) & (df['scenario'].isin(['ref','ref_IRA','tax']))) |
+    ((df['tech']=='Gas-CC') & (df['scenario'].isin(['upv','onswind','ref','ref_IRA','tax']))) |
+    ((df['tech']=='Gas-CC-CCS') & (df['scenario'].isin(['tax'])))
 )
 df_plot = df[plot_cond].copy()
 df_plot['tech scenario'] = df_plot['tech'] + ' ' + df_plot['scenario']
@@ -200,8 +200,8 @@ for p in plots_lim:
 
 print('Limit further to just the core tech-scenario combinations')
 df_plot_core = df_plot_lim[df_plot_lim['core']==1].copy()
-conv_techs = ['gas-cc','gas-cc-ccs_mod','nuclear','coal']
-re_techs = ['wind-ons','wind-ofs','geothermal','upv']
+conv_techs = ['Gas-CC','Gas-CC-CCS','Nuclear','Coal']
+re_techs = ['Onshore Wind','Offshore Wind','Geothermal','UPV']
 
 print('Add cost_factor_adj') #For conv_techs this is equal to cost_factor divided by average cost_factor. For re_techs, this is equal to cost_factor divided by the intercept of the ols line fit.
 for tech in df_plot_core['tech'].unique():
