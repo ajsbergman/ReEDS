@@ -5744,10 +5744,9 @@ m_rsc_dat(r,i,rscbin,"cap")$[rsc_i(i)
       / (1$[not rsc_capacity_scalar_i(ii)] + rsc_capacity_scalar(ii,r,tt)$rsc_capacity_scalar_i(ii)) } ) / 1000 ;
 
 
-*** Do we need this part when pcat is removed?
 *Ensure sufficient resource availability to cover prescribed builds
 *while considering existing capacity (capacity_exog_rsc) 
-*and prescribed capacity (noncumulative_prescriptions).
+*and prescribed capacity (cap_prescribed).
 
 *Two types of adjustments:
 *1- If at least one element of m_rsc_dat(r,i,rscbin,"cap") is nonzero within a technology group, 
@@ -5773,7 +5772,6 @@ cap_existing(i,r)$exog_rsc(i) = sum{(v,t,rscbin)$[tfirst(t)], capacity_exog_rsc(
 cap_prescribed(i,r,t)$[rsc_i(i)$tmodel_new(t)] = sum{v, prescribed_build(i,v,r,t) } ;
 cap_prescribed_ir(i,r)$rsc_i(i) = sum{t$tmodel_new(t), cap_prescribed(i,r,t) } ;
 
-
 *Get total available supply for all i .
 available_supply(i,r)$[rsc_i(i)$sum{(v,t)$newv(v), valcap(i,v,r,t) }$(not sameas("geothermal",i))] = sum{rscbin, m_rsc_dat(r,i,rscbin,"cap") } ;
 
@@ -5784,7 +5782,6 @@ m_rsc_dat(r,i,rscbin,"cap")$[((cap_existing(i,r) + cap_prescribed_ir(i,r)) >  av
 
 
 *Assign prescribed capacity to first bin at no cost if no supply is available
-
 m_rsc_dat(r,i,"bin1","cap")$[(cap_prescribed_ir(i,r) > 0)$(not available_supply(i,r))
                              $sum{(v,t)$newv(v), valcap(i,v,r,t) }$(not sameas("geothermal",i))]
                       = cap_prescribed_ir(i,r) ;

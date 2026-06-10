@@ -957,7 +957,7 @@ eq_forceprescription_power(i,newv,r,t)
 * Prescribe energy capacity
 eq_forceprescription_energy(i,newv,r,t)
     $[tmodel(t)$force_prescribe(i,newv,r,t)$Sw_ForcePrescription
-    $ valinv(i,newv,r,t)
+    $valinv(i,newv,r,t)
     $(not Sw_PCM)
     $battery(i)]..
 
