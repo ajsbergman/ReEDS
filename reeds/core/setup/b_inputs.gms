@@ -1385,8 +1385,12 @@ $ifthen %ForceMandate% == 1
 prescribednonrsc(allt,pcat,r,"value")$(allt.val >= %ForceStartYear%) = 0 ;
 prescribednonrsc_energy(allt,pcat,r,"value")$(allt.val >= %ForceStartYear%) = 0 ;
 prescribedrsc(allt,pcat,r,"value")$(allt.val >= %ForceStartYear%) = 0 ;
-firstyear(i)$[(not ban(i))$firstyear(i)] = min(firstyear(i), %ForceStartYear%) ;
-firstyear_pcat(pcat)$firstyear_pcat(pcat) = min(firstyear_pcat(pcat), %ForceStartYear%) ;
+* Only free techs whose firstyear is within the model horizon. Techs intentionally
+* disabled with a far-future sentinel firstyear (e.g. lfill-gas, can-imports, and old
+* fossil at 2525) are existing-only/resource-limited and must stay disabled, otherwise
+* min(firstyear, ForceStartYear) would resurrect them as uncapped new builds.
+firstyear(i)$[(not ban(i))$firstyear(i)$(firstyear(i) <= %endyear%)] = min(firstyear(i), %ForceStartYear%) ;
+firstyear_pcat(pcat)$[firstyear_pcat(pcat)$(firstyear_pcat(pcat) <= %endyear%)] = min(firstyear_pcat(pcat), %ForceStartYear%) ;
 $endif
 
 *created by reeds/input_processing/writecapdat.py
