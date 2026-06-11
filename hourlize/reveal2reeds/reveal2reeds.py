@@ -201,16 +201,16 @@ def apply_custom_data_center_demand_projections(
         calculate_state_subsector_data_center_demand_hourly(
             df_load,
             model_year,
-            cf.scenario,
-            cf.national_demand_source,
-            cf.cooling_proportions_source,
-            cf.propagation_source,
-            cf.state_proportions_source
+            cf['scenario'],
+            cf['national_demand_source'],
+            cf['cooling_proportions_source'],
+            cf['propagation_source'],
+            cf['state_proportions_source']
         )
     )
 
-    if cf.replace_existing_data_center_demand:
-        data_center_subsectors = ['data center cooling', 'data center it']
+    if cf['replace_existing_data_center_demand']:
+        data_center_subsectors = cf['subsectors']['commercial']
         df_load = pd.concat(
             [
                 df_load.loc[~df_load.subsector.isin(data_center_subsectors)],
