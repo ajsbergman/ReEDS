@@ -390,7 +390,6 @@ def main(reeds_path, inputs_case):
     else:
         cspcf = reeds.io.read_file(
             os.path.join(inputs_case, 'recf_csp.h5'),
-            parse_timestamps=True,
         )
 
     ### Format PV+battery profiles
@@ -410,7 +409,6 @@ def main(reeds_path, inputs_case):
         infile = 'recf_upv' if ilr == scalars['ilr_utility'] * 100 else f'recf_upv_{ilr}AC'
         df_pvb[pvb_type] = reeds.io.read_file(
             os.path.join(inputs_case,infile+'.h5'),
-            parse_timestamps=True,
         )
         df_pvb[pvb_type].columns = [f'pvb{pvb_type}_{c}'
                                     for c in df_pvb[pvb_type].columns]

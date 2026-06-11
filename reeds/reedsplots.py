@@ -6059,7 +6059,7 @@ def get_cf_map(case, tech='wind-ons', timestamp=None, recf=None, crs='EPSG:5070'
     if recf is None:
         ## Get CF
         recf = reeds.io.read_file(
-            os.path.join(case, 'inputs_case', 'recf.h5'), parse_timestamps=True,
+            os.path.join(case, 'inputs_case', 'recf.h5'),
         )
     if not isinstance(recf.columns, pd.core.indexes.multi.MultiIndex):
         recf.columns = pd.MultiIndex.from_tuples(
@@ -6202,17 +6202,16 @@ def map_stressors(
     if any([not os.path.exists(fpath) for fpath in ra_files.values()]):
         reeds.resource_adequacy.prep_data.main(t, case, iteration)
 
-    vre_gen = reeds.io.read_file(ra_files['vre_gen'], parse_timestamps=True)
+    vre_gen = reeds.io.read_file(ra_files['vre_gen'])
     vre_gen.columns = pd.MultiIndex.from_tuples(
         vre_gen.columns.map(lambda x: tuple(x.split('|'))),
         names=['i','r'],
     )
 
-    load = reeds.io.read_file(ra_files['load'], parse_timestamps=True)
+    load = reeds.io.read_file(ra_files['load'])
 
     recf = reeds.io.read_file(
         os.path.join(case, 'inputs_case', 'recf.h5'),
-        parse_timestamps=True,
     )
     recf.columns = pd.MultiIndex.from_tuples(
         recf.columns.map(lambda x: tuple(x.split('|'))),

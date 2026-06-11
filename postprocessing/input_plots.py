@@ -128,7 +128,6 @@ def plot_profile(
         ylabel = 'Electricity demand [GW]'
         dfprofile = reeds.io.read_file(
             os.path.join(case, 'inputs_case', 'load.h5'),
-            parse_timestamps=True,
         ## Convert to GW
         ) / 1e3
         dfprofile = (
@@ -207,7 +206,6 @@ def plot_modelyears_weatheryears(case, startyear=2020, year_buffer=1):
     ## Data
     dfdemand_profile = reeds.io.read_file(
         os.path.join(case, 'inputs_case', 'load.h5'),
-        parse_timestamps=True,
     ## Sum over country and convert to GW
     ).sum(axis=1) / 1e3
 

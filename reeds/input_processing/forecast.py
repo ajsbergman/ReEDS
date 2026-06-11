@@ -328,7 +328,6 @@ if __name__ == '__main__':
             ### project forward, so the procedure is currently specific to these files
             dfin = reeds.io.read_file(
                 os.path.join(inputs_case,filename),
-                parse_timestamps=True,
             )
             # dfin = pd.read_hdf(os.path.join(inputs_case,filename))
             if header == 'keepindex':

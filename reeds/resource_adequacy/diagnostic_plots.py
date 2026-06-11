@@ -90,7 +90,6 @@ def get_inputs(sw):
     try:
         vre_gen = reeds.io.read_file(
             os.path.join(sw['casedir'],'handoff','reeds_data',f'pras_vre_gen_{sw.t}.h5'),
-            parse_timestamps=True,
         )
     except FileNotFoundError:
         vre_gen = None
@@ -128,7 +127,6 @@ def get_inputs(sw):
     try:
         pras_load = reeds.io.read_file(
             os.path.join(sw['casedir'],'handoff','reeds_data',f'pras_load_{sw.t}.h5'),
-            parse_timestamps=True,
         )
     except FileNotFoundError:
         pras_load = None
@@ -138,7 +136,6 @@ def get_inputs(sw):
             os.path.join(
                 sw['casedir'],'handoff','reeds_data',
                 f"pras_h2dac_load_{sw['t']}.h5"),
-            parse_timestamps=True,
         )
     except FileNotFoundError:
         pras_h2dac_load = pd.DataFrame(columns=pras_load.columns)

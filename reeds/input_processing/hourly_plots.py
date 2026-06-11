@@ -264,7 +264,7 @@ def plot_maps(sw, inputs_case, reeds_path, figpath, periodtype='rep', crs='EPSG:
         dfmap[key]['centroid_y'] = dfmap[key].centroid.y
 
     ### Get the CF data over all years, take the mean over weather years
-    recf = reeds.io.read_file(os.path.join(inputs_case, 'recf.h5'), parse_timestamps=True)
+    recf = reeds.io.read_file(os.path.join(inputs_case, 'recf.h5'))
     recf = recf.loc[recf.index.year.isin(GSw_HourlyWeatherYears)].mean()
 
     ### Get the hourly data

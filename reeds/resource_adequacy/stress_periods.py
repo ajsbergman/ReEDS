@@ -500,7 +500,6 @@ def prm_increment_pras(sw, t, iteration, combined_periods_write, failed_regions)
     dfload = reeds.io.read_file(
         os.path.join(
         sw['casedir'],'handoff','reeds_data',f'pras_load_{t}.h5'),
-        parse_timestamps=True
     )
 
     # add an index to represent each hour

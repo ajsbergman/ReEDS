@@ -834,7 +834,7 @@ def read_h5py_file(filename):
     return df
 
 
-def read_file(filename, parse_timestamps=False):
+def read_file(filename, parse_timestamps=True):
     """Return dataframe object of input file for multiple file formats.
 
     This function read multiple file formats for h5 file sand returns a dataframe from the file.
@@ -872,9 +872,8 @@ def read_file(filename, parse_timestamps=False):
     if (
         parse_timestamps
         and ('datetime' in df.index.names)
-        and (isinstance(df.index.get_level_values('datetime')[0], bytes))
     ):
-        df = decode_h5_timestamps(df)
+        df = parse_h5_timestamps(df)
 
     # All values being NaN indicates that the region filtering in copy_files.py removed all
     # data, leaving an empty dataframe.
@@ -891,16 +890,25 @@ def read_file(filename, parse_timestamps=False):
     return df
 
 
-def decode_h5_timestamps(df):
+def parse_h5_timestamps(df):
     """
-    Decode a dataframe's "datetime" index whose index values are stored as bytes.
+    Parse a dataframe's "datetime" index into pandas timestamps
     """
     unique_indices = df.index.get_level_values('datetime').unique()
-    index2datetime = dict(zip(
-        unique_indices,
-        pd.to_datetime(unique_indices.str.decode('utf-8'), format='ISO8601')
-    ))
-    df['datetime'] = df.index.get_level_values('datetime').map(index2datetime)
+    if pd.api.types.is_datetime64_any_dtype(df.index):
+        index2datetime = {}
+    elif pd.api.types.is_string_dtype(df.index):
+        index2datetime = dict(zip(
+            unique_indices,
+            pd.to_datetime(unique_indices, format='ISO8601')
+        ))
+    else:
+        index2datetime = dict(zip(
+            unique_indices,
+            pd.to_datetime(unique_indices.str.decode('utf-8'), format='ISO8601')
+        ))
+    if len(index2datetime):
+        df['datetime'] = df.index.get_level_values('datetime').map(index2datetime)
 
     # Convert timezone format from 'UTC-[number]:00' to
     # 'Etc/GMT+[number]' for consistency with broader codebase
@@ -922,7 +930,7 @@ def decode_h5_timestamps(df):
     return df
 
 
-def read_h5_groups(filepath, parse_timestamps=False):
+def read_h5_groups(filepath, parse_timestamps=True):
     """
     Read a .h5 file with the following format,
     where r = numrows and c = numcols for each group (r and c can vary across groups):
@@ -963,9 +971,8 @@ def read_h5_groups(filepath, parse_timestamps=False):
             if (
                 parse_timestamps
                 and ('datetime' in dfout.index.names)
-                and (isinstance(dfout.index.get_level_values('datetime')[0], bytes))
             ):
-                dfout = decode_h5_timestamps(dfout)
+                dfout = parse_h5_timestamps(dfout)
 
             dictout[group] = dfout
                 
@@ -1173,7 +1180,7 @@ def get_load_hourly(case=None, **kwargs):
             h5path = Path(reeds_path, 'inputs', 'profiles_demand', f'{fname}.h5')
 
     try:
-        load_hourly = pd.concat(read_h5_groups(h5path, parse_timestamps=True))
+        load_hourly = pd.concat(read_h5_groups(h5path))
         load_hourly = load_hourly.set_index(
             load_hourly.index.set_levels(
                 [int(i) for i in load_hourly.index.levels[0]],
@@ -1182,7 +1189,7 @@ def get_load_hourly(case=None, **kwargs):
             .rename("year", level=0)
         )
     except ValueError:
-        load_hourly = read_file(h5path, parse_timestamps=True)
+        load_hourly = read_file(h5path)
 
     return load_hourly
 
@@ -1247,7 +1254,7 @@ def get_distpv_cf_hourly():
         'profiles_cf',
         'cf_distpv_county.h5'
     )
-    return read_file(h5path, parse_timestamps=True)
+    return read_file(h5path)
 
 def get_years(case):
     return pd.read_csv(
@@ -1399,7 +1406,6 @@ def get_available_capacity_weighted_cf(case, level='country'):
     ## Get CF
     recf = reeds.io.read_file(
         os.path.join(case, 'inputs_case', 'recf.h5'),
-        parse_timestamps=True,
     )
     ## CF * cap / cap = available-capacity-weighted-average CF
     recapcf = (recf * sc.set_index('resource')['capacity']).dropna(axis=1, how='all')

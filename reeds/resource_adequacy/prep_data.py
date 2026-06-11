@@ -147,10 +147,10 @@ def main(t, casedir, iteration=0):
         h_dt_szn.index.map(hmap_allyrs.set_index(['year', 'hour'])['*timestamp']))
     h_dt_szn = h_dt_szn.reset_index().set_index('timestamp')
 
-    load = reeds.io.read_file(os.path.join(inputs_case, 'load.h5'), parse_timestamps=True)
+    load = reeds.io.read_file(os.path.join(inputs_case, 'load.h5'))
 
     resources = pd.read_csv(os.path.join(inputs_case, 'resources.csv'))
-    recf = reeds.io.read_file(os.path.join(inputs_case, 'recf.h5'), parse_timestamps=True)
+    recf = reeds.io.read_file(os.path.join(inputs_case, 'recf.h5'))
     recf.columns = pd.MultiIndex.from_tuples([tuple(x.split('|')) for x in recf.columns],
                                              names=('i','r'))
 

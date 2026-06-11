@@ -54,7 +54,7 @@ def get_load(inputs_case, keep_modelyear=None, keep_weatheryears=[2012]):
     """
     """
     ### Subset to modeled regions
-    load = reeds.io.read_file(os.path.join(inputs_case,'load.h5'), parse_timestamps=True)
+    load = reeds.io.read_file(os.path.join(inputs_case,'load.h5'))
     ### Subset to keep_modelyear if provided
     if keep_modelyear:
         load = load.loc[keep_modelyear].copy()
@@ -298,7 +298,7 @@ def main(
 
     #%%### Load RE CF data, then take available-capacity-weighted average by (tech,region)
     print("Collecting 8760 capacity factor data")
-    recf_ra = reeds.io.read_file(os.path.join(inputs_case, 'recf.h5'), parse_timestamps=True)
+    recf_ra = reeds.io.read_file(os.path.join(inputs_case, 'recf.h5'))
     ### Downselect to techs used for rep-period selection
     recf_ra = recf_ra[[c for c in recf_ra if any([c.startswith(p) for p in techs_vre])]].copy()
     ### Multiply by available capacity for weighted average

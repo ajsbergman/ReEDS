@@ -540,8 +540,8 @@ def subset_to_valid_regions(
         full_path_county = full_path.replace('{lvl}', 'county')
         match filetype_in:
             case 'h5':
-                df_ba = reeds.io.read_file(full_path_ba, parse_timestamps=True)
-                df_county = reeds.io.read_file(full_path_county, parse_timestamps=True)
+                df_ba = reeds.io.read_file(full_path_ba)
+                df_county = reeds.io.read_file(full_path_county)
             case 'csv':
                 df_ba = pd.read_csv(
                     full_path_ba,
@@ -588,7 +588,7 @@ def subset_to_valid_regions(
             )
         ## Filetype conditions
         elif filetype_in == 'h5':
-            df = reeds.io.read_file(full_path, parse_timestamps=True)
+            df = reeds.io.read_file(full_path)
         elif filetype_in == 'csv':
             df = pd.read_csv(full_path, dtype={'FIPS':str, 'fips':str, 'cnty_fips':str}, comment='#')
         else:
