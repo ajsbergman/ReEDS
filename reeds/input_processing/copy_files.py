@@ -1220,10 +1220,10 @@ def write_miscellaneous_files(
         os.path.join(inputs_case,'h2_leakage_rate.csv'))
 
     # Transmission employment factors:
-    pd.read_csv(
+    ef_trans = pd.read_csv(
         os.path.join(reeds_path,'inputs','employment','employment_factor_inter_transmission.csv'),
-        index_col='jtype',
-    )[sw['GSw_EmploymentFactor']].rename_axis('*jtype').round(8).to_csv(
+        index_col='*source')
+    ef_trans = ef_trans[ef_trans.index == sw['GSw_EmploymentFactor']].round(8).to_csv(
         os.path.join(inputs_case,'employment_factor_inter_transmission.csv'))
     
     # Add this_year to years_until_endogenous to generate the tech-specific firstyear.csv file

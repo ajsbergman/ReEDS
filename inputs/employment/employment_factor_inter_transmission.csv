@@ -1,3 +1,5 @@
-jtype,JEDI,Mayfield,Rutovitz,Ram
-construction,0.00000331,0.00000499,0.00000029,0.00000596
-fom,0.00075584,0.444,0,0
+*source,construction,fom,vom
+JEDI,0.00000331,0.00075584,0
+Mayfield,0.00000499,0.444,0
+Rutovitz,0.00000029,0,0
+Ram,0.00000596,0,0
