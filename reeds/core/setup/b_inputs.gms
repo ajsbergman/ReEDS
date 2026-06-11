@@ -4516,22 +4516,37 @@ cost_vom(i,newv,r,t)$[upgrade(i)$Sw_Upgrades$valcap(i,newv,r,t)] =
 
 * Gas-CC-peaking VOM: apply Sw_CP_vom multiplier (upgrade from Gas-CC to Gas-CC-peaking)
 cost_vom(i,initv,r,t)$[upgrade(i)$Sw_Upgrades$gas_cc_peaking(i)
-                      $sum{ii$upgrade_from(i,ii), valcap(ii,initv,r,t) }] =
+                      $sum{ii$upgrade_from(i,ii), valcap(ii,initv,r,t) }
+                      $sum{ii$upgrade_from(i,ii), cost_vom(ii,initv,r,t) }] =
        sum{ii$upgrade_from(i,ii), cost_vom(ii,initv,r,t)} * Sw_CP_vom
 ;
-* Gas-CC-peaking VOM for new vintages
-cost_vom(i,newv,r,t)$[upgrade(i)$Sw_Upgrades$gas_cc_peaking(i)$valcap(i,newv,r,t)] =
+* Gas-CC-peaking VOM for new vintages — additional guard $sum{... cost_vom(ii,...)} so this
+* doesn't overwrite the standalone-inherited value (from line ~4514) with 0 in regions where the
+* base tech is banned (e.g. new Gas-CC builds banned in CA/OR/WA in late years).
+cost_vom(i,newv,r,t)$[upgrade(i)$Sw_Upgrades$gas_cc_peaking(i)$valcap(i,newv,r,t)
+                      $sum{ii$upgrade_from(i,ii), cost_vom(ii,newv,r,t) }] =
        sum{ii$upgrade_from(i,ii), cost_vom(ii,newv,r,t)} * Sw_CP_vom
 ;
 * Reverse upgrade (Gas-CC-peaking -> Gas-CC): divide by multiplier
 cost_vom(i,initv,r,t)$[upgrade(i)$Sw_Upgrades$(not gas_cc_peaking(i))
-                      $sum{ii$[upgrade_from(i,ii)$gas_cc_peaking(ii)], valcap(ii,initv,r,t) }] =
+                      $sum{ii$[upgrade_from(i,ii)$gas_cc_peaking(ii)], valcap(ii,initv,r,t) }
+                      $sum{ii$[upgrade_from(i,ii)$gas_cc_peaking(ii)], cost_vom(ii,initv,r,t) }] =
        sum{ii$[upgrade_from(i,ii)$gas_cc_peaking(ii)], cost_vom(ii,initv,r,t)} / Sw_CP_vom
 ;
 cost_vom(i,newv,r,t)$[upgrade(i)$Sw_Upgrades$(not gas_cc_peaking(i))
-                      $sum{ii$[upgrade_from(i,ii)$gas_cc_peaking(ii)], valcap(ii,newv,r,t) }] =
+                      $sum{ii$[upgrade_from(i,ii)$gas_cc_peaking(ii)], valcap(ii,newv,r,t) }
+                      $sum{ii$[upgrade_from(i,ii)$gas_cc_peaking(ii)], cost_vom(ii,newv,r,t) }] =
        sum{ii$[upgrade_from(i,ii)$gas_cc_peaking(ii)], cost_vom(ii,newv,r,t)} / Sw_CP_vom
 ;
+
+* Fallback for peaker-forward upgrades that ended up with cost_vom = 0 because both the base tech
+* AND the standalone-peaking variant are banned in the region (e.g. broad state-level gas bans),
+* but the upgrade tech is still in valgen. Pull VOM from base plant_char directly (which is set
+* per (i,v,t) globally, independent of region valcap) and apply the Sw_CP_vom multiplier.
+cost_vom(i,newv,r,t)$[upgrade(i)$Sw_Upgrades$gas_cc_peaking(i)$valgen(i,newv,r,t)
+                      $countnc(i,newv)$(not cost_vom(i,newv,r,t))] =
+       sum{(ii,tt)$[upgrade_from(i,ii)$ivt(i,newv,tt)], plant_char(ii,newv,tt,'vom') } * Sw_CP_vom
+        / countnc(i,newv) ;
 
 *=================
 * --- Fixed OM ---
@@ -4627,22 +4642,35 @@ cost_fom(i,newv,r,t)$[upgrade(i)$Sw_Upgrades$valcap(i,newv,r,t)] =
       sum{ii$upgrade_to(i,ii), cost_fom(ii,newv,r,t) } ;
 
 * Gas-CC-peaking FOM: apply Sw_CP_fom multiplier
+* Extra guard $sum{... cost_fom(ii,...)} prevents overwriting the standalone-inherited value with 0
+* in regions where the base tech is banned (e.g. new Gas-CC builds disallowed by state policy).
 cost_fom(i,initv,r,t)$[upgrade(i)$Sw_Upgrades$gas_cc_peaking(i)
-                      $sum{ii$upgrade_from(i,ii), valcap(ii,initv,r,t) }] =
+                      $sum{ii$upgrade_from(i,ii), valcap(ii,initv,r,t) }
+                      $sum{ii$upgrade_from(i,ii), cost_fom(ii,initv,r,t) }] =
        sum{ii$upgrade_from(i,ii), cost_fom(ii,initv,r,t)} * Sw_CP_fom
 ;
-cost_fom(i,newv,r,t)$[upgrade(i)$Sw_Upgrades$gas_cc_peaking(i)$valcap(i,newv,r,t)] =
+cost_fom(i,newv,r,t)$[upgrade(i)$Sw_Upgrades$gas_cc_peaking(i)$valcap(i,newv,r,t)
+                      $sum{ii$upgrade_from(i,ii), cost_fom(ii,newv,r,t) }] =
        sum{ii$upgrade_from(i,ii), cost_fom(ii,newv,r,t)} * Sw_CP_fom
 ;
 * Reverse upgrade (Gas-CC-peaking -> Gas-CC)
 cost_fom(i,initv,r,t)$[upgrade(i)$Sw_Upgrades$(not gas_cc_peaking(i))
-                      $sum{ii$[upgrade_from(i,ii)$gas_cc_peaking(ii)], valcap(ii,initv,r,t) }] =
+                      $sum{ii$[upgrade_from(i,ii)$gas_cc_peaking(ii)], valcap(ii,initv,r,t) }
+                      $sum{ii$[upgrade_from(i,ii)$gas_cc_peaking(ii)], cost_fom(ii,initv,r,t) }] =
        sum{ii$[upgrade_from(i,ii)$gas_cc_peaking(ii)], cost_fom(ii,initv,r,t)} / Sw_CP_fom
 ;
 cost_fom(i,newv,r,t)$[upgrade(i)$Sw_Upgrades$(not gas_cc_peaking(i))
-                      $sum{ii$[upgrade_from(i,ii)$gas_cc_peaking(ii)], valcap(ii,newv,r,t) }] =
+                      $sum{ii$[upgrade_from(i,ii)$gas_cc_peaking(ii)], valcap(ii,newv,r,t) }
+                      $sum{ii$[upgrade_from(i,ii)$gas_cc_peaking(ii)], cost_fom(ii,newv,r,t) }] =
        sum{ii$[upgrade_from(i,ii)$gas_cc_peaking(ii)], cost_fom(ii,newv,r,t)} / Sw_CP_fom
 ;
+
+* Fallback for peaker-forward upgrades whose FOM remained 0 because both base and standalone
+* peaker are banned in the region (broad state gas ban). Uses base plant_char (region-independent).
+cost_fom(i,newv,r,t)$[upgrade(i)$Sw_Upgrades$gas_cc_peaking(i)$valgen(i,newv,r,t)
+                      $countnc(i,newv)$(not cost_fom(i,newv,r,t))] =
+       sum{(ii,tt)$[upgrade_from(i,ii)$ivt(i,newv,tt)], plant_char(ii,newv,tt,'fom') } * Sw_CP_fom
+        / countnc(i,newv) ;
 
 *====================
 * --- Heat Rates ---
@@ -4711,16 +4739,27 @@ heat_rate_init(i,v,r,t)$[heat_rate_adj(i,'pre2010')$initv(v)] = heat_rate_adj(i,
 heat_rate_init(i,v,r,t)$[heat_rate_adj(i,'post2010')$newv(v)] = heat_rate_adj(i,'post2010') * heat_rate_init(i,v,r,t) ;
 
 * Gas-CC-peaking heat rate: apply Sw_CP_hr multiplier
+* Extra guard $smax{... heat_rate_init(ii,...)} prevents overwriting the standalone-inherited value
+* with 0 in regions where the base tech is banned (heat_rate_init=0 there).
 heat_rate_init(i,v,r,t)$[upgrade(i)$Sw_Upgrades$gas_cc_peaking(i)
-                      $sum{ii$upgrade_from(i,ii), valcap(ii,v,r,t)}] =
+                      $sum{ii$upgrade_from(i,ii), valcap(ii,v,r,t)}
+                      $(smax{ii$upgrade_from(i,ii), heat_rate_init(ii,v,r,t)})] =
        (smax{ii$upgrade_from(i,ii), heat_rate_init(ii,v,r,t)}) * Sw_CP_hr
 ;
 * Reverse upgrade (Gas-CC-peaking -> Gas-CC)
 heat_rate_init(i,v,r,t)$[upgrade(i)$Sw_Upgrades
                       $sum{ii$upgrade_from(i,ii), valcap(ii,v,r,t)}
-                      $sum{ii$upgrade_from(i,ii), gas_cc_peaking(ii)} ] =
+                      $sum{ii$upgrade_from(i,ii), gas_cc_peaking(ii)}
+                      $(smax{ii$upgrade_from(i,ii), heat_rate_init(ii,v,r,t)}) ] =
        (smax{ii$upgrade_from(i,ii), heat_rate_init(ii,v,r,t)}) / Sw_CP_hr
 ;
+
+* Fallback for peaker-forward upgrades whose heat_rate_init remained 0 because both base and
+* standalone peaker are banned in the region. Uses base plant_char (region-independent).
+heat_rate_init(i,newv,r,t)$[upgrade(i)$Sw_Upgrades$gas_cc_peaking(i)$valgen(i,newv,r,t)
+                            $countnc(i,newv)$(not heat_rate_init(i,newv,r,t))] =
+       sum{(ii,tt)$[upgrade_from(i,ii)$ivt(i,newv,tt)], plant_char(ii,newv,tt,'heatrate') } * Sw_CP_hr
+        / countnc(i,newv) ;
 
 *=========================================
 * --- Init parameters for CF-based HR adjustment ---
