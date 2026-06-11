@@ -283,15 +283,38 @@ def create_hourly_state_load_for_model_year(
         parse_dates=['weather_datetime']
     )
 
-    # If applicable, replace data center cooling and IT projections with
-    # custom projections specified in reveal2reeds/config.json
-    if model_year in cf.custom_data_center_projection_years:
-        reveal2reeds_config = get_reveal2reeds_config()
-        df_load = reveal2reeds.apply_custom_data_center_demand_projections(
-            df_load,
-            model_year,
-            reveal2reeds_config
+    # # If applicable, replace data center cooling and IT projections with
+    # # custom projections specified in reveal2reeds/config.json
+    # if model_year in cf.custom_data_center_projection_years:
+    #     reveal2reeds_config = get_reveal2reeds_config()
+    #     df_load = reveal2reeds.apply_custom_data_center_demand_projections(
+    #         df_load,
+    #         model_year,
+    #         reveal2reeds_config
+    #     )
+
+    # If applicable, replace or add to data center cooling and IT projections,
+    # as specified in inputs/load/sector_config.json
+    # Note this is handled differently and separately from the other
+    # 'replace_sectors'. The logic for handling those is below.
+    if 'Data Centers' in replace_sectors:
+        data_center_config = sector_config['Data Centers']
+        data_center_config.cooling_proportions_source = (
+            data_center_config.cooling_proportions_source
+            .format(scenario=data_center_config.scenario)
         )
+        if model_year in data_center_config['model_years']:
+            df_load = reveal2reeds.apply_custom_data_center_demand_projections(
+                df_load,
+                model_year,
+                data_center_config
+            )
+        else:
+            pass
+
+        # Remove 'data centers' from 'replace_sectors' because we traverse
+        # through the list later to handle the other sectors.
+        replace_sectors.remove('Data Centers')
 
     # Downselect to specified weather years
     df_load = df_load.loc[df_load.weather_datetime.dt.year.isin(weather_years)]
