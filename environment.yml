@@ -15,7 +15,6 @@ dependencies:
   - openpyxl=3.1
   - pandas=3.0
   - pip=26.1
-  - pulp=2.8
   - pytables=3.11
   - pytest=9.0
   - requests=2.33
@@ -42,6 +41,7 @@ dependencies:
   - pip:
     - gamsapi[transfer]==53.5.0
     - gdxpds==4.0.0
+    - pulp==3.3.2
     ## vvv The next packages are optional for default settings and may
     ## vvv be excluded if they cause trouble building the environment.
     - gamspy_base==53.5.0 # for tests on the github runner
