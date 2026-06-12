@@ -43,7 +43,7 @@ def calc_financial_inputs(inputs_case):
 
     # #%% Settings for testing
     # reeds_path = reeds.io.reeds_path
-    # inputs_case = Path(reeds_path, 'runs', 'v20260606_envM0_Pacific', 'inputs_case')
+    # inputs_case = Path(reeds_path, 'runs', 'v20260612_envM0_Pacific', 'inputs_case')
 
     #%% Inputs from switches
     sw = reeds.io.get_switches(inputs_case)
@@ -338,13 +338,19 @@ def calc_financial_inputs(inputs_case):
     dfhydrogen_storage.rename(columns={'t':'*t'})[['*t','cap_cost_mult_storage']].round(6).to_csv(
         os.path.join(inputs_case, 'h2_storage_cap_cost_mult.csv'), index=False)
 
-    #%% Import regional capital cost differences
+    #%% Import regional capital cost differences (county resolution)
     reg_cap_cost_diff = reeds.financials.import_data(
         file_root='reg_cap_cost_diff', file_suffix=sw['reg_cap_cost_diff_suffix'], 
         indices=['i','r'], scen_settings=scen_settings)
-
-    # Trim down to just the techs in this run
-    reg_cap_cost_diff = reg_cap_cost_diff.loc[reg_cap_cost_diff['i'].isin(list(techs['i']))].copy()
+    # Map to zones and take average
+    county2zone = reeds.io.get_county2zone(reeds.io.standardize_case(inputs_case))
+    reg_cap_cost_diff.r = reg_cap_cost_diff.r.str.strip('p').map(county2zone)
+    reg_cap_cost_diff = (
+        # Trim down to just the techs in this run
+        reg_cap_cost_diff.loc[reg_cap_cost_diff['i'].isin(list(techs['i']))]
+        .dropna()
+        .groupby(['r','i'], as_index=False).mean()
+    ).copy()
 
 
     #%% Before writing outputs, change "x" to "newx" in [v]
