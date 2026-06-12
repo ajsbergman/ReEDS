@@ -286,7 +286,7 @@ def main(t, casedir, iteration=0):
         pras_vre_gen.columns.get_level_values('i').map(lambda x: techs_vre_simplify.get(x,x)),
         pras_vre_gen.columns.get_level_values('r')
     ])
-    pras_vre_gen = pras_vre_gen.groupby(['i','r'], axis=1).sum()
+    pras_vre_gen = pras_vre_gen.T.groupby(['i','r']).sum().T
 
     pras_vre_gen.columns = ['|'.join(c) for c in pras_vre_gen.columns]
     h5out['pras_vre_gen'] = pras_vre_gen

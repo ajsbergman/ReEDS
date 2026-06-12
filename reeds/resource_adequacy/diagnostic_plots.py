@@ -392,11 +392,11 @@ def map_dropped_load(sw, dfs, level='r'):
         if level not in ['r','rb','ba']:
             dropped = (
                 dropped.rename(columns=dfs['hierarchy'][level])
-                .groupby(level=0, axis=1).sum().copy()
+                .T.groupby(level=0).sum().T.copy()
             )
             load = (
                 load.rename(columns=dfs['hierarchy'][level])
-                .groupby(level=0, axis=1).sum().copy()
+                .T.groupby(level=0).sum().T.copy()
             )
         for agg in ['max','sum','mean']:
             if (metric,agg) not in units:
@@ -638,7 +638,7 @@ def plot_pras_ICAP_regional(sw, dfs, numdays=5):
             ### Plot it
             plots.stackbar(
                 df=df, ax=ax[coords[r]], colors=tech_style, net=False, align='edge',
-                width=pd.Timedelta('1H'),
+                width=pd.Timedelta('1h'),
             )
             ax[coords[r]].plot(
                 load.loc[date].index, load.loc[date][r].values, c='k', lw=1,
@@ -648,7 +648,7 @@ def plot_pras_ICAP_regional(sw, dfs, numdays=5):
             ax[coords[r]].set_title(r)
         ### Formatting
         plots.trim_subplots(ax=ax, nrows=nrows, ncols=ncols, nsubplots=len(zones))
-        ax[coords[zones[0]]].set_xlim(df.index[0], df.index[-1] + pd.Timedelta('1H'))
+        ax[coords[zones[0]]].set_xlim(df.index[0], df.index[-1] + pd.Timedelta('1h'))
         ax[coords[zones[0]]].set_xticks([])
         ax[-1, 0].set_xlabel(date, x=0, ha='left', labelpad=10)
         ax[-1, 0].set_ylabel('ICAP [GW]', y=0, ha='left')
@@ -812,7 +812,7 @@ def plot_pras_load_units(sw, dfs):
         vre_gen.columns.map(lambda x: tuple(x.split('|'))),
         names=['i','r'],
     )
-    net_demand = (dfs['pras_system']['load'] - vre_gen.groupby('r', axis=1).sum()) / 1e3
+    net_demand = (dfs['pras_system']['load'] - vre_gen.T.groupby('r').sum().T) / 1e3
     ## Remaining unit capacity
     units = cap.loc[
             ~cap.i.isin(

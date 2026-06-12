@@ -94,7 +94,7 @@ def get_eue_periods(
         dfload = reeds.io.read_h5py_file(
             os.path.join(
                 case,'handoff','reeds_data',f'pras_load_{t}.h5')
-        ).rename(columns=rmap).groupby(level=0, axis=1).sum()
+        ).rename(columns=rmap).T.groupby(level=0).sum().T
         dfload.index = dfeue.index
 
         ### Recalculate NEUE [ppm] and aggregate appropriately

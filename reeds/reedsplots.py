@@ -6293,7 +6293,7 @@ def map_stressors(
 
     outage_region = outage_daily.copy()
     outage_region.columns = outage_daily.columns.map(lambda x: (x[0], hierarchy[level][x[1]]))
-    outage_region = outage_region.groupby(['i','r'], axis=1).mean()
+    outage_region = outage_region.T.groupby(['i','r']).mean().T
 
     ### Set up the plot
     nrows, ncols = 3, 4

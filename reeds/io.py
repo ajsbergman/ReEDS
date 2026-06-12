@@ -1423,7 +1423,7 @@ def get_available_capacity_weighted_cf(case, level='country'):
         recapcf.columns.map(lambda x: r2region[x.split('|')[1]]),
     ], names=['i', 'r'])
     dfout = (
-        recapcf.groupby(['i','r'], axis=1).sum()
+        recapcf.T.groupby(['i','r']).sum().T
         / sc.groupby(['tech','aggreg']).capacity.sum().rename_axis(['i','r'])
     )
     ## UPV is AC_out/DC_cap = CF_DC, so multiply by ILR to get CF_AC
