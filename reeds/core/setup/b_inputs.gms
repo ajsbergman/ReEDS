@@ -1730,7 +1730,7 @@ $endif.geohydrorevexog
 
 capacity_exog(i,"init-1",r,t)$geo_egs(i) = geo_cap_exog(i,r) ;
 
-* existing capacity equals all 2010 capacity less retirements
+* existing capacity equals all capacity before start year less retirements
 * here we use the max of zero or that number to avoid any errors
 * with variables that are gte to zero
 * also have expiration of capital if t - tfirst is greater than the maximum age
@@ -4178,7 +4178,7 @@ parameter cf_adj_t(i,v,t)        "--unitless-- capacity factor adjustment over t
 
 cf_adj_t(i,v,t)$[(rsc_i(i) or hydro(i))$sum{r, valcap(i,v,r,t) }] = 1 ;
 
-* Existing wind uses 2010 cf adjustment
+* Existing wind uses startyear cf adjustment
 cf_adj_t(i,initv,t)$[wind(i)$sum{r, valcap(i,initv,r,t) }] = wind_cf_adj_t("%startyear%",i) ;
 
 cf_adj_t(i,newv,t)$[wind_cf_adj_t(t,i)$countnc(i,newv)$sum{r, valcap(i,newv,r,t) }] =
