@@ -894,19 +894,28 @@ def parse_h5_timestamps(df):
     """
     Parse a dataframe's "datetime" index into pandas timestamps
     """
-    unique_indices = df.index.get_level_values('datetime').unique()
-    if pd.api.types.is_datetime64_any_dtype(df.index):
+    try:
+        index = df.index.get_level_values('datetime')
+    except KeyError:
+        index = df.index
+    unique_indices = index.unique()
+    dtype = index.dtype
+
+    if pd.api.types.is_datetime64_any_dtype(dtype):
         index2datetime = {}
-    elif pd.api.types.is_string_dtype(df.index):
+    elif isinstance(index[0], bytes):
+        index2datetime = dict(zip(
+            unique_indices,
+            pd.to_datetime(unique_indices.str.decode('utf-8'), format='ISO8601')
+        ))
+    elif pd.api.types.is_string_dtype(dtype):
         index2datetime = dict(zip(
             unique_indices,
             pd.to_datetime(unique_indices, format='ISO8601')
         ))
     else:
-        index2datetime = dict(zip(
-            unique_indices,
-            pd.to_datetime(unique_indices.str.decode('utf-8'), format='ISO8601')
-        ))
+        raise TypeError(f'Unsupported index type: {dtype}')
+
     if len(index2datetime):
         df['datetime'] = df.index.get_level_values('datetime').map(index2datetime)
 
