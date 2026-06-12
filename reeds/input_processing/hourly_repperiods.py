@@ -171,8 +171,8 @@ def cluster_profiles(profiles_fitperiods, sw, forceperiods_yearperiod):
 
     elif sw['GSw_HourlyClusterAlgorithm'] in ['opt','optimized','optimize']:
         profiles_period_mean = (
-            profiles_fitperiods.groupby(['property','region'], axis=1)
-            .mean()
+            profiles_fitperiods.T.groupby(['property','region'])
+            .mean().T
         )
         ### Optimize the weights of representative days
         iweights, weights = reeds.timeseries.optimize_period_weights(
