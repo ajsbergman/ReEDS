@@ -6691,7 +6691,6 @@ def validate_regional_capacity(
     sharey=False,
 ):
     """Compare regional capacity from EIA-NEMS to ReEDS results for last historical year"""
-    # case = '/Users/pbrown/github/ReEDS/runs/v20260604_mainM0_USA_fast'
     ### Settings
     plot_settings = reeds.io.get_plot_formatting()
     tech_color = plot_settings['tech_color'].squeeze(1)

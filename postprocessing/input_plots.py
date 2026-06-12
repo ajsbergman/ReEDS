@@ -407,19 +407,11 @@ def plot_units_existing(
             techs = [i for i in techs if i in onlytechs]
 
     ### Parse inputs
-    tech_style = pd.read_csv(
-        os.path.join(
-            reeds.io.reeds_path,'postprocessing','bokehpivot','in','reeds2','tech_style.csv'),
-        index_col='order',
-    )
-    colors = tech_style.color
+    plot_settings = reeds.io.get_plot_formatting()
+    colors = plot_settings['tech_color'].squeeze(1)
 
     if markers is None:
-        techmarkers = tech_style.marker
-        tupletechs = techmarkers.loc[techmarkers.str.startswith('(')].index
-        techmarkers.loc[tupletechs] = techmarkers.loc[tupletechs].map(
-            lambda x: tuple([int(i) for i in x.strip('()').split(',')])
-        )
+        techmarkers = plot_settings['tech_marker'].squeeze(1)
     elif isinstance(markers, str):
         techmarkers = dict(zip(techs, markers(len(techs))))
     elif isinstance(markers, dict):
