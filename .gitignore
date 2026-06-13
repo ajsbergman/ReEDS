@@ -69,5 +69,5 @@ docs/build/*
 
 # temp
 srun_debug.sh
-srun_template.sh
+reeds/hpc/srun_template.sh
 load.sh

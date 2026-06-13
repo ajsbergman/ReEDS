@@ -1,0 +1,6 @@
+,Description,Choices,Default Value,Ref,NG-CendivCurve,NG-CendivStatic,NG-NatCurve
+ignore,"0=run this case, 1=ignore this case",0; 1,0,,,,
+endyear,"Last year to be modeled",N/A,2050,,,,
+yearset,"_-delimited list of years to model OR bash-formatted year ranges (start..end..step). For example, 2010_2015_2020..2035..3_2040..2050..5 means: 2010, 2015, then 2020 through 2035 in 3-year steps, then 2040 through 2050 in 5-year steps. startyear will be prepended if it is not included. Truncated at endyear.",N/A,2010_2015_2020..2050..5,,,,
+GSw_GasCurve,"Select natural gas supply curve (0 = cendiv, 1 = national + cendiv, 2 = static, 3 = national)",0; 1; 2; 3,1,1,0,2,3
+pras,"Indicate whether to run PRAS for 2007-2013 between each pair of solve years (0=never; 1=just the final solve year; 2=always)",0; 1; 2,0,,,,

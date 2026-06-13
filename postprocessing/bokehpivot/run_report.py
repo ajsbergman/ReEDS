@@ -21,11 +21,11 @@ import reeds_bokeh as rb
 
 #EDIT THE FOLLOWING FIELDS
 report_path = f'{bokehpivot_dir}/reports/templates/reeds2/standard_report_reduced.py' #Path to report that is to be run
-diff = 'No' #Use 'Yes' if adding differences to a base case, specified below (default base case is first scenario in reeds_scenarios.csv)
+diff = 'Yes' #Use 'Yes' if adding differences to a base case, specified below (default base case is first scenario in ngcomp_scenarios.csv)
 
-data_source = f'{bokehpivot_dir}/reeds_scenarios.csv' #either a scenarios.csv file or ReEDS run directory (or directories separated by pipe symbols).
-base = pd.read_csv(data_source)['name'][0] #Name of base case for when diff='Yes'. Defaults to first case in reeds_scenarios.csv.
-output_dir = f'{bokehpivot_dir}/out/reeds_report' #This is the directory that will be created to contain the report. If it already exists, the existing directory will be archived with a date.
+data_source = f'{bokehpivot_dir}/histcomp_scenarios.csv' #either a scenarios.csv file or ReEDS run directory (or directories separated by pipe symbols).
+base = pd.read_csv(data_source)['name'][0] #Name of base case for when diff='Yes'. Defaults to first case in ngcomp_scenarios.csv.
+output_dir = f'{bokehpivot_dir}/out/histcomp20260603_report' #This is the directory that will be created to contain the report. If it already exists, the existing directory will be archived with a date.
 data_type = 'ReEDS 2.0'
 scenario_filter = 'all' #'all' or string of comma-separated names.
 html_num = 'one' #'one' or 'multiple'. 'one' will create one html file with all sections, and 'multiple' will create a separate html file for each section

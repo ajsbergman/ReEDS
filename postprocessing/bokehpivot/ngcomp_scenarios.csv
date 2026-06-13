@@ -1,0 +1,4 @@
+name,color,path
+Reference,#000000,/projects/emfreed/cavraam/ReEDS/runs/ngcomp20260603_Ref
+NGCurve-Cendiv,#1f77b4,/projects/emfreed/cavraam/ReEDS/runs/ngcomp20260603_NG-CendivCurve
+NGStatic-Cendiv,#9edae5,/projects/emfreed/cavraam/ReEDS/runs/ngcomp20260603_NG-CendivStatic
