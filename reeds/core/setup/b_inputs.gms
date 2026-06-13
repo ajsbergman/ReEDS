@@ -1989,7 +1989,6 @@ noncumulative_prescriptions(pcat,r,t)$tmodel_new(t)
                                           ],
                                         prescribednonrsc(tt,pcat,r,"value") + prescribedrsc(tt,pcat,r,"value")
                                       } ;
-noncumulative_prescriptions(pcat,r,t)$noncumulative_prescriptions(pcat,r,t) = round(noncumulative_prescriptions(pcat,r,t),6);
 
 parameter noncumulative_prescriptions_energy(pcat,r,t) "--MWh-- prescribed energy capacity that comes online in a given year" ;
 noncumulative_prescriptions_energy(pcat,r,t)$tmodel_new(t)
