@@ -322,16 +322,16 @@ def check_compatibility(sw):
     ### Check that the stress metrics specified in GSw_PRM_StressThresholdMetrics
     # have corresponding GSw_PRM_StressThreshold{metric} switches
     ## TODO: Check a regex way to list the switches 
-    stressThresholdMetricSwitches = ['NEUE','EUE','LOLH']
+    stressThresholdMetricSwitches = ['NEUE','LOLH']
     stressThresholdMetrics = sw['GSw_PRM_StressThresholdMetrics'].split('/')
     
-    if int(sw['GSw_PRM_UpdateMethod']) == 1 or 'EUE' not in stressThresholdMetrics:
-        if int(sw['GSw_PRM_UpdateMethod']) > 1:
-            raise NotImplementedError(
-                f"Warning: GSw_PRM_UpdateMethod is set to {sw['GSw_PRM_UpdateMethod']}, "
-                "but EUE is not included in GSw_PRM_StressThresholdMetrics, so defaulting to fixed increment. " 
-                "Add EUE to GSw_PRM_StressThresholdMetrics to use PRAS-informed update method."
-            )
+    # if int(sw['GSw_PRM_UpdateMethod']) == 1 or 'EUE' not in stressThresholdMetrics:
+    #     if int(sw['GSw_PRM_UpdateMethod']) > 1:
+    #         raise NotImplementedError(
+    #             f"Warning: GSw_PRM_UpdateMethod is set to {sw['GSw_PRM_UpdateMethod']}, "
+    #             "but EUE is not included in GSw_PRM_StressThresholdMetrics, so defaulting to fixed increment. " 
+    #             "Add EUE to GSw_PRM_StressThresholdMetrics to use PRAS-informed update method."
+    #         )
         
     # Threshold metric added but not specified as a switch
     for metric in stressThresholdMetrics:

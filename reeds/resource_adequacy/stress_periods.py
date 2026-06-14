@@ -6,6 +6,7 @@ import numpy as np
 from glob import glob
 import re
 import matplotlib.pyplot as plt
+from typing import Literal
 
 import reeds
 from reeds.input_processing import hourly_writetimeseries
@@ -18,7 +19,7 @@ from reeds.input_processing import hourly_writetimeseries
 
 
 #%%### Functions
-def get_pras_stress_metric(case, t, iteration=0, stress_metric='EUE'):
+def get_pras_stress_metric(case, t, iteration=0, stress_metric:Literal['EUE','LOLE']='EUE'):  
     """
     """
     ### Get PRAS outputs
@@ -73,7 +74,7 @@ def get_stress_metric_periods(
     ### Get stress metric from PRAS
     # Use EUE metric for both EUE and NEUE calculations, since the load division to get NEUE is
     # peformed afterwards based on agg_period. 
-    use_metric_for_pras = {'EUE':'EUE', 'NEUE':'EUE', 'LOLE':'LOLE'}
+    use_metric_for_pras = {'EUE':'EUE', 'NEUE':'EUE', 'LOLH':'LOLE'}
     dfmetric = get_pras_stress_metric(case=case, t=t, iteration=iteration, stress_metric=use_metric_for_pras.get(stress_metric))
     ## Aggregate to hierarchy_level
     dfmetric = (
@@ -177,7 +178,13 @@ def get_annual_stress_metric(case, t, stress_metric, iteration=0):
     """
     """
     ### Get values from PRAS
-    dfmetric = get_pras_stress_metric(case=case, t=t, iteration=iteration, stress_metric=stress_metric)
+    use_metric_for_pras = {'EUE':'EUE', 'NEUE':'EUE', 'LOLH':'LOLE'}  
+    dfmetric = get_pras_stress_metric(  
+        case=case,  
+        t=t,  
+        iteration=iteration,  
+        stress_metric=use_metric_for_pras[stress_metric],  
+    )  
 
     ### Get load (for calculating NEUE)
     if stress_metric.upper() == 'NEUE':
@@ -206,8 +213,8 @@ def get_annual_stress_metric(case, t, stress_metric, iteration=0):
             ) * 1e6
             ### Get max NEUE hour
             _metric[hierarchy_level,'max'] = (
-            dfmetric.rename(columns=rmap).groupby(axis=1, level=0).sum()
-            / dfload.rename(columns=rmap).groupby(axis=1, level=0).sum()
+                dfmetric.rename(columns=rmap).groupby(axis=1, level=0).sum()
+                / dfload.rename(columns=rmap).groupby(axis=1, level=0).sum()
             ).max() * 1e6
 
     ### Combine it
@@ -284,7 +291,16 @@ def get_shoulder_periods(sw, criterion, dfenergy_r, high_eue_periods, stress_met
 
     return shoulder_periods
 
-def _evaluate_stress_threshold_criterion(stress_criteria, criterion, sw, t, iteration, dfenergy_r, stressperiods_this_iteration, stress_metric):
+def _evaluate_stress_threshold_criterion(  
+    stress_criteria,  
+    criterion,  
+    sw,  
+    t,  
+    iteration,  
+    dfenergy_r,  
+    stressperiods_this_iteration,  
+    stress_metric,  
+): 
     _stress_sorted_periods = stress_criteria['stress_sorted_periods']
     _failed = stress_criteria['failed']
     _high_stress_periods = stress_criteria['high_stress_periods']
@@ -292,13 +308,6 @@ def _evaluate_stress_threshold_criterion(stress_criteria, criterion, sw, t, iter
                                                                                                         
     ## NEUE Example: criterion = 'transgrp_1_sum' 
     (hierarchy_level, stress_value, period_agg_method) = criterion.split('_')
-
-    # LOLH and LOLE values are defined on a yearly basis, 
-    # PRAS reports the total LOLH/LOLE over the entire evaluation periods
-    # Multiply by the number of resource adequacy years to compare
-
-    if stress_metric.upper() in ['LOLE', 'LOLH']:
-        stress_value = float(stress_value) * len(sw['resource_adequacy_years'])
 
     ### Get stored stress metric
     stress_vals = pd.read_csv(
@@ -355,7 +364,7 @@ def _evaluate_stress_threshold_criterion(stress_criteria, criterion, sw, t, iter
         ### if the storage state of charge is low
         _shoulder_periods = {
             **_shoulder_periods,
-            **get_shoulder_periods(sw, criterion, dfenergy_r, _high_stress_periods)
+            **get_shoulder_periods(sw, criterion, dfenergy_r, _high_stress_periods, stress_metric)
         }
 
         stress_criteria['stress_sorted_periods'] = _stress_sorted_periods
@@ -396,22 +405,23 @@ def get_stress_metrics_sorted_periods(sw, t, iteration):
     stress_metric_switches = sw.GSw_PRM_StressThresholdMetrics.split('/')
     
     # stress periods column names for writing outputs
-    stress_metrics_units = {'EUE':'MWh', 'NEUE':'ppm', 'LOLE':'days'}
+    stress_metrics_units = {'EUE':'MWh/year', 'NEUE':'ppm', 'LOLH':'event-h/year', 'LOLE':'event-day/year'}
     stress_metrics_col_names = {m:f'{m}_{stress_metrics_units[m]}' for m in 
                                 stress_metric_switches}
     
     for stress_metric in stress_metric_switches:
         for criterion in sw[f'GSw_PRM_StressThreshold{stress_metric.upper()}'].split('/'):
             print(f"Evaluating GSw_PRM_StressThreshold {stress_metric.upper()} with criterion: {criterion}")
-            stress_criteria = _evaluate_stress_threshold_criterion(stress_criteria,
-                                                                   criterion,
-                                                                   sw,
-                                                                   t,
-                                                                   iteration,
-                                                                   dfenergy_r,
-                                                                   stressperiods_this_iteration,
-                                                                   stress_metric
-                                                                   )
+            stress_criteria = _evaluate_stress_threshold_criterion(
+                stress_criteria,
+                criterion,
+                sw,
+                t,
+                iteration,
+                dfenergy_r,
+                stressperiods_this_iteration,
+                stress_metric
+            )
             
     stress_sorted_periods = stress_criteria['stress_sorted_periods']
     failed = stress_criteria['failed']
@@ -593,7 +603,7 @@ def prm_increment_pras(sw, t, iteration, combined_periods_write, failed_regions)
     return prm_increment
 
 
-def update_prm(sw, t, iteration, failed, combined_periods_write, stress_metrics):
+def update_prm(sw, t, iteration, failed, combined_periods_write):
     """Update the energy reserve margin by region r for stress periods, either using a
     static increment (GSw_PRM_UpdateMethod=1) or based on the estimated surplus needed by PRAS
     to recover the desired reliabiliaty criteria (GSw_PRM_UpdateMethod>1).
@@ -605,15 +615,17 @@ def update_prm(sw, t, iteration, failed, combined_periods_write, stress_metrics)
         failed (dict): Dictionary of regions with unserved energy at the hierarchy_level
                        and their criterion evaluations
         combined_periods_write (pd.DataFrame): Data frame of combined stress periods
-        stress_metrics (list): List of stress metrics. If EUE is not included,
-                              we can only use Fixed-increment update        
+    
 
     Returns:
         pd.DataFrame: Table of prm levels for the next PRAS iteration
     """
     # Get regions that failed criteria
+    # Use NEUE-based failed regions only
     _failed_regions = []
     for criterion in failed:
+        if not failed[criterion].name == 'NEUE':
+            continue
         # Example: criterion = 'transgrp_10_sum'
         (hierarchy_level, stress_value, __) = criterion.split('_')
         # Recover regions where the PRM criterion failed
@@ -629,10 +641,10 @@ def update_prm(sw, t, iteration, failed, combined_periods_write, stress_metrics)
         pd.concat(_failed_regions)
         .sort_values(by=['stress_value'])
         .drop_duplicates(subset='r', keep='first')
-    )
+    )    
 
     ## Fixed-increment update
-    if int(sw.GSw_PRM_UpdateMethod) == 1 or 'EUE' not in stress_metrics:
+    if int(sw.GSw_PRM_UpdateMethod) == 1:
         prm_increment = failed_regions.copy()
         prm_increment['fraction'] = float(sw['GSw_PRM_UpdateFraction'])
     ## PRAS-informed PRM update
@@ -667,15 +679,17 @@ def main(sw, t, iteration=0, logging=True):
     try:
         ## TODO: Check if get_and_write_neue() is still needed
         _neue_simple = get_and_write_neue(sw, write=True)
-        stress_metrics = sw.GSw_PRM_StressThresholdMetrics.split('/')
         ## TODO: check if need to refactor or remove
-        # Include NEUE if not already specified, used for plots - only used for writing files
-        if 'NEUE' not in stress_metrics:
-            stress_metrics.append('NEUE')
 
-        for stress_metric in stress_metrics:
+        for stress_metric in ['EUE', 'NEUE', 'LOLE', 'LOLH']:
             print(f"Calculating and writing annual {stress_metric} for iteration {iteration}")
             dfmetric = get_annual_stress_metric(sw.casedir, t, stress_metric, iteration=iteration)
+
+            # Metric thresholds are defined on a per-year basis, but PRAS reports the total over all resource adequacy years,
+            # For all metrics except NEUE, divide by the number of resource adequacy years to get the average per year
+            if stress_metric != 'NEUE':
+                dfmetric /=  len(sw['resource_adequacy_years'])
+
             dfmetric.round(2).to_csv(
                 os.path.join(sw.casedir, 'outputs', f"{stress_metric.lower()}_{t}i{iteration}.csv")
             )
@@ -724,7 +738,7 @@ def main(sw, t, iteration=0, logging=True):
             index_col='*r',
         )
     else:
-        prm_next_iteration = update_prm(sw, t, iteration, failed, combined_periods_write, stress_metrics)
+        prm_next_iteration = update_prm(sw, t, iteration, failed, combined_periods_write)
 
     prm_next_iteration.to_csv(
         os.path.join(sw.casedir, 'inputs_case', newstresspath, 'prm.csv'),
