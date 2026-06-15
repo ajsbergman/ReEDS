@@ -1,4 +1,5 @@
 raw,display
+r,Model Zones
 county,County
 ba,Balancing Area
 nercr,NERC regions
@@ -13,4 +14,3 @@ usda_region,USDA (Biomass Supply Curve) Region
 h2ptcreg,Hydrogen Production Tax Credit Regions
 hurdlereg,Hurdle Regions
 ccreg,Capacity Credit Regions
-aggreg,Aggregated Regions

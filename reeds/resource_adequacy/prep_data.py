@@ -510,10 +510,7 @@ def main(t, casedir, iteration=0):
     ).round().astype(int).rename_axis('r').rename('mw')
     ## Turn off for counties by setting to zero (zeros in this file mean the max unit
     ## size is not enforced for that region in ReEDS2PRAS)
-    agglevel_variables = reeds.spatial.get_agglevel_variables(
-        reeds.io.reeds_path, os.path.join(casedir, 'inputs_case')
-    )
-    counties = agglevel_variables['county_regions']
+    counties = reeds.io.get_county_zones(casedir)
     if len(counties):
         csvout['max_unitsize'].loc[counties] = 0
 

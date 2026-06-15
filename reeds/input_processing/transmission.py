@@ -358,8 +358,8 @@ def get_trancap_init(case, interface_params, level='r'):
         & dfout['rr'].isin(valid_regions[level])
     ].copy()
 
-    ### TEMPORARY 20260402: Drop county interfaces with no distance/cost
-    if (level == 'r') and (sw.GSw_RegionResolution in ['county', 'mixed']):
+    ### Drop county interfaces with no distance/cost
+    if (level == 'r') and reeds.io.has_county_zones(case):
         transmission_line_fom = get_transmission_fom(case, interface_params)
         indices = ['r', 'rr', 'trtype']
         drop = (

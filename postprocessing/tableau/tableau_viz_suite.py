@@ -90,7 +90,6 @@ def create_scenarios_csv(output_dir,cases):
 def produce_hierarchy_file(output_dir,basecase):
     
     hierarchy = reeds.io.get_hierarchy(cases[basecase])
-    sw = reeds.io.get_switches(cases[basecase])
 
     # hierarchy.csv has machine readable names - convert them to values from level_map
     for col in hierarchy.columns:
@@ -100,7 +99,7 @@ def produce_hierarchy_file(output_dir,basecase):
     # clean up region names, ex. turn 'NorthernGrid_West' to 'NorthernGrid West', replace all instances of '_' with ' ' in the entire dataframe
     hierarchy = hierarchy.replace('_',' ',regex=True)
 
-    if sw.GSw_RegionResolution == "county" or sw.GSw_RegionResolution == "mixed":
+    if reeds.io.has_county_zones(cases[basecase]):
         # county2zone has the county FIPS to ReEDS BA mapping
         county2zone = pd.read_csv(os.path.join(reeds_path, 'inputs', 'county2zone.csv'), dtype={'FIPS':str},)
         county2zone['Region'] = 'p' + county2zone.FIPS
@@ -110,7 +109,7 @@ def produce_hierarchy_file(output_dir,basecase):
         hierarchy = hierarchy[['Region'] + [col for col in hierarchy.columns if col != 'Region']]
         # export
         hierarchy.to_csv(os.path.join(output_dir,'shapefiles','hierarchy.csv'),index=False)
-    elif sw.GSw_RegionResolution == 'aggreg' or sw.GSw_RegionResolution == 'ba':
+    else:
         # add columns to match the county-level hierarchy.csv format
         hierarchy = hierarchy.reset_index()
         hierarchy['ba'] = hierarchy['r']
@@ -119,9 +118,6 @@ def produce_hierarchy_file(output_dir,basecase):
         hierarchy['county_name'] = '' # add a blank county_name column so that the hierarchy.csv has the same columns as when using county-level runs
         # then hierarchy.csv is already ready to export 
         hierarchy.to_csv(os.path.join(output_dir,'shapefiles','hierarchy.csv'),index=False)
-    else:
-        print('All levels must be either county or ba now, all aggregation will be done via a hierarchy mapping.')
-        pass
     
     return
 
@@ -155,8 +151,7 @@ def produce_transmission_endpoints():
     os.mkdir(os.path.join(output_dir,'shapefiles','transmission_endpoints'))
     
     try:
-        if dictin_sw[basecase].GSw_RegionResolution == "county" or dictin_sw[basecase].GSw_RegionResolution == "mixed":
-            
+        if reeds.io.has_county_zones(GSw_ZoneSet=dictin_sw[basecase].GSw_ZoneSet):
             src_file  = os.path.join(reeds_path,'inputs','shapefiles','US_COUNTY_2022','US_COUNTY_2022.shp')
             dst_file  = os.path.join(output_dir,'shapefiles','transmission_endpoints','transmission_endpoints.shp')
 
@@ -295,7 +290,7 @@ def reformat(df,case,metric,years):
                 df['Transmission Planning Subregion End'] = df['Transmission Planning Subregion End'].str.replace("_"," ") # turn NorthernGrid_West to 'NorthernGrid West'
                 df['Transmission Planning Subregion Begin'] = df['Transmission Planning Subregion Begin'].str.replace("_"," ")
 
-        if sw.GSw_RegionResolution == "county":
+        if reeds.io.has_county_zones(cases[case]):
             # the 'r' column already has the 'p41003' format
             df = df.rename(columns={'r':'County'})
             # add a column with the FIPS code (remove the 'p' prefix and turn the value into a integer from the CountyName column)
@@ -307,14 +302,11 @@ def reformat(df,case,metric,years):
             # aggregate up to BA level using the hierarchy mapping
             df['BA'] = df['FIPS'].map(lambda x: county2zone['ba'][x])
             del df['FIPS']
-        elif sw.GSw_RegionResolution == 'aggreg' or sw.GSw_RegionResolution == 'ba':
+        else:
             # the 'r' column already has the 'p4' BA format
             df = df.rename(columns={'r':'BA'})
             # make the county column blank as it will not be used when we are using BA-level runs
             df['County']=''
-        else:
-            print('All levels must be either county or ba now, all aggregation will be done via a hierarchy mapping.')
-            pass
 
         # add a column named 'Metric' which helps in the Tableau union
         df.loc[:,'Metric'] = metric

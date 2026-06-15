@@ -127,15 +127,9 @@ def get_hierarchy(case=None, original=False, **kwargs):
             filepath = Path(standardize_case(case), 'inputs_case', 'hierarchy_original.csv')
         else:
             filepath = Path(standardize_case(case), 'inputs_case', 'hierarchy.csv')
+        hierarchy = pd.read_csv(filepath).rename(columns={'*r':'r', 'ba':'r'}).set_index('r')
     else:
-        ## TEMPORARY 20260402: Use deprecated hierarchy inputs.
-        ## Use the line below once we make the switch:
-        # hierarchy = assemble_hierarchy(case=case, **kwargs).set_index('r')
-        sw = reeds.io.get_switches(**kwargs)
-        filepath = Path(
-            reeds.io.reeds_path, 'inputs', 'zones', sw.GSw_ZoneSet, 'hierarchy_from134.csv',
-        )
-    hierarchy = pd.read_csv(filepath).rename(columns={'*r':'r', 'ba':'r'}).set_index('r')
+        hierarchy = assemble_hierarchy(case=case, **kwargs).set_index('r')
     return hierarchy
 
 
@@ -178,13 +172,58 @@ def get_county2zone(
 
     if as_map:
         dfout = dfin.set_index('FIPS')['r']
-    else:
+    elif case is None:
         fpath_countystate = Path(reeds.io.reeds_path, 'inputs', 'zones', 'county_state.csv')
         county_state = pd.read_csv(fpath_countystate, dtype=str)
         dfout = dfin.merge(county_state, on='FIPS', how='left')
+    else:
+        dfout = dfin
 
     return dfout
 
+
+def get_county_zones(
+    case: str | Path | None = None,
+    **kwargs
+) -> list[str]:
+    """
+    Get the set of county-level zones corresponding to a given zone set.
+    Reads from the inputs_case folder if {case} is provided or from the
+    default set of inputs (with key word arguments overriding case
+    switches, e.g., "GSw_ZoneSet") otherwise.
+
+    Args:
+        case: Path to a ReEDS case.
+
+    Returns:
+        list[str]
+    """
+    county2zone = get_county2zone(case, as_map=True, **kwargs)
+    county_zones = (
+        county2zone[county2zone == 'p' + county2zone.index]
+        .tolist()
+    )
+
+    return county_zones
+
+def has_county_zones(
+    case: str | Path | None = None,
+    **kwargs
+) -> bool:
+    """
+    Determine whether a zone set has county-level zones.
+    Reads from the inputs_case folder if {case} is provided or from
+    the default set of inputs (with key word arguments overriding
+    case switches, e.g., "GSw_ZoneSet") otherwise.
+
+    Args:
+        case: Path to a ReEDS case.
+
+    Returns:
+        bool
+    """
+    county_zones = get_county_zones(case, **kwargs)
+    return len(county_zones) > 0
 
 
 def get_zone_nodes(case=None, crs='ESRI:102008', **kwargs):
@@ -1510,10 +1549,7 @@ def assemble_supplycurve(
 
     ## Drop reinforcement cost for counties
     if case is not None:
-        agglevel_variables = reeds.spatial.get_agglevel_variables(
-            reeds_path, os.path.join(case, 'inputs_case')
-        )
-        counties = agglevel_variables['county_regions']
+        counties = get_county_zones(case)
     else:
         counties = []
     if len(counties):
