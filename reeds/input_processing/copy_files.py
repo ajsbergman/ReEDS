@@ -840,8 +840,12 @@ def write_disagg_data_files(runfiles, inputs_case):
         .rename(columns={'r': 'legacy_ba'})
     )
     county_r_map = reeds.io.get_county2zone(os.path.dirname(inputs_case))
-    county2zone_with_legacy_bas['r'] = county2zone_with_legacy_bas['FIPS'].map(county_r_map)
-    county2zone_with_legacy_bas['FIPS'] = 'p' + county2zone_with_legacy_bas['FIPS']
+    county2zone_with_legacy_bas['r'] = (
+        county2zone_with_legacy_bas['FIPS'].map(county_r_map)
+    )
+    county2zone_with_legacy_bas['FIPS'] = (
+        'p' + county2zone_with_legacy_bas['FIPS']
+    )
 
     filename_filepath_map = runfiles.set_index('filename')['full_filepath']
     for filename in [
