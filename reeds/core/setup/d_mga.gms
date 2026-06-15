@@ -104,6 +104,7 @@ eq_MGA_Objective$Sw_MGA..
     + sum{(i,v,r,h,t)
           $[tmodel(t)
           $valgen(i,v,r,t)],
+*         [MW] * [.] * [MWh/MW] * [job-years/MWh] = [job-years]
           GEN(i,v,r,h,t) * pvf_onm(t) * hours(h) * employment_factor_plant(i,"vom")
     }
     + sum{(i,v,r,t)
