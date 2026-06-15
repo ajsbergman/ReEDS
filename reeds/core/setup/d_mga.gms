@@ -130,7 +130,8 @@ eq_MGA_Objective$Sw_MGA..
           trans_cost_cap_fin_mult(t)
           * transmission_cost_nonac(r,rr,trtype)
           * INVTRAN(r,rr,trtype,t)
-          * employment_factor_inter_transmission("construction") / 2 }      
+* INVTRAN is defined in both directions so needs to be divided by 2
+          * employment_factor_inter_transmission("construction") / 2 }
     
     + sum{(r,rr,trtype,t)
           $[tmodel(t)
