@@ -74,6 +74,7 @@ from surrogate_plots import (                                              # noq
     aggregate_transmission_by_corridor,
     aggregate_transmission_overall,
     cost_color,
+    trtype_color,
     load_tech_map,
     load_tech_style,
     order_techs,
@@ -247,12 +248,41 @@ VARIABLE_OPTIONS = [
     "System cost ($B)",
     "Transmission (GW)",
 ]
+# Transmission is a corridor (r,rr) quantity, not per-region (r), so it does
+# not fit the per-BA Regional layout. Hide it from the dropdown whenever the
+# Layer selector is set to Regional.
+_REGIONAL_HIDDEN_VARIABLES = {"Transmission (GW)"}
+
+
+def _variable_options_for_stage(stage: str) -> list[str]:
+    # STAGE_CONFIG keys are full labels (e.g. ``"Regional (per-BA, ~382 outputs)"``),
+    # so we match on the leading word instead of an exact string.
+    if stage.startswith("Regional"):
+        return [v for v in VARIABLE_OPTIONS if v not in _REGIONAL_HIDDEN_VARIABLES]
+    return list(VARIABLE_OPTIONS)
+
+
+_initial_variable_options = _variable_options_for_stage(_INITIAL_STAGE)
 variable_select = Select(
     title="Variable",
-    value=VARIABLE_OPTIONS[0],
-    options=VARIABLE_OPTIONS,
+    value=_initial_variable_options[0],
+    options=_initial_variable_options,
     width=200,
 )
+
+
+def _sync_variable_options_for_stage(stage: str) -> None:
+    """Update the Variable dropdown so it only lists choices valid for ``stage``.
+
+    If the current selection becomes invalid (e.g. Transmission while switching
+    to Regional) we fall back to the first valid option. Setting ``.value``
+    triggers ``_on_change`` -> ``_redraw`` automatically.
+    """
+    new_opts = _variable_options_for_stage(stage)
+    if variable_select.options != new_opts:
+        variable_select.options = new_opts
+    if variable_select.value not in new_opts:
+        variable_select.value = new_opts[0]
 
 # (training-case shortcut removed: auto-detected from the 6 design dropdowns)
 
@@ -581,7 +611,7 @@ VARIABLE_SPEC: dict[str, dict] = {
             else pd.DataFrame()
         ),
         "order": _identity_order,
-        "color": lambda k: "#3b6cb0",        # single blue for the AC trtype
+        "color": trtype_color,               # bokehpivot trtype palette
     },
 }
 
@@ -1417,6 +1447,9 @@ def _set_active_stage(label: str) -> None:
     MODEL_PATHS = _discover_models()
     MODEL_CACHE = {}  # invalidate — different stage = different artifacts
     SUMMARY = _load_summary()
+
+    # Hide / restore Transmission in the Variable dropdown to match the layer.
+    _sync_variable_options_for_stage(label)
 
     # Refresh evaluation-tab static content
     eval_summary_div.text = _summary_table_html()

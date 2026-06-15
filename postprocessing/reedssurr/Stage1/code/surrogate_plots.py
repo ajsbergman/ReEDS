@@ -217,51 +217,108 @@ def tech_color(tech: str, style_df: Optional[pd.DataFrame] = None) -> str:
 # System cost & transmission aggregators (used by the dashboard view selector)
 # ---------------------------------------------------------------------------
 
-# Friendly bucket labels for the cost_* columns. Anything not matched falls
-# into "Other".
-_COST_BUCKETS = [
-    ("inv_investment_capacity",      "Investment: capacity"),
-    ("inv_investment_refurbishment", "Investment: refurbishment"),
-    ("inv_investment_spurline",      "Investment: spur lines"),
-    ("inv_transmission",             "Investment: transmission"),
-    ("inv_itc_payments",             "Investment: ITC payments"),
-    ("inv_h2_production",            "Investment: H2 production"),
-    ("inv_h2_storage",               "Investment: H2 storage"),
-    ("op_",                          "O&M / fuel / variable"),
-    ("op_emissions",                 "Emissions"),
-    ("op_ptc",                       "PTC payments"),
-    ("op_fuel",                      "Fuel"),
-]
+# Cost-category bucket labels, ordering, and colors come straight from
+# bokehpivot's reeds2 metadata so the dashboard matches the official ReEDS
+# stacked-bar plots exactly:
+#   * cost_cat_map.csv    raw cost column name -> display bucket
+#   * cost_cat_style.csv  display bucket -> hex color (also defines order)
+#   * trtype_style.csv    transmission trtype -> hex color
+# Loaded lazily so import-time failures (missing bokehpivot in some scripts)
+# fall back to a plain palette and don't crash the importer.
 
-# Colour palette for cost categories (qualitative). Long enough for 12 cats.
-_COST_PALETTE = [
-    "#1f77b4", "#ff7f0e", "#2ca02c", "#d62728", "#9467bd",
-    "#8c564b", "#e377c2", "#7f7f7f", "#bcbd22", "#17becf",
-    "#a55194", "#637939",
-]
+
+def load_cost_cat_style(style_path: Optional[Path] = None) -> pd.DataFrame:
+    """Return ``cost_cat_style.csv`` as a DataFrame indexed by bucket label."""
+    style_path = style_path or (_BOKEH_DIR / "cost_cat_style.csv")
+    df = pd.read_csv(style_path)
+    df = df.set_index("order")
+    return df
+
+
+def load_cost_cat_map(map_path: Optional[Path] = None) -> pd.DataFrame:
+    """Return ``cost_cat_map.csv`` mapping raw cost column -> display bucket."""
+    map_path = map_path or (_BOKEH_DIR / "cost_cat_map.csv")
+    df = pd.read_csv(map_path, dtype=str).fillna("")
+    return df
+
+
+def _build_cost_lookup(cost_map: pd.DataFrame) -> dict[str, str]:
+    """Lower-cased exact lookup ``raw -> display`` from ``cost_cat_map.csv``."""
+    return {
+        str(r).strip().lower(): str(d).strip()
+        for r, d in zip(cost_map["raw"], cost_map["display"])
+        if str(r).strip()
+    }
+
+
+def load_trtype_style(style_path: Optional[Path] = None) -> pd.DataFrame:
+    """Return ``trtype_style.csv`` as a DataFrame indexed by trtype."""
+    style_path = style_path or (_BOKEH_DIR / "trtype_style.csv")
+    df = pd.read_csv(style_path)
+    df = df.set_index("order")
+    return df
+
+
+# Lazy module-level caches so repeated lookups don't re-read the CSVs.
+_COST_CAT_MAP_DF: Optional[pd.DataFrame] = None
+_COST_CAT_STYLE_DF: Optional[pd.DataFrame] = None
+_COST_LOOKUP: Optional[dict[str, str]] = None
+_TRTYPE_STYLE_DF: Optional[pd.DataFrame] = None
+
+
+def _ensure_cost_caches() -> tuple[dict[str, str], pd.DataFrame]:
+    global _COST_CAT_MAP_DF, _COST_CAT_STYLE_DF, _COST_LOOKUP
+    if _COST_CAT_MAP_DF is None:
+        _COST_CAT_MAP_DF = load_cost_cat_map()
+    if _COST_CAT_STYLE_DF is None:
+        _COST_CAT_STYLE_DF = load_cost_cat_style()
+    if _COST_LOOKUP is None:
+        _COST_LOOKUP = _build_cost_lookup(_COST_CAT_MAP_DF)
+    return _COST_LOOKUP, _COST_CAT_STYLE_DF
+
+
+def _ensure_trtype_cache() -> pd.DataFrame:
+    global _TRTYPE_STYLE_DF
+    if _TRTYPE_STYLE_DF is None:
+        _TRTYPE_STYLE_DF = load_trtype_style()
+    return _TRTYPE_STYLE_DF
 
 
 def _cost_bucket(col: str) -> str:
-    """Map a ``cost_*`` column name to a friendly bucket label."""
-    # Strip cost_ prefix and any trailing _<region>
+    """Map a ``cost_*`` column name to its bokehpivot display bucket.
+
+    Strips any trailing ReEDS region suffix before lookup so Stage-2
+    columns like ``cost_op_fom_costs_p60`` resolve via the same key as
+    ``cost_op_fom_costs``. Unknown columns fall back to ``"Other"`` so
+    they're still rendered (just without an official color).
+    """
+    lookup, _ = _ensure_cost_caches()
     raw = col[len("cost_"):]
     raw_no_region = _strip_region_suffix(raw)
-    for key, label in _COST_BUCKETS:
-        if raw_no_region.startswith(key):
-            return label
-    # Heuristic fallback: 'inv_*' -> Investment: other, 'op_*' -> Op: other
-    if raw_no_region.startswith("inv_"):
-        return "Investment: other"
-    if raw_no_region.startswith("op_"):
-        return "O&M: other"
-    return "Other"
+    return lookup.get(raw_no_region.lower(), "Other")
+
+
+def _cost_canonical_order() -> list[str]:
+    """Bucket order from ``cost_cat_style.csv`` (plus a final ``Other``)."""
+    _, style_df = _ensure_cost_caches()
+    order = list(style_df.index)
+    if "Other" not in order:
+        order.append("Other")
+    return order
+
+
+def _order_cost_buckets(buckets: Iterable[str]) -> list[str]:
+    canonical = _cost_canonical_order()
+    rank = {name: i for i, name in enumerate(canonical)}
+    return sorted(buckets, key=lambda b: (rank.get(b, len(canonical)), b))
 
 
 def aggregate_cost_to_buckets(series: pd.Series) -> pd.Series:
-    """Collapse ``cost_*`` columns into a small set of human-readable buckets.
+    """Collapse ``cost_*`` columns into bokehpivot cost-category buckets.
 
-    Returns a Series in canonical bucket order; values share the source
-    units (dollars). Excludes ``cost_total`` to avoid double counting.
+    Returns a Series in canonical ``cost_cat_style.csv`` order; values share
+    the source units (dollars). Excludes ``cost_total`` to avoid double
+    counting.
     """
     totals: dict[str, float] = {}
     for col, val in series.items():
@@ -271,13 +328,7 @@ def aggregate_cost_to_buckets(series: pd.Series) -> pd.Series:
             continue
         bucket = _cost_bucket(col)
         totals[bucket] = totals.get(bucket, 0.0) + float(val)
-    # Order: known buckets first (in definition order), then any extras.
-    known = [label for _, label in _COST_BUCKETS] + [
-        "Investment: other", "O&M: other", "Other",
-    ]
-    ordered = [b for b in known if b in totals] + [
-        b for b in totals if b not in known
-    ]
+    ordered = _order_cost_buckets(totals.keys())
     return pd.Series({b: totals[b] for b in ordered})
 
 
@@ -312,23 +363,25 @@ def aggregate_cost_to_region_bucket(series: pd.Series) -> pd.DataFrame:
                 return (r[:i], int(r[i:]))
         return (r, 0)
     wide = wide.reindex(sorted(wide.index, key=_region_sort_key))
-    # Bucket column order
-    known = [label for _, label in _COST_BUCKETS] + [
-        "Investment: other", "O&M: other", "Other",
-    ]
-    ordered_cols = [b for b in known if b in wide.columns] + [
-        b for b in wide.columns if b not in known
-    ]
+    # Bucket column order from bokehpivot canonical ordering.
+    ordered_cols = _order_cost_buckets(wide.columns)
     return wide[ordered_cols]
 
 
 def cost_color(bucket: str) -> str:
-    """Stable hex color for a cost bucket label."""
-    known = [label for _, label in _COST_BUCKETS] + [
-        "Investment: other", "O&M: other", "Other",
-    ]
-    idx = known.index(bucket) if bucket in known else len(known)
-    return _COST_PALETTE[idx % len(_COST_PALETTE)]
+    """Stable hex color for a cost bucket label (bokehpivot palette)."""
+    _, style_df = _ensure_cost_caches()
+    if bucket in style_df.index:
+        return str(style_df.loc[bucket, "color"])
+    return "#999999"
+
+
+def trtype_color(trtype: str) -> str:
+    """Stable hex color for a transmission trtype (bokehpivot palette)."""
+    style_df = _ensure_trtype_cache()
+    if trtype in style_df.index:
+        return str(style_df.loc[trtype, "color"])
+    return "#999999"
 
 
 def aggregate_transmission_overall(series: pd.Series) -> pd.Series:
