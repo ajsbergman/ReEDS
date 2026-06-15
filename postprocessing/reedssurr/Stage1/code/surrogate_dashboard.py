@@ -45,11 +45,14 @@ import pandas as pd
 from bokeh.io import curdoc
 from bokeh.layouts import column, row
 from bokeh.models import (
+    BasicTicker,
+    ColorBar,
     ColumnDataSource,
     DataTable,
     Div,
     FactorRange,
     HoverTool,
+    LinearColorMapper,
     NumberFormatter,
     Range1d,
     Select,
@@ -57,8 +60,8 @@ from bokeh.models import (
     TableColumn,
     TabPanel,
     Tabs,
-    Whisker,
 )
+from bokeh.palettes import RdYlGn11
 from bokeh.plotting import figure
 
 # Local imports — keep the module path importable when launched via ``bokeh serve``.
@@ -353,12 +356,18 @@ plot = figure(
     # we manually set bounds.
     y_range=Range1d(start=0, end=1.0),
     title="Capacity portfolio (GW, 2050)",
-    toolbar_location=None, tools="",
+    # Interactive zoom / pan / reset. ``toolbar_location='above'`` keeps the
+    # total figure WIDTH unchanged across the three stacked panels so bars
+    # in the main / diff / UQ plots stay pixel-aligned vertically.
+    toolbar_location="above",
+    tools="box_zoom,xbox_zoom,ybox_zoom,pan,reset,save",
+    active_drag="box_zoom",
     y_axis_label="Capacity (GW)",
     sizing_mode="fixed",
     min_border_left=_BORDER_LEFT,
     min_border_right=_BORDER_RIGHT,
 )
+plot.toolbar.logo = None
 plot.xgrid.grid_line_color = None
 plot.title.text_font_size = "11pt"
 plot.xaxis.major_label_orientation = 0.6  # angled labels for Regional nested factors
@@ -482,16 +491,21 @@ def _build_legend_html(items: list[tuple[str, str]]) -> str:
 diff_plot = figure(
     height=_DIFF_HEIGHT,
     width=_PLOT_WIDTH_SYSTEM,
-    x_range=FactorRange(),
+    # Share x_range with the MAIN plot (same trick the UQ panel uses) so the
+    # diff stack lands pixel-aligned under the Predicted column above and is
+    # exactly the same width as the UQ stack below.
+    x_range=plot.x_range,
     y_range=Range1d(start=-1.0, end=1.0),
     title="Per-category prediction error (predicted − actual)",
-    toolbar_location=None,
-    tools="",
+    toolbar_location="above",
+    tools="box_zoom,xbox_zoom,ybox_zoom,pan,reset,save",
+    active_drag="box_zoom",
     y_axis_label="Error (GW)",
     sizing_mode="fixed",
     min_border_left=_BORDER_LEFT,
     min_border_right=_BORDER_RIGHT,
 )
+diff_plot.toolbar.logo = None
 diff_plot.xaxis.major_label_orientation = 0.7
 
 diff_source = ColumnDataSource(
@@ -503,7 +517,7 @@ diff_total_source = ColumnDataSource(data=dict(x=[], y=[]))
 
 diff_plot.vbar(
     x="x", bottom="bottom", top="top",
-    width=0.6,
+    width=0.7,
     color="color",
     source=diff_source,
     line_color="white", line_width=0.5,
@@ -527,65 +541,107 @@ diff_plot.legend.label_text_font_size = "9pt"
 # ---------------------------------------------------------------------------
 # Uncertainty-quantification (UQ) panel
 # ---------------------------------------------------------------------------
-# Sits directly below the main stacked-bar plot. For every category visible
-# in the main view (tech, cost bucket, transmission corridor type) we draw:
-#   • a black dot at the ACTUAL value (only when an Actual ReEDS run exists)
-#   • a red diamond at the PREDICTED value, with a vertical 90% conformal
-#     interval whisker (± sum of per-output conformal half-widths).
+# Sits directly below the main stacked-bar plot. ONE colored vbar is drawn
+# per Predicted column in the main plot — the UQ panel shares the main
+# plot's ``x_range`` so each UQ bar lands pixel-aligned under the corresponding
+# Predicted stack above (Actual columns are simply left empty in this panel).
+#
+# Bar HEIGHT = total predicted value at that x (so the UQ bar is the same
+# height as the Predicted stack above it, in the same axis units).
+# Bar COLOR = (90% CI half-width / |total predicted|) × 100%, mapped through
+# a green→yellow→red gradient so a quick glance answers the question
+# "how confident is the surrogate in this prediction?". A side colorbar
+# shows the % scale.
+#
 # Half-widths are read from each artifact's stored OOF residuals via
-# :func:`surrogate_uq.conformal_widths` — works for every model, including
-# k-NN / random forest / NGBoost. For NGBoost we could swap in the
-# distributional interval but the conformal version is consistent across
-# models and easier to compare side-by-side.
+# :func:`surrogate_uq.conformal_widths` and aggregated through the SAME
+# ``agg_system`` / ``agg_regional`` pipeline that the values use, so the
+# numerator and denominator of the ratio always come from matching slices.
+UQ_CI_PCT_MAX = 50.0   # values >= 50% map to deepest red
+uq_color_mapper = LinearColorMapper(
+    # Bokeh's RdYlGn11 already goes GREEN -> YELLOW -> RED (idx 0 = #006837,
+    # idx 10 = #a50026), which is exactly what we want for an "uncertainty"
+    # scale: low CI%  -> green = good / confident prediction, high CI%  -> red
+    # = bad / noisy prediction.  Used as-is (no reversal).
+    palette=RdYlGn11,
+    low=0.0,
+    high=UQ_CI_PCT_MAX,
+)
 uq_plot = figure(
     height=_UQ_HEIGHT,
     width=_PLOT_WIDTH_SYSTEM,
-    x_range=FactorRange(),
+    x_range=plot.x_range,   # shared with main plot → perfect column alignment
     y_range=Range1d(start=0, end=1.0),
-    title="Per-category prediction with 90% conformal interval",
-    toolbar_location=None,
-    tools="",
+    title="Predicted bar coloured by 90% CI / |value| (%)",
+    toolbar_location="above",
+    tools="box_zoom,xbox_zoom,ybox_zoom,pan,reset,save",
+    active_drag="box_zoom",
     y_axis_label="Capacity (GW)",
     sizing_mode="fixed",
     min_border_left=_BORDER_LEFT,
     min_border_right=_BORDER_RIGHT,
 )
-uq_plot.xaxis.major_label_orientation = 0.7
+uq_plot.toolbar.logo = None
+uq_plot.xaxis.major_label_orientation = 0.6
+uq_plot.xgrid.grid_line_color = None
 
 uq_source = ColumnDataSource(data=dict(
-    x=[], actual=[], pred=[], lo=[], hi=[],
+    x=[], bottom=[], top=[], ci_pct=[], tech=[],
+    pred=[], half=[], ci_lo=[], ci_hi=[], subtitle=[], unit=[],
 ))
-
-# Whisker: vertical line + small caps at ±90% CI on the predicted value.
-uq_whisker = Whisker(
-    base="x", lower="lo", upper="hi",
+_uq_vbar = uq_plot.vbar(
+    x="x", bottom="bottom", top="top", width=0.7,
     source=uq_source,
-    line_color="#c0392b", line_width=1.5,
-    level="overlay",
+    fill_color={"field": "ci_pct", "transform": uq_color_mapper},
+    line_color="white", line_width=0.5,
 )
-uq_whisker.upper_head.line_color = "#c0392b"
-uq_whisker.lower_head.line_color = "#c0392b"
-uq_plot.add_layout(uq_whisker)
-
-# Actual dot (drawn first so the Predicted diamond sits on top when they overlap).
-uq_plot.scatter(
-    x="x", y="actual",
-    source=uq_source,
-    size=10, marker="circle",
-    fill_color="#222", line_color="#222",
-    legend_label="Actual",
+uq_plot.add_tools(HoverTool(
+    renderers=[_uq_vbar],
+    tooltips="""
+        <div style="padding:4px;font-family:sans-serif;font-size:11px;max-width:260px">
+          <div style="font-weight:600;font-size:12px;color:#222">@tech</div>
+          <div style="color:#666;margin-bottom:4px">@subtitle &middot; <b>Predicted slice</b></div>
+          <div>Value: <b>@pred{0,0.000}</b> @unit</div>
+          <div style="color:#c0392b">90% CI: &plusmn;@half{0,0.000} @unit</div>
+          <div style="color:#888">[@ci_lo{0,0.000}, @ci_hi{0,0.000}]</div>
+          <div style="margin-top:3px;font-weight:600">
+            Relative CI: @ci_pct{0.0}%
+          </div>
+        </div>
+    """,
+    point_policy="follow_mouse",
+))
+# ----- Standalone CI colorbar (lives next to the tech legend) -----
+# We DON'T attach the ColorBar to ``uq_plot.right`` any more, because that
+# steals horizontal space from the UQ plot's inner frame and (a) breaks
+# column alignment with the main plot above, (b) the colorbar title was
+# being clipped by the available vertical space.  Hosting it in its own
+# tiny figure next to ``legend_div`` keeps everything visible and aligned.
+ci_colorbar_fig = figure(
+    width=120,
+    height=_PLOT_HEIGHT,
+    toolbar_location=None,
+    tools="",
+    min_border_left=0,
+    min_border_right=0,
+    min_border_top=24,
+    min_border_bottom=24,
+    outline_line_color=None,
 )
-uq_plot.scatter(
-    x="x", y="pred",
-    source=uq_source,
-    size=11, marker="diamond",
-    fill_color="#c0392b", line_color="#c0392b",
-    legend_label="Predicted (±90% CI)",
+ci_colorbar_fig.axis.visible = False
+ci_colorbar_fig.grid.visible = False
+ci_colorbar_fig.add_layout(
+    ColorBar(
+        color_mapper=uq_color_mapper,
+        title=f"90% CI / |value| (%)  — clipped at {UQ_CI_PCT_MAX:.0f}%",
+        ticker=BasicTicker(desired_num_ticks=6),
+        label_standoff=6,
+        width=18,
+        border_line_color=None,
+        location=(0, 0),
+    ),
+    "center",
 )
-uq_plot.legend.location = "top_left"
-uq_plot.legend.click_policy = "hide"
-uq_plot.legend.background_fill_alpha = 0.7
-uq_plot.legend.label_text_font_size = "9pt"
 
 
 # ---------------------------------------------------------------------------
@@ -809,11 +865,7 @@ def _render_system_bars(
         start=(ymin * 1.15) if ymin < 0 else 0,
         end=ymax * 1.15 if ymax > 0 else 1.0,
     )
-    plot.title.text = (
-        f"{spec['title_noun']} — "
-        f"{', '.join(f'{d}={v}' for d, v in levels.items())} "
-        f"({unit}, 2050)"
-    )
+    plot.title.text = f"{spec['title_noun']} ({unit}, 2050)"
     return True
 
 
@@ -930,8 +982,7 @@ def _render_regional_bars(
         end=ymax * 1.15 if ymax > 0 else 1.0,
     )
     plot.title.text = (
-        f"{spec['title_noun']} by region — "
-        f"{', '.join(f'{d}={v}' for d, v in levels.items())} "
+        f"{spec['title_noun']} by region "
         f"({len(regions)} regions, {unit}, 2050)"
     )
     return True
@@ -965,11 +1016,13 @@ def _render_diff_panel(
     if not has_actual:
         diff_source.data = dict(x=[], bottom=[], top=[], color=[], tech=[])
         diff_total_source.data = dict(x=[], y=[])
-        diff_plot.x_range.factors = []
+        # x_range is shared with the main plot, which manages it.
+        # Sync width with main plot so this empty panel still takes the
+        # right amount of horizontal real estate in regional view.
+        if diff_plot.width != plot.width:
+            diff_plot.width = plot.width
         diff_plot.y_range.update(start=-1.0, end=1.0)
-        diff_plot.title.text = (
-            f"{spec['title_noun']} — error (predicted − actual) [no actual]"
-        )
+        diff_plot.title.text = "Prediction error (predicted − actual)  [no actual data]"
         return
 
     # Build (x, tech) -> diff matrix in display units.
@@ -999,7 +1052,13 @@ def _render_diff_panel(
                     ) else 0.0
                 )
                 diff_at[(r, c)] = (p - a) * scale
-        x_positions = list(regions)
+        # Two parallel lists:
+        #   x_keys   = lookup key into diff_at (region string)
+        #   x_factors = where the bar/dot is drawn on the SHARED x-axis,
+        #               i.e. under the main plot's Predicted column for
+        #               this region.
+        x_keys = list(regions)
+        x_factors = [(r, "Predicted") for r in regions]
     else:
         actual_agg = spec["agg_system"](actual_raw)
         pred_agg = (
@@ -1014,26 +1073,29 @@ def _render_diff_panel(
             ) * scale
             for c in cats
         }
-        x_positions = ["System"]
+        # Overall view: same idea — lookup by "System", draw under the main
+        # plot's "Predicted" column so width / position match the UQ panel.
+        x_keys = ["System"]
+        x_factors = ["Predicted"]
 
     threshold = 1e-3
     cats = [
         c for c in cats
-        if any(abs(diff_at.get((x, c), 0.0)) > threshold for x in x_positions)
+        if any(abs(diff_at.get((k, c), 0.0)) > threshold for k in x_keys)
     ]
 
-    xs: list[str] = []
+    xs: list = []
     bottoms: list[float] = []
     tops: list[float] = []
     colors: list[str] = []
     techs: list[str] = []
-    totals: dict[str, float] = {}
-    for x in x_positions:
+    totals: dict = {}
+    for x_key, x_factor in zip(x_keys, x_factors):
         pos_base = 0.0
         neg_base = 0.0
         total = 0.0
         for cat in cats:
-            val = diff_at.get((x, cat), 0.0)
+            val = diff_at.get((x_key, cat), 0.0)
             total += val
             if val == 0:
                 continue
@@ -1045,38 +1107,35 @@ def _render_diff_panel(
                 top = neg_base
                 bot = neg_base + val
                 neg_base = bot
-            xs.append(x)
+            xs.append(x_factor)
             bottoms.append(bot)
             tops.append(top)
             colors.append(spec["color"](cat))
             techs.append(cat)
-        totals[x] = total
+        totals[x_factor] = total
 
     system_total = float(sum(totals.values()))
-    total_xs: list[str] = list(x_positions)
-    total_ys: list[float] = [totals[x] for x in x_positions]
-    x_factors: list[str] = list(x_positions)
+    total_xs: list = list(x_factors)
+    total_ys: list[float] = [totals[xf] for xf in x_factors]
 
     diff_source.data = dict(
         x=xs, bottom=bottoms, top=tops, color=colors, tech=techs,
     )
     diff_total_source.data = dict(x=total_xs, y=total_ys)
-    diff_plot.x_range.factors = x_factors
-    # Track the MAIN plot's width so the x-axis frames line up exactly:
-    # with equal min_border_left/right and equal total width, the inner
-    # frame width is identical and region group centers in the bar plot
-    # match the stack centers here in the diff plot.
+    # x_range is shared with the main plot — do NOT overwrite its factors
+    # here. We DO need to sync diff_plot.width with the main plot, because
+    # ``_render_regional_bars`` grows ``plot.width`` based on the number of
+    # factors so wide bars stay readable; without this sync the diff plot
+    # stays at the original construction width and looks much narrower.
     if diff_plot.width != plot.width:
         diff_plot.width = plot.width
     if is_regional:
         diff_plot.title.text = (
-            f"{spec['title_noun']} — per-region prediction error stacked by tech; "
-            f"system total = {system_total:+.2f} {unit}"
+            f"Regional prediction error  (system total = {system_total:+.2f} {unit})"
         )
     else:
         diff_plot.title.text = (
-            f"{spec['title_noun']} — prediction error stacked by tech; "
-            f"total = {system_total:+.2f} {unit}"
+            f"Prediction error  (total = {system_total:+.2f} {unit})"
         )
 
     all_y = bottoms + tops + total_ys + [0.0]
@@ -1092,97 +1151,146 @@ def _render_diff_panel(
 def _render_uq_panel(
     actual_raw: pd.Series, pred_raw: pd.Series,
     artifact: dict | None,
+    is_regional: bool,
 ) -> None:
-    """Update the UQ panel with per-category actual/predicted + 90% CI.
+    """Update the UQ panel: stacked Predicted bar coloured by per-tech CI%.
 
-    Aggregates to system-level (sum across regions) regardless of layout so
-    the UQ chart has the same number of categories whether the main bars
-    are Overall or Regional. The conformal half-widths are summed per
-    category (Bonferroni-conservative joint half-width).
+    Mirrors the main plot's Predicted stack exactly (shared x_range, same
+    tech slice heights), but instead of using tech colours each slice is
+    coloured by its OWN relative uncertainty:
+
+        slice colour <- (90% CI half-width for this tech)
+                        / |predicted value for this tech| * 100%
+
+    mapped through the green->yellow->red colorbar on the right. Hover any
+    slice for tech name, predicted value, CI bounds, and the exact CI%.
     """
     spec = _active_spec()
     scale = spec["scale"]
+    unit = spec["axis_label"].split("(")[-1].rstrip(")")
+    uq_plot.yaxis.axis_label = spec["axis_label"]
 
-    actual_agg = (
-        spec["agg_system"](actual_raw)
-        if actual_raw is not None and not actual_raw.empty
-        else pd.Series(dtype=float)
-    )
-    pred_agg = (
-        spec["agg_system"](pred_raw)
-        if pred_raw is not None and not pred_raw.empty
-        else pd.Series(dtype=float)
-    )
-
-    # Per-column conformal half-widths — aggregated the same way as values.
-    half_agg: pd.Series = pd.Series(dtype=float)
-    if artifact is not None:
-        try:
-            half_raw = conformal_widths(artifact, alpha=CONFORMAL_ALPHA)
-            y_cols = list(artifact.get("y_cols", []))
-            half_series = pd.Series(half_raw, index=y_cols, dtype=float)
-            prefix = spec["prefix"]
-            half_var = half_series[half_series.index.str.startswith(prefix)]
-            if not half_var.empty:
-                half_agg = spec["agg_system"](half_var)
-        except Exception:  # noqa: BLE001 — UQ is best-effort
-            half_agg = pd.Series(dtype=float)
-
-    cats = spec["order"](set(actual_agg.index) | set(pred_agg.index))
-    threshold = 1e-3
-    cats = [
-        c for c in cats
-        if (
-            abs(float(actual_agg.get(c, 0.0)))
-            + abs(float(pred_agg.get(c, 0.0)))
-            + abs(float(half_agg.get(c, 0.0)))
-        ) * scale > threshold
-    ]
-
-    if not cats:
-        uq_source.data = dict(x=[], actual=[], pred=[], lo=[], hi=[])
-        uq_plot.x_range.factors = []
-        uq_plot.y_range.update(start=0, end=1.0)
-        uq_plot.title.text = (
-            f"{spec['title_noun']} — per-category 90% CI (no data)"
+    def _empty(reason: str = "no data") -> None:
+        uq_source.data = dict(
+            x=[], bottom=[], top=[], ci_pct=[], tech=[],
+            pred=[], half=[], ci_lo=[], ci_hi=[], subtitle=[], unit=[],
         )
-        uq_plot.yaxis.axis_label = spec["axis_label"]
+        uq_plot.y_range.update(start=0, end=1.0)
+        uq_plot.title.text = f"Predicted stack coloured by 90% CI / |value| %  [{reason}]"
+
+    if pred_raw is None or pred_raw.empty:
+        _empty("no prediction")
         return
 
-    actual_vals = [float(actual_agg.get(c, 0.0)) * scale for c in cats]
-    pred_vals = [float(pred_agg.get(c, 0.0)) * scale for c in cats]
-    half_vals = [float(half_agg.get(c, 0.0)) * scale for c in cats]
-    lo_vals = [p - h for p, h in zip(pred_vals, half_vals)]
-    hi_vals = [p + h for p, h in zip(pred_vals, half_vals)]
-
-    # Hide the Actual marker when there's no actual data (custom design point);
-    # NaN values are silently skipped by Bokeh's scatter glyph.
-    has_actual = actual_raw is not None and not actual_raw.empty
-    actual_plot_vals = actual_vals if has_actual else [float("nan")] * len(cats)
-
-    uq_source.data = dict(
-        x=cats,
-        actual=actual_plot_vals,
-        pred=pred_vals,
-        lo=lo_vals,
-        hi=hi_vals,
+    half_agg = _half_agg_for_view(artifact, spec, is_regional=is_regional)
+    no_uq = (
+        (is_regional and (not isinstance(half_agg, pd.DataFrame) or half_agg.empty))
+        or (not is_regional and (not isinstance(half_agg, pd.Series) or half_agg.empty))
     )
-    uq_plot.x_range.factors = cats
+    if no_uq:
+        _empty("no UQ available")
+        return
+
+    rows: dict[str, list] = dict(
+        x=[], bottom=[], top=[], ci_pct=[], tech=[],
+        pred=[], half=[], ci_lo=[], ci_hi=[], subtitle=[], unit=[],
+    )
+    threshold = 1e-3
+
+    def _push(x_key, cat, pred_val, half_val, pos_base, neg_base, subtitle):
+        """Append one stacked slice; returns updated (pos_base, neg_base)."""
+        if abs(pred_val) <= threshold and abs(half_val) <= threshold:
+            return pos_base, neg_base
+        if pred_val >= 0:
+            bot, top = pos_base, pos_base + pred_val
+            pos_base = top
+        else:
+            top, bot = neg_base, neg_base + pred_val
+            neg_base = bot
+        # CI% relative to |value|. If value is ~0 but CI is non-zero we
+        # have very high relative uncertainty -> clip to colormap max so
+        # the slice still gets the deepest red.
+        if abs(pred_val) > threshold:
+            pct = half_val / abs(pred_val) * 100.0
+        else:
+            pct = UQ_CI_PCT_MAX
+        rows["x"].append(x_key)
+        rows["bottom"].append(bot)
+        rows["top"].append(top)
+        rows["ci_pct"].append(min(pct, UQ_CI_PCT_MAX))
+        rows["tech"].append(cat)
+        rows["pred"].append(pred_val)
+        rows["half"].append(half_val)
+        rows["ci_lo"].append(pred_val - half_val)
+        rows["ci_hi"].append(pred_val + half_val)
+        rows["subtitle"].append(subtitle)
+        rows["unit"].append(unit)
+        return pos_base, neg_base
+
+    if is_regional:
+        pred_tr = spec["agg_regional"](pred_raw)
+        regions = sorted(
+            set(pred_tr.index),
+            key=lambda r: (r[:1], int(r[1:])) if r[1:].isdigit() else (r, 0),
+        )
+        cats = spec["order"](set(pred_tr.columns))
+        cats = [
+            c for c in cats
+            if c in pred_tr.columns and abs(float(pred_tr[c].sum())) * scale > threshold
+        ]
+        for r in regions:
+            pos_base = 0.0
+            neg_base = 0.0
+            for cat in cats:
+                pred_val = (
+                    float(pred_tr.loc[r, cat]) * scale
+                    if r in pred_tr.index and cat in pred_tr.columns else 0.0
+                )
+                half_val = (
+                    float(half_agg.loc[r, cat]) * scale
+                    if isinstance(half_agg, pd.DataFrame)
+                    and r in half_agg.index and cat in half_agg.columns else 0.0
+                )
+                pos_base, neg_base = _push(
+                    (r, "Predicted"), cat, pred_val, half_val,
+                    pos_base, neg_base, f"Region {r}",
+                )
+    else:
+        pred_agg = spec["agg_system"](pred_raw)
+        cats = spec["order"](set(pred_agg.index))
+        cats = [
+            c for c in cats
+            if abs(float(pred_agg.get(c, 0.0))) * scale > threshold
+        ]
+        pos_base = 0.0
+        neg_base = 0.0
+        for cat in cats:
+            pred_val = float(pred_agg.get(cat, 0.0)) * scale
+            half_val = (
+                float(half_agg.get(cat, 0.0)) * scale
+                if isinstance(half_agg, pd.Series) else 0.0
+            )
+            pos_base, neg_base = _push(
+                "Predicted", cat, pred_val, half_val,
+                pos_base, neg_base, "System",
+            )
+
+    if not rows["x"]:
+        _empty("no rows")
+        return
+
+    uq_source.data = rows
     if uq_plot.width != plot.width:
         uq_plot.width = plot.width
-    uq_plot.yaxis.axis_label = spec["axis_label"]
-    uq_plot.title.text = (
-        f"{spec['title_noun']} — per-category 90% conformal CI"
-    )
 
-    all_y = [v for v in (actual_plot_vals + lo_vals + hi_vals) if np.isfinite(v)]
-    if not all_y:
-        uq_plot.y_range.update(start=0, end=1.0)
-        return
-    ymin = min(all_y + [0.0])
-    ymax = max(all_y + [0.0])
-    pad = (ymax - ymin) * 0.10 if ymax > ymin else 1.0
-    uq_plot.y_range.update(start=ymin - pad, end=ymax + pad)
+    ymax = max(rows["top"] + [0.0])
+    ymin = min(rows["bottom"] + [0.0])
+    pad = max((ymax - ymin) * 0.10, 1e-6)
+    uq_plot.y_range.update(
+        start=ymin - pad if ymin < 0 else 0,
+        end=ymax + pad,
+    )
+    uq_plot.title.text = "Predicted stack coloured by 90% CI / |value| (%)"
 
 
 def _tol_color(pct_err: float, good: float, warn: float) -> str:
@@ -1401,7 +1509,7 @@ def _redraw():
         plot.y_range.update(start=0, end=1.0)
 
     _render_diff_panel(actual_var_raw, pred_var_raw, is_regional)
-    _render_uq_panel(actual_var_raw, pred_var_raw, artifact)
+    _render_uq_panel(actual_var_raw, pred_var_raw, artifact, is_regional)
 
     metrics_div.text = _format_metrics(
         levels, artifact, actual_row, predicted, surrogate_ms=surrogate_ms,
@@ -1660,7 +1768,12 @@ controls = column(
 )
 
 predict_tab = TabPanel(
-    child=row(column(plot, diff_plot, uq_plot), legend_div, controls, spacing=20),
+    child=row(
+        column(plot, diff_plot, uq_plot),
+        column(legend_div, ci_colorbar_fig),
+        controls,
+        spacing=20,
+    ),
     title="Predict",
 )
 eval_tab = TabPanel(
