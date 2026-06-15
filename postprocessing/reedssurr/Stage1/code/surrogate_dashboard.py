@@ -49,6 +49,7 @@ from bokeh.models import (
     DataTable,
     Div,
     FactorRange,
+    HoverTool,
     NumberFormatter,
     Range1d,
     Select,
@@ -362,6 +363,79 @@ plot.xgrid.grid_line_color = None
 plot.title.text_font_size = "11pt"
 plot.xaxis.major_label_orientation = 0.6  # angled labels for Regional nested factors
 
+# ---------------------------------------------------------------------------
+# Main-bar data sources & hover tooltip
+# ---------------------------------------------------------------------------
+# The Actual / Predicted stacks share x positions but have different tooltip
+# needs: hovering a Predicted slice should reveal the per-slice 90% conformal
+# interval, while Actual is just the ground-truth value. We therefore keep two
+# pre-registered ColumnDataSources + vbar renderers, populated by the render
+# functions via cheap ``source.data = dict(...)`` swaps. The HoverTool is
+# attached ONLY to the Predicted renderer so users get UQ info exactly where
+# the user asked for it ("put the cursor on the predicted item").
+_BARS_ACTUAL_COLS = ("x", "bottom", "top", "color", "tech", "value", "subtitle", "unit")
+_BARS_PRED_COLS = (
+    "x", "bottom", "top", "color", "tech", "value",
+    "ci_half", "ci_lo", "ci_hi", "subtitle", "unit",
+)
+
+
+def _empty_actual_bars_data() -> dict:
+    return {c: [] for c in _BARS_ACTUAL_COLS}
+
+
+def _empty_pred_bars_data() -> dict:
+    return {c: [] for c in _BARS_PRED_COLS}
+
+
+bars_actual_source = ColumnDataSource(data=_empty_actual_bars_data())
+bars_pred_source = ColumnDataSource(data=_empty_pred_bars_data())
+
+_actual_vbar = plot.vbar(
+    x="x", bottom="bottom", top="top",
+    width=0.7,
+    color="color",
+    source=bars_actual_source,
+    line_color="white", line_width=0.5,
+)
+_pred_vbar = plot.vbar(
+    x="x", bottom="bottom", top="top",
+    width=0.7,
+    color="color",
+    source=bars_pred_source,
+    line_color="white", line_width=0.5,
+)
+
+_actual_hover = HoverTool(
+    renderers=[_actual_vbar],
+    tooltips="""
+        <div style="padding:4px;font-family:sans-serif;font-size:11px;max-width:240px">
+          <div style="font-weight:600;font-size:12px;color:#222">@tech</div>
+          <div style="color:#666;margin-bottom:6px">@subtitle &middot; <b>Actual</b></div>
+          <div>Value: <b>@value{0,0.000}</b> @unit</div>
+        </div>
+    """,
+    point_policy="follow_mouse",
+)
+_pred_hover = HoverTool(
+    renderers=[_pred_vbar],
+    tooltips="""
+        <div style="padding:4px;font-family:sans-serif;font-size:11px;max-width:260px">
+          <div style="font-weight:600;font-size:12px;color:#222">@tech</div>
+          <div style="color:#666;margin-bottom:6px">@subtitle &middot; <b>Predicted</b></div>
+          <div>Value: <b>@value{0,0.000}</b> @unit</div>
+          <div style="color:#c0392b;margin-top:3px">
+            90% CI: &plusmn;@ci_half{0,0.000} @unit
+          </div>
+          <div style="color:#888;font-size:10px">
+            [@ci_lo{0,0.000}, @ci_hi{0,0.000}]
+          </div>
+        </div>
+    """,
+    point_policy="follow_mouse",
+)
+plot.add_tools(_actual_hover, _pred_hover)
+
 # Standalone legend widget. We render the swatches + labels as HTML inside
 # a ``Div`` so the legend lives in its OWN layout slot — totally separate
 # from the plot figure. The plot stays compact and Bokeh has no chance to
@@ -620,15 +694,44 @@ def _active_spec() -> dict:
     return VARIABLE_SPEC.get(variable_select.value, VARIABLE_SPEC[VARIABLE_OPTIONS[0]])
 
 
+def _half_agg_for_view(artifact: dict | None, spec: dict, is_regional: bool):
+    """Return per-category 90% conformal half-widths in the active layout.
+
+    Pulls the per-output conformal widths off the artifact and aggregates
+    them through the same ``agg_system`` / ``agg_regional`` aggregator that
+    the values use, so per-slice CI lookup is just a (cat,) or (region, cat)
+    indexing operation. Returns an empty Series / DataFrame on any failure
+    so hover tooltips just show ±0 instead of crashing.
+    """
+    empty = pd.DataFrame() if is_regional else pd.Series(dtype=float)
+    if artifact is None:
+        return empty
+    try:
+        half_raw = conformal_widths(artifact, alpha=CONFORMAL_ALPHA)
+        y_cols = list(artifact.get("y_cols", []))
+        half_series = pd.Series(half_raw, index=y_cols, dtype=float)
+        prefix = spec["prefix"]
+        half_var = half_series[half_series.index.str.startswith(prefix)]
+        if half_var.empty:
+            return empty
+        agg_key = "agg_regional" if is_regional else "agg_system"
+        return spec[agg_key](half_var)
+    except Exception:  # noqa: BLE001 — UQ is best-effort
+        return empty
+
+
 def _render_system_bars(
     actual_raw: pd.Series, pred_raw: pd.Series,
     levels: dict[str, str], status_text_set: bool,
+    artifact: dict | None = None,
 ) -> bool:
     """Draw Overall view: Actual vs Predicted stacked totals."""
     spec = _active_spec()
     scale = spec["scale"]
     actual_agg = spec["agg_system"](actual_raw) if not actual_raw.empty else pd.Series(dtype=float)
     pred_agg = spec["agg_system"](pred_raw) if not pred_raw.empty else pd.Series(dtype=float)
+    half_agg = _half_agg_for_view(artifact, spec, is_regional=False)
+    unit = spec["axis_label"].split("(")[-1].rstrip(")")
 
     plot.x_range.factors = ["Actual", "Predicted"]
     if plot.width != _PLOT_WIDTH_SYSTEM:
@@ -642,6 +745,8 @@ def _render_system_bars(
         if (abs(float(actual_agg.get(c, 0.0))) + abs(float(pred_agg.get(c, 0.0)))) * scale > threshold
     ]
     if not cats:
+        bars_actual_source.data = _empty_actual_bars_data()
+        bars_pred_source.data = _empty_pred_bars_data()
         return False
 
     # Stacks include negatives (e.g., ITC payments). Track top of stack
@@ -649,30 +754,54 @@ def _render_system_bars(
     pos_base = {"Actual": 0.0, "Predicted": 0.0}
     neg_base = {"Actual": 0.0, "Predicted": 0.0}
     legend_pairs: list[tuple[str, str]] = []
+    actual_rows: dict[str, list] = _empty_actual_bars_data()
+    pred_rows: dict[str, list] = _empty_pred_bars_data()
     for cat in cats:
         actual_val = float(actual_agg.get(cat, 0.0)) * scale
         pred_val = float(pred_agg.get(cat, 0.0)) * scale
-        bottoms = []
-        tops = []
-        for kind, val in (("Actual", actual_val), ("Predicted", pred_val)):
-            if val >= 0:
-                bottoms.append(pos_base[kind])
-                tops.append(pos_base[kind] + val)
-                pos_base[kind] += val
-            else:
-                tops.append(neg_base[kind])
-                bottoms.append(neg_base[kind] + val)
-                neg_base[kind] += val
-        color = spec["color"](cat)
-        plot.vbar(
-            x=["Actual", "Predicted"],
-            bottom=bottoms, top=tops,
-            width=0.7,
-            color=color,
-            line_color="white", line_width=0.5,
+        half_val = (
+            float(half_agg.get(cat, 0.0)) * scale
+            if isinstance(half_agg, pd.Series) and not half_agg.empty else 0.0
         )
+        color = spec["color"](cat)
+
+        if actual_val >= 0:
+            a_bot, a_top = pos_base["Actual"], pos_base["Actual"] + actual_val
+            pos_base["Actual"] += actual_val
+        else:
+            a_top, a_bot = neg_base["Actual"], neg_base["Actual"] + actual_val
+            neg_base["Actual"] += actual_val
+        actual_rows["x"].append("Actual")
+        actual_rows["bottom"].append(a_bot)
+        actual_rows["top"].append(a_top)
+        actual_rows["color"].append(color)
+        actual_rows["tech"].append(cat)
+        actual_rows["value"].append(actual_val)
+        actual_rows["subtitle"].append("System")
+        actual_rows["unit"].append(unit)
+
+        if pred_val >= 0:
+            p_bot, p_top = pos_base["Predicted"], pos_base["Predicted"] + pred_val
+            pos_base["Predicted"] += pred_val
+        else:
+            p_top, p_bot = neg_base["Predicted"], neg_base["Predicted"] + pred_val
+            neg_base["Predicted"] += pred_val
+        pred_rows["x"].append("Predicted")
+        pred_rows["bottom"].append(p_bot)
+        pred_rows["top"].append(p_top)
+        pred_rows["color"].append(color)
+        pred_rows["tech"].append(cat)
+        pred_rows["value"].append(pred_val)
+        pred_rows["ci_half"].append(half_val)
+        pred_rows["ci_lo"].append(pred_val - half_val)
+        pred_rows["ci_hi"].append(pred_val + half_val)
+        pred_rows["subtitle"].append("System")
+        pred_rows["unit"].append(unit)
+
         legend_pairs.append((cat, color))
 
+    bars_actual_source.data = actual_rows
+    bars_pred_source.data = pred_rows
     legend_div.text = _build_legend_html(legend_pairs)
     ymax = max(pos_base.values()) if pos_base else 1.0
     ymin = min(neg_base.values()) if neg_base else 0.0
@@ -683,7 +812,7 @@ def _render_system_bars(
     plot.title.text = (
         f"{spec['title_noun']} — "
         f"{', '.join(f'{d}={v}' for d, v in levels.items())} "
-        f"({spec['axis_label'].split('(')[-1].rstrip(')')}, 2050)"
+        f"({unit}, 2050)"
     )
     return True
 
@@ -691,12 +820,15 @@ def _render_system_bars(
 def _render_regional_bars(
     actual_raw: pd.Series, pred_raw: pd.Series,
     levels: dict[str, str], status_text_set: bool,
+    artifact: dict | None = None,
 ) -> bool:
     """Draw Regional view: one Actual / Predicted stacked pair per region."""
     spec = _active_spec()
     scale = spec["scale"]
     actual_tr = spec["agg_regional"](actual_raw) if not actual_raw.empty else pd.DataFrame()
     pred_tr = spec["agg_regional"](pred_raw) if not pred_raw.empty else pd.DataFrame()
+    half_tr = _half_agg_for_view(artifact, spec, is_regional=True)
+    unit = spec["axis_label"].split("(")[-1].rstrip(")")
 
     # Union of regions
     regions = sorted(
@@ -713,6 +845,8 @@ def _render_regional_bars(
         ) * scale > threshold
     ]
     if not regions or not cats:
+        bars_actual_source.data = _empty_actual_bars_data()
+        bars_pred_source.data = _empty_pred_bars_data()
         return False
 
     x_factors = [(r, kind) for r in regions for kind in ("Actual", "Predicted")]
@@ -729,10 +863,10 @@ def _render_regional_bars(
     pos_base: dict[tuple[str, str], float] = {x: 0.0 for x in x_factors}
     neg_base: dict[tuple[str, str], float] = {x: 0.0 for x in x_factors}
     legend_pairs: list[tuple[str, str]] = []
+    actual_rows: dict[str, list] = _empty_actual_bars_data()
+    pred_rows: dict[str, list] = _empty_pred_bars_data()
     for cat in cats:
-        xs: list[tuple[str, str]] = []
-        bottoms: list[float] = []
-        tops: list[float] = []
+        color = spec["color"](cat)
         for r in regions:
             a_val = (
                 float(actual_tr.loc[r, cat]) * scale
@@ -742,26 +876,52 @@ def _render_regional_bars(
                 float(pred_tr.loc[r, cat]) * scale
                 if r in pred_tr.index and cat in pred_tr.columns else 0.0
             )
-            for kind, val in (("Actual", a_val), ("Predicted", p_val)):
-                key = (r, kind)
-                xs.append(key)
-                if val >= 0:
-                    bottoms.append(pos_base[key])
-                    tops.append(pos_base[key] + val)
-                    pos_base[key] += val
-                else:
-                    tops.append(neg_base[key])
-                    bottoms.append(neg_base[key] + val)
-                    neg_base[key] += val
-        color = spec["color"](cat)
-        plot.vbar(
-            x=xs, bottom=bottoms, top=tops,
-            width=0.8,
-            color=color,
-            line_color="white", line_width=0.4,
-        )
+            half_val = (
+                float(half_tr.loc[r, cat]) * scale
+                if isinstance(half_tr, pd.DataFrame)
+                and r in half_tr.index and cat in half_tr.columns else 0.0
+            )
+
+            # Actual slice
+            key_a = (r, "Actual")
+            if a_val >= 0:
+                a_bot, a_top = pos_base[key_a], pos_base[key_a] + a_val
+                pos_base[key_a] += a_val
+            else:
+                a_top, a_bot = neg_base[key_a], neg_base[key_a] + a_val
+                neg_base[key_a] += a_val
+            actual_rows["x"].append(key_a)
+            actual_rows["bottom"].append(a_bot)
+            actual_rows["top"].append(a_top)
+            actual_rows["color"].append(color)
+            actual_rows["tech"].append(cat)
+            actual_rows["value"].append(a_val)
+            actual_rows["subtitle"].append(f"Region {r}")
+            actual_rows["unit"].append(unit)
+
+            # Predicted slice
+            key_p = (r, "Predicted")
+            if p_val >= 0:
+                p_bot, p_top = pos_base[key_p], pos_base[key_p] + p_val
+                pos_base[key_p] += p_val
+            else:
+                p_top, p_bot = neg_base[key_p], neg_base[key_p] + p_val
+                neg_base[key_p] += p_val
+            pred_rows["x"].append(key_p)
+            pred_rows["bottom"].append(p_bot)
+            pred_rows["top"].append(p_top)
+            pred_rows["color"].append(color)
+            pred_rows["tech"].append(cat)
+            pred_rows["value"].append(p_val)
+            pred_rows["ci_half"].append(half_val)
+            pred_rows["ci_lo"].append(p_val - half_val)
+            pred_rows["ci_hi"].append(p_val + half_val)
+            pred_rows["subtitle"].append(f"Region {r}")
+            pred_rows["unit"].append(unit)
         legend_pairs.append((cat, color))
 
+    bars_actual_source.data = actual_rows
+    bars_pred_source.data = pred_rows
     legend_div.text = _build_legend_html(legend_pairs)
     ymax = max(pos_base.values()) if pos_base else 1.0
     ymin = min(neg_base.values()) if neg_base else 0.0
@@ -769,7 +929,6 @@ def _render_regional_bars(
         start=(ymin * 1.15) if ymin < 0 else 0,
         end=ymax * 1.15 if ymax > 0 else 1.0,
     )
-    unit = spec["axis_label"].split("(")[-1].rstrip(")")
     plot.title.text = (
         f"{spec['title_noun']} by region — "
         f"{', '.join(f'{d}={v}' for d, v in levels.items())} "
@@ -1220,8 +1379,10 @@ def _redraw():
                 f"(no OOF stored; showing final-model prediction — may overfit)</span>"
             )
 
-    # Reset glyph state (single pass — duplicate block removed)
-    plot.renderers = []
+    # Reset bar-source data (the vbar renderers + hover tools stay registered
+    # across redraws — we just swap the data they're bound to).
+    bars_actual_source.data = _empty_actual_bars_data()
+    bars_pred_source.data = _empty_pred_bars_data()
     legend_div.text = ""
 
     # Decide layout from capacity columns, which are present in every dataset.
@@ -1229,9 +1390,9 @@ def _redraw():
     is_regional = _is_regional_layout(combined_cap_index)
 
     if is_regional:
-        drew = _render_regional_bars(actual_var_raw, pred_var_raw, levels, True)
+        drew = _render_regional_bars(actual_var_raw, pred_var_raw, levels, True, artifact)
     else:
-        drew = _render_system_bars(actual_var_raw, pred_var_raw, levels, True)
+        drew = _render_system_bars(actual_var_raw, pred_var_raw, levels, True, artifact)
 
     if not drew:
         spec = _active_spec()
