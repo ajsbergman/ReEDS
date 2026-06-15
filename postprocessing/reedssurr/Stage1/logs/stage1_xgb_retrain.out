@@ -1,0 +1,51 @@
+======================================================================
+ReEDS SURROGATE MODEL — ML PIPELINE
+======================================================================
+
+[1/4] Loading data...
+Loaded data: 486 samples, 105 columns
+  X features: 6 (['x_Batt', 'x_Dem', 'x_Fuel', 'x_Pol', 'x_REcost', 'x_Siting'])
+  Y outputs: 98
+  Removed 12 constant Y columns (zero variance)
+  Final Y outputs: 86
+
+[2/4] Evaluation strategy: 10-fold CV on all 486 samples
+       Final model: trained on all 486 samples
+
+[3/4] Training models: ['xgb']
+
+  --- XGB ---
+    Computing OOF predictions (10-fold CV)...
+    OOF R² mean: 0.6568, median: 0.8920
+    Outputs with R²>0.9: 41/86
+    Outputs with R²>0.95: 31/86
+    Training final model on all 486 samples...
+    Saved final model: xgb.joblib
+
+[4/4] Generating comparison plots...
+
+    Stacked-bar preview: preview_capacity_stacks.png
+
+======================================================================
+RESULTS SUMMARY
+======================================================================
+
+Evaluation: 10-fold CV out-of-fold predictions on 486 samples
+Final models trained on: all 486 samples
+
+Model                           OOF R² mean  OOF R² med   R²>0.9  R²>0.95
+------------------------------------------------------------------------
+XGBoost (Gradient Boosting)          0.6568      0.8920   41/86     31/86  
+
+Best model: XGBoost (Gradient Boosting) (OOF R² mean = 0.6568)
+
+Outputs saved to: C:\ReEDS\ReEDS\postprocessing\surrogate_ml_results
+  - summary.json
+  - model_comparison_r2.png
+  - r2_distribution_per_output.png
+  - parity_*.png (per model)
+  - per_output_metrics_xgb.csv
+  - models/*.joblib  (load with surrogate_predict.py / surrogate_dashboard.py)
+
+Try the interactive panel:
+  bokeh serve --show postprocessing/surrogate_dashboard.py --args --results_dir C:\ReEDS\ReEDS\postprocessing\surrogate_ml_results --data surrogate_ml_data/stage1_system_ml_numeric.csv

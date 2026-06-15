@@ -1,0 +1,103 @@
+{
+  "config": {
+    "data_path": "C:\\ReEDS\\ReEDS\\postprocessing\\reedssurr\\Stage1\\inputs\\overall_ml_numeric.csv",
+    "n_folds": 10,
+    "cv_type": "10-fold CV",
+    "n_samples": 486,
+    "n_x_features": 6,
+    "n_y_outputs": 86,
+    "evaluation": "Out-of-fold predictions (all samples used for both training and evaluation)"
+  },
+  "models": {
+    "ridge": {
+      "display_name": "Ridge Regression",
+      "oof_r2_mean": 0.4610384053855844,
+      "oof_r2_median": 0.45640197910023433,
+      "oof_r2_min": -0.01745298494568992,
+      "oof_r2_max": 0.9160186037185012,
+      "n_outputs_r2_above_0.9": 1,
+      "n_outputs_r2_above_0.95": 0,
+      "artifact": "models/ridge.joblib"
+    },
+    "lasso": {
+      "display_name": "Lasso Regression",
+      "oof_r2_mean": 0.46060816423180634,
+      "oof_r2_median": 0.4563580821225975,
+      "oof_r2_min": -0.017195325732750177,
+      "oof_r2_max": 0.9160152683459215,
+      "n_outputs_r2_above_0.9": 1,
+      "n_outputs_r2_above_0.95": 0,
+      "artifact": "models/lasso.joblib"
+    },
+    "rf": {
+      "display_name": "Random Forest",
+      "oof_r2_mean": 0.7559921893850553,
+      "oof_r2_median": 0.8929480804693207,
+      "oof_r2_min": -0.3619588176269064,
+      "oof_r2_max": 1.0,
+      "n_outputs_r2_above_0.9": 41,
+      "n_outputs_r2_above_0.95": 28,
+      "artifact": "models/rf.joblib"
+    },
+    "xgb": {
+      "display_name": "XGBoost (Gradient Boosting)",
+      "oof_r2_mean": 0.656774585790798,
+      "oof_r2_median": 0.8919760880955729,
+      "oof_r2_min": -2.163240596190531,
+      "oof_r2_max": 0.9999999999712927,
+      "n_outputs_r2_above_0.9": 41,
+      "n_outputs_r2_above_0.95": 31,
+      "artifact": "models/xgb.joblib"
+    },
+    "nn": {
+      "display_name": "Neural Network (MLP (64, 32))",
+      "oof_r2_mean": 0.7176280946412963,
+      "oof_r2_median": 0.8848234692104638,
+      "oof_r2_min": -0.8109766829784615,
+      "oof_r2_max": 0.9875565987927322,
+      "n_outputs_r2_above_0.9": 40,
+      "n_outputs_r2_above_0.95": 23,
+      "artifact": "models/nn.joblib"
+    },
+    "mean": {
+      "display_name": "Mean (baseline)",
+      "oof_r2_mean": -0.0042204881831824775,
+      "oof_r2_median": -0.004207877058134413,
+      "oof_r2_min": -0.007580562240796063,
+      "oof_r2_max": -0.001728278628327029,
+      "n_outputs_r2_above_0.9": 0,
+      "n_outputs_r2_above_0.95": 0,
+      "artifact": "models/mean.joblib"
+    },
+    "knn": {
+      "display_name": "k-NN (k=3, baseline)",
+      "oof_r2_mean": 0.598423121750307,
+      "oof_r2_median": 0.7204294651358112,
+      "oof_r2_min": -0.5571536420096224,
+      "oof_r2_max": 0.9165284650214987,
+      "n_outputs_r2_above_0.9": 4,
+      "n_outputs_r2_above_0.95": 0,
+      "artifact": "models/knn.joblib"
+    },
+    "nearest": {
+      "display_name": "Nearest-design lookup (baseline)",
+      "oof_r2_mean": 0.1788292355887037,
+      "oof_r2_median": 0.3470581951691151,
+      "oof_r2_min": -1.510330578512396,
+      "oof_r2_max": 0.8271758902527675,
+      "n_outputs_r2_above_0.9": 0,
+      "n_outputs_r2_above_0.95": 0,
+      "artifact": "models/nearest.joblib"
+    },
+    "ngboost": {
+      "display_name": "NGBoost (distributional, UQ-native)",
+      "oof_r2_mean": 0.7277803273607119,
+      "oof_r2_median": 0.8254663728179146,
+      "oof_r2_min": -0.058323747595884434,
+      "oof_r2_max": 0.9999999846092461,
+      "n_outputs_r2_above_0.9": 34,
+      "n_outputs_r2_above_0.95": 21,
+      "artifact": "models/ngboost.joblib"
+    }
+  }
+}

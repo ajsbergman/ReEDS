@@ -1,0 +1,15 @@
+2026-06-15 12:04:17,290 Starting Bokeh server version 3.6.0 (running on Tornado 6.4.1)
+2026-06-15 12:04:17,312 User authentication hooks NOT provided (default user enabled)
+2026-06-15 12:04:17,384 Bokeh app running at: http://localhost:5006/surrogate_dashboard
+2026-06-15 12:04:17,400 Starting Bokeh server with process id: 39096
+2026-06-15 12:04:44,850 WebSocket connection opened
+2026-06-15 12:04:44,853 ServerConnection created
+2026-06-15 12:05:30,446 WebSocket connection closed: code=1001, reason=None
+2026-06-15 12:05:30,725 WebSocket connection opened
+2026-06-15 12:05:30,729 ServerConnection created
+forrtl: error (200): program aborting due to window-CLOSE event
+Image              PC                Routine            Line        Source             
+libifcoremd.dll    00007FFD21C7DF54  Unknown               Unknown  Unknown
+KERNELBASE.dll     00007FFDC4BF348D  Unknown               Unknown  Unknown
+KERNEL32.DLL       00007FFDC62EE957  Unknown               Unknown  Unknown
+ntdll.dll          00007FFDC766427C  Unknown               Unknown  Unknown

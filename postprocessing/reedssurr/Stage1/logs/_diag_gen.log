@@ -1,0 +1,45 @@
+﻿Loaded (486, 105) rows ╫ cols
+
+=== XGB on TRAINING row 10 ===
+  levels = {'Batt': 'Md', 'Dem': 'Hi', 'Fuel': 'Hi', 'Pol': 'IRA', 'REcost': 'Hi', 'Siting': 'Open'}
+  actual total = 970.24 TWh   pred total = 969.57 TWh
+  max |delta| per tech: 2.2205 TWh
+  sum |delta|:          7.0979 TWh
+
+=== RF on TRAINING row 10 ===
+  levels = {'Batt': 'Md', 'Dem': 'Hi', 'Fuel': 'Hi', 'Pol': 'IRA', 'REcost': 'Hi', 'Siting': 'Open'}
+  actual total = 970.24 TWh   pred total = 990.03 TWh
+  max |delta| per tech: 16.4970 TWh
+  sum |delta|:          34.7869 TWh
+
+=== NN on TRAINING row 10 ===
+  levels = {'Batt': 'Md', 'Dem': 'Hi', 'Fuel': 'Hi', 'Pol': 'IRA', 'REcost': 'Hi', 'Siting': 'Open'}
+  actual total = 970.24 TWh   pred total = 980.30 TWh
+  max |delta| per tech: 9.2005 TWh
+  sum |delta|:          17.5091 TWh
+
+=== KNN on TRAINING row 10 ===
+  levels = {'Batt': 'Md', 'Dem': 'Hi', 'Fuel': 'Hi', 'Pol': 'IRA', 'REcost': 'Hi', 'Siting': 'Open'}
+  actual total = 970.24 TWh   pred total = 970.24 TWh
+  max |delta| per tech: 0.0000 TWh
+  sum |delta|:          0.0000 TWh
+
+=== RIDGE on TRAINING row 10 ===
+  levels = {'Batt': 'Md', 'Dem': 'Hi', 'Fuel': 'Hi', 'Pol': 'IRA', 'REcost': 'Hi', 'Siting': 'Open'}
+  actual total = 970.24 TWh   pred total = 949.30 TWh
+  max |delta| per tech: 39.8990 TWh
+  sum |delta|:          96.6901 TWh
+
+--- Using OOF residuals stored in artifact ---
+
+=== XGB OOF on row 10 ===
+  actual total = 970.24 TWh    OOF pred total = 989.49 TWh
+  max |delta|: 26.650 TWh   sum |delta|: 60.415 TWh
+
+=== RF OOF on row 10 ===
+  actual total = 970.24 TWh    OOF pred total = 1007.41 TWh
+  max |delta|: 37.834 TWh   sum |delta|: 74.887 TWh
+
+=== NN OOF on row 10 ===
+  actual total = 970.24 TWh    OOF pred total = 994.40 TWh
+  max |delta|: 26.625 TWh   sum |delta|: 59.473 TWh

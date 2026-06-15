@@ -15,9 +15,10 @@ Approach:
   - Visualization of results (parity plots, error distributions)
 
 Usage:
-    python surrogate_ml_models.py --data stage1_system_ml_numeric.csv
-    python surrogate_ml_models.py --data stage2_regional_ml_numeric.csv --models ridge rf xgb
-    python surrogate_ml_models.py --data stage1_system_ml_numeric.csv --n_folds 486  # LOO-CV
+    python surrogate_ml_models.py                                    # defaults to overall layer
+    python surrogate_ml_models.py --data ../inputs/regional_ml_numeric.csv --output_dir ../outputs/regional
+    python surrogate_ml_models.py --data ../inputs/overall_ml_numeric.csv --models ridge rf xgb
+    python surrogate_ml_models.py --n_folds 486                      # LOO-CV
 """
 
 import argparse
@@ -97,8 +98,8 @@ class NearestDesignRegressor(BaseEstimator, RegressorMixin):
 @dataclass
 class Config:
     """Pipeline configuration."""
-    data_path: str = "surrogate_ml_data/stage1_system_ml_numeric.csv"
-    output_dir: str = "surrogate_ml_results"
+    data_path: str = "../inputs/overall_ml_numeric.csv"
+    output_dir: str = "../outputs/overall"
     random_state: int = 42
     n_folds: int = 10  # Set to n_samples for LOO-CV
     # Default model list: 3 baselines + 3 ML methods + NGBoost (UQ-native)
@@ -117,6 +118,13 @@ class Config:
     # output and per estimator-step — quickly becomes the runtime bottleneck).
     ngb_n_estimators: int = 200
     ngb_learning_rate: float = 0.05
+    # When True (default), train one independent surrogate per output column
+    # for every model family (wraps RF / NN / Linear / kNN in
+    # MultiOutputRegressor too, not just XGB/NGBoost). This makes
+    # cross-family R² comparisons architecturally fair.
+    # Set to False to recover the legacy behaviour where RF/NN/Linear used
+    # their native shared-output fits.
+    single_output_mode: bool = True
 
 
 # ============================================================================
@@ -124,43 +132,57 @@ class Config:
 # ============================================================================
 
 def get_model(name: str, n_outputs: int, config: Config):
-    """Get a scikit-learn-compatible model by name."""
+    """Get a scikit-learn-compatible model by name.
+
+    When ``config.single_output_mode`` is True (default) every non-trivial
+    model is wrapped in :class:`MultiOutputRegressor` so it trains one
+    independent surrogate per output, mirroring how XGBoost and NGBoost
+    already run. This gives an apples-to-apples comparison across families.
+    The two pure baselines (``mean``, ``nearest``) are left as-is because
+    wrapping them only adds bookkeeping cost without changing any
+    prediction.
+    """
     if name == "mean":
         return DummyRegressor(strategy="mean"), "Mean (baseline)"
-    if name == "knn":
-        return KNeighborsRegressor(n_neighbors=config.knn_k, weights="distance"), \
-               f"k-NN (k={config.knn_k}, baseline)"
     if name == "nearest":
         return NearestDesignRegressor(), "Nearest-design lookup (baseline)"
-    if name == "ridge":
-        return Ridge(alpha=1.0), "Ridge Regression"
-    if name == "lasso":
-        return Lasso(alpha=0.1, max_iter=5000), "Lasso Regression"
-    if name == "rf":
-        return RandomForestRegressor(
+
+    if name == "knn":
+        base = KNeighborsRegressor(
+            n_neighbors=config.knn_k, weights="distance"
+        )
+        display = f"k-NN (k={config.knn_k}, baseline)"
+    elif name == "ridge":
+        base, display = Ridge(alpha=1.0), "Ridge Regression"
+    elif name == "lasso":
+        base, display = Lasso(alpha=0.1, max_iter=5000), "Lasso Regression"
+    elif name == "rf":
+        base = RandomForestRegressor(
             n_estimators=200, max_depth=None, min_samples_leaf=2,
-            random_state=config.random_state, n_jobs=-1
-        ), "Random Forest"
-    if name == "xgb":
+            random_state=config.random_state,
+            # Per-output mode trains N forests in parallel via
+            # MultiOutputRegressor(n_jobs=-1); a single forest stays
+            # parallel internally.
+            n_jobs=1 if config.single_output_mode and n_outputs > 1 else -1,
+        )
+        display = "Random Forest"
+    elif name == "xgb":
         if HAS_XGBOOST:
             base = XGBRegressor(
                 n_estimators=200, max_depth=6, learning_rate=0.1,
                 random_state=config.random_state, n_jobs=-1, verbosity=0
             )
         else:
-            # Fallback to sklearn GradientBoosting
             base = GradientBoostingRegressor(
                 n_estimators=200, max_depth=6, learning_rate=0.1,
                 random_state=config.random_state
             )
-        if n_outputs > 1:
-            return MultiOutputRegressor(base), "XGBoost (Gradient Boosting)"
-        return base, "XGBoost (Gradient Boosting)"
-    if name == "nn":
+        display = "XGBoost (Gradient Boosting)"
+    elif name == "nn":
         # Smaller net + no early stopping: n=486 doesn't have a meaningful
-        # validation fold, and a 128-64-32 net was strongly underfitting via
-        # premature stopping.
-        return MLPRegressor(
+        # validation fold, and a 128-64-32 net was strongly underfitting
+        # via premature stopping.
+        base = MLPRegressor(
             hidden_layer_sizes=config.nn_hidden_layers,
             activation="relu", solver="adam",
             max_iter=config.nn_max_iter,
@@ -168,8 +190,9 @@ def get_model(name: str, n_outputs: int, config: Config):
             early_stopping=False,
             learning_rate_init=1e-3,
             random_state=config.random_state,
-        ), f"Neural Network (MLP {config.nn_hidden_layers})"
-    if name == "ngboost":
+        )
+        display = f"Neural Network (MLP {config.nn_hidden_layers})"
+    elif name == "ngboost":
         if not HAS_NGBOOST:
             raise ImportError(
                 "ngboost is required for the 'ngboost' model. "
@@ -181,12 +204,17 @@ def get_model(name: str, n_outputs: int, config: Config):
             random_state=config.random_state,
             verbose=False,
         )
-        # NGBoost is single-output; wrap for multi-output Y.
-        if n_outputs > 1:
-            return MultiOutputRegressor(base, n_jobs=-1), \
-                   "NGBoost (distributional, UQ-native)"
-        return base, "NGBoost (distributional, UQ-native)"
-    raise ValueError(f"Unknown model: {name}")
+        display = "NGBoost (distributional, UQ-native)"
+    else:
+        raise ValueError(f"Unknown model: {name}")
+
+    # Wrap multi-output Y so every model trains one surrogate per output.
+    # XGB / NGBoost are intrinsically single-output and *always* need this.
+    # RF / NN / Linear / kNN are wrapped too when single_output_mode is on.
+    always_wrap = name in ("xgb", "ngboost")
+    if n_outputs > 1 and (always_wrap or config.single_output_mode):
+        return MultiOutputRegressor(base, n_jobs=-1), display
+    return base, display
 
 
 # ============================================================================
@@ -673,12 +701,17 @@ def main():
     parser = argparse.ArgumentParser(
         description="ReEDS Surrogate Model: ML Training & Evaluation Pipeline"
     )
+    # Anchor defaults to this file's location so the script works from any CWD.
+    _HERE = Path(__file__).resolve().parent
+    _STUDY_ROOT = _HERE.parent
     parser.add_argument(
-        "--data", type=str, default="surrogate_ml_data/stage1_system_ml_numeric.csv",
+        "--data", type=str,
+        default=str(_STUDY_ROOT / "inputs" / "overall_ml_numeric.csv"),
         help="Path to the ML-ready CSV (numeric X+Y columns).",
     )
     parser.add_argument(
-        "--output_dir", type=str, default="surrogate_ml_results",
+        "--output_dir", type=str,
+        default=str(_STUDY_ROOT / "outputs" / "overall"),
         help="Directory to save results and plots.",
     )
     parser.add_argument(
@@ -696,6 +729,13 @@ def main():
         "--random_state", type=int, default=42,
         help="Random seed for reproducibility.",
     )
+    parser.add_argument(
+        "--multi_output_native", action="store_true",
+        help="Legacy mode: let RF / NN / Linear use their native multi-output "
+             "fits (shared representation). Default is single-output mode "
+             "where every model trains one surrogate per output for fair "
+             "cross-family comparison.",
+    )
     args = parser.parse_args()
 
     config = Config(
@@ -704,6 +744,7 @@ def main():
         n_folds=args.n_folds,
         random_state=args.random_state,
         models=args.models,
+        single_output_mode=not args.multi_output_native,
     )
 
     run_pipeline(config)

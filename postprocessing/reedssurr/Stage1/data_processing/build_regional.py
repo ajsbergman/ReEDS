@@ -1,17 +1,18 @@
 """
-Stage 1: Extract X (design inputs) and Y (system-level 2050 outputs) from ReEDS surrogate runs.
+Regional extractor: pulls X (design inputs) and Y (regionally-resolved 2050 outputs)
+out of completed ReEDS surrogate runs and writes them as a single CSV.
 
-Y outputs (all for ERCOT system total, year 2050):
-  - Capacity by technology (MW)
-  - Generation by technology (MWh)
-  - Transmission capacity total (MW)
-  - System cost by category ($)
-  - Total runtime (seconds)
+Y outputs (all for ERCOT, year 2050, resolved by region):
+  - Capacity by technology and region (MW)
+  - Generation by technology and region (MWh)
+  - Transmission capacity by corridor (MW)
+  - System cost by category and region ($)
 
 Output: A single CSV with one row per run, columns for X features and Y outputs.
+        Column names encode region: e.g., cap_upv_3_p60, gen_wind-ons_7_p61, tran_p60_p61_AC
 
 Usage:
-    python surrogate_stage1_system.py --runs_dir /path/to/runs --output stage1_ml.csv
+    python build_regional.py --runs_dir /path/to/runs --output ../inputs/regional_ml.csv
 """
 
 import argparse
@@ -19,7 +20,6 @@ import re
 import pandas as pd
 import numpy as np
 from pathlib import Path
-from io import StringIO
 from typing import Optional
 
 
@@ -62,40 +62,48 @@ def parse_case_name(case_name: str) -> Optional[dict]:
 
 
 # ============================================================================
-# Y EXTRACTORS (all filtered to 2050)
+# Y EXTRACTORS (all filtered to 2050, regionally resolved)
 # ============================================================================
 
-def extract_capacity_2050(run_dir: Path) -> dict:
-    """National capacity by tech in 2050 (MW). Source: outputs/cap_nat.csv"""
-    path = run_dir / "outputs" / "cap_nat.csv"
-    if not path.exists():
-        return {}
-    df = pd.read_csv(path)
-    df = df[df["t"] == TARGET_YEAR]
-    result = {}
-    for _, row in df.iterrows():
-        result[f"cap_{row['i']}"] = row["Value"]
-    return result
-
-
-def extract_generation_2050(run_dir: Path) -> dict:
-    """National generation by tech in 2050 (MWh). Source: outputs/gen_ann_nat.csv"""
-    path = run_dir / "outputs" / "gen_ann_nat.csv"
-    if not path.exists():
-        return {}
-    df = pd.read_csv(path)
-    df = df[df["t"] == TARGET_YEAR]
-    result = {}
-    for _, row in df.iterrows():
-        result[f"gen_{row['i']}"] = row["Value"]
-    return result
-
-
-def extract_transmission_2050(run_dir: Path) -> dict:
+def extract_capacity_regional_2050(run_dir: Path) -> dict:
     """
-    Transmission capacity in 2050 (MW).
+    Capacity by tech and region in 2050 (MW).
+    Source: outputs/cap.csv (i, r, t, Value)
+    Returns: {f"cap_{tech}_{region}": MW}
+    """
+    path = run_dir / "outputs" / "cap.csv"
+    if not path.exists():
+        return {}
+    df = pd.read_csv(path)
+    df = df[df["t"] == TARGET_YEAR]
+    result = {}
+    for _, row in df.iterrows():
+        result[f"cap_{row['i']}_{row['r']}"] = row["Value"]
+    return result
+
+
+def extract_generation_regional_2050(run_dir: Path) -> dict:
+    """
+    Generation by tech and region in 2050 (MWh).
+    Source: outputs/gen_ann.csv (i, r, t, Value)
+    Returns: {f"gen_{tech}_{region}": MWh}
+    """
+    path = run_dir / "outputs" / "gen_ann.csv"
+    if not path.exists():
+        return {}
+    df = pd.read_csv(path)
+    df = df[df["t"] == TARGET_YEAR]
+    result = {}
+    for _, row in df.iterrows():
+        result[f"gen_{row['i']}_{row['r']}"] = row["Value"]
+    return result
+
+
+def extract_transmission_regional_2050(run_dir: Path) -> dict:
+    """
+    Transmission capacity by corridor in 2050 (MW).
     Source: outputs/tran_out.csv (r, rr, trtype, t, Value)
-    Returns total by transmission type and grand total.
+    Returns: {f"tran_{r}_{rr}_{trtype}": MW}
     """
     path = run_dir / "outputs" / "tran_out.csv"
     if not path.exists():
@@ -103,67 +111,26 @@ def extract_transmission_2050(run_dir: Path) -> dict:
     df = pd.read_csv(path)
     df = df[df["t"] == TARGET_YEAR]
     result = {}
-    # Total by transmission type
-    for trtype, grp in df.groupby("trtype"):
-        result[f"tran_{trtype}_total"] = grp["Value"].sum()
-    # Grand total
-    result["tran_total"] = df["Value"].sum()
+    for _, row in df.iterrows():
+        result[f"tran_{row['r']}_{row['rr']}_{row['trtype']}"] = row["Value"]
     return result
 
 
-def extract_systemcost_2050(run_dir: Path) -> dict:
-    """System cost by category in 2050 ($). Source: outputs/systemcost.csv"""
-    path = run_dir / "outputs" / "systemcost.csv"
+def extract_systemcost_regional_2050(run_dir: Path) -> dict:
+    """
+    System cost by category and region in 2050 ($).
+    Source: outputs/systemcost_ba.csv (sys_costs, r, t, Value)
+    Returns: {f"cost_{category}_{region}": $}
+    """
+    path = run_dir / "outputs" / "systemcost_ba.csv"
     if not path.exists():
         return {}
     df = pd.read_csv(path)
     df = df[df["t"] == TARGET_YEAR]
     result = {}
     for _, row in df.iterrows():
-        result[f"cost_{row['sys_costs']}"] = row["Value"]
-    # Total system cost
-    result["cost_total"] = df["Value"].sum()
+        result[f"cost_{row['sys_costs']}_{row['r']}"] = row["Value"]
     return result
-
-
-def extract_runtime(run_dir: Path) -> dict:
-    """
-    Total runtime in seconds from meta.csv.
-    Computes as: last stoptime - first starttime (across all processes).
-    """
-    path = run_dir / "meta.csv"
-    if not path.exists():
-        return {}
-    try:
-        lines = path.read_text().splitlines()
-        # Find the header row for timing data
-        header_idx = None
-        for i, line in enumerate(lines):
-            if line.startswith("year,process,"):
-                header_idx = i
-                break
-        if header_idx is None:
-            return {}
-
-        data_lines = lines[header_idx:]
-        df = pd.read_csv(StringIO("\n".join(data_lines)))
-
-        # Get first valid starttime and last valid stoptime
-        starttimes = df["starttime"].dropna()
-        starttimes = starttimes[starttimes.astype(str).str.strip() != ""]
-        stoptimes = df["stoptime"].dropna()
-        stoptimes = stoptimes[stoptimes.astype(str).str.strip() != ""]
-
-        if starttimes.empty or stoptimes.empty:
-            return {}
-
-        first_start = pd.to_datetime(starttimes.iloc[0])
-        last_stop = pd.to_datetime(stoptimes.iloc[-1])
-        runtime_seconds = (last_stop - first_start).total_seconds()
-        return {"runtime_seconds": runtime_seconds}
-    except Exception as e:
-        print(f"  WARNING: Could not parse runtime from {path}: {e}")
-        return {}
 
 
 # ============================================================================
@@ -171,7 +138,7 @@ def extract_runtime(run_dir: Path) -> dict:
 # ============================================================================
 
 def process_runs(runs_dir: Path, batch_prefix: Optional[str] = None) -> pd.DataFrame:
-    """Process all surrogate runs, extract system-level 2050 outputs."""
+    """Process all surrogate runs, extract regionally-resolved 2050 outputs."""
     rows = []
     run_dirs = sorted(runs_dir.iterdir()) if runs_dir.is_dir() else []
 
@@ -200,15 +167,14 @@ def process_runs(runs_dir: Path, batch_prefix: Optional[str] = None) -> pd.DataF
             n_skipped += 1
             continue
 
-        # Extract all Y outputs for 2050
-        cap_data = extract_capacity_2050(run_path)
-        gen_data = extract_generation_2050(run_path)
-        tran_data = extract_transmission_2050(run_path)
-        cost_data = extract_systemcost_2050(run_path)
-        runtime_data = extract_runtime(run_path)
+        # Extract all regionally-resolved Y outputs for 2050
+        cap_data = extract_capacity_regional_2050(run_path)
+        gen_data = extract_generation_regional_2050(run_path)
+        tran_data = extract_transmission_regional_2050(run_path)
+        cost_data = extract_systemcost_regional_2050(run_path)
 
         if not cap_data and not gen_data:
-            print(f"  Skipping {case_name}: no 2050 output data found")
+            print(f"  Skipping {case_name}: no 2050 regional output data found")
             n_skipped += 1
             continue
 
@@ -219,7 +185,6 @@ def process_runs(runs_dir: Path, batch_prefix: Optional[str] = None) -> pd.DataF
         row.update(gen_data)
         row.update(tran_data)
         row.update(cost_data)
-        row.update(runtime_data)
         rows.append(row)
         n_processed += 1
 
@@ -238,16 +203,15 @@ def process_runs(runs_dir: Path, batch_prefix: Optional[str] = None) -> pd.DataF
     gen_cols = sorted([c for c in df.columns if c.startswith("gen_")])
     tran_cols = sorted([c for c in df.columns if c.startswith("tran_")])
     cost_cols = sorted([c for c in df.columns if c.startswith("cost_")])
-    runtime_cols = [c for c in df.columns if c.startswith("runtime_")]
 
     col_order = (
         ["case_name"] + x_num_cols + x_label_cols
-        + cap_cols + gen_cols + tran_cols + cost_cols + runtime_cols
+        + cap_cols + gen_cols + tran_cols + cost_cols
     )
     col_order = [c for c in col_order if c in df.columns]
     df = df[col_order]
 
-    # Fill missing Y values with 0 (tech not present in that run)
+    # Fill missing Y values with 0
     y_cols = cap_cols + gen_cols + tran_cols + cost_cols
     for c in y_cols:
         if c in df.columns:
@@ -258,14 +222,17 @@ def process_runs(runs_dir: Path, batch_prefix: Optional[str] = None) -> pd.DataF
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Stage 1: Extract system-level 2050 outputs from ReEDS surrogate runs."
+        description="Regional: Extract regionally-resolved 2050 outputs from ReEDS surrogate runs."
     )
+    _HERE = Path(__file__).resolve().parent
+    _STUDY_ROOT = _HERE.parent
     parser.add_argument(
         "--runs_dir", type=str, default=None,
         help="Path to runs directory. Default: <repo_root>/runs",
     )
     parser.add_argument(
-        "--output", type=str, default="surrogate_ml_data/stage1_system_ml.csv",
+        "--output", type=str,
+        default=str(_STUDY_ROOT / "inputs" / "regional_ml.csv"),
         help="Output CSV filename.",
     )
     parser.add_argument(
@@ -303,11 +270,11 @@ def main():
 
     print(f"\nDataset shape: {df.shape}")
     print(f"  X features: {len(x_cols)}")
-    print(f"  Y capacity cols: {len(cap_cols)}")
-    print(f"  Y generation cols: {len(gen_cols)}")
-    print(f"  Y transmission cols: {len(tran_cols)}")
-    print(f"  Y cost cols: {len(cost_cols)}")
-    print(f"  Runtime: {'yes' if 'runtime_seconds' in df.columns else 'no'}")
+    print(f"  Y capacity cols (tech x region): {len(cap_cols)}")
+    print(f"  Y generation cols (tech x region): {len(gen_cols)}")
+    print(f"  Y transmission cols (corridor): {len(tran_cols)}")
+    print(f"  Y cost cols (category x region): {len(cost_cols)}")
+    print(f"  Total Y columns: {len(cap_cols) + len(gen_cols) + len(tran_cols) + len(cost_cols)}")
     print(f"  Runs: {len(df)}")
 
     # Save
@@ -318,7 +285,7 @@ def main():
 
     # Numeric-only version (for direct ML use). case_name is kept as the first column
     # so downstream tools can join predictions back to specific runs.
-    y_all = cap_cols + gen_cols + tran_cols + cost_cols + ["runtime_seconds"]
+    y_all = cap_cols + gen_cols + tran_cols + cost_cols
     ml_cols = ["case_name"] + x_cols + [c for c in y_all if c in df.columns]
     df_ml = df[ml_cols].copy()
     ml_path = output_path.with_stem(output_path.stem + "_numeric")

@@ -279,9 +279,10 @@ def main():
     df.to_csv(output_path, index=False)
     print(f"\nSaved: {output_path.resolve()}")
 
-    # Numeric-only version (for direct ML use)
+    # Numeric-only version (for direct ML use). case_name is kept as the first column
+    # so downstream tools can join predictions back to specific runs.
     y_all = cap_cols + gen_cols + tran_cols + cost_cols
-    ml_cols = x_cols + [c for c in y_all if c in df.columns]
+    ml_cols = ["case_name"] + x_cols + [c for c in y_all if c in df.columns]
     df_ml = df[ml_cols].copy()
     ml_path = output_path.with_stem(output_path.stem + "_numeric")
     df_ml.to_csv(ml_path, index=False)

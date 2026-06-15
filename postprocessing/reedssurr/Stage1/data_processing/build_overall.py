@@ -1,5 +1,6 @@
 """
-Stage 1: Extract X (design inputs) and Y (system-level 2050 outputs) from ReEDS surrogate runs.
+Overall (system-level) extractor: pulls X (design inputs) and Y (ERCOT system-wide
+2050 outputs) out of completed ReEDS surrogate runs and writes them as a single CSV.
 
 Y outputs (all for ERCOT system total, year 2050):
   - Capacity by technology (MW)
@@ -11,7 +12,7 @@ Y outputs (all for ERCOT system total, year 2050):
 Output: A single CSV with one row per run, columns for X features and Y outputs.
 
 Usage:
-    python surrogate_stage1_system.py --runs_dir /path/to/runs --output stage1_ml.csv
+    python build_overall.py --runs_dir /path/to/runs --output ../inputs/overall_ml.csv
 """
 
 import argparse
@@ -258,14 +259,17 @@ def process_runs(runs_dir: Path, batch_prefix: Optional[str] = None) -> pd.DataF
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Stage 1: Extract system-level 2050 outputs from ReEDS surrogate runs."
+        description="Overall: Extract system-level 2050 outputs from ReEDS surrogate runs."
     )
+    _HERE = Path(__file__).resolve().parent
+    _STUDY_ROOT = _HERE.parent
     parser.add_argument(
         "--runs_dir", type=str, default=None,
         help="Path to runs directory. Default: <repo_root>/runs",
     )
     parser.add_argument(
-        "--output", type=str, default="surrogate_ml_data/stage1_system_ml.csv",
+        "--output", type=str,
+        default=str(_STUDY_ROOT / "inputs" / "overall_ml.csv"),
         help="Output CSV filename.",
     )
     parser.add_argument(

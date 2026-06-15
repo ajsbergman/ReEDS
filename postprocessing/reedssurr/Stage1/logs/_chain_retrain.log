@@ -1,0 +1,5 @@
+﻿11:46:25 === chain start ===
+11:47:06 Stage-1 xgb (pid 36412) finished
+11:47:06 Stage-2 xgb+ngboost launched (pid 10608)
+12:24:37 Stage-2 xgb+ngboost finished
+12:24:37 === chain done ===
