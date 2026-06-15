@@ -150,18 +150,18 @@ def apply_variable_disaggregation(
         df = df.merge(
             disagg_data,
             left_on=[region_col, 'i'],
-            right_on=['PCA_REG', 'i']
+            right_on=['legacy_ba', 'i']
         )
     else:
         df = df.merge(
-            disagg_data[['PCA_REG', 'FIPS', 'fracdata']],
+            disagg_data[['legacy_ba', 'FIPS', 'fracdata']],
             left_on=region_col,
-            right_on='PCA_REG'
+            right_on='legacy_ba'
         )
 
     # Replace legacy zones in region_col with the county FIPS codes
     df = (
-        df.drop(columns=[region_col, 'PCA_REG'])
+        df.drop(columns=[region_col, 'legacy_ba'])
         .rename(columns={'FIPS': region_col})
     )
 

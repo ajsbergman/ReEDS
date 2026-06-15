@@ -787,31 +787,28 @@ def write_non_region_files(non_region_files, sw, inputs_case, regions_and_agglev
             )
 
     
-def calculate_county_fractions(df, county2zone):
+def calculate_county_fractions(df, county2zone_with_legacy_bas):
     """
     Calculates the values associated with each county as a percentage
-    of the total values for the county's state, BA, and model region
-    (where "BA" means a zone from the set of default 134 zones and 
-    "model region" means a zone from the set of zones specific to this run).
-    Note the calculation of the county-to-BA fractions will eventually
+    of the total values for the county's state, zone, and legacy BA
+    (where "zone" means a region from the zone set corresponding to
+    the current run and "legacy BA" means a region from the z134 zone set).
+    Note the calculation of the county-to-legacy BA fractions will eventually
     be deprecated once the 134-zone structure is removed from all spatial
     inputs (see https://github.com/ReEDS-Model/ReEDS/issues/16).
-    The provided dataframe must have columns 'FIPS' and 'value'.
+
+    The provided dataframe "df" must have columns 'FIPS' and 'value'.
+    The provided dataframe "county2zone_with_legacy_bas" must have columns
+    'FIPS', 'state', 'r', and 'legacy_ba'.
     """
     required_columns = ['FIPS', 'value']
     missing_columns = [col for col in required_columns if col not in df.columns]
     if len(missing_columns) > 0:
         raise KeyError(f"Provided dataframe is missing required columns {missing_columns}")
 
-    df = (
-        df.merge(
-            county2zone.drop(columns='FIPS')
-            .rename(columns={'county': 'FIPS'})
-        )
-        .rename(columns={'ba': 'PCA_REG'})
-    )
+    df = df.merge(county2zone_with_legacy_bas)
     df['fracdata'] = (
-        df.groupby('PCA_REG')
+        df.groupby('legacy_ba')
         ['value']
         .transform(lambda x: x / x.sum())
     )
@@ -824,7 +821,7 @@ def calculate_county_fractions(df, county2zone):
 
     df = (
         df.dropna(subset='r')
-        [['PCA_REG', 'FIPS', 'fracdata', 'r', 'state', 'r_frac', 'state_frac']]
+        [['legacy_ba', 'FIPS', 'fracdata', 'r', 'state', 'r_frac', 'state_frac']]
     )
 
     return df
@@ -833,19 +830,18 @@ def write_disagg_data_files(runfiles, inputs_case):
     """
     Write files that will be used for disaggregation.
     """
-    # Get the county2zone file specific to this run (a mapping from counties
-    # to model regions) and the original county2zone file (including all
-    # counties) and combine them. The former is needed to calculate model
-    # region-to-county fractions, and the latter is needed to calculate
-    # state-to-county and BA-to-county fractions.
-    county_r_map = reeds.io.get_county2zone(os.path.dirname(inputs_case))
-    sw = reeds.io.get_switches(inputs_case)
-    county2zone = (
-        reeds.io.get_county2zone(GSw_ZoneSet=sw['GSw_ZoneSet'], as_map=False)
-        .rename(columns={'r':'ba'})
+    # Get the county2zone file for the z134 zone set and append the zones
+    # corresponding to this run. The z134 file is needed to calculate
+    # state-to-county fractions (since it includes all counties in the CONUS)
+    # and legacy BA-to-county fractions (which are needed to disaggregate
+    # inputs that are still at the z134 resolution).
+    county2zone_with_legacy_bas = (
+        reeds.io.get_county2zone(GSw_ZoneSet='z134', as_map=False)
+        .rename(columns={'r': 'legacy_ba'})
     )
-    county2zone['county'] = 'p' + county2zone['FIPS'].astype(str).str.zfill(5)
-    county2zone['r'] = county2zone['FIPS'].map(county_r_map)
+    county_r_map = reeds.io.get_county2zone(os.path.dirname(inputs_case))
+    county2zone_with_legacy_bas['r'] = county2zone_with_legacy_bas['FIPS'].map(county_r_map)
+    county2zone_with_legacy_bas['FIPS'] = 'p' + county2zone_with_legacy_bas['FIPS']
 
     filename_filepath_map = runfiles.set_index('filename')['full_filepath']
     for filename in [
@@ -871,7 +867,7 @@ def write_disagg_data_files(runfiles, inputs_case):
     
         # Calculate state/region/BA-to-county fractions for the
         # disagg variable and write to inputs_case
-        df = calculate_county_fractions(df, county2zone)
+        df = calculate_county_fractions(df, county2zone_with_legacy_bas)
         df.to_csv(os.path.join(inputs_case, filename), index=False)
 
     return
