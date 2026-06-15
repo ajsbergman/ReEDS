@@ -1313,6 +1313,29 @@ def main(sw, reeds_path, inputs_case, periodtype='rep', make_plots=1, logging=Tr
         .reset_index()
     )
 
+    #scale load_allyear so annual total matches original timeseries at the GSw_HourlyClusterRegionLevel
+    if not periodtype.startswith('stress'):
+        cluster_level = sw.get('GSw_HourlyClusterRegionLevel')
+        rmap = pd.Series(hierarchy.index, index=hierarchy.index) if cluster_level == 'r' else hierarchy[cluster_level]
+
+        orig_annual_load = load_in.sum(axis=0).rename('orig_MWh').reset_index()
+        orig_annual_load['orig_MWh'] /= len(sw['GSw_HourlyWeatherYears'])
+        orig_annual_load['cluster_reg'] = orig_annual_load['r'].map(rmap)
+        orig_agg = orig_annual_load.groupby(['cluster_reg', 't'], as_index=False)['orig_MWh'].sum()
+
+        rep_load = load_allyear.merge(hours.reset_index(), on='h')
+        rep_load['rep_MWh'] = rep_load['MW'] * rep_load['numhours']
+        rep_annual_load = rep_load.groupby(['r', 't'], as_index=False)['rep_MWh'].sum()
+        rep_annual_load['cluster_reg'] = rep_annual_load['r'].map(rmap)
+        rep_agg = rep_annual_load.groupby(['cluster_reg', 't'], as_index=False)['rep_MWh'].sum()
+
+        scale_factors = orig_agg.merge(rep_agg, on=['cluster_reg', 't'])
+        scale_factors['scale_factor'] = (scale_factors['orig_MWh'] / scale_factors['rep_MWh']).fillna(1.0)
+
+        load_allyear['cluster_reg'] = load_allyear['r'].map(rmap)
+        load_allyear = load_allyear.merge(scale_factors[['cluster_reg', 't', 'scale_factor']], on=['cluster_reg', 't'], how='left')
+        load_allyear['MW'] *= load_allyear['scale_factor']
+        load_allyear.drop(columns=['cluster_reg', 'scale_factor'], inplace=True)
 
     # %%###################################################################################
     #    -- Write outputs, aggregating hours to GSw_HourlyChunkLength if necessary --    #
