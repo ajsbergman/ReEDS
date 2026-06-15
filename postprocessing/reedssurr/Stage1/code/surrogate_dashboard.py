@@ -509,26 +509,54 @@ diff_plot.toolbar.logo = None
 diff_plot.xaxis.major_label_orientation = 0.7
 
 diff_source = ColumnDataSource(
-    data=dict(x=[], bottom=[], top=[], color=[], tech=[])
+    data=dict(x=[], bottom=[], top=[], color=[], tech=[],
+              value=[], subtitle=[], unit=[])
 )
 # Separate source for the per-x-tick total dots (and, in Regional view,
 # a system-wide "Total" dot at the right edge).
-diff_total_source = ColumnDataSource(data=dict(x=[], y=[]))
+diff_total_source = ColumnDataSource(
+    data=dict(x=[], y=[], subtitle=[], unit=[])
+)
 
-diff_plot.vbar(
+_diff_vbar = diff_plot.vbar(
     x="x", bottom="bottom", top="top",
     width=0.7,
     color="color",
     source=diff_source,
     line_color="white", line_width=0.5,
 )
-diff_plot.scatter(
+_diff_total_scatter = diff_plot.scatter(
     x="x", y="y",
     source=diff_total_source,
     size=12, marker="circle",
     fill_color="#000", line_color="#000",
     legend_label="Total error",
 )
+# Hover tooltips: per-tech slice gets tech / region / signed value, the
+# net dot gets the region and signed total.
+_diff_slice_hover = HoverTool(
+    renderers=[_diff_vbar],
+    tooltips="""
+        <div style="padding:4px;font-family:sans-serif;font-size:11px;max-width:260px">
+          <div style="font-weight:600;font-size:12px;color:#222">@tech</div>
+          <div style="color:#666;margin-bottom:4px">@subtitle &middot; <b>Prediction error slice</b></div>
+          <div>predicted &minus; actual: <b>@value{+0,0.000}</b> @unit</div>
+        </div>
+    """,
+    point_policy="follow_mouse",
+)
+_diff_total_hover = HoverTool(
+    renderers=[_diff_total_scatter],
+    tooltips="""
+        <div style="padding:4px;font-family:sans-serif;font-size:11px;max-width:240px">
+          <div style="font-weight:600;font-size:12px;color:#222">Net error</div>
+          <div style="color:#666;margin-bottom:4px">@subtitle</div>
+          <div>predicted &minus; actual: <b>@y{+0,0.000}</b> @unit</div>
+        </div>
+    """,
+    point_policy="follow_mouse",
+)
+diff_plot.add_tools(_diff_slice_hover, _diff_total_hover)
 diff_plot.add_layout(
     Span(location=0, dimension="width", line_color="#888", line_width=1)
 )
@@ -1014,8 +1042,11 @@ def _render_diff_panel(
 
     has_actual = actual_raw is not None and not actual_raw.empty
     if not has_actual:
-        diff_source.data = dict(x=[], bottom=[], top=[], color=[], tech=[])
-        diff_total_source.data = dict(x=[], y=[])
+        diff_source.data = dict(
+            x=[], bottom=[], top=[], color=[], tech=[],
+            value=[], subtitle=[], unit=[],
+        )
+        diff_total_source.data = dict(x=[], y=[], subtitle=[], unit=[])
         # x_range is shared with the main plot, which manages it.
         # Sync width with main plot so this empty panel still takes the
         # right amount of horizontal real estate in regional view.
@@ -1089,11 +1120,17 @@ def _render_diff_panel(
     tops: list[float] = []
     colors: list[str] = []
     techs: list[str] = []
+    values: list[float] = []
+    subtitles: list[str] = []
+    units: list[str] = []
     totals: dict = {}
+    total_subtitles: dict = {}
     for x_key, x_factor in zip(x_keys, x_factors):
         pos_base = 0.0
         neg_base = 0.0
         total = 0.0
+        # Subtitle shown in the hover for slices/dots at this x position.
+        subtitle = f"Region {x_key}" if is_regional else "System"
         for cat in cats:
             val = diff_at.get((x_key, cat), 0.0)
             total += val
@@ -1112,16 +1149,25 @@ def _render_diff_panel(
             tops.append(top)
             colors.append(spec["color"](cat))
             techs.append(cat)
+            values.append(val)
+            subtitles.append(subtitle)
+            units.append(unit)
         totals[x_factor] = total
+        total_subtitles[x_factor] = subtitle
 
     system_total = float(sum(totals.values()))
     total_xs: list = list(x_factors)
     total_ys: list[float] = [totals[xf] for xf in x_factors]
+    total_subs: list[str] = [total_subtitles[xf] for xf in x_factors]
+    total_units: list[str] = [unit] * len(x_factors)
 
     diff_source.data = dict(
         x=xs, bottom=bottoms, top=tops, color=colors, tech=techs,
+        value=values, subtitle=subtitles, unit=units,
     )
-    diff_total_source.data = dict(x=total_xs, y=total_ys)
+    diff_total_source.data = dict(
+        x=total_xs, y=total_ys, subtitle=total_subs, unit=total_units,
+    )
     # x_range is shared with the main plot — do NOT overwrite its factors
     # here. We DO need to sync diff_plot.width with the main plot, because
     # ``_render_regional_bars`` grows ``plot.width`` based on the number of

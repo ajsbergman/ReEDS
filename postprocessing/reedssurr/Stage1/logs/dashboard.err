@@ -1,6 +1,6 @@
-2026-06-15 16:38:52,593 Starting Bokeh server version 3.6.0 (running on Tornado 6.4.1)
-2026-06-15 16:38:52,598 User authentication hooks NOT provided (default user enabled)
-2026-06-15 16:38:52,604 Bokeh app running at: http://localhost:5006/surrogate_dashboard
-2026-06-15 16:38:52,604 Starting Bokeh server with process id: 41644
-2026-06-15 16:38:57,717 WebSocket connection opened
-2026-06-15 16:38:57,719 ServerConnection created
+2026-06-15 16:41:14,032 Starting Bokeh server version 3.6.0 (running on Tornado 6.4.1)
+2026-06-15 16:41:14,037 User authentication hooks NOT provided (default user enabled)
+2026-06-15 16:41:14,037 Bokeh app running at: http://localhost:5006/surrogate_dashboard
+2026-06-15 16:41:14,037 Starting Bokeh server with process id: 20848
+2026-06-15 16:41:20,041 WebSocket connection opened
+2026-06-15 16:41:20,043 ServerConnection created
