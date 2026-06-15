@@ -6021,7 +6021,7 @@ $onlisting
 
 * If upgrade techs, construction employment factor is half
 * Only apply this to non CCS upgrades if using JEDI EFs since JEDI already specifies CCS upgrade EFs
-$ifthen.upgrade_ef %GSw_EmploymentFactor% == "JEDI"
+$ifthen.upgrade_ef %GSw_EmploymentFactor% == "jedi"
 employment_factor_plant(i,"construction")$[upgrade(i)
                                          $(not ccs(i))] = employment_factor_plant(i,"construction") * 0.5 ;
 $else.upgrade_ef
