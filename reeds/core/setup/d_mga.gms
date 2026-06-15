@@ -123,6 +123,7 @@ eq_MGA_Objective$Sw_MGA..
           trans_cost_cap_fin_mult(t) 
           * ((TRAN_CAPEX_BINS(r,rr,tscbin,t)) 
           * pvf_capital(t)
+* TRAN_CAPEX_BINS is only defined for r < rr so is not divided by 2
           * employment_factor_inter_transmission("construction"))}
 
     + sum{trtype
