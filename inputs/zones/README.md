@@ -6,7 +6,6 @@ Model zones are defined by the following user-generated files:
 - `hierarchy.csv`: Maps from ReEDS zones (`r` column) to the larger region hierarchy levels
 - `b2b.csv`: Back-to-back converter (B2B) capacity [MW] between model zones
 - `newlinks_offshore_radial.csv`: Candiate connections between offshore and coastal land-based zones
-- TEMPORARY 20260402: `hierarchy_from134.csv`: The legacy-formatted `hierarchy.csv` file from the 134-zone version of ReEDS (will be removed once the rest of the spatial input processing is updated)
 
 And the following automatically generated files:
 
