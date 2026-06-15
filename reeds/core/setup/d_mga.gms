@@ -112,9 +112,9 @@ eq_MGA_Objective$Sw_MGA..
           INV(i,v,r,t) * pvf_capital(t) * employment_factor_plant(i,"construction")
     }
     
-    # AC construction employment formula here is slightly different than in
-    # e_report.gms as only cumulative term TRAN_CAPEX_BINS is included here vs
-    # annual term used in e_report.gms
+*   AC construction employment formula here is slightly different than in
+*   e_report.gms as only cumulative term TRAN_CAPEX_BINS is included here vs
+*   annual term used in e_report.gms
     + sum{(r,rr,tscbin,t)
           $[tmodel(t)
           $routes_inv(r,rr,"AC",t)
