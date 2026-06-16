@@ -1653,7 +1653,7 @@ For details, see the [Seasonal Natural Gas Price Adjustments section](#seasonal-
 ## Electricity Demand
 
 End-use electricity demand is an exogenous input to ReEDS represented by hourly profiles.
-The available load profile options fall into three categories: 1) load projections from Evolved Energy Research, 2) load projections developed as part of the Electrification Futures Study and 3) historic load multiplied by annual load growth factors from AEO.
+The available load profile options fall into three categories: 1) load projections from Evolved Energy Research, 2) load projections developed as part of the Electrification Futures Study and 3) historic load multiplied by state-level annual load growth factors from AEO.
 When applicable, ReEDS will modify the exogenously specified profiles by applying a load shape adjustment method that incorporates analysis from other modeling tools or by adding load from endogenously built electricity-consuming technologies.
 
 ReEDS includes interzonal transmission system losses in the optimization.
