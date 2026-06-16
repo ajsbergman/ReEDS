@@ -574,7 +574,7 @@ def get_dist_instructions(reeds_path: str, inputs_case: str) -> Tuple[pd.DataFra
 
     source_deflator_map = copy_files.get_source_deflator_map(reeds_path)
 
-    hierarchy_file = reeds.io.assemble_hierarchy(inputs_case)
+    hierarchy_file = reeds.io.get_hierarchy(inputs_case).reset_index()
 
     # Save the auxiliary info in a dictionary.
     aux_files = {
@@ -640,7 +640,7 @@ def get_all_region_weights(
         distribution (str): The distribution to use for sampling.
         dist_params (list): The parameters for the distribution.
         hierarchy_file (pd.DataFrame): DataFrame with the hierarchy information from
-            reeds.io.assemble_hierarchy()
+            reeds.io.get_hierarchy()
         sample_hierarchy_lvl (str): The hierarchy level which will be assigned unique weights.
 
     Returns:
@@ -1100,7 +1100,7 @@ class MCS_Sampler:
         self.sample_hierarchy_lvl = sample_group['weight_r']
 
         # Inputs that require special treatment
-        self.hierarchy_file = reeds.io.assemble_hierarchy(self.inputs_case)
+        self.hierarchy_file = reeds.io.get_hierarchy(self.inputs_case).reset_index()
 
         # Store the samples for each switch (a single sw may have multiple files that is
         # why we refer to the switch by its adjusted name)

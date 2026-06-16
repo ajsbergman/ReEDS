@@ -47,7 +47,7 @@ def get_prices():
     df_pq = df_pq[df_pq['year']==year].copy()
     df_h_num_hrs = df_hmap.groupby('h')['hour'].count().reset_index().rename(columns={'hour':'num_hrs'})
     #Gather region map for mapping of bas to ccreg for reserve_margin
-    df_ba_cc_map = df_hier[['r','ccreg']].copy()
+    df_ba_cc_map = df_hier_run[['*r','ccreg']].copy()
     df_ba_cc_map.columns = ['reeds_ba','ccreg']
 
     print('- Load prices and quantities')
@@ -354,7 +354,7 @@ for i,r in df_scens.iterrows():
     reeds_run_path = r['reeds_run_path'].replace('"', '')
     year = r['year']
     switches = reeds.io.get_switches(reeds_run_path)
-    df_hier = reeds.io.assemble_hierarchy(reeds_run_path)
+    df_hier_run = pd.read_csv(f'{reeds_run_path}/inputs_case/hierarchy.csv')
 
     county2zone = reeds.io.get_county2zone(reeds_run_path, as_map=False)
     county2zone['FIPS'] = 'p' + county2zone['FIPS'].astype(str).str.zfill(5)

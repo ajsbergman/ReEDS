@@ -1719,7 +1719,7 @@ def plot_prmtrade(
     dfba = dfba.loc[val_r].copy()
 
     endpoints = reeds.plots.df2gdf(
-        reeds.io.get_hierarchy(case),
+        reeds.io.assemble_hierarchy(case).set_index('r'),
         lat='node_lat', lon='node_lon',
     )
     dfba['x'] = dfba.index.map(endpoints.centroid.x)

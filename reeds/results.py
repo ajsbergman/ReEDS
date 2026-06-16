@@ -646,8 +646,9 @@ def calc_transmission_capacity(case,levels):
 
     # pull intra and interregional transmission data into dictionaries for processing
     dict_inter = {}
-    level_map = get_level_map(case)
-    hierarchy = reeds.io.assemble_hierarchy(case)
+    level_map = get_level_map()
+    hierarchy = reeds.io.get_hierarchy(case)
+    hierarchy['r'] = hierarchy.index
     for level in levels:
         
         # Translate the level to a cleaner spatial resolution for publishing csvs. Ex. st --> State, transgrp --> Transmission Planning Subregion.
@@ -704,7 +705,7 @@ def calc_transmission_capacity(case,levels):
     
     return intraregional, interregional
 
-def get_level_map(case):
+def get_level_map():
     # for all regions available in ReEDS/inputs/hierarchy.csv, map them to a clean display name
     level_map = pd.read_csv(
         os.path.join(reeds_path, 'postprocessing', 'plots', 'level_map.csv'), 
