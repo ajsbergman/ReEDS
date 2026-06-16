@@ -181,11 +181,12 @@ def get_rev_paths(revswitches):
 
             # supply curve name should be in format of {tech}_rev_supply_curves_raw.csv
             # in the hourlize results folder (must match format in 'save_sc_outputs' function of hourlize/resource.py)
-            sc_file = os.path.join(sc_path,
-                            rev_row.tech + "_" + rev_row.access_case + "_ba",
-                            "results",
-                            rev_row.tech + "_supply_curve_raw.csv"
-                            )
+            sc_file = os.path.join(
+                sc_path,
+                f"{rev_row.tech}_{rev_row.access_case}_county",
+                "results",
+                f"{rev_row.tech}_supply_curve_raw.csv"
+            )
             return sc_file
     revswitches['sc_file'] = revswitches.apply(lambda row: get_rev_sc_file_name(row), axis=1)
     revswitches['hpc_sc_file'] = revswitches.apply(lambda row: get_rev_sc_file_name(row, use_hpc=True), axis=1)

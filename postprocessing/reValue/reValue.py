@@ -355,12 +355,11 @@ for i,r in df_scens.iterrows():
     year = r['year']
     switches = reeds.io.get_switches(reeds_run_path)
     df_hier_run = pd.read_csv(f'{reeds_run_path}/inputs_case/hierarchy.csv')
-
-    county2zone = reeds.io.get_county2zone(reeds_run_path, as_map=False)
-    county2zone['FIPS'] = 'p' + county2zone['FIPS'].astype(str).str.zfill(5)
-    df_county_map = county2zone[['FIPS', 'r']]
-    df_county_map.columns = ['reeds_county', 'reeds_ba']
-
+    df_county_map = (
+        reeds.io.get_county2zone(reeds_run_path, as_map=False)
+        .rename(columns={'county': 'reeds_county', 'r': 'reeds_ba'})
+        [['reeds_county', 'reeds_ba']]
+    )
     df_hmap = pd.read_csv(f'{reeds_run_path}/inputs_case/rep/hmap_myr.csv')
     #Only fetch prices if we haven't already for this reeds run and year
     #TODO: Include tech here in the dct_prices tuple key? For now I disallow multiple techs
