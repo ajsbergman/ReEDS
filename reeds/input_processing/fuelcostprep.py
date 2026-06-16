@@ -33,14 +33,10 @@ def smear(dfzones, dfgroups, decay_km:float=150, decay_func=np.exp) -> pd.DataFr
     is exponential decay) and decay_km.
     """
     weights = {}
-    distances_km_all = {}
 
     for r, row in dfzones.iterrows():
         ## Get distance from centroid to edge of all other zones
-        ## To get edge-of-polygon-to-edge-of-polygon distance, remove .centroid below
-        ## To get centroid-to-centroid distance, add .centroid after dfgroups
         distances_km = dfgroups.distance(row.geometry.centroid) / 1000
-        distances_km_all[r] = distances_km
         ## Weight decays with distance from centroid
         if decay_km != 0:
             weight = decay_func(-distances_km / decay_km)
