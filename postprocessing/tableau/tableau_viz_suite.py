@@ -409,7 +409,7 @@ def calc_peakload(
     ).rename(columns=int)
 
     dictout = {}
-    level_map = reeds.results.get_level_map(case)
+    level_map = reeds.results.get_level_map()
     for level in levels:
         df_level = df.loc[level,years].stack().rename_axis(['r','t']).rename('Value').reset_index().astype({'t':int}).set_index(['r','t']).squeeze().reset_index()
         df_level['Spatial Resolution'] = level_map[level]
@@ -594,7 +594,7 @@ if __name__ == '__main__':
     create_scenarios_csv(output_dir,cases)
 
     # Grab clean display names for the levels
-    level_map = reeds.results.get_level_map(cases[basecase])
+    level_map = reeds.results.get_level_map()
 
     # import some key inputs from ReEDS
     dictin_sw = {case: reeds.io.get_switches(cases[case]) for case in cases}
