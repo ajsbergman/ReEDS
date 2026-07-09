@@ -122,7 +122,12 @@ def write_gdxread(
     with open(fpath, 'w') as f:
         for line in writelist:
             key = line.split('(')[0]
-            f.write(f'$loadDCR {key} = {key}\n')
+            if key in ["r", "allt", "eall", "f", "geotech", "h2_st",
+                       "hintage_char", "i", "ofstype", "p", "pcat",
+                       "pvb_config", "trtype", "v", "wst", "e", "wst_surface"]:
+                f.write(f'$loadM {key} = {key}\n')
+            else:
+                f.write(f'$loadDCR {key} = {key}\n')
     print(f'Wrote {fpath}')
 
 
