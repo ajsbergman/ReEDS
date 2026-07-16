@@ -2,7 +2,6 @@
 ignore,1,,,,,,,0,0,,
 GSw_LoadProfiles,,,,,,,,EER2025_100by2050,EER2025_100by2050,EER2025_100by2050,EER2025_100by2050
 endyear,2041,,,,,,,,,,
-resource_adequacy_years,2007_2008_2009_2010_2011_2012_2013,,,,,,,,,,
 GSw_GrowthPenalties,1,,,,,,,,,,
 financials_trans_suffix,11yr,,8yr,8yr,30ITC_0pen,,8yr,,8yr,8yr,30ITC_0pen
 GSw_TransCostMult,1.13,,1,1,1,,1,,1,1,1
@@ -15,6 +14,6 @@ GSw_PRMTRADE_level,interconnect,,,country,country,,,,,country,country
 GSw_TransInterRegRatio,0,,,0.3,0.3,,,,,0.3,0.3
 GSw_TransInterRegRatioStyle,g,,,,,,,,,,
 GSw_TransInterRegRatioExcept,ERCOT,,,,,,,,,,
-GSw_PRMTRADE_limit,2050,,2037,2031,2031,,2037,,2037,2031,2031
+GSw_PRM_NetImportLimitScen,2050_hist,,2037_hist/2038_100,2031_hist/2032_100,2031_hist/2032_100,,2037_hist/2038_100,,2037_hist/2038_100,2031_hist/2032_100,2031_hist/2032_100
 incentives_suffix,,,,,,ira_45q_45v_extension,ira_45q_45v_extension,,,,
 GSw_TCPhaseout,,,,,,0,0,,,,
