@@ -441,6 +441,64 @@ def get_yearly_flexibility(
         return shape_out["decrease"], shape_out["increase"]
 
 
+def validate_written_load_allyear(outpath, load_allyear, label='load_allyear.csv'):
+    """
+    Re-read load_allyear.csv from disk and confirm it is intact.
+
+    Guards against silent corruption of load data during file I/O (a chunk of a
+    written file coming back as NaN or zeros with no error, observed on some
+    systems with aggressive endpoint-security/antivirus agents). Validates the
+    round-tripped file against the clean in-memory object so a corrupt write is
+    caught instead of silently biasing results, and raises RuntimeError on any
+    NaN, or any missing/all-zero region or modeled year.
+    """
+    tag = f"{os.path.basename(os.path.normpath(outpath))}/{label}"
+    expected_regions = set(load_allyear['r'].astype(str).unique())
+    expected_years = {int(t) for t in load_allyear['t'].unique()}
+
+    disk = pd.read_csv(os.path.join(outpath, label))
+    ### The first column was renamed to '*r' so GAMS reads it as a comment
+    disk = disk.rename(columns={disk.columns[0]: 'r'})
+    mw = pd.to_numeric(disk['MW'], errors='coerce')
+    n_nan = int(mw.isna().sum())
+    if n_nan:
+        raise RuntimeError(
+            f"{tag}: {n_nan} NaN load value(s) after write. Silent I/O "
+            "corruption of load data; aborting so downstream results are not "
+            "biased. Re-run this case; if it recurs, exclude the ReEDS "
+            "directory from real-time antivirus/EDR scanning."
+        )
+    disk['MW'] = mw
+
+    missing_regions = sorted(expected_regions - set(disk['r'].astype(str).unique()))
+    if missing_regions:
+        raise RuntimeError(
+            f"{tag}: region(s) missing after write: {missing_regions}. "
+            "Likely silent I/O corruption of load data; aborting."
+        )
+    missing_years = sorted(expected_years - {int(t) for t in disk['t'].unique()})
+    if missing_years:
+        raise RuntimeError(
+            f"{tag}: modeled year(s) missing after write: {missing_years}. "
+            "Likely silent I/O corruption of load data; aborting."
+        )
+
+    region_tot = disk.groupby('r').MW.sum()
+    zero_regions = region_tot.index[region_tot == 0].tolist()
+    if zero_regions:
+        raise RuntimeError(
+            f"{tag}: region(s) with zero total load after write: "
+            f"{zero_regions}. Likely silent I/O corruption of load data; aborting."
+        )
+    year_tot = disk.groupby('t').MW.sum()
+    zero_years = sorted(int(y) for y in year_tot.index[year_tot == 0])
+    if zero_years:
+        raise RuntimeError(
+            f"{tag}: modeled year(s) with zero total load after write: "
+            f"{zero_years}. Likely silent I/O corruption of load data; aborting."
+        )
+
+
 # %% ===========================================================================
 ### --- MAIN FUNCTION ---
 ### ===========================================================================
@@ -1655,6 +1713,10 @@ def main(sw, reeds_path, inputs_case, periodtype='rep', make_plots=1, logging=Tr
             os.path.join(outpath, f+'.csv'),
             index=write[f][2],
         )
+
+    #%% Guard against silent I/O corruption of the load data just written
+    if 'load_allyear' in write:
+        validate_written_load_allyear(outpath, load_allyear)
 
     #%% Map weighted average profile values and difference from full-resolution mean
     if make_plots:

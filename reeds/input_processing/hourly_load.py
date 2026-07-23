@@ -597,6 +597,68 @@ def reaggregate_to_model_regions(
     return regional_load_hourly
 
 
+def validate_written_load(inputs_case, expected_years, label='load.h5'):
+    """
+    Re-read load.h5 from disk and confirm it is intact.
+
+    Guards against silent corruption of load data during file I/O. On some
+    systems (e.g. aggressive endpoint-security/antivirus agents intercepting
+    writes) a chunk of a written file has been observed to come back as NaN or
+    zeros with no error raised, which silently biases every downstream result.
+    Because the corruption occurs at write/read time, this validates the
+    round-tripped data on disk rather than the in-memory object, and raises
+    RuntimeError on any missing, all-NaN, or all-zero modeled year or region so
+    the run stops loudly instead of producing a plausible-looking wrong answer.
+    """
+    load_df = reeds.io.read_file(
+        os.path.join(inputs_case, 'load.h5'), parse_timestamps=True)
+    # Year is index level 0 (referenced positionally to avoid name assumptions)
+    years = load_df.index.get_level_values(0)
+
+    n_nan = int(np.asarray(load_df.isna().to_numpy()).sum())
+    if n_nan:
+        bad_years = sorted(
+            int(y) for y in years.unique()
+            if bool(load_df.xs(y, level=0).isna().to_numpy().any())
+        )
+        raise RuntimeError(
+            f"{label}: {n_nan} NaN load value(s) after write "
+            f"(modeled year(s) affected: {bad_years}). This indicates silent "
+            "corruption of load data during file I/O; aborting so downstream "
+            "results are not silently biased. Re-run this case; if it recurs, "
+            "exclude the ReEDS directory from real-time antivirus/EDR scanning."
+        )
+
+    present_years = {int(y) for y in years.unique()}
+    missing_years = [int(y) for y in expected_years if int(y) not in present_years]
+    if missing_years:
+        raise RuntimeError(
+            f"{label}: modeled year(s) missing after write: {missing_years}. "
+            "Likely silent I/O corruption of load data; aborting."
+        )
+
+    year_tot = load_df.groupby(level=0).sum().sum(axis=1)
+    zero_years = sorted(int(y) for y in year_tot.index[year_tot == 0])
+    if zero_years:
+        raise RuntimeError(
+            f"{label}: modeled year(s) with zero total load after write: "
+            f"{zero_years}. Likely silent I/O corruption of load data; aborting."
+        )
+
+    region_tot = load_df.sum(axis=0)
+    zero_regions = region_tot.index[region_tot == 0].tolist()
+    if zero_regions:
+        raise RuntimeError(
+            f"{label}: region(s) with zero total load after write: "
+            f"{zero_regions}. Likely silent I/O corruption of load data; aborting."
+        )
+
+    print(
+        f'Validated {label}: {len(present_years)} modeled years, '
+        f'{load_df.shape[1]} regions, no NaN/zero-load gaps'
+    )
+
+
 #%% ===========================================================================
 ### --- MAIN FUNCTION ---
 ### ===========================================================================
@@ -746,6 +808,8 @@ def main(reeds_path, inputs_case):
     ##############################
 
     reeds.io.write_profile_to_h5(regional_load_hourly, 'load.h5', inputs_case)
+    ### Guard against silent I/O corruption of the load data just written
+    validate_written_load(inputs_case, solveyears)
     peakload.to_csv(os.path.join(inputs_case,'peakload.csv'))
     captran_interreg_req.to_csv(os.path.join(inputs_case,'captran_interreg_req.csv'))
     ### Write peak demand by NERC region to use in firm net import constraint
