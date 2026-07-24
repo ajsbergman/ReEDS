@@ -441,62 +441,96 @@ def get_yearly_flexibility(
         return shape_out["decrease"], shape_out["increase"]
 
 
-def validate_written_load_allyear(outpath, load_allyear, label='load_allyear.csv'):
+def _check_load_allyear_values(df, tag, stage, blame,
+                               expected_regions=None, expected_years=None):
     """
-    Re-read load_allyear.csv from disk and confirm it is intact.
-
-    Guards against silent corruption of load data during file I/O (a chunk of a
-    written file coming back as NaN or zeros with no error, observed on some
-    systems with aggressive endpoint-security/antivirus agents). Validates the
-    round-tripped file against the clean in-memory object so a corrupt write is
-    caught instead of silently biasing results, and raises RuntimeError on any
-    NaN, or any missing/all-zero region or modeled year.
+    Shared value checks for a long-format (r,h,t,MW) load table.
+    Raises RuntimeError on any NaN, or any missing/all-zero region or
+    modeled year, attributing the failure to `stage` ('in-memory'/'on-disk').
     """
-    tag = f"{os.path.basename(os.path.normpath(outpath))}/{label}"
-    expected_regions = set(load_allyear['r'].astype(str).unique())
-    expected_years = {int(t) for t in load_allyear['t'].unique()}
-
-    disk = pd.read_csv(os.path.join(outpath, label))
-    ### The first column was renamed to '*r' so GAMS reads it as a comment
-    disk = disk.rename(columns={disk.columns[0]: 'r'})
-    mw = pd.to_numeric(disk['MW'], errors='coerce')
+    mw = pd.to_numeric(df['MW'], errors='coerce')
     n_nan = int(mw.isna().sum())
     if n_nan:
         raise RuntimeError(
-            f"{tag}: {n_nan} NaN load value(s) after write. Silent I/O "
-            "corruption of load data; aborting so downstream results are not "
-            "biased. Re-run this case; if it recurs, exclude the ReEDS "
-            "directory from real-time antivirus/EDR scanning."
-        )
-    disk['MW'] = mw
-
-    missing_regions = sorted(expected_regions - set(disk['r'].astype(str).unique()))
-    if missing_regions:
-        raise RuntimeError(
-            f"{tag}: region(s) missing after write: {missing_regions}. "
-            "Likely silent I/O corruption of load data; aborting."
-        )
-    missing_years = sorted(expected_years - {int(t) for t in disk['t'].unique()})
-    if missing_years:
-        raise RuntimeError(
-            f"{tag}: modeled year(s) missing after write: {missing_years}. "
-            "Likely silent I/O corruption of load data; aborting."
+            f"{tag} [{stage}]: {n_nan} NaN load value(s). {blame} "
+            "Aborting so downstream results are not silently biased."
         )
 
-    region_tot = disk.groupby('r').MW.sum()
+    if expected_regions is not None:
+        missing_regions = sorted(
+            expected_regions - set(df['r'].astype(str).unique()))
+        if missing_regions:
+            raise RuntimeError(
+                f"{tag} [{stage}]: region(s) missing: {missing_regions}. "
+                f"{blame} Aborting."
+            )
+    if expected_years is not None:
+        missing_years = sorted(
+            expected_years - {int(t) for t in df['t'].unique()})
+        if missing_years:
+            raise RuntimeError(
+                f"{tag} [{stage}]: modeled year(s) missing: {missing_years}. "
+                f"{blame} Aborting."
+            )
+
+    region_tot = mw.groupby(df['r']).sum()
     zero_regions = region_tot.index[region_tot == 0].tolist()
     if zero_regions:
         raise RuntimeError(
-            f"{tag}: region(s) with zero total load after write: "
-            f"{zero_regions}. Likely silent I/O corruption of load data; aborting."
+            f"{tag} [{stage}]: region(s) with zero total load: "
+            f"{zero_regions}. {blame} Aborting."
         )
-    year_tot = disk.groupby('t').MW.sum()
+    year_tot = mw.groupby(df['t']).sum()
     zero_years = sorted(int(y) for y in year_tot.index[year_tot == 0])
     if zero_years:
         raise RuntimeError(
-            f"{tag}: modeled year(s) with zero total load after write: "
-            f"{zero_years}. Likely silent I/O corruption of load data; aborting."
+            f"{tag} [{stage}]: modeled year(s) with zero total load: "
+            f"{zero_years}. {blame} Aborting."
         )
+
+
+def validate_written_load_allyear(outpath, load_allyear, label='load_allyear.csv'):
+    """
+    Confirm the load_allyear data is intact, first in memory and then as
+    round-tripped from disk.
+
+    Intermittent corruption has been observed on some systems where a block of
+    load data comes back as clean zeros with no error raised, silently biasing
+    every downstream result. Checking the in-memory DataFrame before comparing
+    it against the file on disk lets a failure attribute the corruption to the
+    right layer:
+    - in-memory failure: the values are corrupt in process memory, implicating
+      upstream processing or a memory-level fault (e.g. host-side memory
+      reclamation on a VM), not file I/O.
+    - on-disk failure: the in-memory data is clean, so the corruption occurred
+      at the file layer during the write/read round trip.
+    """
+    tag = f"{os.path.basename(os.path.normpath(outpath))}/{label}"
+
+    ### Step 1: validate the in-memory DataFrame
+    _check_load_allyear_values(
+        load_allyear, tag, stage='in-memory',
+        blame=(
+            "The corruption is present in the in-memory DataFrame "
+            "(upstream processing or a memory-level fault, not file I/O)."
+        ),
+    )
+
+    ### Step 2: validate the file on disk against the (clean) in-memory data
+    expected_regions = set(load_allyear['r'].astype(str).unique())
+    expected_years = {int(t) for t in load_allyear['t'].unique()}
+    disk = pd.read_csv(os.path.join(outpath, label))
+    ### The first column was renamed to '*r' so GAMS reads it as a comment
+    disk = disk.rename(columns={disk.columns[0]: 'r'})
+    _check_load_allyear_values(
+        disk, tag, stage='on-disk',
+        blame=(
+            "The in-memory data was verified clean, so the corruption "
+            "occurred at the file layer during the write/read round trip."
+        ),
+        expected_regions=expected_regions,
+        expected_years=expected_years,
+    )
 
 
 # %% ===========================================================================

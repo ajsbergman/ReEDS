@@ -597,66 +597,99 @@ def reaggregate_to_model_regions(
     return regional_load_hourly
 
 
-def validate_written_load(inputs_case, expected_years, label='load.h5'):
+def validate_load_frame(load_df, expected_years, label, stage):
     """
-    Re-read load.h5 from disk and confirm it is intact.
+    Check a wide (year, datetime) x region load DataFrame for silent corruption.
 
-    Guards against silent corruption of load data during file I/O. On some
-    systems (e.g. aggressive endpoint-security/antivirus agents intercepting
-    writes) a chunk of a written file has been observed to come back as NaN or
-    zeros with no error raised, which silently biases every downstream result.
-    Because the corruption occurs at write/read time, this validates the
-    round-tripped data on disk rather than the in-memory object, and raises
-    RuntimeError on any missing, all-NaN, or all-zero modeled year or region so
-    the run stops loudly instead of producing a plausible-looking wrong answer.
+    Intermittent corruption has been observed on some systems where a block of
+    load data comes back as clean zeros (or NaN after arithmetic on zeroed
+    values) with no error raised, silently biasing every downstream result.
+    Raises RuntimeError on any NaN, or any missing or all-zero modeled year or
+    region.
+
+    The `stage` argument records WHERE the data was validated so a failure
+    attributes the corruption to the right layer:
+    - 'in-memory': the DataFrame is corrupt in process memory before any file
+      write, implicating upstream processing or a memory-level fault (e.g.
+      host-side memory reclamation on a VM), not file I/O.
+    - 'on-disk': the file read back from disk is corrupt even though the
+      in-memory data was verified clean immediately before writing, so the
+      corruption occurred at the file layer (write/read round trip).
     """
-    load_df = reeds.io.read_file(
-        os.path.join(inputs_case, 'load.h5'), parse_timestamps=True)
-    # Year is index level 0 (referenced positionally to avoid name assumptions)
-    years = load_df.index.get_level_values(0)
+    blame = {
+        'in-memory': (
+            "The corruption is present in process memory BEFORE the file "
+            "write (upstream processing or a memory-level fault, not file I/O)."
+        ),
+        'on-disk': (
+            "The in-memory data was verified clean immediately before "
+            "writing, so the corruption occurred at the file layer during "
+            "the write/read round trip."
+        ),
+    }[stage]
+
+    ## Year-level checks assume a (year, datetime) MultiIndex; fall back to
+    ## value-level checks alone if the index has a single level
+    has_years = isinstance(load_df.index, pd.MultiIndex)
+    years = load_df.index.get_level_values(0) if has_years else None
 
     n_nan = int(np.asarray(load_df.isna().to_numpy()).sum())
     if n_nan:
-        bad_years = sorted(
-            int(y) for y in years.unique()
-            if bool(load_df.xs(y, level=0).isna().to_numpy().any())
+        bad_years = (
+            sorted(
+                int(y) for y in years.unique()
+                if bool(load_df.xs(y, level=0).isna().to_numpy().any())
+            ) if has_years else 'n/a'
         )
         raise RuntimeError(
-            f"{label}: {n_nan} NaN load value(s) after write "
-            f"(modeled year(s) affected: {bad_years}). This indicates silent "
-            "corruption of load data during file I/O; aborting so downstream "
-            "results are not silently biased. Re-run this case; if it recurs, "
-            "exclude the ReEDS directory from real-time antivirus/EDR scanning."
+            f"{label} [{stage}]: {n_nan} NaN load value(s) "
+            f"(modeled year(s) affected: {bad_years}). {blame} "
+            "Aborting so downstream results are not silently biased."
         )
 
-    present_years = {int(y) for y in years.unique()}
-    missing_years = [int(y) for y in expected_years if int(y) not in present_years]
-    if missing_years:
-        raise RuntimeError(
-            f"{label}: modeled year(s) missing after write: {missing_years}. "
-            "Likely silent I/O corruption of load data; aborting."
-        )
+    if has_years:
+        present_years = {int(y) for y in years.unique()}
+        missing_years = [
+            int(y) for y in expected_years if int(y) not in present_years
+        ]
+        if missing_years:
+            raise RuntimeError(
+                f"{label} [{stage}]: modeled year(s) missing: {missing_years}. "
+                f"{blame} Aborting."
+            )
 
-    year_tot = load_df.groupby(level=0).sum().sum(axis=1)
-    zero_years = sorted(int(y) for y in year_tot.index[year_tot == 0])
-    if zero_years:
-        raise RuntimeError(
-            f"{label}: modeled year(s) with zero total load after write: "
-            f"{zero_years}. Likely silent I/O corruption of load data; aborting."
-        )
+        year_tot = load_df.groupby(level=0).sum().sum(axis=1)
+        zero_years = sorted(int(y) for y in year_tot.index[year_tot == 0])
+        if zero_years:
+            raise RuntimeError(
+                f"{label} [{stage}]: modeled year(s) with zero total load: "
+                f"{zero_years}. {blame} Aborting."
+            )
 
     region_tot = load_df.sum(axis=0)
     zero_regions = region_tot.index[region_tot == 0].tolist()
     if zero_regions:
         raise RuntimeError(
-            f"{label}: region(s) with zero total load after write: "
-            f"{zero_regions}. Likely silent I/O corruption of load data; aborting."
+            f"{label} [{stage}]: region(s) with zero total load: "
+            f"{zero_regions}. {blame} Aborting."
         )
 
     print(
-        f'Validated {label}: {len(present_years)} modeled years, '
+        f'Validated {label} [{stage}]: '
+        f'{len(set(years)) if has_years else "?"} modeled years, '
         f'{load_df.shape[1]} regions, no NaN/zero-load gaps'
     )
+
+
+def validate_written_load(inputs_case, expected_years, label='load.h5'):
+    """
+    Re-read load.h5 from disk and confirm the round-tripped file is intact.
+    Call validate_load_frame(..., stage='in-memory') on the source DataFrame
+    immediately before writing so a failure here isolates the file layer.
+    """
+    load_df = reeds.io.read_file(
+        os.path.join(inputs_case, 'load.h5'), parse_timestamps=True)
+    validate_load_frame(load_df, expected_years, label=label, stage='on-disk')
 
 
 #%% ===========================================================================
@@ -807,8 +840,12 @@ def main(reeds_path, inputs_case):
     #    -- Data Write-Out --    #
     ##############################
 
+    ### Guard against silent corruption of the load data: validate the
+    ### in-memory data, write it, then validate the round-tripped file, so a
+    ### failure attributes the corruption to the memory vs file layer
+    validate_load_frame(
+        regional_load_hourly, solveyears, label='load.h5', stage='in-memory')
     reeds.io.write_profile_to_h5(regional_load_hourly, 'load.h5', inputs_case)
-    ### Guard against silent I/O corruption of the load data just written
     validate_written_load(inputs_case, solveyears)
     peakload.to_csv(os.path.join(inputs_case,'peakload.csv'))
     captran_interreg_req.to_csv(os.path.join(inputs_case,'captran_interreg_req.csv'))
