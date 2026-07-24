@@ -1,6 +1,7 @@
 ,Default Value,Ref,Restricted,Enhanced,Enhanced_Inter,Enhanced_Inter_ITC,Enhanced_highCCSandSMR,Restricted_IRA,Enhanced_IRA,Restricted_HighLoad,Enhanced_HighLoad,Enhanced_Inter_HighLoad,Enhanced_Inter_ITC_HighLoad
 ignore,1,,,,,,,,,,,,
 GSw_LoadProfiles,EER2025_IRAlow,,,,,,,,,EER2025_100by2050,EER2025_100by2050,EER2025_100by2050,EER2025_100by2050
+resource_adequacy_years,2007_2008_2009_2010_2011_2012_2013,,,,,,,,,,,,
 endyear,2041,,,,,,,,,,,,
 GSw_GrowthPenalties,1,0,,,,,,,,,,,
 financials_trans_suffix,11yr,8yr,,8yr,8yr,30ITC_0pen,8yr,,8yr,,8yr,8yr,30ITC_0pen
