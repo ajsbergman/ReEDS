@@ -692,6 +692,98 @@ def validate_written_load(inputs_case, expected_years, label='load.h5'):
     validate_load_frame(load_df, expected_years, label=label, stage='on-disk')
 
 
+def validate_load_trajectory(
+    regional_load_hourly, inputs_case, sw, weather_years, tol=0.04,
+):
+    """
+    Guard against silent PARTIAL corruption of load data — a modeled year
+    scaled up or down rather than zeroed — which the NaN/zero checks miss.
+
+    Corruption has been observed where one modeled year's load comes back
+    uniformly reduced (e.g. 2029 ~11% low) with no zeros or NaN, so it passes
+    every marginal check yet biases that year's results and the downstream
+    capacity trajectory. This detects it by INDEPENDENTLY recomputing the
+    expected per-year national load from the source profile (a second
+    interpolate+calibrate pass) and comparing its year-over-year SHAPE to the
+    load just created. A single corrupted year shows up as one year whose
+    actual/expected ratio departs from the rest.
+
+    The comparison is on shape only: a single global scale factor (the median
+    actual/expected ratio) absorbs the distribution-loss gross-up, state->region
+    aggregation, and any unit difference, so only per-year DEVIATIONS from the
+    common trajectory are flagged. Only applies to EER-style profiles (the
+    interpolate+calibrate path); other profile types are skipped. Recompute
+    failures degrade to a warning (a guard bug must not block a good run); an
+    actual deviation raises RuntimeError.
+
+    Runs at load.h5 creation time, so the independent recompute reads the same
+    source the pipeline just used (no repo-vs-run drift), and it is independent
+    of the run's own (possibly corrupted) intermediate load.
+    """
+    if not str(sw.GSw_LoadProfiles).startswith('EER'):
+        return
+    try:
+        ### Independent recompute of the expected load from the raw source
+        ### (bypassing the load.h5 cache via the GSw_LoadProfiles kwarg), using
+        ### the SAME interpolate+calibrate the pipeline uses so the reference
+        ### trajectory matches a correct run's shape. Only a SINGLE weather year
+        ### is processed: the check is on year-over-year shape (identical across
+        ### weather years, with the global-scale normalization below absorbing
+        ### the magnitude difference), which keeps the interpolate+calibrate
+        ### work and its memory footprint small. Calibration cannot be skipped —
+        ### it reshapes the year-over-year trajectory materially.
+        raw = reeds.io.get_load_hourly(GSw_LoadProfiles=sw.GSw_LoadProfiles)
+        raw = downselect_to_weather_years(raw, weather_years[:1])
+        source_min_year = int(raw.index.get_level_values('year').min())
+        expected = interpolate_missing_model_years(raw, int(sw.endyear))
+        expected = calibrate_hourly_state_load_to_historical_annuals(
+            expected, reeds.io.get_historical_state_load_annual())
+    except Exception as e:
+        print(f'validate_load_trajectory [skipped]: reference recompute failed: {e}')
+        return
+
+    ### Per-year national totals. National total is preserved by state->region
+    ### aggregation, so state-level expected and region-level actual compare in
+    ### shape. Exclude the historically-calibrated years (<= the last EIA
+    ### historical year), whose trajectory follows EIA annuals rather than the
+    ### projected profile; only the projection years share the source shape.
+    max_historical_year = int(reeds.io.get_historical_state_load_annual()['year'].max())
+    exp_series = expected.groupby(level=0).sum().sum(axis=1)
+    exp_year = {int(y): float(exp_series[y]) for y in exp_series.index}
+    act_series = regional_load_hourly.groupby(level=0).sum().sum(axis=1)
+    act_year = {int(y): float(act_series[y]) for y in act_series.index}
+
+    years = sorted(
+        y for y in set(act_year) & set(exp_year)
+        if int(y) > max_historical_year and exp_year[y] > 0
+    )
+    if len(years) < 3:
+        return
+    ratios = {int(y): float(act_year[y] / exp_year[y]) for y in years}
+    scale = float(np.median(list(ratios.values())))
+    if scale == 0:
+        return
+    bad = {
+        y: r for y, r in ratios.items() if abs(r / scale - 1) > tol
+    }
+    if bad:
+        detail = ', '.join(
+            f'{y}: {100 * (r / scale - 1):+.1f}%' for y, r in sorted(bad.items())
+        )
+        raise RuntimeError(
+            f"load.h5 [in-memory]: modeled year(s) deviate from the expected "
+            f"load trajectory (recomputed independently from the source "
+            f"profile): {detail}. This is silent PARTIAL corruption of load "
+            "data (a year scaled up/down without zeros or NaN, so the marginal "
+            "checks miss it), most consistent with an in-memory fault. Aborting "
+            "so downstream results are not silently biased."
+        )
+    print(
+        f'Validated load.h5 [trajectory]: {len(years)} interpolated years '
+        f'match the source-recomputed shape within {100 * tol:.0f}%'
+    )
+
+
 #%% ===========================================================================
 ### --- MAIN FUNCTION ---
 ### ===========================================================================
@@ -845,6 +937,9 @@ def main(reeds_path, inputs_case):
     ### failure attributes the corruption to the memory vs file layer
     validate_load_frame(
         regional_load_hourly, solveyears, label='load.h5', stage='in-memory')
+    ### Also check for partial (non-zero) corruption of a modeled year against
+    ### an independent recompute of the expected load trajectory
+    validate_load_trajectory(regional_load_hourly, inputs_case, sw, weather_years)
     reeds.io.write_profile_to_h5(regional_load_hourly, 'load.h5', inputs_case)
     validate_written_load(inputs_case, solveyears)
     peakload.to_csv(os.path.join(inputs_case,'peakload.csv'))
