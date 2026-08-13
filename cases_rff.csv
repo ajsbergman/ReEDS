@@ -1,5 +1,5 @@
 ,Default Value,Restricted,Enhanced,Enhanced_Inter
-ignore,1,0,0,0
+ignore,1,,,
 GSw_LoadProfiles,EER2025_100by2050,,,
 resource_adequacy_years,2007_2008_2009_2010_2011_2012_2013,,,
 yearset,2010_2020_2023_2025_2028_2030_2032_2035_2038_2041,,,
