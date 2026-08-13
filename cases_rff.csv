@@ -5,6 +5,7 @@ resource_adequacy_years,2007_2008_2009_2010_2011_2012_2013,,,
 yearset,2010_2020_2023_2025_2028_2030_2032_2035_2038_2041,,,
 endyear,2041,,,
 GSw_GrowthPenalties,1,,,
+GSw_GrowthPenLastYear,2050,,,
 GSw_Clean_Air_Act,0,,,
 financials_trans_suffix,11yr,,8yr,8yr
 GSw_TransCostMult,1.13,,1,1
