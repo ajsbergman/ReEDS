@@ -1491,6 +1491,13 @@ $onlisting
 ;
 $offempty
 
+* The manual wind constraints represent a world without state offshore support, so
+* drop the mandates rather than requiring a separate zeroed offshore_req_{scen}.csv.
+* Applied here, before r_offshore is derived, so every downstream consumer of
+* offshore_cap_req sees the same thing. Unlike the two wind constraints themselves,
+* this is not limited to wind_constraint_year -- the mandates are off in all years.
+offshore_cap_req(st,allt)$Sw_WindConstraint = 0 ;
+
 parameter r_offshore(r,t) "regions where offshore wind is required by a mandate" ;
 r_offshore(r,t)$[sum{st$r_st(r,st), offshore_cap_req(st,t) }] = 1 ;
 
@@ -4892,6 +4899,16 @@ parameter growth_bin_limit(gbin,st,tg,t) "--MW/yr-- size of each growth bin"
 * Initialize values
 growth_bin_limit(gbin,st,tg,tfirst)$stfeas(st) = gbin_min(tg) ;
 cost_growth(i,st,t) = 0 ;
+
+*==========================================
+* --- Manual near-term wind constraints ---
+*==========================================
+* Only used when Sw_WindConstraint is on; see eq_wind_ons_cap and eq_wind_ofs_noinv
+* in c_model.gms. Both constraints apply in wind_constraint_year alone, so later
+* years are free to rebound (metered by the growth penalties if those are on).
+
+scalar wind_constraint_year "--year-- solve year in which the manual wind constraints apply" /2028/ ;
+scalar wind_ons_cap "--MW-- national cap on total onshore wind capacity in wind_constraint_year" /180000/ ;
 
 *====================================
 * --- CES Gas supply curve setup ---

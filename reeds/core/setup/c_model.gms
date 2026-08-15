@@ -174,6 +174,10 @@ EQUATION
  eq_growthbin_limit(gbin,st,tg,t)         "--MW-- capacity limit for each growth bin"
  eq_growthlimit_absolute(tg,t)            "--MW-- absolute growth limit on technologies"
 
+* manual near-term wind constraints
+ eq_wind_ons_cap(t)                       "--MW-- national cap on total onshore wind capacity"
+ eq_wind_ofs_noinv(t)                     "--MW-- no discretionary offshore wind investment beyond prescribed builds"
+
 eq_interconnection_queues(tg,r,t)         "--MW-- capacity deployment limit based on interconnection queues"  
 
 * storage capacity credit supply curves
@@ -1102,6 +1106,53 @@ eq_growthlimit_absolute(tg,t)$[growth_limit_absolute(tg)$tmodel(t)
 * must exceed the total investment
      sum{(i,v,r)$[valinv(i,v,r,t)$tg_i(tg,i)],
           INV(i,v,r,t) }
+;
+
+* ---------------------------------------------------------------------------
+* Manual near-term wind constraints, active only when Sw_WindConstraint is on.
+* Both bind in wind_constraint_year alone; capacity is cumulative, so later years
+* are free to rebound from the constrained level.
+
+eq_wind_ons_cap(t)$[tmodel(t)
+                    $Sw_WindConstraint
+                    $(yeart(t) = wind_constraint_year)
+                    $(not Sw_PCM)]..
+
+* national cap on installed onshore wind capacity
+    wind_ons_cap
+
+    =g=
+
+* total onshore wind capacity across all vintages and regions
+    sum{(i,v,r)$[onswind(i)$valcap(i,v,r,t)], CAP(i,v,r,t) }
+;
+
+* ---------------------------------------------------------------------------
+* Offshore prescriptions are enforced as an equality by eq_forceprescription_power,
+* and prescribed builds from the years between the prior solve year and this one
+* land in this solve period, so offshore investment cannot be driven to zero
+* without making the model infeasible. This instead holds cumulative offshore
+* investment down to exactly the prescribed amount: contracted projects proceed,
+* discretionary builds do not.
+
+eq_wind_ofs_noinv(t)$[tmodel(t)
+                      $Sw_WindConstraint
+                      $(yeart(t) = wind_constraint_year)
+                      $(not Sw_PCM)]..
+
+* cumulative prescribed offshore wind capacity through this year
+* (pcat is matched with sameas rather than indexed by a literal, since pcat
+* elements are populated from data and cannot be checked at compile time)
+    sum{(pcat,r,tt)$[sameas(pcat,'wind-ofs')$(yeart(tt)<=yeart(t))
+                     $(tmodel(tt) or tfix(tt))],
+        noncumulative_prescriptions(pcat,r,tt) }
+
+    =g=
+
+* cumulative offshore wind investment through this year
+    sum{(i,v,r,tt)$[ofswind(i)$valinv(i,v,r,tt)$(yeart(tt)<=yeart(t))
+                    $(tmodel(tt) or tfix(tt))],
+        INV(i,v,r,tt) + INV_REFURB(i,v,r,tt)$[refurbtech(i)$Sw_Refurb] }
 ;
 
 * ---------------------------------------------------------------------------
