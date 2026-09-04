@@ -90,6 +90,26 @@ def agg_supplycurve(
     deflate_scen = os.path.splitext(os.path.basename(scpath))[0]
     dfin['capital_adder_per_mw'] *= deflate[deflate_scen]
 
+    ### Reduce the capital adder on federal land if requested
+    ## GSw_FedLandAdderMult scales the federal share of the adder: 1 = unchanged,
+    ## 0 = no adder on federal land, 0.5 = half of it. Applied here, per sc_point_gid
+    ## and before binning, so the capacity weighting into region/class/bin follows
+    ## automatically and split points are handled pro rata by their federal share.
+    ## Only the positive part is reduced. capital_adder_per_mw is a deviation from a
+    ## base cost rather than an absolute cost (see calc_capital_adders in
+    ## hourlize/resource.py), so it is negative for ~38% of wind and ~78% of upv
+    ## capacity; scaling those would strip credits from cheap sites and raise their
+    ## cost, the opposite of the intended policy.
+    fedmult = float(sw.GSw_FedLandAdderMult)
+    fedfile = os.path.join(
+        reeds_path, 'inputs', 'supply_curve',
+        f"fed_land_fraction_{deflate_scen.replace('supplycurve_', '')}.csv")
+    if (fedmult != 1) and os.path.isfile(fedfile):
+        fedfrac = pd.read_csv(fedfile, index_col='sc_point_gid').fed_frac
+        frac = dfin.sc_point_gid.map(fedfrac).fillna(0)
+        adder = dfin['capital_adder_per_mw']
+        dfin['capital_adder_per_mw'] = adder - adder.clip(lower=0) * frac * (1 - fedmult)
+
     ### Apply interconnection cost multiplier if applicable
     if 'cost_total_trans_usd_per_mw' in dfin:
         dfin.cost_total_trans_usd_per_mw *= float(sw.GSw_InterconnectionCostMult)
