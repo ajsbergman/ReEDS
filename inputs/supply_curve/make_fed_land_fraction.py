@@ -15,9 +15,12 @@ land differs by tech -- "0" for onshore wind, "255.0" for UPV -- so it is declar
 per tech in TECHS below rather than inferred. Every other code is a federal owner
 (BLM, USFS, USFWS, DoD and so on), and the fraction is federal area over total area.
 
-The federal-lands data is taken from the "open" siting scenario, which is a superset
-of the others, so a single file per tech serves limited/reference/open alike. That is
-verified by --check, which reports coverage against each supply curve.
+The federal-lands data is taken from the "reference" siting scenario, matching the
+cases these files are currently used for. Siting exclusions change how much of a site
+is available and therefore its federal share, so this is not interchangeable across
+scenarios: --check reports coverage against each supply curve, and an open-siting run
+would find ~8% of its wind points absent here. Those are treated as wholly
+non-federal by writesupplycurves.py, so the reduction would silently under-apply.
 """
 #%% Imports
 import os
@@ -28,8 +31,8 @@ import pandas as pd
 #%%### Constants
 ### source file, JSON column, and the ownership code meaning "not federal"
 TECHS = {
-    'wind-ons': ('onswind_fed_lands.csv', 'federal_land_by_categories', '0'),
-    'upv': ('upv_fed_lands.csv', 'fed_land_owner', '255.0'),
+    'wind-ons': ('onswind_fed_lands_reference.csv', 'federal_land_by_categories', '0'),
+    'upv': ('upv_fed_lands_reference.csv', 'fed_land_owner', '255.0'),
 }
 SRCDIR = os.path.join('postprocessing', 'land_use', 'inputs')
 OUTDIR = os.path.join('inputs', 'supply_curve')

@@ -1,5 +1,4 @@
 casepath,casename
-D:\ReEDS2\runs\v20260701_151718_Restricted,Restricted
-D:\ReEDS2\runs\v20260701_151718_Enhanced,Enhanced
-D:\ReEDS2\runs\v20260701_151718_Enhanced_Inter,Enhanced + Inter
-D:\ReEDS2\runs\v20260706_143113_Enhanced_Inter_ITC,Enhanced + Inter + ITC
+/home/ubuntu/ReEDS/runs/v20260904_161422_FedLand_NoAdj,No Queues
+/home/ubuntu/ReEDS/runs/v20260904_161422_FedLand_Half,No Queues + Half Fed Adder
+/home/ubuntu/ReEDS/runs/v20260904_161422_FedLand_Zero,No Queues + Zero Fed Adder
