@@ -90,25 +90,39 @@ def agg_supplycurve(
     deflate_scen = os.path.splitext(os.path.basename(scpath))[0]
     dfin['capital_adder_per_mw'] *= deflate[deflate_scen]
 
-    ### Reduce the capital adder on federal land if requested
-    ## GSw_FedLandAdderMult scales the federal share of the adder: 1 = unchanged,
-    ## 0 = no adder on federal land, 0.5 = half of it. Applied here, per sc_point_gid
-    ## and before binning, so the capacity weighting into region/class/bin follows
-    ## automatically and split points are handled pro rata by their federal share.
-    ## Only the positive part is reduced. capital_adder_per_mw is a deviation from a
-    ## base cost rather than an absolute cost (see calc_capital_adders in
-    ## hourlize/resource.py), so it is negative for ~38% of wind and ~78% of upv
-    ## capacity; scaling those would strip credits from cheap sites and raise their
-    ## cost, the opposite of the intended policy.
-    fedmult = float(sw.GSw_FedLandAdderMult)
+    ### Reduce interconnection costs on federal land if requested
+    ## GSw_FedLandCostMult scales the federal share of the land-crossing
+    ## interconnection costs: 1 = unchanged, 0 = free on federal land, 0.5 = half.
+    ## Applied per sc_point_gid before binning, so the capacity weighting into
+    ## region/class/bin follows automatically, and pro rata by federal share since
+    ## most points are partly federal rather than wholly one or the other.
+    ##
+    ## cost_poi is deliberately excluded: it takes only two values ($15k and $35k
+    ## per MW) and is uncorrelated with distance, so it is a flat interconnection
+    ## tariff rather than a cost of crossing land. cost_total_trans is then rebuilt
+    ## from its three components rather than scaled directly, which keeps the
+    ## identity total == spur + poi + reinforcement exact and stops the reduction
+    ## from silently landing on the poi charge.
+    ##
+    ## Caveat on reinforcement: it is network upgrade cost at/beyond the point of
+    ## interconnection, not at the generator, so scaling it by the *site's* federal
+    ## share is an approximation. It is included because it is ~85% of the total and
+    ## the alternative understates a right-of-way policy, but spur alone is the more
+    ## conservative choice if that assumption is unwanted.
+    FEDCOLS = ['cost_spur_usd_per_mw', 'cost_reinforcement_usd_per_mw']
+    fedmult = float(sw.GSw_FedLandCostMult)
     fedfile = os.path.join(
         reeds_path, 'inputs', 'supply_curve',
         f"fed_land_fraction_{deflate_scen.replace('supplycurve_', '')}.csv")
-    if (fedmult != 1) and os.path.isfile(fedfile):
+    if (fedmult != 1) and os.path.isfile(fedfile) and all(c in dfin for c in FEDCOLS):
         fedfrac = pd.read_csv(fedfile, index_col='sc_point_gid').fed_frac
         frac = dfin.sc_point_gid.map(fedfrac).fillna(0)
-        adder = dfin['capital_adder_per_mw']
-        dfin['capital_adder_per_mw'] = adder - adder.clip(lower=0) * frac * (1 - fedmult)
+        for col in FEDCOLS:
+            dfin[col] = dfin[col] * (1 - frac * (1 - fedmult))
+        dfin['cost_total_trans_usd_per_mw'] = dfin[
+            ['cost_spur_usd_per_mw', 'cost_poi_usd_per_mw',
+             'cost_reinforcement_usd_per_mw']
+        ].sum(axis=1)
 
     ### Apply interconnection cost multiplier if applicable
     if 'cost_total_trans_usd_per_mw' in dfin:

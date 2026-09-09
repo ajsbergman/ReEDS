@@ -2,7 +2,8 @@
 
 Writes one row per sc_point_gid giving the fraction of that point's area which is
 federally owned. writesupplycurves.py reads these files and uses them to scale the
-federal share of capital_adder_per_mw when GSw_FedLandAdderMult is below 1.
+federal share of the land-crossing interconnection costs when GSw_FedLandCostMult
+is below 1.
 
     python inputs/supply_curve/make_fed_land_fraction.py
 

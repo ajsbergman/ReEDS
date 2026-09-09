@@ -35,5 +35,5 @@ GSw_BECCS,0,,,,,,,,,,,,,
 GSw_NuclearSMR,0,,,,,,,,,,,,,
 GSw_WindConstraint,0,,,,,,,,1,1,1,,,
 GSw_InterconnectionQueues,1,,,,,,,,,,,0,0,0
-GSw_FedLandAdderMult,1,,,,,,,,,,,1,0,0.5
+GSw_FedLandCostMult,1,,,,,,,,,,,1,0,0.5
 reeds_to_rev,0,,,,,,,,,,,,,
