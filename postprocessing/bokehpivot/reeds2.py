@@ -3157,6 +3157,13 @@ results_meta = collections.OrderedDict((
         'columns': ['t', 'retailrate', 'source'],
         'presets': collections.OrderedDict((
             ('Lines',{'x':'t', 'y':'retailrate', 'series':'source', 'chart_type':'Line'}),
+            ## Modeled rates only, compared across scenarios. The source column carries
+            ## both the EIA861 history (1960-2025) and the ReEDS projection (2010-2041),
+            ## so without the filter every scenario line would double back over the
+            ## historical series, which is identical across scenarios. Note bokehpivot
+            ## lowercases column values, so the filter must be 'reeds', not 'ReEDS'.
+            ('Scenario Lines',{'x':'t', 'y':'retailrate', 'series':'scenario',
+                               'chart_type':'Line', 'filter':{'source':['reeds']}}),
         )),
         }
     ),

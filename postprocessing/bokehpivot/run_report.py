@@ -20,7 +20,7 @@ sys.path.insert(1, bokehpivot_dir)
 import reeds_bokeh as rb
 
 #EDIT THE FOLLOWING FIELDS
-report_path = f'{bokehpivot_dir}/reports/templates/reeds2/standard_report_expanded.py' #Path to report that is to be run
+report_path = f'{bokehpivot_dir}/reports/templates/reeds2/standard_report_reduced.py' #Path to report that is to be run
 diff = 'Yes' #Use 'Yes' if adding differences to a base case, specified below (default base case is first scenario in reeds_scenarios.csv)
 
 data_source = f'{bokehpivot_dir}/reeds_scenarios_rff.csv' #either a scenarios.csv file or ReEDS run directory (or directories separated by pipe symbols).
