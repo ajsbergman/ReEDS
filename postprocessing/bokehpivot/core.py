@@ -614,8 +614,14 @@ def vizit_report(data_type, data_source, vizit_data, output_dir, auto_open):
     f_out_str = requests.get(vizit_url).text
     data_str = json.dumps(data_dict, separators=(',',':'))
     config_str = json.dumps(vizit_config, separators=(',',':'))
-    f_out_str = re.sub('let config_load = .*;\n', f'let config_load = {config_str};\n', f_out_str, 1)
-    f_out_str = re.sub('let rawData = .*;\n', f'let rawData = {data_str};\n', f_out_str, 1)
+    ## Pass the replacements as callables so re.sub treats them literally. The JSON
+    ## payload contains \uXXXX escapes for any non-ASCII character (e.g. the cent sign
+    ## in 'Retail rate (¢/kWh)'), which re.sub would otherwise try to interpret as
+    ## regex escapes and raise 'bad escape \u' on.
+    f_out_str = re.sub(
+        'let config_load = .*;\n', lambda _: f'let config_load = {config_str};\n', f_out_str, 1)
+    f_out_str = re.sub(
+        'let rawData = .*;\n', lambda _: f'let rawData = {data_str};\n', f_out_str, 1)
     with open(f'{output_dir}report_vizit.html', 'w') as f_out:
         f_out.write(f_out_str)
     if auto_open == 'Yes':
