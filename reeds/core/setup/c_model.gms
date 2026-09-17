@@ -176,6 +176,7 @@ EQUATION
 
 * manual near-term wind constraint
  eq_wind_ons_cap(t)                       "--MW-- national cap on total onshore wind capacity"
+* certainty of permitting
 
 eq_interconnection_queues(tg,r,t)         "--MW-- capacity deployment limit based on interconnection queues"  
 
@@ -1122,8 +1123,16 @@ eq_wind_ons_cap(t)$[tmodel(t)
 
     =g=
 
-* total onshore wind capacity across all vintages and regions
-    sum{(i,v,r)$[onswind(i)$valcap(i,v,r,t)], CAP(i,v,r,t) }
+* total onshore wind NAMEPLATE capacity across all vintages and regions.
+* CAP is degraded (wind loses ~0.27%/yr), so a cap on CAP would let reported
+* nameplate capacity (cap_out in report.gms, which uses this same expression)
+* exceed wind_ons_cap by a few GW. Use the undegraded exogenous + cumulative
+* investment expression instead so the reported capacity lands on the limit.
+    sum{(i,v,r)$[onswind(i)$valcap(i,v,r,t)],
+        m_capacity_exog(i,v,r,t)
+        + sum{tt$[inv_cond(i,v,r,t,tt)$(tmodel(tt) or tfix(tt))],
+              INV(i,v,r,tt) + INV_REFURB(i,v,r,tt)$[refurbtech(i)$Sw_Refurb] }
+       }
 ;
 
 * ---------------------------------------------------------------------------
@@ -1958,8 +1967,8 @@ eq_CAPTRAN_ENERGY(r,rr,trtype,t)
 
     =e=
 
-* [plus] initial transmission capacity
-    + trancap_init_energy(r,rr,trtype)
+* [plus] initial transmission capacity, uprated by ATT deployment from Sw_ATTStartYear
+    + trancap_init_energy(r,rr,trtype) * att_mult(t)
 
 * [plus] capacity additions up to and including the present year
     + sum{tt
@@ -1984,8 +1993,8 @@ eq_CAPTRAN_PRM(r,rr,trtype,t)
 
     =e=
 
-* [plus] initial transmission capacity
-    + trancap_init_prm(r,rr,trtype)
+* [plus] initial transmission capacity, uprated by ATT deployment from Sw_ATTStartYear
+    + trancap_init_prm(r,rr,trtype) * att_mult(t)
 
 * [plus] capacity additions up to and including the present year,
 * derated by Sw_TransInvPRMderate
@@ -2090,8 +2099,9 @@ eq_CAPTRAN_GRP(transgrp,transgrpp,t)
 
     =e=
 
-* [plus] initial transmission capacity, which is defined separately for each direction
-    + trancap_init_transgroup(transgrp,transgrpp,"AC")
+* [plus] initial transmission capacity, which is defined separately for each direction,
+* uprated by ATT deployment from Sw_ATTStartYear
+    + trancap_init_transgroup(transgrp,transgrpp,"AC") * att_mult(t)
 
 * [plus] capacity additions up to and including the present year,
 * derated by Sw_TransGroupDerate
@@ -2187,8 +2197,9 @@ eq_CAPTRAN_ITL(itlgrp,itlgrpp,t)
 
     =e=
 
-* [plus] initial transmission capacity (from bas), which is defined separately for each direction
-    + trancap_init_itlgrp(itlgrp,itlgrpp,"AC")
+* [plus] initial transmission capacity (from bas), which is defined separately for each direction,
+* uprated by ATT deployment from Sw_ATTStartYear
+    + trancap_init_itlgrp(itlgrp,itlgrpp,"AC") * att_mult(t)
 
 * [plus] capacity additions up to and including the present year
     + sum{(r,rr,tt)
