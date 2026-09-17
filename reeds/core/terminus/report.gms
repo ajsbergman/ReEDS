@@ -252,7 +252,7 @@ lcoe_built(i,r,t)$[ [sum{(v,h)$[valinv(i,v,r,t)$INV.l(i,v,r,t)], GEN.l(i,v,r,h,t
        + sum{v$[upgrade(i)$valcap(i,v,r,t)$Sw_Upgrades],
              UPGRADES.l(i,v,r,t) * (cost_upgrade(i,v,r,t) * cost_cap_fin_mult(i,r,t) ) }
        + sum{(v,rscbin)$[m_rscfeas(r,i,rscbin)$valinv(i,v,r,t)$rsc_i(i)],
-             INV_RSC.l(i,v,r,rscbin,t) * m_rsc_dat(r,i,rscbin,"cost") * rsc_fin_mult(i,r,t) }
+             INV_RSC.l(i,v,r,rscbin,t) * m_rsc_dat_t(r,i,rscbin,t) * rsc_fin_mult(i,r,t) }
                  )
        + sum{v$valinv(i,v,r,t), cost_fom(i,v,r,t) * INV.l(i,v,r,t) }
        + sum{v$[valinv(i,v,r,t)$battery(i)], cost_fom_energy(i,v,r,t) * INV_ENERGY.l(i,v,r,t) }
@@ -281,7 +281,7 @@ lcoe_pieces("upgradecost",i,r,t)$tmodel_new(t) =
 
 lcoe_pieces("rsccost",i,r,t)$tmodel_new(t) =
                   sum{(v,rscbin)$[m_rscfeas(r,i,rscbin)$valinv(i,v,r,t)$rsc_i(i)],
-                    INV_RSC.l(i,v,r,rscbin,t) * m_rsc_dat(r,i,rscbin,"cost") * rsc_fin_mult(i,r,t) } ;
+                    INV_RSC.l(i,v,r,rscbin,t) * m_rsc_dat_t(r,i,rscbin,t) * rsc_fin_mult(i,r,t) } ;
 
 lcoe_pieces("fomcost",i,r,t)$tmodel_new(t) =
                   sum{v$valinv(i,v,r,t), cost_fom(i,v,r,t) * INV.l(i,v,r,t) }
@@ -1227,7 +1227,7 @@ systemcost_techba("inv_investment_capacity_costs",i,r,t)$tmodel_new(t) =
 * Plus geo, hydro, and pumped-hydro techs, where costs are in the supply curves
 *(Note that this deviates from the objective function structure)
               + sum{(v,rscbin)$[m_rscfeas(r,i,rscbin)$valinv(i,v,r,t)$rsc_i(i)$sccapcosttech(i)],
-                   INV_RSC.l(i,v,r,rscbin,t) * m_rsc_dat(r,i,rscbin,"cost") * rsc_fin_mult_noITC(i,r,t) }
+                   INV_RSC.l(i,v,r,rscbin,t) * m_rsc_dat_t(r,i,rscbin,t) * rsc_fin_mult_noITC(i,r,t) }
 *plus cost of upgrades
               + sum{v$[upgrade(i)$valcap(i,v,r,t)$Sw_Upgrades],
                    cost_upgrade(i,v,r,t) * cost_cap_fin_mult_noITC(i,r,t) * UPGRADES.l(i,v,r,t) }
@@ -1268,7 +1268,7 @@ systemcost_techba("inv_itc_payments_negative",i,r,t)$tmodel_new(t) =
 * Plus geo, hydro, and pumped-hydro techs, where costs are in the supply curves
 *(Note that this deviates from the objective function structure)
               + sum{(v,rscbin)$[m_rscfeas(r,i,rscbin)$valinv(i,v,r,t)$rsc_i(i)$sccapcosttech(i)],
-                   INV_RSC.l(i,v,r,rscbin,t) * m_rsc_dat(r,i,rscbin,"cost") * rsc_fin_mult(i,r,t) }
+                   INV_RSC.l(i,v,r,rscbin,t) * m_rsc_dat_t(r,i,rscbin,t) * rsc_fin_mult(i,r,t) }
 *plus cost of upgrades
               + sum{v$[upgrade(i)$valcap(i,v,r,t)$Sw_Upgrades],
                    cost_upgrade(i,v,r,t) * cost_cap_fin_mult_out(i,r,t) * UPGRADES.l(i,v,r,t) }
@@ -1465,7 +1465,7 @@ systemcost_ba(sys_costs,r,t) = sum{i,systemcost_techba(sys_costs,i,r,t)} ;
 * DC: INVTRAN is defined (and is equal) in both directions, so just include (r,rr) and divide by 2
 systemcost_ba("inv_transmission_interzone_dc_investment",r,t)$tmodel_new(t) =
     sum{(rr,trtype)$[routes_inv(r,rr,trtype,t)$(not aclike(trtype))],
-        trans_cost_cap_fin_mult(t)
+        trans_cost_cap_fin_mult(t) * trans_inter_mult(r,rr,t)
         * transmission_cost_nonac(r,rr,trtype)
         * INVTRAN.l(r,rr,trtype,t)
         / 2 }
@@ -1476,9 +1476,9 @@ systemcost_ba("inv_transmission_interzone_dc_investment",r,t)$tmodel_new(t) =
 parameter capex_transmission_interzone_ac(r,t) "Cumulative interzonal AC transmission capex" ;
 capex_transmission_interzone_ac(r,t)$tmodel_new(t) =
     sum{(rr,tscbin)$[routes_inv(r,rr,"AC",t)$tsc_binwidth(r,rr,tscbin)],
-        trans_cost_cap_fin_mult(t) * TRAN_CAPEX_BINS.l(r,rr,tscbin,t) / 2 }
+        trans_cost_cap_fin_mult(t) * trans_inter_mult(r,rr,t) * TRAN_CAPEX_BINS.l(r,rr,tscbin,t) / 2 }
     + sum{(rr,tscbin)$[routes_inv(rr,r,"AC",t)$tsc_binwidth(rr,r,tscbin)],
-        trans_cost_cap_fin_mult(t) * TRAN_CAPEX_BINS.l(rr,r,tscbin,t) / 2 }
+        trans_cost_cap_fin_mult(t) * trans_inter_mult(r,rr,t) * TRAN_CAPEX_BINS.l(rr,r,tscbin,t) / 2 }
 ;
 * Loop over each year and keep the capex difference to get model-year investment
 loop(t$[tmodel_new(t)$(not tfirst(t))],
@@ -1492,7 +1492,7 @@ loop(t$[tmodel_new(t)$(not tfirst(t))],
 
 systemcost_ba("inv_transmission_intrazone_investment",r,t)$[tmodel_new(t)$Sw_TransIntraCost] =
 * cost of intra-zone network reinforcement
-              trans_cost_cap_fin_mult(t) * Sw_TransIntraCost * 1000 * INV_POI.l(r,t)
+              trans_cost_cap_fin_mult(t) * trans_intra_mult(t) * Sw_TransIntraCost * 1000 * INV_POI.l(r,t)
 ;
 
 systemcost_ba("op_transmission_fom",r,t)$tmodel_new(t) =

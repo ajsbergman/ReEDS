@@ -17,11 +17,13 @@ per tech in TECHS below rather than inferred. Every other code is a federal owne
 (BLM, USFS, USFWS, DoD and so on), and the fraction is federal area over total area.
 
 The federal-lands data is taken from the "reference" siting scenario, matching the
-cases these files are currently used for. Siting exclusions change how much of a site
-is available and therefore its federal share, so this is not interchangeable across
-scenarios: --check reports coverage against each supply curve, and an open-siting run
-would find ~8% of its wind points absent here. Those are treated as wholly
-non-federal by writesupplycurves.py, so the reduction would silently under-apply.
+Land Use = Reference cases these files are currently used for. Siting exclusions change
+how much of a site is available and therefore its federal share, so this is not
+interchangeable across scenarios: --check reports coverage against each supply curve,
+and an open-siting run would find ~8% of its wind points absent here (treated as wholly
+non-federal by writesupplycurves.py). Switch the TECHS filenames to the _open sources
+for open-siting cases; those give 100% coverage everywhere at the cost of overstating a
+reference run's federal share by ~12% (wind) / ~4% (upv).
 """
 #%% Imports
 import os

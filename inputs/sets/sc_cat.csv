@@ -2,3 +2,6 @@ cap
 cost
 cost_trans
 cost_cap
+cost_spur
+cost_poi
+cost_reinf

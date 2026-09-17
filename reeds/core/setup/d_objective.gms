@@ -61,7 +61,7 @@ eq_ObjFn_inv(t)$tmodel(t)..
 * Note: for OSW, export cable, inter-array and POI/substations are eligible for ITC. The rest are not. 
 * However we apply the ITC to all transmission costs to be consistent with LBW format
                   + sum{(i,v,r,rscbin)$[m_rscfeas(r,i,rscbin)$valinv(i,v,r,t)$rsc_i(i)$(not spur_techs(i))],
-                      m_rsc_dat(r,i,rscbin,"cost") * rsc_fin_mult(i,r,t) * sum{ii$rsc_agg(i,ii), INV_RSC(ii,v,r,rscbin,t) } }
+                      m_rsc_dat_t(r,i,rscbin,t) * rsc_fin_mult(i,r,t) * sum{ii$rsc_agg(i,ii), INV_RSC(ii,v,r,rscbin,t) } }
 
 * ---cost of spur lines modeled explicitly---
 * NOTE: no rsc_fin_mult(i,r,t) here, but it's 1 for upv and wind-ons anyway
@@ -71,7 +71,7 @@ eq_ObjFn_inv(t)$tmodel(t)..
 * --- cost of intra-zone network reinforcement (a.k.a. point-of-interconnection capacity or POI)
 * Sw_TransIntraCost is in $/kW, so multiply by 1000 to convert to $/MW
                   + sum{r$Sw_TransIntraCost,
-                        trans_cost_cap_fin_mult(t) * Sw_TransIntraCost * 1000 * INV_POI(r,t) }
+                        trans_cost_cap_fin_mult(t) * trans_intra_mult(t) * Sw_TransIntraCost * 1000 * INV_POI(r,t) }
 
 * --- cost of water access---
                   + [ (8760/1E6) * sum{ (i,v,w,r)$[i_w(i,w)$valinv(i,v,r,t)], sum{wst$i_wst(i,wst),
@@ -93,12 +93,12 @@ eq_ObjFn_inv(t)$tmodel(t)..
 
 * --- cost of interzonal AC transmission---
                   + sum{(r,rr,tscbin)$[routes_inv(r,rr,"AC",t)$tsc_binwidth(r,rr,tscbin)],
-                        trans_cost_cap_fin_mult(t) * TRAN_CAPEX_BINS(r,rr,tscbin,t) }
+                        trans_cost_cap_fin_mult(t) * trans_inter_mult(r,rr,t) * TRAN_CAPEX_BINS(r,rr,tscbin,t) }
 
 * --- cost of interzonal HVDC transmission---
 * transmission lines: 1 MW adds 1 MW to both INVTRAN(r,rr) and INVTRAN(rr,r) so divide by 2
                   + sum{(r,rr,trtype)$[routes_inv(r,rr,trtype,t)$(not aclike(trtype))],
-                        trans_cost_cap_fin_mult(t)
+                        trans_cost_cap_fin_mult(t) * trans_inter_mult(r,rr,t)
                         * transmission_cost_nonac(r,rr,trtype)
                         * INVTRAN(r,rr,trtype,t)
                         / 2 }

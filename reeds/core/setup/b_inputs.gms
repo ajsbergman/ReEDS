@@ -3126,6 +3126,17 @@ $onlisting
 / ;
 $offempty
 
+* --- advanced transmission technologies (ATT) ---
+* Sw_ATTCapMult scales the initial (existing) transmission capacity at every level
+* the model constrains directly (BA-BA energy and PRM, transgroup and itlgrp
+* interfaces; CAPTRAN_REG is built from CAPTRAN_ENERGY so it inherits the uplift). It represents
+* reconductoring / dynamic line ratings on the existing network, so it applies from
+* Sw_ATTStartYear onward and leaves historical years at their as-built ratings.
+* New lines are sized by the model and are not scaled.
+parameter att_mult(t) "--fraction-- multiplier on initial transmission capacity from ATT deployment" ;
+att_mult(t) = 1 ;
+att_mult(t)$[yeart(t) >= Sw_ATTStartYear] = Sw_ATTCapMult ;
+
 $onempty
 parameter trancap_init_itlgrp(itlgrp,itlgrpp,trtype) "--MW-- initial upper limit on interface flows between itlgrps"
 /
@@ -3138,6 +3149,8 @@ parameter trancap_init_itlgrp(itlgrp,itlgrpp,trtype) "--MW-- initial upper limit
 / ;
 $offempty
 
+* Empty when GSw_TransInterRegRatioStart is later than endyear
+$onempty
 parameter captran_interreg_req(transreg,allt) "--MW-- Interregional transmission capability requirement"
 /
 $offlisting
@@ -4903,9 +4916,10 @@ cost_growth(i,st,t) = 0 ;
 *==========================================
 * --- Manual near-term wind constraints ---
 *==========================================
-* Only used when Sw_WindConstraint is on; see eq_wind_ons_cap and eq_wind_ofs_noinv
-* in c_model.gms. Both constraints apply in wind_constraint_year alone, so later
-* years are free to rebound (metered by the growth penalties if those are on).
+* Only used when Sw_WindConstraint is on; see eq_wind_ons_cap in c_model.gms.
+* The onshore cap applies in wind_constraint_year alone, so later years are free
+* to rebound (metered by the growth penalties if those are on). The offshore
+* mandates are zeroed in all years (see offshore_cap_req above).
 
 scalar wind_constraint_year "--year-- solve year in which the manual wind constraints apply" /2028/ ;
 scalar wind_ons_cap "--MW-- national cap on total onshore wind capacity in wind_constraint_year" /180000/ ;
@@ -5768,6 +5782,61 @@ parameter m_rsc_dat_original(r,i,rscbin,sc_cat) "--MW or $/MW-- resource supply 
 *m_rsc_dat_original is used to compare the magnitude of possible adjustments in supply curves. 
 *It is only used for model validation and debugging purposes. 
 m_rsc_dat_original(r,i,rscbin,sc_cat) = m_rsc_dat(r,i,rscbin,sc_cat) ;
+
+*==============================================================
+* --- Time-varying transmission / interconnection cost multipliers ---
+*==============================================================
+* Selected by GSw_TransCostMultScen; see inputs/transmission/README_cost_mult.md.
+* cost_mult.csv is long-format (component,t,mult). For each model year the value in
+* force is the one at the latest listed year <= that year, and 1 before the first
+* listed year. These stack multiplicatively on the static cost switches.
+
+set costmult_comp "cost components carrying a time-varying multiplier" / inter, intra, spur, poi, reinf / ;
+
+parameter costmult_in(costmult_comp,allt) "--unitless-- multipliers as listed in cost_mult.csv"
+/
+$offlisting
+$ondelim
+$include inputs_case%ds%cost_mult.csv
+$offdelim
+$onlisting
+/ ;
+
+parameter costmult_lastyr(costmult_comp,t) "--year-- latest listed year at or before each model year"
+          costmult(costmult_comp,t)        "--unitless-- multiplier in force in each model year" ;
+
+costmult_lastyr(costmult_comp,t) =
+    smax{allt$[costmult_in(costmult_comp,allt)$(allt.val <= yeart(t))], allt.val} ;
+costmult(costmult_comp,t) = 1 ;
+costmult(costmult_comp,t)$(costmult_lastyr(costmult_comp,t) > 0) =
+    sum{allt$(allt.val = costmult_lastyr(costmult_comp,t)), costmult_in(costmult_comp,allt) } ;
+
+parameter trans_intra_mult(t)      "--unitless-- time-varying multiplier on Sw_TransIntraCost"
+          trans_inter_mult(r,rr,t) "--unitless-- time-varying multiplier on capex of lines crossing an interconnect boundary; 1 within an interconnect"
+          m_rsc_dat_t(r,i,rscbin,t) "--$/MW-- supply curve cost with time-varying component multipliers applied" ;
+
+trans_intra_mult(t) = costmult("intra",t) ;
+* "Interconnection transmission" means lines between the three US interconnections, so
+* the inter multiplier applies only to routes whose endpoints lie in different ones
+trans_inter_mult(r,rr,t) = 1 ;
+trans_inter_mult(r,rr,t)
+    $[not sum{interconnect$[r_interconnect(r,interconnect)$r_interconnect(rr,interconnect)], 1 }]
+    = costmult("inter",t) ;
+
+* Default to the static cost. Techs whose supply curve carries the interconnection
+* components (wind-ons, wind-ofs, upv) are recombined per year: the capital adder is
+* left alone and each transmission component takes its own multiplier. The identity
+* cost == cost_cap + cost_spur + cost_poi + cost_reinf is maintained upstream by
+* writesupplycurves.py, so with all multipliers at 1 this reproduces the static cost
+* exactly (up to the rounding applied to "cost" in e_solveprep).
+m_rsc_dat_t(r,i,rscbin,t)$m_rsc_dat(r,i,rscbin,"cost") = m_rsc_dat(r,i,rscbin,"cost") ;
+m_rsc_dat_t(r,i,rscbin,t)$m_rsc_dat(r,i,rscbin,"cost_trans") =
+      m_rsc_dat(r,i,rscbin,"cost_cap")
+    + m_rsc_dat(r,i,rscbin,"cost_spur")  * costmult("spur",t)
+    + m_rsc_dat(r,i,rscbin,"cost_poi")   * costmult("poi",t)
+    + m_rsc_dat(r,i,rscbin,"cost_reinf") * costmult("reinf",t) ;
+* Preserve the non-negativity floor that writesupplycurves applies to the base cost
+m_rsc_dat_t(r,i,rscbin,t)$(m_rsc_dat_t(r,i,rscbin,t) < 0) = 0 ;
 
 *=========================================
 * Reduced Resource Switch

@@ -97,19 +97,16 @@ def agg_supplycurve(
     ## region/class/bin follows automatically, and pro rata by federal share since
     ## most points are partly federal rather than wholly one or the other.
     ##
-    ## cost_poi is deliberately excluded: it takes only two values ($15k and $35k
-    ## per MW) and is uncorrelated with distance, so it is a flat interconnection
-    ## tariff rather than a cost of crossing land. cost_total_trans is then rebuilt
-    ## from its three components rather than scaled directly, which keeps the
-    ## identity total == spur + poi + reinforcement exact and stops the reduction
-    ## from silently landing on the poi charge.
+    ## All three interconnection components are scaled, per the client's direction
+    ## (the reduction "should also impact POI"). cost_total_trans is then rebuilt from
+    ## the components rather than scaled directly, keeping the identity
+    ## total == spur + poi + reinforcement exact.
     ##
-    ## Caveat on reinforcement: it is network upgrade cost at/beyond the point of
-    ## interconnection, not at the generator, so scaling it by the *site's* federal
-    ## share is an approximation. It is included because it is ~85% of the total and
-    ## the alternative understates a right-of-way policy, but spur alone is the more
-    ## conservative choice if that assumption is unwanted.
-    FEDCOLS = ['cost_spur_usd_per_mw', 'cost_reinforcement_usd_per_mw']
+    ## Caveat: cost_poi is a flat two-valued tariff with no land dependence, and
+    ## reinforcement is network upgrade cost at/beyond the point of interconnection,
+    ## so scaling either by the *site's* federal share is an approximation. spur is
+    ## the only component that physically crosses the site's land.
+    FEDCOLS = ['cost_spur_usd_per_mw', 'cost_poi_usd_per_mw', 'cost_reinforcement_usd_per_mw']
     fedmult = float(sw.GSw_FedLandCostMult)
     fedfile = os.path.join(
         reeds_path, 'inputs', 'supply_curve',
@@ -125,8 +122,17 @@ def agg_supplycurve(
         ].sum(axis=1)
 
     ### Apply interconnection cost multiplier if applicable
+    ## Scale the components and rebuild the total, rather than scaling the total alone,
+    ## so cost_total_trans == spur + poi + reinforcement always holds. GAMS relies on
+    ## that identity to recombine the components under GSw_TransCostMultScen.
+    TRANSCOLS = ['cost_spur_usd_per_mw', 'cost_poi_usd_per_mw', 'cost_reinforcement_usd_per_mw']
     if 'cost_total_trans_usd_per_mw' in dfin:
-        dfin.cost_total_trans_usd_per_mw *= float(sw.GSw_InterconnectionCostMult)
+        if all(c in dfin for c in TRANSCOLS):
+            for col in TRANSCOLS:
+                dfin[col] = dfin[col] * float(sw.GSw_InterconnectionCostMult)
+            dfin['cost_total_trans_usd_per_mw'] = dfin[TRANSCOLS].sum(axis=1)
+        else:
+            dfin.cost_total_trans_usd_per_mw *= float(sw.GSw_InterconnectionCostMult)
 
     dfin['supply_curve_cost_per_mw'] = dfin[
         ['capital_adder_per_mw', 'cost_total_trans_usd_per_mw']
@@ -261,7 +267,8 @@ def main(
         )
         
         cost_components = (
-            wind[s][["cost_total_trans_usd_per_mw", "capital_adder_per_mw"]]
+            wind[s][["cost_total_trans_usd_per_mw", "capital_adder_per_mw",
+             "cost_spur_usd_per_mw", "cost_poi_usd_per_mw", "cost_reinforcement_usd_per_mw"]]
             .round(2)
             .reset_index()
             .rename(
@@ -271,6 +278,11 @@ def main(
                     "bin": "rscbin",
                     "cost_total_trans_usd_per_mw": "cost_trans",
                     "capital_adder_per_mw": "cost_cap",
+                    ## Components of cost_trans, passed through so GAMS can apply
+                    ## per-component time-varying multipliers (GSw_TransCostMultScen)
+                    "cost_spur_usd_per_mw": "cost_spur",
+                    "cost_poi_usd_per_mw": "cost_poi",
+                    "cost_reinforcement_usd_per_mw": "cost_reinf",
                 }
             )
         )
@@ -360,7 +372,8 @@ def main(
     # Similar to wind, save the trans vs cap components and then concatenate them below just
     # before outputting rsc_combined.csv
     cost_components_upv = (
-        upv[["cost_total_trans_usd_per_mw", "capital_adder_per_mw"]].round(2).reset_index()
+        upv[["cost_total_trans_usd_per_mw", "capital_adder_per_mw",
+             "cost_spur_usd_per_mw", "cost_poi_usd_per_mw", "cost_reinforcement_usd_per_mw"]].round(2).reset_index()
     )
     cost_components_upv = cost_components_upv.rename(
         columns={
@@ -369,6 +382,11 @@ def main(
             "bin": "rscbin",
             "cost_total_trans_usd_per_mw": "cost_trans",
             "capital_adder_per_mw": "cost_cap",
+            ## Components of cost_trans, passed through so GAMS can apply
+            ## per-component time-varying multipliers (GSw_TransCostMultScen)
+            "cost_spur_usd_per_mw": "cost_spur",
+            "cost_poi_usd_per_mw": "cost_poi",
+            "cost_reinforcement_usd_per_mw": "cost_reinf",
         }
     )
     cost_components_upv["*i"] = "upv_" + cost_components_upv["*i"].astype(str)
