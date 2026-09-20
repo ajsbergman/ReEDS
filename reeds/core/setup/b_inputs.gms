@@ -2968,8 +2968,16 @@ $offempty
 * --- exogenously specified transmission capacity ---
 * Transmission additions are defined in one direction for each region-to-region pair with the lowest region number listed first
 parameter invtran_exog(r,rr,trtype,t) "--MW-- exogenous transmission capacity investment (one direction)" ;
-* "certain" future transmission project capacity in the current year t
-invtran_exog(r,rr,trtype,t)$trancap_fut(r,rr,"certain",trtype,t) = trancap_fut(r,rr,"certain",trtype,t) ;
+* "certain" future transmission project capacity is assigned to the first modeled
+* year at or after its online year, so a project dated to a year that is not in the
+* yearset (e.g. 2026 with a 2025/2028 yearset) is still enforced by eq_invtran_exog
+* rather than silently dropped. Projects dated before the first modeled year land in
+* the first modeled year.
+invtran_exog(r,rr,trtype,t)$tmodel_new(t) =
+    sum{allt$[trancap_fut(r,rr,"certain",trtype,allt)
+              $(allt.val <= yeart(t))
+              $(allt.val > smax{tt$[tmodel_new(tt)$(tt.val < t.val)], tt.val})],
+        trancap_fut(r,rr,"certain",trtype,allt) } ;
 
 * --- valid transmission routes ---
 
