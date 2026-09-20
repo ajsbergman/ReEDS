@@ -5823,20 +5823,8 @@ trans_inter_mult(r,rr,t)
     $[not sum{interconnect$[r_interconnect(r,interconnect)$r_interconnect(rr,interconnect)], 1 }]
     = costmult("inter",t) ;
 
-* Default to the static cost. Techs whose supply curve carries the interconnection
-* components (wind-ons, wind-ofs, upv) are recombined per year: the capital adder is
-* left alone and each transmission component takes its own multiplier. The identity
-* cost == cost_cap + cost_spur + cost_poi + cost_reinf is maintained upstream by
-* writesupplycurves.py, so with all multipliers at 1 this reproduces the static cost
-* exactly (up to the rounding applied to "cost" in e_solveprep).
-m_rsc_dat_t(r,i,rscbin,t)$m_rsc_dat(r,i,rscbin,"cost") = m_rsc_dat(r,i,rscbin,"cost") ;
-m_rsc_dat_t(r,i,rscbin,t)$m_rsc_dat(r,i,rscbin,"cost_trans") =
-      m_rsc_dat(r,i,rscbin,"cost_cap")
-    + m_rsc_dat(r,i,rscbin,"cost_spur")  * costmult("spur",t)
-    + m_rsc_dat(r,i,rscbin,"cost_poi")   * costmult("poi",t)
-    + m_rsc_dat(r,i,rscbin,"cost_reinf") * costmult("reinf",t) ;
-* Preserve the non-negativity floor that writesupplycurves applies to the base cost
-m_rsc_dat_t(r,i,rscbin,t)$(m_rsc_dat_t(r,i,rscbin,t) < 0) = 0 ;
+* m_rsc_dat_t is populated further down, after every adjustment to m_rsc_dat
+* (ILR conversion for UPV/PVB, hydro upgrade multipliers) has been applied.
 
 *=========================================
 * Reduced Resource Switch
@@ -6015,6 +6003,25 @@ m_rsc_dat(r,'hydUD',rscbin,"cap") = m_rsc_dat(r,'hydUD',rscbin,"cap") * %GSw_Hyd
 m_rsc_dat(r,'hydUND',rscbin,"cap") = m_rsc_dat(r,'hydUND',rscbin,"cap") * %GSw_HydroUpgradeCapMult% ;
 m_rsc_dat(r,'hydUD',rscbin,"cost") = m_rsc_dat(r,'hydUD',rscbin,"cost") * %GSw_HydroUpgradeCostMult% ;
 m_rsc_dat(r,'hydUND',rscbin,"cost") = m_rsc_dat(r,'hydUND',rscbin,"cost") * %GSw_HydroUpgradeCostMult% ;
+
+* --- time-varying supply curve cost (see costmult above) ---
+* Must come after every adjustment to m_rsc_dat "cost" above. Default to the static
+* cost. Techs whose supply curve carries the interconnection components (wind-ons,
+* wind-ofs, upv) are recombined per year: the capital adder is left alone and each
+* transmission component takes its own multiplier. The components are in $/MW-AC as
+* written by writesupplycurves.py, so for UPV/PVB the sum is converted to $/MW-DC by
+* ILR exactly as "cost" was above. With all multipliers at 1 this reproduces the
+* static cost (up to the rounding applied to "cost" in e_solveprep).
+m_rsc_dat_t(r,i,rscbin,t)$m_rsc_dat(r,i,rscbin,"cost") = m_rsc_dat(r,i,rscbin,"cost") ;
+m_rsc_dat_t(r,i,rscbin,t)
+    $[m_rsc_dat(r,i,rscbin,"cost_spur") or m_rsc_dat(r,i,rscbin,"cost_poi") or m_rsc_dat(r,i,rscbin,"cost_reinf")] =
+    ( m_rsc_dat(r,i,rscbin,"cost_cap")
+    + m_rsc_dat(r,i,rscbin,"cost_spur")  * costmult("spur",t)
+    + m_rsc_dat(r,i,rscbin,"cost_poi")   * costmult("poi",t)
+    + m_rsc_dat(r,i,rscbin,"cost_reinf") * costmult("reinf",t)
+    ) / (1$[not (upv(i) or pvb(i))] + ilr(i)$(upv(i) or pvb(i))) ;
+* Preserve the non-negativity floor that writesupplycurves applies to the base cost
+m_rsc_dat_t(r,i,rscbin,t)$(m_rsc_dat_t(r,i,rscbin,t) < 0) = 0 ;
 
 * Use hydropower upgrade supply curves and multiplier from switch input to define decoupled capacity/energy upgrade costs.
 cost_cap_up('hydED','init-1',r,rscbin,t) = m_rsc_dat(r,'hydUD',rscbin,"cost") * %GSw_HydroCostFracCapUp% ;
