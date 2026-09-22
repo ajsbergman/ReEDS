@@ -1203,7 +1203,7 @@ RE_gen_price_nat(t)$tmodel_new(t) = (1/cost_scale) * crf(t) * eq_national_gen.m(
 capex_ivrt(i,v,r,t)$valcap(i,v,r,t) =
                       INV.l(i,v,r,t) * (cost_cap_fin_mult_no_credits(i,r,t) * cost_cap(i,t) )
                       + INV_ENERGY.l(i,v,r,t) * (cost_cap_fin_mult_no_credits(i,r,t) * cost_cap_energy(i,t) )
-                      + sum{(rscbin)$m_rscfeas(r,i,rscbin),INV_RSC.l(i,v,r,rscbin,t) * m_rsc_dat(r,i,rscbin,"cost") * cost_cap_fin_mult_no_credits(i,r,t) }
+                      + sum{(rscbin)$m_rscfeas(r,i,rscbin),INV_RSC.l(i,v,r,rscbin,t) * m_rsc_dat_t(r,i,rscbin,t) * cost_cap_fin_mult_no_credits(i,r,t) }
                       + (INV_REFURB.l(i,v,r,t) * (cost_cap_fin_mult_no_credits(i,r,t) * cost_cap(i,t)))$[refurbtech(i)$Sw_Refurb]
                       + UPGRADES.l(i,v,r,t) * (cost_upgrade(i,v,r,t) * cost_cap_fin_mult_no_credits(i,r,t))$[upgrade(i)$Sw_Upgrades] ;
 
@@ -1252,7 +1252,9 @@ systemcost_techba("inv_investment_spurline_costs_rsc_technologies",i,r,t)$tmodel
                   $(not spur_techs(i))
                   ],
 *investment in resource supply curve technologies
-                   INV_RSC.l(i,v,r,rscbin,t) * m_rsc_dat(r,i,rscbin,"cost_trans") * rsc_fin_mult_noITC(i,r,t) }
+                   INV_RSC.l(i,v,r,rscbin,t)
+                   * (m_rsc_dat_t(r,i,rscbin,t) - m_rsc_dat(r,i,rscbin,"cost_cap"))
+                   * rsc_fin_mult_noITC(i,r,t) }
 ;
 
 systemcost_techba("inv_itc_payments_negative",i,r,t)$tmodel_new(t) =
@@ -1282,7 +1284,9 @@ systemcost_techba("inv_itc_payments_negative",i,r,t)$tmodel_new(t) =
               - systemcost_techba("inv_investment_capacity_costs",i,r,t)
 *plus supply curve transmission costs (including cost reductions from the ITC for applicable techs)
               +sum{(v,rscbin)$[m_rscfeas(r,i,rscbin)$valinv(i,v,r,t)$rsc_i(i)$[not sccapcosttech(i)]$(not spur_techs(i))],
-                    INV_RSC.l(i,v,r,rscbin,t) * m_rsc_dat(r,i,rscbin,"cost_trans") * rsc_fin_mult(i,r,t) }
+                    INV_RSC.l(i,v,r,rscbin,t)
+                    * (m_rsc_dat_t(r,i,rscbin,t) - m_rsc_dat(r,i,rscbin,"cost_cap"))
+                    * rsc_fin_mult(i,r,t) }
 *minus rsc transmission costs without ITC
               - systemcost_techba("inv_investment_spurline_costs_rsc_technologies",i,r,t)
 ;
