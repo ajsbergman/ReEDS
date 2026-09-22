@@ -6018,8 +6018,12 @@ m_rsc_dat(r,'hydUND',rscbin,"cost") = m_rsc_dat(r,'hydUND',rscbin,"cost") * %GSw
 * wind-ofs, upv) are recombined per year: the capital adder is left alone and each
 * transmission component takes its own multiplier. The components are in $/MW-AC as
 * written by writesupplycurves.py, so for UPV/PVB the sum is converted to $/MW-DC by
-* ILR exactly as "cost" was above. With all multipliers at 1 this reproduces the
-* static cost (up to the rounding applied to "cost" in e_solveprep).
+* ILR exactly as "cost" was above, and the recombined total is clipped to
+* [0, rsc_cost_cutoff] to match the clip that writesupplycurves.py applies to the
+* total (but not to the individual components). With all multipliers at 1 this
+* reproduces the static cost (up to the rounding applied to "cost" in e_solveprep).
+scalar rsc_cost_cutoff "--$/MW-- cutoff on supply curve cost, matching spur_cutoff in writesupplycurves.py" /1e7/ ;
+
 m_rsc_dat_t(r,i,rscbin,t)$m_rsc_dat(r,i,rscbin,"cost") = m_rsc_dat(r,i,rscbin,"cost") ;
 m_rsc_dat_t(r,i,rscbin,t)
     $[m_rsc_dat(r,i,rscbin,"cost_spur") or m_rsc_dat(r,i,rscbin,"cost_poi") or m_rsc_dat(r,i,rscbin,"cost_reinf")] =
@@ -6028,7 +6032,12 @@ m_rsc_dat_t(r,i,rscbin,t)
     + m_rsc_dat(r,i,rscbin,"cost_poi")   * costmult("poi",t)
     + m_rsc_dat(r,i,rscbin,"cost_reinf") * costmult("reinf",t)
     ) / (1$[not (upv(i) or pvb(i))] + ilr(i)$(upv(i) or pvb(i))) ;
-* Preserve the non-negativity floor that writesupplycurves applies to the base cost
+* Preserve the [0, cutoff] clip that writesupplycurves applies to the base cost.
+* The cutoff is applied to the $/MW-AC total, so scale it by ILR for UPV/PVB.
+m_rsc_dat_t(r,i,rscbin,t)
+    $[m_rsc_dat_t(r,i,rscbin,t)
+    > rsc_cost_cutoff / (1$[not (upv(i) or pvb(i))] + ilr(i)$(upv(i) or pvb(i)))]
+    = rsc_cost_cutoff / (1$[not (upv(i) or pvb(i))] + ilr(i)$(upv(i) or pvb(i))) ;
 m_rsc_dat_t(r,i,rscbin,t)$(m_rsc_dat_t(r,i,rscbin,t) < 0) = 0 ;
 
 * Use hydropower upgrade supply curves and multiplier from switch input to define decoupled capacity/energy upgrade costs.
