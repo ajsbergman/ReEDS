@@ -1193,6 +1193,24 @@ def process_social_costs(dfs, **kw):
     return costs_out
 
 
+def pre_trans_cross_level(dfs, **kw):
+    """
+    Keep only the transmission interfaces whose two endpoints are in different
+    regions at the hierarchy level given by kw['level'] (e.g. 'transreg' for
+    interregional capacity, 'interconnect' for seam-crossing capacity), and
+    convert MW to GW. tran_out is reported once per interface (ord(r)<ord(rr)),
+    so there is no double counting.
+    """
+    level = kw['level']
+    df = dfs['tran_out'].copy()
+    hierarchy = dfs['hierarchy'].copy()
+    hierarchy.columns = [c.lstrip('*') for c in hierarchy.columns]
+    r2level = hierarchy.set_index('r')[level]
+    df = df.loc[df.r.map(r2level) != df.rr.map(r2level)].copy()
+    df['Amount (GW)'] = df['Amount (GW)'] / 1000
+    return df.groupby(['trtype','year'], as_index=False)['Amount (GW)'].sum()
+
+
 def pre_spur(dfs, **kw):
     """
     Load spur-line parameters written by writesupplycurves.py and include spur
@@ -2858,8 +2876,41 @@ results_meta = collections.OrderedDict((
         'presets': collections.OrderedDict((
             ('Transmission Capacity',{'x':'year', 'y':'Amount (GW-mi)', 'series':'scenario', 'explode':'trtype', 'chart_type':'Line'}),
             ('Transmission Capacity Agg by type',{'x':'year', 'y':'Amount (GW-mi)', 'series':'scenario', 'chart_type':'Line'}),
+            ('Transmission Capacity Agg by type (TW-mi)',{'x':'year', 'y':'Amount (GW-mi)', 'series':'scenario', 'chart_type':'Line', 'y_scale':'1e-3', 'y_title':'Total transmission capacity [TW-mi]'}),
             ('Transmission Capacity stacked bars',{'x':'year', 'y':'Amount (GW-mi)', 'series':'trtype', 'explode':'scenario', 'chart_type':'Bar', 'bar_width':'1.75'}),
             ('Transmission Capacity (PRM) stacked bars',{'x':'year', 'y':'Trans cap, PRM (GW-mi)', 'series':'trtype', 'explode':'scenario', 'chart_type':'Bar', 'bar_width':'1.75'}),
+        )),
+        }
+    ),
+
+    ('Interregional Transmission Capacity (GW)',
+        {'sources': [
+            {'name':'tran_out', 'file':'tran_out', 'columns':['r','rr','trtype','year','Amount (GW)']},
+            {'name':'hierarchy', 'file':'../inputs_case/hierarchy.csv'},
+        ],
+        'preprocess': [
+            {'func': pre_trans_cross_level, 'args': {'level':'transreg'}},
+        ],
+        'index': ['trtype', 'year'],
+        'presets': collections.OrderedDict((
+            ('Scenario Lines',{'x':'year', 'y':'Amount (GW)', 'series':'scenario', 'chart_type':'Line'}),
+            ('Stacked Bars by type',{'x':'year', 'y':'Amount (GW)', 'series':'trtype', 'explode':'scenario', 'chart_type':'Bar', 'bar_width':'1.75'}),
+        )),
+        }
+    ),
+
+    ('Interconnection-Crossing Transmission Capacity (GW)',
+        {'sources': [
+            {'name':'tran_out', 'file':'tran_out', 'columns':['r','rr','trtype','year','Amount (GW)']},
+            {'name':'hierarchy', 'file':'../inputs_case/hierarchy.csv'},
+        ],
+        'preprocess': [
+            {'func': pre_trans_cross_level, 'args': {'level':'interconnect'}},
+        ],
+        'index': ['trtype', 'year'],
+        'presets': collections.OrderedDict((
+            ('Scenario Lines',{'x':'year', 'y':'Amount (GW)', 'series':'scenario', 'chart_type':'Line'}),
+            ('Stacked Bars by type',{'x':'year', 'y':'Amount (GW)', 'series':'trtype', 'explode':'scenario', 'chart_type':'Bar', 'bar_width':'1.75'}),
         )),
         }
     ),

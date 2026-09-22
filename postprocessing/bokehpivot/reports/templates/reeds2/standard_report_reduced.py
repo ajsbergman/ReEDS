@@ -9,6 +9,9 @@ static_presets = [
     {'name': 'System Cost of Electricity ($/MWh)', 'sheet_name':'scoe', 'result': 'National Average Electricity Cost ($/MWh)', 'preset': 'Scenario Lines'},
     {'name': 'System Cost of Electricity by Category ($/MWh)', 'sheet_name':'scoe_by_cat', 'result': 'National Average Electricity Cost ($/MWh)', 'preset': 'Average Electricity Cost by Year ($/MWh)'},
     {'name': 'Present Value of System Cost through 2050 (Bil $)', 'sheet_name':'sys_cost', 'result': 'Sys Cost Annualized (Bil $)', 'preset': 'Discounted through 2050'},
+    {'name': 'Total Transmission Capacity (TW-mi)', 'sheet_name':'trans_twmi', 'result': 'Transmission (GW-mi)', 'preset': 'Transmission Capacity Agg by type (TW-mi)'},
+    {'name': 'Interregional Transmission Capacity (GW)', 'sheet_name':'trans_interreg', 'result': 'Interregional Transmission Capacity (GW)', 'preset': 'Scenario Lines'},
+    {'name': 'Interconnection-Crossing Transmission Capacity (GW)', 'sheet_name':'trans_seam', 'result': 'Interconnection-Crossing Transmission Capacity (GW)', 'preset': 'Scenario Lines'},
     {'name': 'Emissions National (metric tons)', 'sheet_name':'emissions', 'result': 'Emissions National (metric tons)', 'preset': 'Scenario Lines Over Time'},
     {'name': 'Runtime (hours)', 'sheet_name':'runtime', 'result': 'Runtime', 'preset': 'Stacked Bars'},
 ]
