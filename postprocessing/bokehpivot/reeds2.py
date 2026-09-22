@@ -278,6 +278,15 @@ def pre_avgprice(dfs, **kw):
         df_natavgprice = pd.merge(left=df, right=df_load_nat, how='left',on=['year'], sort=False)
         df_natavgprice['Average cost ($/MWh)'] = df_natavgprice['Cost (Bil $)'] * 1e9 / df_natavgprice['q']
 
+        ### Optionally keep only the modeled solve years. Investment is lumped into solve
+        ### years, so the intervening years show a sawtooth (capital payments step up in a
+        ### solve year, then decay until the next one) and the years after the last solve
+        ### year are just the amortization tail of earlier investment, with the final
+        ### year's O&M and load carried forward. Neither is a projection.
+        if kw.get('sim_years_only'):
+            sim_years = sorted(dfs['sc']['year'].unique())
+            df_natavgprice = df_natavgprice.loc[df_natavgprice['year'].isin(sim_years)].copy()
+
         return df_natavgprice
 
     elif kw['reg'] == 'BA':
@@ -2381,6 +2390,26 @@ results_meta = collections.OrderedDict((
         }
     ),
 
+    ('National Average Electricity Cost, model years ($/MWh)',
+        {'sources': [
+            {'name': 'sc', 'file': 'systemcost', 'columns': ['cost_cat', 'year', 'Cost (Bil $)']},
+            {'name': 'q', 'file': 'reqt_quant', 'columns': ['type', 'subtype', 'rb', 'timeslice', 'year', 'q']}, 
+            {'name': 'crf', 'file': '../inputs_case/crf.csv', 'columns': ['year', 'crf']},
+            {'name': 'r', 'file': '../inputs_case/val_r.csv', 'header':None},
+            {'name': 'df_capex_init', 'file': '../inputs_case/df_capex_init.csv'},
+            {'name': 'switches', 'file': '../inputs_case/switches.csv', 'header':None, 'columns': ['switch', 'value']},
+            {'name': 'scalars', 'file': '../inputs_case/scalars.csv', 'header':None, 'columns': ['scalar', 'value', 'comment']},
+        ],
+        'preprocess': [
+            {'func': pre_avgprice, 'args': {'reg':'National', 'shift_capital':True, 'sim_years_only':True}},
+        ],
+        'presets': collections.OrderedDict((
+            ('Scenario Lines',{'x':'year','y':'Average cost ($/MWh)','series':'scenario','chart_type':'Line'}),
+            ('Average Electricity Cost by Year ($/MWh)',{'x':'year','y':'Average cost ($/MWh)','series':'cost_cat','explode':'scenario','chart_type':'Bar', 'bar_width':'0.95'}),
+        )),
+        }
+    ),
+
     ('BA-level Average Electricity Cost ($/MWh)',
         {'sources': [
             {'name': 'sc', 'file': 'systemcost_ba', 'columns': ['cost_cat','rb', 'year', 'Cost (Bil $)']},
@@ -2877,6 +2906,7 @@ results_meta = collections.OrderedDict((
             ('Transmission Capacity',{'x':'year', 'y':'Amount (GW-mi)', 'series':'scenario', 'explode':'trtype', 'chart_type':'Line'}),
             ('Transmission Capacity Agg by type',{'x':'year', 'y':'Amount (GW-mi)', 'series':'scenario', 'chart_type':'Line'}),
             ('Transmission Capacity Agg by type (TW-mi)',{'x':'year', 'y':'Amount (GW-mi)', 'series':'scenario', 'chart_type':'Line', 'y_scale':'1e-3', 'y_title':'Total transmission capacity [TW-mi]'}),
+            ('Long-distance Transmission (TW-mi)',{'x':'year', 'y':'Amount (GW-mi)', 'series':'scenario', 'chart_type':'Line', 'y_scale':'1e-3', 'y_title':'Long-distance transmission [TW-mi]', 'filter': {'trtype': ['AC','LCC','VSC','B2B']}}),
             ('Transmission Capacity stacked bars',{'x':'year', 'y':'Amount (GW-mi)', 'series':'trtype', 'explode':'scenario', 'chart_type':'Bar', 'bar_width':'1.75'}),
             ('Transmission Capacity (PRM) stacked bars',{'x':'year', 'y':'Trans cap, PRM (GW-mi)', 'series':'trtype', 'explode':'scenario', 'chart_type':'Bar', 'bar_width':'1.75'}),
         )),
