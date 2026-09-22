@@ -2358,6 +2358,7 @@ results_meta = collections.OrderedDict((
         ],
         'presets': collections.OrderedDict((
             ('Average Electricity Cost by Year ($/MWh)',{'x':'year','y':'Average cost ($/MWh)','series':'cost_cat','explode':'scenario','chart_type':'Bar', 'bar_width':'0.95', 'filter': {'year': {'start':2010, 'end':2050}}}),
+            ('Scenario Lines',{'x':'year','y':'Average cost ($/MWh)','series':'scenario','chart_type':'Line', 'filter': {'year': {'start':2010, 'end':2050}}}),
         )),
         }
     ),
