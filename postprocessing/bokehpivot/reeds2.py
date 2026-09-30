@@ -2235,7 +2235,8 @@ results_meta = collections.OrderedDict((
             ('CO2 Price Lines ($/metric ton)',{'x':'year', 'y':'$', 'series':'scenario', 'explode': 'type', 'chart_type':'Line', 'adv_op':'Ratio', 'adv_col':'type', 'adv_col_base':'q_annual_cap', 'y_scale':'1e-6', 'filter': {'type':['annual_cap','q_annual_cap'],'subtype':['co2']}}),
             ('Energy Price Final BA Map ($/MWh)',{'x':'rb', 'y':'$', 'explode': 'scenario', 'explode_group': 'type', 'chart_type':'Area Map', 'adv_op':'Ratio', 'adv_col':'type', 'adv_col_base':'q_load', 'filter': {'type':['load','q_load'], 'year':'last'}}),
             ('Bulk System Electricity Price ($/MWh)',{'x':'year', 'y':'$', 'series':'type', 'explode': 'scenario', 'chart_type':'Bar', 'bar_width':'1.75', 'adv_op':'Ratio', 'adv_col':'type', 'adv_col_base':'q_load', 'filter': {'type': price_types+['q_load'], 'year': {'start':DEFAULT_PV_YEAR}}}),
-            ('Bulk System Electricity Price by State ($/MWh)',{'x':'year', 'y':'$', 'series':'type', 'explode': 'scenario', 'explode_group': 'st', 'chart_type':'Bar', 'bar_width':'1.75', 'adv_op':'Ratio', 'adv_col':'type', 'adv_col_base':'q_load', 'filter': {'type': price_types+['q_load']}}),
+            ('Bulk System Electricity Price by State ($/MWh)',{'x':'year', 'y':'$', 'series':'type', 'explode': 'scenario', 'explode_group': 'st', 'chart_type':'Bar', 'bar_width':'1.75', 'adv_op':'Ratio', 'adv_col':'type', 'adv_col_base':'q_load', 'filter': {'type': price_types+['q_load'], 'year': {'start':DEFAULT_PV_YEAR}}}),
+            ('Total Bulk System Electricity Price State Map Final ($/MWh)',{'x':'st', 'y':'$', 'explode':'scenario', 'explode_group':'type', 'chart_type':'Area Map', 'adv_op':'Ratio', 'adv_col':'type', 'adv_col_base':'q_load', 'filter': {'type':['tot','q_load'], 'year':'last'}}),
             ('Total Bulk System Electricity Price Lines ($/MWh)',{'x':'year', 'y':'$', 'series':'scenario', 'explode':'type', 'chart_type':'Line', 'adv_op':'Ratio', 'adv_col':'type', 'adv_col_base':'q_load', 'filter': {'type': ['tot', 'q_load']}}),
         )),
         }
@@ -3230,6 +3231,22 @@ results_meta = collections.OrderedDict((
         ],
         'presets': collections.OrderedDict((
 			('Lines',{'x':'year', 'y':'Price ($/mmBTU)', 'series':'scenario', 'explode':'product', 'chart_type':'Line', 'filter': {'product':['h2']}}),
+        )),
+        }
+    ),
+
+    ('Retail rate by state (¢/kWh)',
+        ## Written by retail_rate_calculations.get_state_rates. The load-weighted average
+        ## of the state rates reproduces the US-average rate, but the state-level bias
+        ## correction (aggregation='best') can be large relative to the modeled cost, so
+        ## state LEVELS can be implausible (including negative). The correction depends only
+        ## on state and retail load, so it cancels in differences between scenarios with the
+        ## same load, which makes the _diff sheets the robust quantity.
+        {'file': 'retail/retail_rate_state_centsperkWh.csv',
+        'columns': ['st', 'year', 'retailrate', 'retail_load'],
+        'presets': collections.OrderedDict((
+            ('State Lines',{'x':'year', 'y':'retailrate', 'series':'scenario', 'explode':'st', 'chart_type':'Line', 'filter': {'year': {'start':DEFAULT_PV_YEAR}}}),
+            ('State Map Final',{'x':'st', 'y':'retailrate', 'explode':'scenario', 'chart_type':'Area Map', 'filter': {'year':'last'}}),
         )),
         }
     ),
