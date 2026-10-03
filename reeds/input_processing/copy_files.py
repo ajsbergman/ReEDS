@@ -1202,9 +1202,20 @@ def write_miscellaneous_files(
         os.makedirs(stresspath, exist_ok=True)
         prm_initial.xs(t, 0, 't').to_csv(os.path.join(stresspath, 'prm.csv'))
 
-    # Add capacity deployment limits based on interconnection queue data
-    cap_queue = pd.read_csv(
-        os.path.join(reeds_path,'inputs','capacity_exogenous','interconnection_queues.csv'))
+    # Add capacity deployment limits based on interconnection queue data.
+    # GSw_InterconnectionQueuesScen selects the input file: 'default' uses
+    # interconnection_queues.csv, anything else uses interconnection_queues_{scen}.csv.
+    # The model reads only cap_limit.csv (written below); the copy of
+    # interconnection_queues.csv made via runfiles.csv is overwritten with the
+    # selected file so inputs_case records what was actually used.
+    queue_scen = sw.get('GSw_InterconnectionQueuesScen', 'default')
+    queue_file = os.path.join(
+        reeds_path, 'inputs', 'capacity_exogenous',
+        'interconnection_queues.csv' if queue_scen == 'default'
+        else f'interconnection_queues_{queue_scen}.csv')
+    cap_queue = pd.read_csv(queue_file)
+    if queue_scen != 'default':
+        shutil.copy(queue_file, os.path.join(inputs_case, 'interconnection_queues.csv'))
     # Map counties to zones
     cap_queue['r'] = cap_queue['r'].map(county2zone)
     cap_queue = cap_queue.dropna(subset='r')
