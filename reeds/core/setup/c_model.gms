@@ -176,6 +176,7 @@ EQUATION
 
 * manual near-term wind constraint
  eq_wind_ons_cap(t)                       "--MW-- national cap on total onshore wind capacity"
+ eq_upv_cap(t)                            "--MW-- national cap on total UPV nameplate capacity (AC)"
 * certainty of permitting
 
 eq_interconnection_queues(tg,r,t)         "--MW-- capacity deployment limit based on interconnection queues"  
@@ -1132,6 +1133,33 @@ eq_wind_ons_cap(t)$[tmodel(t)
         m_capacity_exog(i,v,r,t)
         + sum{tt$[inv_cond(i,v,r,t,tt)$(tmodel(tt) or tfix(tt))],
               INV(i,v,r,tt) + INV_REFURB(i,v,r,tt)$[refurbtech(i)$Sw_Refurb] }
+       }
+;
+
+* ---------------------------------------------------------------------------
+
+* Optional national cap on UPV capacity in the same year as the wind constraint,
+* active when Sw_UPVCapGW > 0. Like eq_wind_ons_cap it caps undegraded nameplate
+* capacity (exogenous + cumulative investment), and it divides by ILR so the cap is
+* in MWac, the same quantity reported as UPV capacity (cap_out). upv(i) covers
+* utility-scale PV only (not distpv or pvb).
+
+eq_upv_cap(t)$[tmodel(t)
+              $Sw_UPVCapGW
+              $(yeart(t) = wind_constraint_year)
+              $(not Sw_PCM)]..
+
+* national cap on installed UPV capacity, GW -> MW
+    Sw_UPVCapGW * 1000
+
+    =g=
+
+* total UPV nameplate capacity across all vintages and regions, MWdc -> MWac
+    sum{(i,v,r)$[upv(i)$valcap(i,v,r,t)],
+        (m_capacity_exog(i,v,r,t)
+         + sum{tt$[inv_cond(i,v,r,t,tt)$(tmodel(tt) or tfix(tt))],
+               INV(i,v,r,tt) + INV_REFURB(i,v,r,tt)$[refurbtech(i)$Sw_Refurb] }
+        ) / ilr(i)
        }
 ;
 
