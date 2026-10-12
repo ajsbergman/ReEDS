@@ -506,6 +506,50 @@ def apply_distribution_loss_factor(
     """
     return load_hourly / (1 - distloss)
 
+def get_load_multiplier(
+    years,
+    mult_endyear: float,
+    this_year: int,
+    endyear: int,
+) -> pd.Series:
+    """
+    Per-year multiplier on load that ramps linearly from 1 in this_year
+    (the real-world current year) to mult_endyear in endyear. Years at or
+    before this_year get 1, so historical and current-year load is unchanged.
+
+    Args:
+        years: Years to return multipliers for.
+        mult_endyear: Multiplier reached in endyear (GSw_LoadMultEndyear).
+        this_year: Year in which the ramp starts at 1 (scalar this_year).
+        endyear: Year in which the ramp reaches mult_endyear.
+
+    Returns:
+        pd.Series of multipliers indexed by year
+    """
+    years = pd.Index(sorted(set(int(y) for y in years)), name='year')
+    if (mult_endyear == 1) or (endyear <= this_year):
+        return pd.Series(1.0, index=years)
+    frac = ((years - this_year) / (endyear - this_year)).to_numpy().clip(0, 1)
+    return pd.Series(1 + (mult_endyear - 1) * frac, index=years)
+
+
+def apply_load_multiplier(
+    load_hourly: pd.DataFrame,
+    mult_endyear: float,
+    this_year: int,
+    endyear: int,
+) -> pd.DataFrame:
+    """
+    Scale hourly load by the per-year multiplier from get_load_multiplier.
+    The profile shape within each year is unchanged.
+    """
+    if mult_endyear == 1:
+        return load_hourly
+    year_level = load_hourly.index.get_level_values('year')
+    mult = get_load_multiplier(year_level.unique(), mult_endyear, this_year, endyear)
+    return load_hourly.mul(year_level.map(mult).to_numpy(), axis=0)
+
+
 def calculate_peak_load(
     load_hourly: pd.DataFrame,
     hierarchy: pd.DataFrame
@@ -738,6 +782,14 @@ def validate_load_trajectory(
         expected = interpolate_missing_model_years(raw, int(sw.endyear))
         expected = calibrate_hourly_state_load_to_historical_annuals(
             expected, reeds.io.get_historical_state_load_annual())
+        ### Apply the same intended load ramp as main(), so only unintended
+        ### per-year deviations are flagged
+        expected = apply_load_multiplier(
+            expected,
+            float(sw.GSw_LoadMultEndyear),
+            int(reeds.io.get_scalars(inputs_case)['this_year']),
+            int(sw.endyear),
+        )
     except Exception as e:
         print(f'validate_load_trajectory [skipped]: reference recompute failed: {e}')
         return
@@ -874,6 +926,15 @@ def main(reeds_path, inputs_case):
     regional_load_hourly = apply_distribution_loss_factor(
         regional_load_hourly,
         scalars['distloss']
+    )
+    ### Optional linear load ramp (e.g. for additional data center demand):
+    ### 1 in this_year rising to GSw_LoadMultEndyear in endyear. Applied before the
+    ### peak load calculation so peak-based quantities reflect the scaled load.
+    regional_load_hourly = apply_load_multiplier(
+        regional_load_hourly,
+        float(sw.GSw_LoadMultEndyear),
+        int(scalars['this_year']),
+        int(sw.endyear),
     )
     regional_load_hourly = regional_load_hourly.astype(np.float32)
 
