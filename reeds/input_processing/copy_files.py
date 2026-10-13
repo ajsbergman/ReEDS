@@ -64,6 +64,15 @@ def read_runfiles(reeds_path, sw):
         args=(sw,),
     )
 
+    # Use alternate natural gas curve parameters (alpha and cd_beta0) if specified
+    gas_params_scen = sw.get('GSw_GasParamsScen', 'default')
+    if gas_params_scen != 'default':
+        gas_param_rows = runfiles['filename'].isin(['alpha.csv', 'cd_beta0.csv'])
+        runfiles.loc[gas_param_rows, 'filepath'] = (
+            runfiles.loc[gas_param_rows, 'filepath']
+            .str.replace('.csv', f'_{gas_params_scen}.csv', regex=False)
+        )
+
     # Determine existence of each file
     runfiles['full_filepath'] = runfiles.apply(
         axis=1,
