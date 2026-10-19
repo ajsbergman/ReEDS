@@ -12,7 +12,7 @@ static_presets = [
     {'name': 'Retail rate by state, final year (¢/kWh)', 'sheet_name':'retail_rate_st_map', 'result': 'Retail rate by state (¢/kWh)', 'preset': 'State Map Final'},
     {'name': 'System Cost of Electricity ($/MWh)', 'sheet_name':'scoe', 'result': 'National Average Electricity Cost, model years ($/MWh)', 'preset': 'Scenario Lines'},
     {'name': 'System Cost of Electricity by Category ($/MWh)', 'sheet_name':'scoe_by_cat', 'result': 'National Average Electricity Cost, model years ($/MWh)', 'preset': 'Average Electricity Cost by Year ($/MWh)'},
-    {'name': 'Present Value of System Cost through 2050 (Bil $)', 'sheet_name':'sys_cost', 'result': 'Sys Cost Annualized (Bil $)', 'preset': 'Discounted through 2050'},
+    {'name': 'Present Value of System Cost through end year (Bil $)', 'sheet_name':'sys_cost', 'result': 'Sys Cost Annualized (Bil $)', 'preset': 'Discounted through end year'},
     {'name': 'Total Transmission Capacity (TW-mi)', 'sheet_name':'trans_twmi', 'result': 'Transmission (GW-mi)', 'preset': 'Transmission Capacity Agg by type (TW-mi)'},
     {'name': 'Long-distance Transmission Capacity (TW-mi)', 'sheet_name':'trans_longdist', 'result': 'Transmission (GW-mi)', 'preset': 'Long-distance Transmission (TW-mi)'},
     {'name': 'Interregional Transmission Capacity (GW)', 'sheet_name':'trans_interreg', 'result': 'Interregional Transmission Capacity (GW)', 'preset': 'Scenario Lines'},

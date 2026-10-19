@@ -7,7 +7,7 @@ static_presets = [
     {'name': 'Final Gen by timeslice (GW)', 'result': 'Gen by timeslice national (GW)', 'preset': 'Stacked Bars Final'},
     {'name': 'Regional Gen Final (TWh)', 'result': 'Generation BA (TWh) [no-index]', 'preset': 'Regional Gen Final'},
     {'name': 'Bulk System Electricity Price ($/MWh)', 'result': 'Requirement Prices and Quantities National', 'preset': 'Bulk System Electricity Price ($/MWh)'},
-    {'name': 'Present Value of System Cost through 2050 (Bil $)', 'result': 'Sys Cost Annualized (Bil $)', 'preset': 'Discounted through 2050'},
+    {'name': 'Present Value of System Cost through end year (Bil $)', 'result': 'Sys Cost Annualized (Bil $)', 'preset': 'Discounted through end year'},
     {'name': 'Emissions National (metric tons)', 'result': 'Emissions National (metric tons)', 'preset': 'Scenario Lines Over Time'},
     {'name': 'Final Regional Energy Price ($/MWh)', 'result': 'Requirement Prices and Quantities BA', 'preset': 'Energy Price Final BA Map ($/MWh)'},
 ]

@@ -261,6 +261,10 @@ def pre_systemcost(dfs, **kw):
         
     #Add Dicounted Cost column (including for annualized)
     df['Discounted Cost (Bil $)'] = df['Cost (Bil $)'] / (1 + d)**(df['year'] - y0)
+    #Optionally add a discounted cost column that excludes years after the final model year
+    if 'endyear_col' in kw and kw['endyear_col'] is True:
+        df['Discounted Cost through end year (Bil $)'] = (
+            df['Discounted Cost (Bil $)'].where(df['year'] <= lastmodelyear, 0))
     return df
 
 def pre_avgprice(dfs, **kw):
@@ -2328,10 +2332,11 @@ results_meta = collections.OrderedDict((
         ],
         'index': ['cost_cat', 'year'],
         'preprocess': [
-            {'func': pre_systemcost, 'args': {'annualize':True, 'shift_capital':True}},
+            {'func': pre_systemcost, 'args': {'annualize':True, 'shift_capital':True, 'endyear_col':True}},
         ],
         'presets': collections.OrderedDict((
             ('Total Discounted',{'x':'scenario','y':'Discounted Cost (Bil $)','series':'cost_cat','chart_type':'Bar'}),
+            ('Discounted through end year',{'x':'scenario','y':'Discounted Cost through end year (Bil $)','series':'cost_cat','chart_type':'Bar', 'filter': {'year': {'start':DEFAULT_PV_YEAR}}}),
             ('Discounted through 2050',{'x':'scenario','y':'Discounted Cost (Bil $)','series':'cost_cat','chart_type':'Bar', 'filter': {'year': {'start':DEFAULT_PV_YEAR, 'end':2050}}}),
             (f'{DEFAULT_PV_YEAR}-end Discounted',{'x':'scenario','y':'Discounted Cost (Bil $)','series':'cost_cat','chart_type':'Bar', 'filter': {'year': {'start':DEFAULT_PV_YEAR}}}),
             ('Discounted by Year',{'x':'year','y':'Discounted Cost (Bil $)','series':'cost_cat','explode':'scenario','chart_type':'Bar', 'bar_width':'1.75'}),
