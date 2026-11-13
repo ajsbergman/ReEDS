@@ -278,6 +278,15 @@ def pre_avgprice(dfs, **kw):
         df_natavgprice = pd.merge(left=df, right=df_load_nat, how='left',on=['year'], sort=False)
         df_natavgprice['Average cost ($/MWh)'] = df_natavgprice['Cost (Bil $)'] * 1e9 / df_natavgprice['q']
 
+        ### Optionally keep only the modeled solve years. Investment is lumped into solve
+        ### years, so the intervening years show a sawtooth (capital payments step up in a
+        ### solve year, then decay until the next one) and the years after the last solve
+        ### year are just the amortization tail of earlier investment, with the final
+        ### year's O&M and load carried forward. Neither is a projection.
+        if kw.get('sim_years_only'):
+            sim_years = sorted(dfs['sc']['year'].unique())
+            df_natavgprice = df_natavgprice.loc[df_natavgprice['year'].isin(sim_years)].copy()
+
         return df_natavgprice
 
     elif kw['reg'] == 'BA':
@@ -1191,6 +1200,24 @@ def process_social_costs(dfs, **kw):
     costs_out['Discounted average cost ($/MWh)'] = costs_out['Discounted Cost (Bil $)'] * 1e9 / costs_out['q']
 
     return costs_out
+
+
+def pre_trans_cross_level(dfs, **kw):
+    """
+    Keep only the transmission interfaces whose two endpoints are in different
+    regions at the hierarchy level given by kw['level'] (e.g. 'transreg' for
+    interregional capacity, 'interconnect' for seam-crossing capacity), and
+    convert MW to GW. tran_out is reported once per interface (ord(r)<ord(rr)),
+    so there is no double counting.
+    """
+    level = kw['level']
+    df = dfs['tran_out'].copy()
+    hierarchy = dfs['hierarchy'].copy()
+    hierarchy.columns = [c.lstrip('*') for c in hierarchy.columns]
+    r2level = hierarchy.set_index('r')[level]
+    df = df.loc[df.r.map(r2level) != df.rr.map(r2level)].copy()
+    df['Amount (GW)'] = df['Amount (GW)'] / 1000
+    return df.groupby(['trtype','year'], as_index=False)['Amount (GW)'].sum()
 
 
 def pre_spur(dfs, **kw):
@@ -2208,7 +2235,8 @@ results_meta = collections.OrderedDict((
             ('CO2 Price Lines ($/metric ton)',{'x':'year', 'y':'$', 'series':'scenario', 'explode': 'type', 'chart_type':'Line', 'adv_op':'Ratio', 'adv_col':'type', 'adv_col_base':'q_annual_cap', 'y_scale':'1e-6', 'filter': {'type':['annual_cap','q_annual_cap'],'subtype':['co2']}}),
             ('Energy Price Final BA Map ($/MWh)',{'x':'rb', 'y':'$', 'explode': 'scenario', 'explode_group': 'type', 'chart_type':'Area Map', 'adv_op':'Ratio', 'adv_col':'type', 'adv_col_base':'q_load', 'filter': {'type':['load','q_load'], 'year':'last'}}),
             ('Bulk System Electricity Price ($/MWh)',{'x':'year', 'y':'$', 'series':'type', 'explode': 'scenario', 'chart_type':'Bar', 'bar_width':'1.75', 'adv_op':'Ratio', 'adv_col':'type', 'adv_col_base':'q_load', 'filter': {'type': price_types+['q_load'], 'year': {'start':DEFAULT_PV_YEAR}}}),
-            ('Bulk System Electricity Price by State ($/MWh)',{'x':'year', 'y':'$', 'series':'type', 'explode': 'scenario', 'explode_group': 'st', 'chart_type':'Bar', 'bar_width':'1.75', 'adv_op':'Ratio', 'adv_col':'type', 'adv_col_base':'q_load', 'filter': {'type': price_types+['q_load']}}),
+            ('Bulk System Electricity Price by State ($/MWh)',{'x':'year', 'y':'$', 'series':'type', 'explode': 'scenario', 'explode_group': 'st', 'chart_type':'Bar', 'bar_width':'1.75', 'adv_op':'Ratio', 'adv_col':'type', 'adv_col_base':'q_load', 'filter': {'type': price_types+['q_load'], 'year': {'start':DEFAULT_PV_YEAR}}}),
+            ('Total Bulk System Electricity Price State Map Final ($/MWh)',{'x':'st', 'y':'$', 'explode':'scenario', 'explode_group':'type', 'chart_type':'Area Map', 'adv_op':'Ratio', 'adv_col':'type', 'adv_col_base':'q_load', 'filter': {'type':['tot','q_load'], 'year':'last'}}),
             ('Total Bulk System Electricity Price Lines ($/MWh)',{'x':'year', 'y':'$', 'series':'scenario', 'explode':'type', 'chart_type':'Line', 'adv_op':'Ratio', 'adv_col':'type', 'adv_col_base':'q_load', 'filter': {'type': ['tot', 'q_load']}}),
         )),
         }
@@ -2358,6 +2386,27 @@ results_meta = collections.OrderedDict((
         ],
         'presets': collections.OrderedDict((
             ('Average Electricity Cost by Year ($/MWh)',{'x':'year','y':'Average cost ($/MWh)','series':'cost_cat','explode':'scenario','chart_type':'Bar', 'bar_width':'0.95', 'filter': {'year': {'start':2010, 'end':2050}}}),
+            ('Scenario Lines',{'x':'year','y':'Average cost ($/MWh)','series':'scenario','chart_type':'Line', 'filter': {'year': {'start':2010, 'end':2050}}}),
+        )),
+        }
+    ),
+
+    ('National Average Electricity Cost, model years ($/MWh)',
+        {'sources': [
+            {'name': 'sc', 'file': 'systemcost', 'columns': ['cost_cat', 'year', 'Cost (Bil $)']},
+            {'name': 'q', 'file': 'reqt_quant', 'columns': ['type', 'subtype', 'rb', 'timeslice', 'year', 'q']}, 
+            {'name': 'crf', 'file': '../inputs_case/crf.csv', 'columns': ['year', 'crf']},
+            {'name': 'r', 'file': '../inputs_case/val_r.csv', 'header':None},
+            {'name': 'df_capex_init', 'file': '../inputs_case/df_capex_init.csv'},
+            {'name': 'switches', 'file': '../inputs_case/switches.csv', 'header':None, 'columns': ['switch', 'value']},
+            {'name': 'scalars', 'file': '../inputs_case/scalars.csv', 'header':None, 'columns': ['scalar', 'value', 'comment']},
+        ],
+        'preprocess': [
+            {'func': pre_avgprice, 'args': {'reg':'National', 'shift_capital':True, 'sim_years_only':True}},
+        ],
+        'presets': collections.OrderedDict((
+            ('Scenario Lines',{'x':'year','y':'Average cost ($/MWh)','series':'scenario','chart_type':'Line'}),
+            ('Average Electricity Cost by Year ($/MWh)',{'x':'year','y':'Average cost ($/MWh)','series':'cost_cat','explode':'scenario','chart_type':'Bar', 'bar_width':'0.95'}),
         )),
         }
     ),
@@ -2857,8 +2906,42 @@ results_meta = collections.OrderedDict((
         'presets': collections.OrderedDict((
             ('Transmission Capacity',{'x':'year', 'y':'Amount (GW-mi)', 'series':'scenario', 'explode':'trtype', 'chart_type':'Line'}),
             ('Transmission Capacity Agg by type',{'x':'year', 'y':'Amount (GW-mi)', 'series':'scenario', 'chart_type':'Line'}),
+            ('Transmission Capacity Agg by type (TW-mi)',{'x':'year', 'y':'Amount (GW-mi)', 'series':'scenario', 'chart_type':'Line', 'y_scale':'1e-3', 'y_title':'Total transmission capacity [TW-mi]'}),
+            ('Long-distance Transmission (TW-mi)',{'x':'year', 'y':'Amount (GW-mi)', 'series':'scenario', 'chart_type':'Line', 'y_scale':'1e-3', 'y_title':'Long-distance transmission [TW-mi]', 'filter': {'trtype': ['AC','LCC','VSC','B2B']}}),
             ('Transmission Capacity stacked bars',{'x':'year', 'y':'Amount (GW-mi)', 'series':'trtype', 'explode':'scenario', 'chart_type':'Bar', 'bar_width':'1.75'}),
             ('Transmission Capacity (PRM) stacked bars',{'x':'year', 'y':'Trans cap, PRM (GW-mi)', 'series':'trtype', 'explode':'scenario', 'chart_type':'Bar', 'bar_width':'1.75'}),
+        )),
+        }
+    ),
+
+    ('Interregional Transmission Capacity (GW)',
+        {'sources': [
+            {'name':'tran_out', 'file':'tran_out', 'columns':['r','rr','trtype','year','Amount (GW)']},
+            {'name':'hierarchy', 'file':'../inputs_case/hierarchy.csv'},
+        ],
+        'preprocess': [
+            {'func': pre_trans_cross_level, 'args': {'level':'transreg'}},
+        ],
+        'index': ['trtype', 'year'],
+        'presets': collections.OrderedDict((
+            ('Scenario Lines',{'x':'year', 'y':'Amount (GW)', 'series':'scenario', 'chart_type':'Line'}),
+            ('Stacked Bars by type',{'x':'year', 'y':'Amount (GW)', 'series':'trtype', 'explode':'scenario', 'chart_type':'Bar', 'bar_width':'1.75'}),
+        )),
+        }
+    ),
+
+    ('Interconnection-Crossing Transmission Capacity (GW)',
+        {'sources': [
+            {'name':'tran_out', 'file':'tran_out', 'columns':['r','rr','trtype','year','Amount (GW)']},
+            {'name':'hierarchy', 'file':'../inputs_case/hierarchy.csv'},
+        ],
+        'preprocess': [
+            {'func': pre_trans_cross_level, 'args': {'level':'interconnect'}},
+        ],
+        'index': ['trtype', 'year'],
+        'presets': collections.OrderedDict((
+            ('Scenario Lines',{'x':'year', 'y':'Amount (GW)', 'series':'scenario', 'chart_type':'Line'}),
+            ('Stacked Bars by type',{'x':'year', 'y':'Amount (GW)', 'series':'trtype', 'explode':'scenario', 'chart_type':'Bar', 'bar_width':'1.75'}),
         )),
         }
     ),
@@ -3152,11 +3235,34 @@ results_meta = collections.OrderedDict((
         }
     ),
 
+    ('Retail rate by state (¢/kWh)',
+        ## Written by retail_rate_calculations.get_state_rates. The load-weighted average
+        ## of the state rates reproduces the US-average rate, but the state-level bias
+        ## correction (aggregation='best') can be large relative to the modeled cost, so
+        ## state LEVELS can be implausible (including negative). The correction depends only
+        ## on state and retail load, so it cancels in differences between scenarios with the
+        ## same load, which makes the _diff sheets the robust quantity.
+        {'file': 'retail/retail_rate_state_centsperkWh.csv',
+        'columns': ['st', 'year', 'retailrate', 'retail_load'],
+        'presets': collections.OrderedDict((
+            ('State Lines',{'x':'year', 'y':'retailrate', 'series':'scenario', 'explode':'st', 'chart_type':'Line', 'filter': {'year': {'start':DEFAULT_PV_YEAR}}}),
+            ('State Map Final',{'x':'st', 'y':'retailrate', 'explode':'scenario', 'chart_type':'Area Map', 'filter': {'year':'last'}}),
+        )),
+        }
+    ),
+
     ('Retail rate (¢/kWh)',
         {'file': 'retail/retail_rate_USA_centsperkWh.csv',
         'columns': ['t', 'retailrate', 'source'],
         'presets': collections.OrderedDict((
             ('Lines',{'x':'t', 'y':'retailrate', 'series':'source', 'chart_type':'Line'}),
+            ## Modeled rates only, compared across scenarios. The source column carries
+            ## both the EIA861 history (1960-2025) and the ReEDS projection (2010-2041),
+            ## so without the filter every scenario line would double back over the
+            ## historical series, which is identical across scenarios. Note bokehpivot
+            ## lowercases column values, so the filter must be 'reeds', not 'ReEDS'.
+            ('Scenario Lines',{'x':'t', 'y':'retailrate', 'series':'scenario',
+                               'chart_type':'Line', 'filter':{'source':['reeds']}}),
         )),
         }
     ),

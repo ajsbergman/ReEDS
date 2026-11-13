@@ -1491,6 +1491,13 @@ $onlisting
 ;
 $offempty
 
+* The manual wind constraints represent a world without state offshore support, so
+* drop the mandates rather than requiring a separate zeroed offshore_req_{scen}.csv.
+* Applied here, before r_offshore is derived, so every downstream consumer of
+* offshore_cap_req sees the same thing. Unlike the two wind constraints themselves,
+* this is not limited to wind_constraint_year -- the mandates are off in all years.
+offshore_cap_req(st,allt)$Sw_WindConstraint = 0 ;
+
 parameter r_offshore(r,t) "regions where offshore wind is required by a mandate" ;
 r_offshore(r,t)$[sum{st$r_st(r,st), offshore_cap_req(st,t) }] = 1 ;
 
@@ -2961,8 +2968,16 @@ $offempty
 * --- exogenously specified transmission capacity ---
 * Transmission additions are defined in one direction for each region-to-region pair with the lowest region number listed first
 parameter invtran_exog(r,rr,trtype,t) "--MW-- exogenous transmission capacity investment (one direction)" ;
-* "certain" future transmission project capacity in the current year t
-invtran_exog(r,rr,trtype,t)$trancap_fut(r,rr,"certain",trtype,t) = trancap_fut(r,rr,"certain",trtype,t) ;
+* "certain" future transmission project capacity is assigned to the first modeled
+* year at or after its online year, so a project dated to a year that is not in the
+* yearset (e.g. 2026 with a 2025/2028 yearset) is still enforced by eq_invtran_exog
+* rather than silently dropped. Projects dated before the first modeled year land in
+* the first modeled year.
+invtran_exog(r,rr,trtype,t)$tmodel_new(t) =
+    sum{allt$[trancap_fut(r,rr,"certain",trtype,allt)
+              $(allt.val <= yeart(t))
+              $(allt.val > smax{tt$[tmodel_new(tt)$(tt.val < t.val)], tt.val})],
+        trancap_fut(r,rr,"certain",trtype,allt) } ;
 
 * --- valid transmission routes ---
 
@@ -2995,14 +3010,59 @@ routes(r,rr,trtype,t)$[(not Sw_OffshoreBackbone)$offshore(r)$offshore(rr)] = no 
 scalar Sw_VSC "Activate VSC constraints and variables" ;
 Sw_VSC = sum{routes(r,rr,trtype,t)$sameas(trtype,'VSC'), 1} ;
 
+* Convenience sets giving transmission routes between region hierarchy levels
+set routes_transgroup(transgrp,transgrpp,r,rr) "collection of routes between transgroups" ;
+routes_transgroup(transgrp,transgrpp,r,rr)$[
+    sum{t, routes(r,rr,"AC",t) }
+    $r_transgrp(r,transgrp)
+    $r_transgrp(rr,transgrpp)
+    $(not sameas(transgrp,transgrpp))
+    $(not sameas(r,rr))
+] = yes ;
+
+set routes_transreg(transreg,transregg,r,rr) "collection of routes between transregs" ;
+routes_transreg(transreg,transregg,r,rr)$[
+    sum{(t,trtype), routes(r,rr,trtype,t) }
+    $r_transreg(r,transreg)
+    $r_transreg(rr,transregg)
+    $(not sameas(transreg,transregg))
+    $(not sameas(r,rr))
+] = yes ;
+
+set routes_nercr(nercr,nercrr,r,rr) "collection of routes between nercrs" ;
+routes_nercr(nercr,nercrr,r,rr)$[
+    sum{(t,trtype), routes(r,rr,trtype,t) }
+    $r_nercr(r,nercr)
+    $r_nercr(rr,nercrr)
+    $(not sameas(nercr,nercrr))
+    $(not sameas(r,rr))
+] = yes ;
+
+set connections_transreg(transreg,transregg) "transreg's with potential connections" ;
+connections_transreg(transreg,transregg)$[
+    sum{(r,rr), routes_transreg(transreg,transregg,r,rr)}
+    $(not sameas(transreg,transregg))
+] = yes ;
+
+set connections_nercr(nercr,nercrr) "nercr's with potential connections" ;
+connections_nercr(nercr,nercrr)$[
+    sum{(r,rr), routes_nercr(nercr,nercrr,r,rr)}
+    $(not sameas(nercr,nercrr))
+] = yes ;
+
 * initialize all investment routes to no
 routes_inv(r,rr,trtype,t) = no ;
 * allow new investment along existing routes
 routes_inv(r,rr,trtype,t)$[notvsc(trtype)$routes(r,rr,trtype,t)] = yes ;
 * Do not allow transmission expansion on most interfaces until firstyear_trans_nearterm
 routes_inv(r,rr,trtype,t)$[yeart(t)<firstyear_trans_nearterm] = no ;
-* If not allowing near-term transmission, turn those off until firstyear_trans_longterm
-routes_inv(r,rr,trtype,t)$[(not Sw_TransInvNearTerm)$(yeart(t)<firstyear_trans_longterm)] = no ;
+* If not allowing near-term transmission, turn those off until GSw_TransFirstYear
+routes_inv(r,rr,trtype,t)$[(not Sw_TransInvNearTerm)$(yeart(t)<Sw_TransFirstYear)] = no ;
+* Turn off interregional transmission expansion until Sw_TransFirstYearInterReg
+routes_inv(r,rr,trtype,t)
+    $[sum{(transreg,transregg), routes_transreg(transreg,transregg,r,rr)}
+    $(yeart(t)<Sw_TransFirstYearInterReg)]
+    = no ;
 * Allow interfaces with planned expansions to be expanded
 routes_inv(r,rr,trtype,t)
     $[sum{(tt,trancap_fut_cat)$[yeart(tt)<=yeart(t)],
@@ -3074,6 +3134,17 @@ $onlisting
 / ;
 $offempty
 
+* --- advanced transmission technologies (ATT) ---
+* Sw_ATTCapMult scales the initial (existing) transmission capacity at every level
+* the model constrains directly (BA-BA energy and PRM, transgroup and itlgrp
+* interfaces; CAPTRAN_REG is built from CAPTRAN_ENERGY so it inherits the uplift). It represents
+* reconductoring / dynamic line ratings on the existing network, so it applies from
+* Sw_ATTStartYear onward and leaves historical years at their as-built ratings.
+* New lines are sized by the model and are not scaled.
+parameter att_mult(t) "--fraction-- multiplier on initial transmission capacity from ATT deployment" ;
+att_mult(t) = 1 ;
+att_mult(t)$[yeart(t) >= Sw_ATTStartYear] = Sw_ATTCapMult ;
+
 $onempty
 parameter trancap_init_itlgrp(itlgrp,itlgrpp,trtype) "--MW-- initial upper limit on interface flows between itlgrps"
 /
@@ -3086,23 +3157,17 @@ parameter trancap_init_itlgrp(itlgrp,itlgrpp,trtype) "--MW-- initial upper limit
 / ;
 $offempty
 
-parameter routes_transgroup(transgrp,transgrpp,r,rr) "collection of routes between transgroups" ;
-routes_transgroup(transgrp,transgrpp,r,rr)$[
-    sum{t, routes(r,rr,"AC",t) }
-    $r_transgrp(r,transgrp)
-    $r_transgrp(rr,transgrpp)
-    $(not sameas(transgrp,transgrpp))
-    $(not sameas(r,rr))
-] = yes ;
-
-set routes_nercr(nercr,nercrr,r,rr) "collection of routes between nercrs" ;
-routes_nercr(nercr,nercrr,r,rr)$[
-    sum{(t,trtype), routes(r,rr,trtype,t) }
-    $r_nercr(r,nercr)
-    $r_nercr(rr,nercrr)
-    $(not sameas(nercr,nercrr))
-    $(not sameas(r,rr))
-] = yes ;
+* Empty when GSw_TransInterRegRatioStart is later than endyear
+$onempty
+parameter captran_interreg_req(transreg,allt) "--MW-- Interregional transmission capability requirement"
+/
+$offlisting
+$ondelim
+$include inputs_case%ds%captran_interreg_req.csv
+$offdelim
+$onlisting
+/ ;
+$offempty
 
 parameter routes_itlgrp(itlgrp,itlgrpp,r,rr) "collection of routes between itlgrps" ;
 routes_itlgrp(itlgrp,itlgrpp,r,rr)$[
@@ -3159,6 +3224,19 @@ tsc_binwidth(r,rr,tscbin) = tsc_binwidth(r,rr,tscbin) * Sw_TransCostMult ;
 tsc_forward(r,rr,tscbin) = tsc_forward(r,rr,tscbin) * Sw_TransCostMult ;
 tsc_reverse(r,rr,tscbin) = tsc_reverse(r,rr,tscbin) * Sw_TransCostMult ;
 transmission_cost_nonac(r,rr,trtype) = transmission_cost_nonac(r,rr,trtype) * Sw_TransCostMult ;
+* Further scale interregional transmission capex costs by Sw_TransCostMultInterReg
+tsc_binwidth(r,rr,tscbin)
+    $[sum{(transreg,transregg), routes_transreg(transreg,transregg,r,rr)}]
+    = tsc_binwidth(r,rr,tscbin) * Sw_TransCostMultInterReg ;
+tsc_forward(r,rr,tscbin)
+    $[sum{(transreg,transregg), routes_transreg(transreg,transregg,r,rr)}]
+    = tsc_forward(r,rr,tscbin) * Sw_TransCostMultInterReg ;
+tsc_reverse(r,rr,tscbin)
+    $[sum{(transreg,transregg), routes_transreg(transreg,transregg,r,rr)}]
+    = tsc_reverse(r,rr,tscbin) * Sw_TransCostMultInterReg ;
+transmission_cost_nonac(r,rr,trtype)
+    $[sum{(transreg,transregg), routes_transreg(transreg,transregg,r,rr)}]
+    = transmission_cost_nonac(r,rr,trtype) * Sw_TransCostMultInterReg ;
 
 * Transmission line FOM cost
 * Written by transmission.py
@@ -3315,12 +3393,12 @@ parameter trans_inv_max(allt) "--TWmile/year-- annual limit on transmission inve
 trans_inv_max(t)$[
     tmodel_new(t)
     $(yeart(t) >= firstyear_trans_nearterm)
-    $(yeart(t) < firstyear_trans_longterm)
+    $(yeart(t) < Sw_TransFirstYear)
 ] = Sw_TransInvMaxNearterm ;
 
 trans_inv_max(t)$[
     tmodel_new(t)
-    $(yeart(t) >= firstyear_trans_longterm)
+    $(yeart(t) >= Sw_TransFirstYear)
 ] = Sw_TransInvMaxLongterm ;
 
 *============================
@@ -4843,6 +4921,17 @@ parameter growth_bin_limit(gbin,st,tg,t) "--MW/yr-- size of each growth bin"
 growth_bin_limit(gbin,st,tg,tfirst)$stfeas(st) = gbin_min(tg) ;
 cost_growth(i,st,t) = 0 ;
 
+*==========================================
+* --- Manual near-term wind constraints ---
+*==========================================
+* Only used when Sw_WindConstraint is on; see eq_wind_ons_cap in c_model.gms.
+* The onshore cap applies in wind_constraint_year alone, so later years are free
+* to rebound (metered by the growth penalties if those are on). The offshore
+* mandates are zeroed in all years (see offshore_cap_req above).
+
+scalar wind_constraint_year "--year-- solve year in which the manual wind constraints apply" /2028/ ;
+scalar wind_ons_cap "--MW-- national cap on total onshore wind capacity in wind_constraint_year" /180000/ ;
+
 *====================================
 * --- CES Gas supply curve setup ---
 *====================================
@@ -5702,6 +5791,49 @@ parameter m_rsc_dat_original(r,i,rscbin,sc_cat) "--MW or $/MW-- resource supply 
 *It is only used for model validation and debugging purposes. 
 m_rsc_dat_original(r,i,rscbin,sc_cat) = m_rsc_dat(r,i,rscbin,sc_cat) ;
 
+*==============================================================
+* --- Time-varying transmission / interconnection cost multipliers ---
+*==============================================================
+* Selected by GSw_TransCostMultScen; see inputs/transmission/README_cost_mult.md.
+* cost_mult.csv is long-format (component,t,mult). For each model year the value in
+* force is the one at the latest listed year <= that year, and 1 before the first
+* listed year. These stack multiplicatively on the static cost switches.
+
+set costmult_comp "cost components carrying a time-varying multiplier" / inter, intra, spur, poi, reinf / ;
+
+parameter costmult_in(costmult_comp,allt) "--unitless-- multipliers as listed in cost_mult.csv"
+/
+$offlisting
+$ondelim
+$include inputs_case%ds%cost_mult.csv
+$offdelim
+$onlisting
+/ ;
+
+parameter costmult_lastyr(costmult_comp,t) "--year-- latest listed year at or before each model year"
+          costmult(costmult_comp,t)        "--unitless-- multiplier in force in each model year" ;
+
+costmult_lastyr(costmult_comp,t) =
+    smax{allt$[costmult_in(costmult_comp,allt)$(allt.val <= yeart(t))], allt.val} ;
+costmult(costmult_comp,t) = 1 ;
+costmult(costmult_comp,t)$(costmult_lastyr(costmult_comp,t) > 0) =
+    sum{allt$(allt.val = costmult_lastyr(costmult_comp,t)), costmult_in(costmult_comp,allt) } ;
+
+parameter trans_intra_mult(t)      "--unitless-- time-varying multiplier on Sw_TransIntraCost"
+          trans_inter_mult(r,rr,t) "--unitless-- time-varying multiplier on capex of lines crossing an interconnect boundary; 1 within an interconnect"
+          m_rsc_dat_t(r,i,rscbin,t) "--$/MW-- supply curve cost with time-varying component multipliers applied" ;
+
+trans_intra_mult(t) = costmult("intra",t) ;
+* "Interconnection transmission" means lines between the three US interconnections, so
+* the inter multiplier applies only to routes whose endpoints lie in different ones
+trans_inter_mult(r,rr,t) = 1 ;
+trans_inter_mult(r,rr,t)
+    $[not sum{interconnect$[r_interconnect(r,interconnect)$r_interconnect(rr,interconnect)], 1 }]
+    = costmult("inter",t) ;
+
+* m_rsc_dat_t is populated further down, after every adjustment to m_rsc_dat
+* (ILR conversion for UPV/PVB, hydro upgrade multipliers) has been applied.
+
 *=========================================
 * Reduced Resource Switch
 *=========================================
@@ -5879,6 +6011,25 @@ m_rsc_dat(r,'hydUD',rscbin,"cap") = m_rsc_dat(r,'hydUD',rscbin,"cap") * %GSw_Hyd
 m_rsc_dat(r,'hydUND',rscbin,"cap") = m_rsc_dat(r,'hydUND',rscbin,"cap") * %GSw_HydroUpgradeCapMult% ;
 m_rsc_dat(r,'hydUD',rscbin,"cost") = m_rsc_dat(r,'hydUD',rscbin,"cost") * %GSw_HydroUpgradeCostMult% ;
 m_rsc_dat(r,'hydUND',rscbin,"cost") = m_rsc_dat(r,'hydUND',rscbin,"cost") * %GSw_HydroUpgradeCostMult% ;
+
+* --- time-varying supply curve cost (see costmult above) ---
+* Must come after every adjustment to m_rsc_dat "cost" above. Default to the static
+* cost. Techs whose supply curve carries the interconnection components (wind-ons,
+* wind-ofs, upv) are recombined per year: the capital adder is left alone and each
+* transmission component takes its own multiplier. The components are in $/MW-AC as
+* written by writesupplycurves.py, so for UPV/PVB the sum is converted to $/MW-DC by
+* ILR exactly as "cost" was above. With all multipliers at 1 this reproduces the
+* static cost (up to the rounding applied to "cost" in e_solveprep).
+m_rsc_dat_t(r,i,rscbin,t)$m_rsc_dat(r,i,rscbin,"cost") = m_rsc_dat(r,i,rscbin,"cost") ;
+m_rsc_dat_t(r,i,rscbin,t)
+    $[m_rsc_dat(r,i,rscbin,"cost_spur") or m_rsc_dat(r,i,rscbin,"cost_poi") or m_rsc_dat(r,i,rscbin,"cost_reinf")] =
+    ( m_rsc_dat(r,i,rscbin,"cost_cap")
+    + m_rsc_dat(r,i,rscbin,"cost_spur")  * costmult("spur",t)
+    + m_rsc_dat(r,i,rscbin,"cost_poi")   * costmult("poi",t)
+    + m_rsc_dat(r,i,rscbin,"cost_reinf") * costmult("reinf",t)
+    ) / (1$[not (upv(i) or pvb(i))] + ilr(i)$(upv(i) or pvb(i))) ;
+* Preserve the non-negativity floor that writesupplycurves applies to the base cost
+m_rsc_dat_t(r,i,rscbin,t)$(m_rsc_dat_t(r,i,rscbin,t) < 0) = 0 ;
 
 * Use hydropower upgrade supply curves and multiplier from switch input to define decoupled capacity/energy upgrade costs.
 cost_cap_up('hydED','init-1',r,rscbin,t) = m_rsc_dat(r,'hydUD',rscbin,"cost") * %GSw_HydroCostFracCapUp% ;

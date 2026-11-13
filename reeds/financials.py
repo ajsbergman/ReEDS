@@ -644,7 +644,7 @@ def calc_financial_multipliers(df_inv, construction_schedules, depreciation_sche
             construction_schedules[df_inv['construction_sch']].T
             * (
                 np.power.outer(
-                    df_inv['interest_rate_nom'].values, np.append([0], np.arange(0.5, 10.5, 1.0))
+                    df_inv['interest_rate_nom'].values, np.append([0], np.arange(0.5, 11.5, 1.0))
                 )
                 - 1
             ),
