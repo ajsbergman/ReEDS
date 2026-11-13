@@ -83,7 +83,8 @@ positive variables
 * transmission variables
   CAPTRAN_ENERGY(r,rr,trtype,t)                  "--MW-- capacity of transmission for energy trading"
   CAPTRAN_PRM(r,rr,trtype,t)                     "--MW-- capacity of transmission for PRM trading"
-  CAPTRAN_GRP(transgrp,transgrpp,t)              "--MW-- capacity of groups of transmission interfaces"
+  CAPTRAN_GRP(transgrp,transgrpp,t)              "--MW-- capacity of groups of transmission interfaces at transgrp level"
+  CAPTRAN_REG(transreg,transregg,t)              "--MW-- capacity of groups of transmission interfaces at transreg level"
   CAPTRAN_ITL(itlgrp,itlgrpp,t)                  "--MW-- capacity of groups of transmission interfaces for county and mixed"
   INVTRAN(r,rr,trtype,t)                         "--MW-- investment in transmission capacity (defined for both directions)"
   INVTRAN_AC(r,rr,tscbin,t)                      "--MW-- transmission capacity added to transmission supply curve bin (defined for both directions)"
@@ -172,6 +173,10 @@ EQUATION
  eq_growthlimit_relative(i,st,t)          "--MW-- relative growth limit on technologies"
  eq_growthbin_limit(gbin,st,tg,t)         "--MW-- capacity limit for each growth bin"
  eq_growthlimit_absolute(tg,t)            "--MW-- absolute growth limit on technologies"
+
+* manual near-term wind constraint
+ eq_wind_ons_cap(t)                       "--MW-- national cap on total onshore wind capacity"
+* certainty of permitting
 
 eq_interconnection_queues(tg,r,t)         "--MW-- capacity deployment limit based on interconnection queues"  
 
@@ -290,6 +295,8 @@ eq_interconnection_queues(tg,r,t)         "--MW-- capacity deployment limit base
  eq_PRMTRADE_VSC(r,ccseason,t)               "--MW-- PRM capacity can flow through VSC lines but doesn't directly contribute to PRM"
  eq_POI_cap(r,t)                             "--MW-- POI capacity accounting (for network reinforcement costs)"
  eq_CAPTRAN_GRP(transgrp,transgrpp,t)        "--MW-- combined flow capacity between transmission groups"
+ eq_CAPTRAN_REG(transreg,transregg,t)        "--MW-- combined flow capacity between transmission regions"
+ eq_captran_interreq_req(transreg,t)         "--MW-- interegional transmission capability requirement"
  eq_transgrp_limit_energy(transgrp,transgrpp,allh,t) "--MW-- limit on combined interface energy flows"
  eq_transgrp_limit_prm(transgrp,transgrpp,ccseason,t) "--MW-- limit on combined interface PRM flows"
  eq_CAPTRAN_ITL(itlgrp,itlgrpp,t)            "--MW-- combined flow capacity between ITL groups"
@@ -1102,6 +1109,35 @@ eq_growthlimit_absolute(tg,t)$[growth_limit_absolute(tg)$tmodel(t)
 ;
 
 * ---------------------------------------------------------------------------
+* Manual near-term wind constraint, active only when Sw_WindConstraint is on.
+* Binds in wind_constraint_year alone; capacity is cumulative, so later years are
+* free to rebound from the constrained level (metered by the growth penalties).
+
+eq_wind_ons_cap(t)$[tmodel(t)
+                    $Sw_WindConstraint
+                    $(yeart(t) = wind_constraint_year)
+                    $(not Sw_PCM)]..
+
+* national cap on installed onshore wind capacity
+    wind_ons_cap
+
+    =g=
+
+* total onshore wind NAMEPLATE capacity across all vintages and regions.
+* CAP is degraded (wind loses ~0.27%/yr), so a cap on CAP would let reported
+* nameplate capacity (cap_out in report.gms, which uses this same expression)
+* exceed wind_ons_cap by a few GW. Use the undegraded exogenous + cumulative
+* investment expression instead so the reported capacity lands on the limit.
+    sum{(i,v,r)$[onswind(i)$valcap(i,v,r,t)],
+        m_capacity_exog(i,v,r,t)
+        + sum{tt$[inv_cond(i,v,r,t,tt)$(tmodel(tt) or tfix(tt))],
+              INV(i,v,r,tt) + INV_REFURB(i,v,r,tt)$[refurbtech(i)$Sw_Refurb] }
+       }
+;
+
+* ---------------------------------------------------------------------------
+
+* ---------------------------------------------------------------------------
 * If using hybrid generators with endogenous spur lines, the available power from
 * a reV site is limited by the CF and capacity of constituent resources at that site
 eq_site_cf(x,h,t)
@@ -1384,6 +1420,7 @@ eq_dhyd_dispatch(i,v,r,szn,t)
 * Limit near-term capacity deployments by tech and region based on interconnection queues
 eq_interconnection_queues(tg,r,t)
     $[tmodel(t)$(yeart(t)>=model_builds_start_yr)
+    $Sw_InterconnectionQueues
     $(sum{(tgg,rr), cap_limit(tgg,rr,t)})
     $sum{(i,newv)$tg_i(tg,i), valinv(i,newv,r,t)}
     $(not Sw_PCM)]..
@@ -1930,8 +1967,8 @@ eq_CAPTRAN_ENERGY(r,rr,trtype,t)
 
     =e=
 
-* [plus] initial transmission capacity
-    + trancap_init_energy(r,rr,trtype)
+* [plus] initial transmission capacity, uprated by ATT deployment from Sw_ATTStartYear
+    + trancap_init_energy(r,rr,trtype) * att_mult(t)
 
 * [plus] capacity additions up to and including the present year
     + sum{tt
@@ -1956,8 +1993,8 @@ eq_CAPTRAN_PRM(r,rr,trtype,t)
 
     =e=
 
-* [plus] initial transmission capacity
-    + trancap_init_prm(r,rr,trtype)
+* [plus] initial transmission capacity, uprated by ATT deployment from Sw_ATTStartYear
+    + trancap_init_prm(r,rr,trtype) * att_mult(t)
 
 * [plus] capacity additions up to and including the present year,
 * derated by Sw_TransInvPRMderate
@@ -2062,8 +2099,9 @@ eq_CAPTRAN_GRP(transgrp,transgrpp,t)
 
     =e=
 
-* [plus] initial transmission capacity, which is defined separately for each direction
-    + trancap_init_transgroup(transgrp,transgrpp,"AC")
+* [plus] initial transmission capacity, which is defined separately for each direction,
+* uprated by ATT deployment from Sw_ATTStartYear
+    + trancap_init_transgroup(transgrp,transgrpp,"AC") * att_mult(t)
 
 * [plus] capacity additions up to and including the present year,
 * derated by Sw_TransGroupDerate
@@ -2075,6 +2113,41 @@ eq_CAPTRAN_GRP(transgrp,transgrpp,t)
           INVTRAN(r,rr,"AC",tt)
           * (1 - Sw_TransGroupDerate)
     }
+;
+
+* ---------------------------------------------------------------------------
+* interregional transmission capacity is sum of interzonal between transreg's
+* TODO: Better to treat it the same as CAPTRAN_GRP, with its own initial calculation
+eq_CAPTRAN_REG(transreg,transregg,t)
+    $[tmodel(t)
+    $sum{(r,rr), routes_transreg(transreg,transregg,r,rr) }]..
+
+    CAPTRAN_REG(transreg,transregg,t)
+
+    =e=
+
+    sum{(r,rr,trtype)$[routes(r,rr,trtype,t)
+                     $routes_transreg(transreg,transregg,r,rr)],
+* TODO: Check this part
+* (technically the BIG WIRES bill says to use the larger of import and export)
+        CAPTRAN_ENERGY(r,rr,trtype,t)
+    }
+;
+
+* ---------------------------------------------------------------------------
+
+* Interregional transfer capability requirement, modeled off BIG WIRES act
+eq_captran_interreq_req(transreg,t)
+    $[tmodel(t)
+    $(yeart(t)>=Sw_TransInterRegRatioStart)
+    $sum(tt, captran_interreg_req(transreg,tt))]..
+
+    sum{transregg$connections_transreg(transreg,transregg),
+        CAPTRAN_REG(transreg,transregg,t) }
+
+    =%GSw_TransInterRegRatioStyle%=
+
+    captran_interreg_req(transreg,t)
 ;
 
 * ---------------------------------------------------------------------------
@@ -2124,8 +2197,9 @@ eq_CAPTRAN_ITL(itlgrp,itlgrpp,t)
 
     =e=
 
-* [plus] initial transmission capacity (from bas), which is defined separately for each direction
-    + trancap_init_itlgrp(itlgrp,itlgrpp,"AC")
+* [plus] initial transmission capacity (from bas), which is defined separately for each direction,
+* uprated by ATT deployment from Sw_ATTStartYear
+    + trancap_init_itlgrp(itlgrp,itlgrpp,"AC") * att_mult(t)
 
 * [plus] capacity additions up to and including the present year
     + sum{(r,rr,tt)

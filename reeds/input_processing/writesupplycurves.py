@@ -71,6 +71,7 @@ def agg_supplycurve(
     scpath,
     inputs_case,
     numbins_tech,
+    sw,
     bin_method='equal_cap_cut',
     bin_col='supply_curve_cost_per_mw',
     spur_cutoff=1e7,
@@ -88,9 +89,55 @@ def agg_supplycurve(
     dfin.loc[:, transcost_cols] *= deflate['interconnection']
     deflate_scen = os.path.splitext(os.path.basename(scpath))[0]
     dfin['capital_adder_per_mw'] *= deflate[deflate_scen]
+
+    ### Reduce interconnection costs on federal land if requested
+    ## GSw_FedLandCostMult scales the federal share of the land-crossing
+    ## interconnection costs: 1 = unchanged, 0 = free on federal land, 0.5 = half.
+    ## Applied per sc_point_gid before binning, so the capacity weighting into
+    ## region/class/bin follows automatically, and pro rata by federal share since
+    ## most points are partly federal rather than wholly one or the other.
+    ##
+    ## All three interconnection components are scaled, per RFF's direction
+    ## (the reduction "should also impact POI"). cost_total_trans is then rebuilt from
+    ## the components rather than scaled directly, keeping the identity
+    ## total == spur + poi + reinforcement exact.
+    ##
+    ## Caveat: cost_poi is a flat two-valued tariff with no land dependence, and
+    ## reinforcement is network upgrade cost at/beyond the point of interconnection,
+    ## so scaling either by the *site's* federal share is an approximation. spur is
+    ## the only component that physically crosses the site's land.
+    FEDCOLS = ['cost_spur_usd_per_mw', 'cost_poi_usd_per_mw', 'cost_reinforcement_usd_per_mw']
+    fedmult = float(sw.GSw_FedLandCostMult)
+    fedfile = os.path.join(
+        reeds_path, 'inputs', 'supply_curve',
+        f"fed_land_fraction_{deflate_scen.replace('supplycurve_', '')}.csv")
+    if (fedmult != 1) and os.path.isfile(fedfile) and all(c in dfin for c in FEDCOLS):
+        fedfrac = pd.read_csv(fedfile, index_col='sc_point_gid').fed_frac
+        frac = dfin.sc_point_gid.map(fedfrac).fillna(0)
+        for col in FEDCOLS:
+            dfin[col] = dfin[col] * (1 - frac * (1 - fedmult))
+        dfin['cost_total_trans_usd_per_mw'] = dfin[
+            ['cost_spur_usd_per_mw', 'cost_poi_usd_per_mw',
+             'cost_reinforcement_usd_per_mw']
+        ].sum(axis=1)
+
+    ### Apply interconnection cost multiplier if applicable
+    ## Scale the components and rebuild the total, rather than scaling the total alone,
+    ## so cost_total_trans == spur + poi + reinforcement always holds. GAMS relies on
+    ## that identity to recombine the components under GSw_TransCostMultScen.
+    TRANSCOLS = ['cost_spur_usd_per_mw', 'cost_poi_usd_per_mw', 'cost_reinforcement_usd_per_mw']
+    if 'cost_total_trans_usd_per_mw' in dfin:
+        if all(c in dfin for c in TRANSCOLS):
+            for col in TRANSCOLS:
+                dfin[col] = dfin[col] * float(sw.GSw_InterconnectionCostMult)
+            dfin['cost_total_trans_usd_per_mw'] = dfin[TRANSCOLS].sum(axis=1)
+        else:
+            dfin.cost_total_trans_usd_per_mw *= float(sw.GSw_InterconnectionCostMult)
+
     dfin['supply_curve_cost_per_mw'] = dfin[
         ['capital_adder_per_mw', 'cost_total_trans_usd_per_mw']
     ].sum(axis=1)
+
     ### Define the aggregation settings
     ## Cost and distance are weighted averages, with capacity as the weighting factor
     aggs = {'capacity': 'sum', 'sc_point_gid': list}
@@ -214,12 +261,14 @@ def main(
             scpath=os.path.join(inputs_case,f'supplycurve_wind-{s}.csv'),
             inputs_case=inputs_case,
             numbins_tech=numbins[f'wind-{s}'],
+            sw=sw,
             spur_cutoff=spur_cutoff,
             deflate=deflate,
         )
         
         cost_components = (
-            wind[s][["cost_total_trans_usd_per_mw", "capital_adder_per_mw"]]
+            wind[s][["cost_total_trans_usd_per_mw", "capital_adder_per_mw",
+             "cost_spur_usd_per_mw", "cost_poi_usd_per_mw", "cost_reinforcement_usd_per_mw"]]
             .round(2)
             .reset_index()
             .rename(
@@ -229,6 +278,11 @@ def main(
                     "bin": "rscbin",
                     "cost_total_trans_usd_per_mw": "cost_trans",
                     "capital_adder_per_mw": "cost_cap",
+                    ## Components of cost_trans, passed through so GAMS can apply
+                    ## per-component time-varying multipliers (GSw_TransCostMultScen)
+                    "cost_spur_usd_per_mw": "cost_spur",
+                    "cost_poi_usd_per_mw": "cost_poi",
+                    "cost_reinforcement_usd_per_mw": "cost_reinf",
                 }
             )
         )
@@ -310,6 +364,7 @@ def main(
         scpath=os.path.join(inputs_case, 'supplycurve_upv.csv'),
         inputs_case=inputs_case,
         numbins_tech=numbins['upv'],
+        sw=sw,
         spur_cutoff=spur_cutoff,
         deflate=deflate,
     )
@@ -317,7 +372,8 @@ def main(
     # Similar to wind, save the trans vs cap components and then concatenate them below just
     # before outputting rsc_combined.csv
     cost_components_upv = (
-        upv[["cost_total_trans_usd_per_mw", "capital_adder_per_mw"]].round(2).reset_index()
+        upv[["cost_total_trans_usd_per_mw", "capital_adder_per_mw",
+             "cost_spur_usd_per_mw", "cost_poi_usd_per_mw", "cost_reinforcement_usd_per_mw"]].round(2).reset_index()
     )
     cost_components_upv = cost_components_upv.rename(
         columns={
@@ -326,6 +382,11 @@ def main(
             "bin": "rscbin",
             "cost_total_trans_usd_per_mw": "cost_trans",
             "capital_adder_per_mw": "cost_cap",
+            ## Components of cost_trans, passed through so GAMS can apply
+            ## per-component time-varying multipliers (GSw_TransCostMultScen)
+            "cost_spur_usd_per_mw": "cost_spur",
+            "cost_poi_usd_per_mw": "cost_poi",
+            "cost_reinforcement_usd_per_mw": "cost_reinf",
         }
     )
     cost_components_upv["*i"] = "upv_" + cost_components_upv["*i"].astype(str)
@@ -390,6 +451,7 @@ def main(
             scpath=os.path.join(inputs_case, 'supplycurve_csp.csv'),
             inputs_case=inputs_case,
             numbins_tech=numbins['csp'],
+            sw=sw,
             spur_cutoff=spur_cutoff,
             deflate=deflate,
         )
@@ -471,6 +533,7 @@ def main(
                 ),
                 numbins_tech=numbins[s],
                 inputs_case=inputs_case,
+                sw=sw,
                 spur_cutoff=spur_cutoff,
                 deflate=deflate
             )

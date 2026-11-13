@@ -1903,6 +1903,27 @@ def get_dfplot(run_dir, inputpath, plot_dollar_year, tableau_export=False):
     return dfplot
 
 
+def get_state_rates(run_dir, inputpath, plot_dollar_year, startyear=2010):
+    """
+    Get the total retail rate [cents/kWh] for each state and year, using the same
+    component accounting, bias correction, and dollar-year conversion as the
+    US-average rate (get_dfplot with tableau_export=True keeps the state index).
+    The load-weighted average of the state rates (weighted by retail_load)
+    reproduces the US-average rate.
+    """
+    dfstate = get_dfplot(
+        run_dir=run_dir, inputpath=inputpath, plot_dollar_year=plot_dollar_year,
+        tableau_export=True)
+    loadcols = ['retail_load', 'busbar_load', 'end_use_load', 'distpv_gen']
+    ratecols = [c for c in dfstate.columns if c not in loadcols]
+    dfout = (
+        dfstate[ratecols].sum(axis=1).rename('retailrate').to_frame()
+        .assign(retail_load=dfstate['retail_load'])
+        .reset_index().rename(columns={'state':'st', 't':'year'})
+    )
+    return dfout.loc[dfout.year >= startyear]
+
+
 def post_processing(dfplot):
     ### Group special into op_admin
     if 'special_costs' in dfplot:
@@ -2347,6 +2368,15 @@ if __name__ == '__main__':
         plot_dollar_year=plot_dollar_year)
     dfrate.loc[startyear:].to_csv(
         os.path.join(run_dir,'outputs','retail','retail_rate_USA_centsperkWh_allcomponents.csv'))
+
+    #%% Get and write the state-level retail rates
+    print('Getting state-level retail rates')
+    get_state_rates(
+        run_dir=run_dir, inputpath=os.path.join(mdir,'inputs.csv'),
+        plot_dollar_year=plot_dollar_year, startyear=startyear,
+    ).to_csv(
+        os.path.join(run_dir,'outputs','retail','retail_rate_state_centsperkWh.csv'),
+        index=False)
 
     if args.plots:
         retail_plots(run_dir=run_dir, inputpath=os.path.join(mdir,'inputs.csv'))
